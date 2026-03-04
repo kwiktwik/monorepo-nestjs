@@ -2,7 +2,10 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InMemoryEventBus } from './in-memory-event-bus';
-import { EventEnvelope, NotificationChannelType } from '../types/notification-event.types';
+import {
+  EventEnvelope,
+  NotificationChannelType,
+} from '../types/notification-event.types';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, sql } from 'drizzle-orm';
@@ -39,7 +42,7 @@ export const NOTIFICATION_QUEUE_NAME = 'notification-events';
 
 /**
  * Notification Processor using @nestjs/bullmq WorkerHost pattern
- * 
+ *
  * This processor handles delayed notification events, including:
  * - Checkout abandoned checks
  * - Subscription reminders
@@ -52,7 +55,7 @@ export const NOTIFICATION_QUEUE_NAME = 'notification-events';
     duration: 1000,
   },
 })
-export class NotificationProcessor extends WorkerHost<NotificationJobData> {
+export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
 
   constructor(
@@ -68,7 +71,7 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
    */
   async process(job: Job<NotificationJobData>): Promise<void> {
     const data = job.data;
-    
+
     this.logger.log(
       `🔄 [PROCESSING] Job ${job.id} | Type: ${data.eventType} | User: ${data.userId}`,
     );
@@ -86,12 +89,15 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
 
       // Default handling for other event types
       await this.sendNotification(job);
-      
     } catch (error) {
       this.logger.error(
         `❌ [FAILED] Job ${job.id} failed: ${(error as Error).message}`,
       );
-      await this.updateEventStatus(data.eventId, 'FAILED', (error as Error).message);
+      await this.updateEventStatus(
+        data.eventId,
+        'FAILED',
+        (error as Error).message,
+      );
       throw error;
     }
   }
@@ -100,27 +106,36 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
    * Handle checkout abandoned event
    * Checks if user is premium before sending notification
    */
-  private async handleCheckoutAbandoned(job: Job<NotificationJobData>): Promise<void> {
+  private async handleCheckoutAbandoned(
+    job: Job<NotificationJobData>,
+  ): Promise<void> {
     const data = job.data;
-    
+
     this.logger.log(
       `🔍 [PREMIUM CHECK] Checking premium status for user ${data.userId}`,
     );
 
-    const isPremium = await this.checkUserPremiumStatus(data.userId, data.appId);
-    
+    const isPremium = await this.checkUserPremiumStatus(
+      data.userId,
+      data.appId,
+    );
+
     if (isPremium) {
       this.logger.log(
         `⏭️  [SKIPPED] User ${data.userId} is already premium - skipping notification`,
       );
-      await this.updateEventStatus(data.eventId, 'COMPLETED', 'User is premium, skipped');
+      await this.updateEventStatus(
+        data.eventId,
+        'COMPLETED',
+        'User is premium, skipped',
+      );
       return;
     }
 
     this.logger.log(
       `✅ [PREMIUM CHECK] User ${data.userId} is NOT premium - proceeding with notification`,
     );
-    
+
     await this.sendNotification(job);
   }
 
@@ -129,7 +144,7 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
    */
   private async sendNotification(job: Job<NotificationJobData>): Promise<void> {
     const data = job.data;
-    
+
     // Build event envelope
     const envelope: EventEnvelope = {
       eventId: data.eventId,
@@ -157,7 +172,9 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
 
     // Check results
     const allSucceeded = results.every((r) => r.delivered);
-    const failedChannels = results.filter((r) => !r.delivered).map((r) => r.channel);
+    const failedChannels = results
+      .filter((r) => !r.delivered)
+      .map((r) => r.channel);
 
     if (allSucceeded) {
       await this.updateEventStatus(data.eventId, 'COMPLETED');
@@ -179,13 +196,16 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
   /**
    * Check if user has premium/active subscription
    */
-  private async checkUserPremiumStatus(userId: string, appId: string): Promise<boolean> {
+  private async checkUserPremiumStatus(
+    userId: string,
+    appId: string,
+  ): Promise<boolean> {
     try {
       const subscriptions = await this.db
         .select()
         .from(schema.subscriptions)
         .where(
-          sql`${schema.subscriptions.userId} = ${userId} AND ${schema.subscriptions.appId} = ${appId}`
+          sql`${schema.subscriptions.userId} = ${userId} AND ${schema.subscriptions.appId} = ${appId}`,
         )
         .limit(1);
 
@@ -197,11 +217,11 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
       const sub = subscriptions[0];
       const activeStatuses = ['active', 'authenticated'];
       const isPremium = activeStatuses.includes(sub.status);
-      
+
       this.logger.debug(
         `Subscription found: status=${sub.status}, isPremium=${isPremium}`,
       );
-      
+
       return isPremium;
     } catch (error) {
       this.logger.error(
@@ -233,7 +253,7 @@ export class NotificationProcessor extends WorkerHost<NotificationJobData> {
         .update(schema.notificationEvents)
         .set(updateData)
         .where(eq(schema.notificationEvents.id, eventId));
-        
+
       this.logger.debug(`Updated event ${eventId} status to ${status}`);
     } catch (error) {
       // Event might not exist in DB for delayed jobs, that's okay

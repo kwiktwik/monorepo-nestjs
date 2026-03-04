@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
  * Test Script: Checkout Abandoned Flow
- * 
+ *
  * This script tests the delayed notification flow for abandoned checkouts.
- * 
+ *
  * Flow:
  * 1. Create a test user (non-premium)
  * 2. Simulate checkout initiation
  * 3. Schedule checkout-abandoned check with short delay (5 seconds for testing)
  * 4. Wait for the job to be processed
  * 5. Verify notification was sent via mock channels
- * 
+ *
  * Usage:
  *   USE_MOCK_DB=true node scripts/test-checkout-abandoned.mjs
- * 
+ *
  * Prerequisites:
  * - Mock server running: pnpm start:dev:mock
  */
@@ -69,7 +69,7 @@ function generateTestToken(userId, appId) {
  */
 async function createTestUser(phoneNumber) {
   console.log('📝 Step 1: Creating test user...');
-  
+
   // First, send OTP
   const sendOtpResponse = await fetch(`${BASE_URL}/api/phone-number/send-otp`, {
     method: 'POST',
@@ -82,10 +82,10 @@ async function createTestUser(phoneNumber) {
 
   const sendOtpData = await sendOtpResponse.json();
   console.log(`   📱 OTP sent: ${sendOtpData.message}`);
-  
+
   // For test phone number, use 123456
   const otp = phoneNumber === '+919999999999' ? '123456' : sendOtpData.mockCode;
-  
+
   // Verify OTP
   const verifyResponse = await fetch(`${BASE_URL}/api/phone-number/verify`, {
     method: 'POST',
@@ -97,13 +97,13 @@ async function createTestUser(phoneNumber) {
   });
 
   const verifyData = await verifyResponse.json();
-  
-  console.log(verifyData)
 
-  console.log(`   ✅ User created/verified: ${verifyData.user.id}`);
-  console.log(`   📧 Email: ${verifyData.user.email}`);
-  
-  console.log(verifyData)
+  console.log(verifyData);
+
+  console.log(`   ✅ User created/verified: ${verifyData.data.user.id}`);
+  console.log(`   📧 Email: ${verifyData.data.user.email}`);
+
+  console.log(verifyData);
   return {
     userId: verifyData.data.user.id,
     token: verifyData.data.token,
@@ -116,13 +116,13 @@ async function createTestUser(phoneNumber) {
  */
 async function scheduleCheckoutAbandoned(token, checkoutData, delaySeconds) {
   console.log('\n📅 Step 2: Scheduling checkout abandoned check...');
-  
+
   const response = await fetch(`${BASE_URL}/api/event/checkout-abandoned`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-App-ID': APP_ID,
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       ...checkoutData,
@@ -131,14 +131,14 @@ async function scheduleCheckoutAbandoned(token, checkoutData, delaySeconds) {
   });
 
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(`Failed to schedule: ${JSON.stringify(data)}`);
   }
 
   console.log(`   ✅ Job scheduled: ${data.jobId}`);
   console.log(`   ⏰ Scheduled for: ${data.scheduledFor}`);
-  
+
   return data;
 }
 
@@ -149,10 +149,10 @@ async function getQueueStats(token) {
   const response = await fetch(`${BASE_URL}/api/event/queue/stats`, {
     headers: {
       'X-App-ID': APP_ID,
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
-  
+
   return response.json();
 }
 
@@ -162,29 +162,31 @@ async function getQueueStats(token) {
 async function waitForJobProcessing(token, expectedDelaySeconds) {
   console.log('\n⏳ Step 3: Waiting for job to be processed...');
   console.log(`   Expected wait: ~${expectedDelaySeconds} seconds\n`);
-  
+
   const startTime = Date.now();
   const maxWaitTime = (expectedDelaySeconds + 10) * 1000; // Add 10 seconds buffer
   let completed = false;
-  
-  while (!completed && (Date.now() - startTime) < maxWaitTime) {
+
+  while (!completed && Date.now() - startTime < maxWaitTime) {
     const stats = await getQueueStats(token);
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    
-    process.stdout.write(`\r   [${elapsed}s] Waiting... | Delayed: ${stats.delayed} | Active: ${stats.active} | Completed: ${stats.completed}   `);
-    
+
+    process.stdout.write(
+      `\r   [${elapsed}s] Waiting... | Delayed: ${stats.delayed} | Active: ${stats.active} | Completed: ${stats.completed}   `,
+    );
+
     if (stats.completed > 0) {
       completed = true;
       console.log('\n   ✅ Job completed!');
     } else {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
-  
+
   if (!completed) {
     console.log('\n   ⚠️  Timeout waiting for job completion');
   }
-  
+
   // Get final stats
   const finalStats = await getQueueStats(token);
   console.log('\n📊 Final Queue Stats:');
@@ -193,7 +195,7 @@ async function waitForJobProcessing(token, expectedDelaySeconds) {
   console.log(`   - Delayed: ${finalStats.delayed}`);
   console.log(`   - Completed: ${finalStats.completed}`);
   console.log(`   - Failed: ${finalStats.failed}`);
-  
+
   return finalStats;
 }
 
@@ -219,26 +221,32 @@ async function main() {
 
     // Test Scenario 1: Non-premium user (should receive notification)
     console.log('='.repeat(70));
-    console.log('📋 SCENARIO 1: Non-premium user (should receive notification)');
+    console.log(
+      '📋 SCENARIO 1: Non-premium user (should receive notification)',
+    );
     console.log('='.repeat(70));
-    
+
     const testUser1 = await createTestUser('+919999999999');
     const token1 = testUser1.token;
-    
+
     console.log('\n🛒 Simulating checkout initiation...');
     console.log('   Order ID: test-order-001');
     console.log('   Amount: ₹999');
     console.log('   Plan: Premium Monthly');
-    
-    await scheduleCheckoutAbandoned(token1, {
-      orderId: 'test-order-001',
-      amount: 999,
-      currency: 'INR',
-      planName: 'Premium Monthly',
-    }, TEST_DELAY_SECONDS);
-    
+
+    await scheduleCheckoutAbandoned(
+      token1,
+      {
+        orderId: 'test-order-001',
+        amount: 999,
+        currency: 'INR',
+        planName: 'Premium Monthly',
+      },
+      TEST_DELAY_SECONDS,
+    );
+
     await waitForJobProcessing(token1, TEST_DELAY_SECONDS);
-    
+
     console.log('\n' + '-'.repeat(70));
     console.log('✅ SCENARIO 1 COMPLETE');
     console.log('-'.repeat(70));
@@ -247,31 +255,35 @@ async function main() {
     console.log('   - "User <userId> is not premium, proceeding..."');
     console.log('   - "Mock push delivered..."');
     console.log('   - "Mock in-app delivered..."');
-    
+
     // Wait a bit before next scenario
-    await new Promise(r => setTimeout(r, 2000));
-    
+    await new Promise((r) => setTimeout(r, 2000));
+
     // Test Scenario 2: Quick test with another user
     console.log('\n' + '='.repeat(70));
     console.log('📋 SCENARIO 2: Another non-premium user');
     console.log('='.repeat(70));
-    
+
     const testUser2 = await createTestUser('+919999999998');
     const token2 = testUser2.token;
-    
-    await scheduleCheckoutAbandoned(token2, {
-      orderId: 'test-order-002',
-      amount: 1499,
-      currency: 'INR',
-      planName: 'Premium Yearly',
-    }, TEST_DELAY_SECONDS);
-    
+
+    await scheduleCheckoutAbandoned(
+      token2,
+      {
+        orderId: 'test-order-002',
+        amount: 1499,
+        currency: 'INR',
+        planName: 'Premium Yearly',
+      },
+      TEST_DELAY_SECONDS,
+    );
+
     await waitForJobProcessing(token2, TEST_DELAY_SECONDS);
-    
+
     console.log('\n' + '-'.repeat(70));
     console.log('✅ SCENARIO 2 COMPLETE');
     console.log('-'.repeat(70));
-    
+
     // Summary
     console.log('\n' + '='.repeat(70));
     console.log('✅ ALL TESTS COMPLETED SUCCESSFULLY');
@@ -283,7 +295,6 @@ async function main() {
     console.log(`   - Notifications sent via mock channels`);
     console.log('\n💡 Check server logs to verify the complete flow.');
     console.log('='.repeat(70) + '\n');
-    
   } catch (error) {
     console.error('\n❌ Test failed:', error.message);
     console.error(error.stack);
