@@ -1152,21 +1152,20 @@ export async function POST(request: NextRequest) {
               );
             }
 
-            // Calculate effective end date
-            // For abusers: use natural subscription end date (they paid for the month)
-            // For first-time cancellers: give 24-hour grace period
+            // Calculate effective end date based on what the user actually paid:
+            // - paid_count === 0 → only ₹5 trial addon was charged, no full cycle paid
+            //   → 24h grace from subscription startAt
+            // - paid_count >= 1 → at least one full billing cycle (₹199) was charged
+            //   → access until end of the paid billing period (current_end)
             let effectiveEndAt: Date;
-            if (isAbuser) {
-              // Abusers keep access until natural subscription end (no extra grace period)
-              effectiveEndAt = subRecord[0].endAt ?? now;
+            if (cancelledSub.paid_count && cancelledSub.paid_count >= 1 && cancelledSub.current_end) {
+              // Full month paid — keep access until end of billing period
+              effectiveEndAt = new Date(cancelledSub.current_end * 1000);
             } else {
-              // First-time cancellers get 24-hour grace period
-              const subStart =
-                subRecord[0].startAt ?? subRecord[0].createdAt ?? now;
-              const gracePeriodEnd = new Date(
-                subStart.getTime() + 24 * 60 * 60 * 1000,
-              );
-              effectiveEndAt = gracePeriodEnd > now ? gracePeriodEnd : now;
+              // Trial only (₹5 addon) or cancelled before any charge
+              // Give 24h from subscription startAt
+              const subStart = subRecord[0].startAt ?? subRecord[0].createdAt ?? now;
+              effectiveEndAt = new Date(subStart.getTime() + 24 * 60 * 60 * 1000);
             }
 
             await db
@@ -1194,6 +1193,10 @@ export async function POST(request: NextRequest) {
                 updatedAt: now,
               })
               .where(eq(subscriptions.razorpaySubscriptionId, cancelledSub.id));
+
+            console.log(
+              `[WEBHOOK ${requestId}] ✅ Subscription ${cancelledSub.id} cancelled (access until ${effectiveEndAt.toISOString()}, abuser: ${isAbuser})`,
+            );
 
             console.log(
               `[WEBHOOK ${requestId}] ✅ Subscription ${cancelledSub.id} cancelled (access until ${effectiveEndAt.toISOString()}, abuser: ${isAbuser})`,
