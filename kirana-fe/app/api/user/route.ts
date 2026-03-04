@@ -102,22 +102,6 @@ export async function GET(req: NextRequest) {
     const upiVpa = userMeta?.upiVpa || null;
     const audioLanguage = userMeta?.audioLanguage || "en-US";
 
-    // Check if user is premium (has captured/paid orders OR active subscriptions) for this app
-    // Treat alertpay-default and alertpay-android as the same app
-    console.log("[GET /api/user] Checking premium status...");
-    const paidOrders = await db
-      .select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.userId, userId),
-          inArray(orders.appId, getEquivalentAppIds(appId)),
-          eq(orders.status, ORDER_STATUS.CAPTURED),
-        ),
-      );
-
-    console.log("[GET /api/user] Paid orders fetched:", paidOrders.length);
-
     // Check if user has active subscriptions
     // Fetch all records for this user/app and filter in memory to avoid potential Enum SQL issues
     const allUserSubscriptions = await db
@@ -192,7 +176,7 @@ export async function GET(req: NextRequest) {
       isPlayStoreReviewSubmitted,
     );
 
-    const isPremium = paidOrders.length > 0 || activeSubscriptions.length > 0;
+    const isPremium = activeSubscriptions.length > 0 || activePhonePeSubscriptions.length > 0;
 
     console.log("[GET /api/user] isPremium:", isPremium);
     // Return user data
