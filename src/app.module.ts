@@ -15,8 +15,10 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationEventsModule } from './modules/notification-events/notification-events.module';
 import { DeviceSessionModule } from './modules/device-session/device-session.module';
 import { HealthController } from './modules/health/health.controller';
+import { DbDebugModule } from './debug/db-debug.module';
 
-const dbModule = process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
+const dbModule =
+  process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ const dbModule = process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : Drizzl
       isGlobal: true,
     }),
     dbModule,
+    DbDebugModule,
     AuthModule,
     ConfigModule,
     UserModule,
@@ -40,4 +43,4 @@ const dbModule = process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : Drizzl
   ],
   controllers: [HealthController],
 })
-export class AppModule { }
+export class AppModule {}
