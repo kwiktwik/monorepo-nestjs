@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { NotificationChannelType } from '../types/notification-event.types';
-import { IsString, IsNotEmpty, IsOptional, IsObject, IsEnum, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsObject,
+  IsEnum,
+  IsArray,
+} from 'class-validator';
 
 export class NotificationEventDto {
   @ApiProperty({

@@ -3,9 +3,11 @@ import { RazorpayController } from './razorpay.controller';
 import { RazorpayService } from './razorpay.service';
 import { RazorpayWebhookController } from './razorpay-webhook.controller';
 import { RazorpayWebhookService } from './razorpay-webhook.service';
+import { MockRazorpayService } from './razorpay.mock.service';
 import * as bodyParser from 'body-parser';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { Request, Response, NextFunction } from 'express';
+import { isMockMode } from '../../common/utils/is-mock-mode';
 
 interface RawBodyRequest extends Request {
   rawBody?: Buffer;
@@ -33,7 +35,13 @@ function rawBodyMiddleware(
 @Module({
   imports: [AnalyticsModule],
   controllers: [RazorpayController, RazorpayWebhookController],
-  providers: [RazorpayService, RazorpayWebhookService],
+  providers: [
+    {
+      provide: RazorpayService,
+      useClass: isMockMode() ? MockRazorpayService : RazorpayService,
+    },
+    RazorpayWebhookService,
+  ],
   exports: [RazorpayService],
 })
 export class RazorpayModule implements NestModule {
