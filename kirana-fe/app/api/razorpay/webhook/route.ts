@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/db";
 import { razorpay } from "@/lib/razorpay";
-import { orders, subscriptions, subscriptionLogs, user } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  orders,
+  subscriptions,
+  subscriptionLogs,
+  user,
+  userMetadata,
+} from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { ORDER_STATUS } from "@/lib/constants/order-status";
 import {
   sendAnalyticsEvent,
@@ -1070,23 +1076,106 @@ export async function POST(request: NextRequest) {
         const cancelledSub = event.payload.subscription.entity;
         if (cancelledSub.id) {
           try {
-            // Fetch subscription start time for 24h grace period calculation
+            // Fetch subscription details including userId for user tracking
             const subRecord = await db
               .select({
                 startAt: subscriptions.startAt,
                 createdAt: subscriptions.createdAt,
+                userId: subscriptions.userId,
+                appId: subscriptions.appId,
+                endAt: subscriptions.endAt,
               })
               .from(subscriptions)
               .where(eq(subscriptions.razorpaySubscriptionId, cancelledSub.id))
               .limit(1);
 
+            if (subRecord.length === 0) {
+              console.warn(
+                `[WEBHOOK ${requestId}] ⚠️  Subscription ${cancelledSub.id} not found in database`,
+              );
+              break;
+            }
+
             const now = eventTime;
-            const subStart =
-              subRecord[0]?.startAt ?? subRecord[0]?.createdAt ?? now;
-            const gracePeriodEnd = new Date(
-              subStart.getTime() + 24 * 60 * 60 * 1000,
-            );
-            const effectiveEndAt = gracePeriodEnd > now ? gracePeriodEnd : now;
+            const userId = subRecord[0].userId;
+            const appId = subRecord[0].appId;
+
+            // Check if user has cancelled before (per app tracking)
+            const userMeta = await db
+              .select({
+                id: userMetadata.id,
+                hasCancelledSubscription: userMetadata.hasCancelledSubscription,
+              })
+              .from(userMetadata)
+              .where(
+                and(
+                  eq(userMetadata.userId, userId),
+                  eq(userMetadata.appId, appId),
+                ),
+              )
+              .limit(1);
+
+            const isAbuser =
+              userMeta.length > 0 && userMeta[0].hasCancelledSubscription;
+
+            // Mark user as having cancelled a subscription (create or update)
+            if (!isAbuser) {
+              if (userMeta.length > 0) {
+                // Update existing record
+                await db
+                  .update(userMetadata)
+                  .set({
+                    hasCancelledSubscription: true,
+                    updatedAt: now,
+                  })
+                  .where(
+                    and(
+                      eq(userMetadata.userId, userId),
+                      eq(userMetadata.appId, appId),
+                    ),
+                  );
+              } else {
+                // Create new userMetadata record
+                try {
+                  await db.insert(userMetadata).values({
+                    userId: userId,
+                    appId: appId,
+                    hasCancelledSubscription: true,
+                    createdAt: now,
+                    updatedAt: now,
+                  });
+                  console.log(
+                    `[WEBHOOK ${requestId}] ✅ Created userMetadata for user ${userId} app ${appId}`,
+                  );
+                } catch (insertError) {
+                  console.error(
+                    `[WEBHOOK ${requestId}] ❌ Failed to create userMetadata:`,
+                    insertError,
+                  );
+                  // Don't throw - continue with subscription cancellation
+                }
+              }
+              console.log(
+                `[WEBHOOK ${requestId}] ✅ User ${userId} marked as subscription canceller for app ${appId}`,
+              );
+            }
+
+            // Calculate effective end date
+            // For abusers: use natural subscription end date (they paid for the month)
+            // For first-time cancellers: give 24-hour grace period
+            let effectiveEndAt: Date;
+            if (isAbuser) {
+              // Abusers keep access until natural subscription end (no extra grace period)
+              effectiveEndAt = subRecord[0].endAt ?? now;
+            } else {
+              // First-time cancellers get 24-hour grace period
+              const subStart =
+                subRecord[0].startAt ?? subRecord[0].createdAt ?? now;
+              const gracePeriodEnd = new Date(
+                subStart.getTime() + 24 * 60 * 60 * 1000,
+              );
+              effectiveEndAt = gracePeriodEnd > now ? gracePeriodEnd : now;
+            }
 
             await db
               .update(subscriptions)
@@ -1114,6 +1203,10 @@ export async function POST(request: NextRequest) {
               })
               .where(eq(subscriptions.razorpaySubscriptionId, cancelledSub.id));
 
+            console.log(
+              `[WEBHOOK ${requestId}] ✅ Subscription ${cancelledSub.id} cancelled (access until ${effectiveEndAt.toISOString()}, abuser: ${isAbuser})`,
+            );
+
             const subscription = await db
               .select({
                 userId: subscriptions.userId,
@@ -1131,6 +1224,7 @@ export async function POST(request: NextRequest) {
                 {
                   subscription_id: cancelledSub.id,
                   customer_id: subscription[0].customerId,
+                  is_abuser: isAbuser,
                 },
                 {
                   subscription_id: cancelledSub.id,
