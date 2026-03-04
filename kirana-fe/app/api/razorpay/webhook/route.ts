@@ -483,11 +483,11 @@ export async function POST(request: NextRequest) {
 
           // Fire Facebook standard Purchase for authorized payments and
           // deduplicate using the internal user order id.
-          await trackAuthorizedOrderFacebookPurchase(
-            requestId,
-            authorizedPayment.order_id,
-            authorizedPayment,
-          );
+          // await trackAuthorizedOrderFacebookPurchase(
+          //   requestId,
+          //   authorizedPayment.order_id,
+          //   authorizedPayment,
+          // );
         } else {
           console.warn(
             `[WEBHOOK ${requestId}] ⚠️  payment.authorized missing required IDs paymentId=${authorizedPayment?.id || "N/A"} orderId=${authorizedPayment?.order_id || "N/A"}`,
