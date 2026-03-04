@@ -47,7 +47,7 @@ function getConnectionString() {
   return url;
 }
 
-const DEFAULT_APP_ID = process.env.SEED_APP_ID || 'com.sharekaro.kirana';
+const DEFAULT_APP_ID = process.env.SEED_APP_ID || 'com.paymentalert.app';
 const JWT_SECRET =
   process.env.JWT_SECRET || 'your-jwt-secret-key-change-this-in-production';
 

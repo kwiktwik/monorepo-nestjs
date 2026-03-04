@@ -26,7 +26,16 @@ async function bootstrap() {
     .addTag('user', 'User Management')
     .addTag('feed', 'Home Feed & Categories')
     .addTag('health', 'Health Check')
-    .addApiKey({ type: 'apiKey', name: 'X-App-ID', in: 'header' }, 'X-App-ID')
+    .addTag('events', 'Notification Events')
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'X-App-ID',
+        in: 'header',
+        description: 'App identifier (default: com.paymentalert.app)',
+      },
+      'X-App-ID',
+    )
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'JWT',
@@ -36,6 +45,13 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
+      // Set default X-App-ID header value
+      requestInterceptor: (request) => {
+        if (!request.headers['X-App-ID']) {
+          request.headers['X-App-ID'] = 'com.paymentalert.app';
+        }
+        return request;
+      },
     },
   });
 
@@ -88,6 +104,7 @@ async function bootstrap() {
   );
   logger.log(`📋 Health check: http://localhost:${port}/health`);
   logger.log(`📖 Swagger docs: http://localhost:${port}/docs`);
+  logger.log(`📱 Default X-App-ID: com.paymentalert.app`);
 }
 
 void bootstrap();

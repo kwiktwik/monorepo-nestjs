@@ -5,6 +5,9 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { AnalyticsService } from './../src/modules/analytics/analytics.service';
 
+// Set mock mode before importing AppModule
+process.env.USE_MOCK_DB = 'true';
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 

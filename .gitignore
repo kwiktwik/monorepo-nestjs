@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-
+.DS_Store
 # Build output
 dist/
 build/
@@ -71,23 +71,3 @@ Thumbs.db
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-# Environment
-.env
-.env.local
-.env.*.local
-!.env.example
-
-# TypeScript
-*.tsbuildinfo
-
-# Misc
-.cache
-.turbo
-*.pid
-*.seed
-*.pid.lock
-
-
-
-firebase-service-account.json

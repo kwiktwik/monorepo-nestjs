@@ -12,8 +12,14 @@ export class MockSmsChannel implements NotificationChannel {
   readonly type = NotificationChannelType.Sms;
 
   async send(event: EventEnvelope): Promise<NotificationChannelResult> {
+    const payloadPreview = JSON.stringify(event.payload).slice(0, 100);
+    
     this.logger.log(
-      `Mock SMS delivered for ${event.eventType} to ${event.userId}`,
+      `💬 [MOCK SMS] Event: ${event.eventType} | User: ${event.userId} | App: ${event.appId}`,
+    );
+    this.logger.debug(`   Payload: ${payloadPreview}`);
+    this.logger.log(
+      `✅ [MOCK SMS] Delivered successfully to ${event.userId}`,
     );
 
     return {

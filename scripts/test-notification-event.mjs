@@ -22,7 +22,7 @@ try {
 }
 
 const BASE_URL = process.env.SEED_BASE_URL || 'http://localhost:4010';
-const APP_ID = process.env.SEED_APP_ID || 'com.sharekaro.kirana';
+const APP_ID = process.env.SEED_APP_ID || 'com.paymentalert.app';
 const JWT_TOKEN = process.env.SEED_JWT_TOKEN || '';
 
 if (!JWT_TOKEN) {

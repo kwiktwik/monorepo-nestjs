@@ -12,8 +12,14 @@ export class MockInAppChannel implements NotificationChannel {
   readonly type = NotificationChannelType.InApp;
 
   async send(event: EventEnvelope): Promise<NotificationChannelResult> {
+    const payloadPreview = JSON.stringify(event.payload).slice(0, 100);
+    
     this.logger.log(
-      `Mock in-app delivered for ${event.eventType} to ${event.userId}`,
+      `🔔 [MOCK IN-APP] Event: ${event.eventType} | User: ${event.userId} | App: ${event.appId}`,
+    );
+    this.logger.debug(`   Payload: ${payloadPreview}`);
+    this.logger.log(
+      `✅ [MOCK IN-APP] Delivered successfully to ${event.userId}`,
     );
 
     return {

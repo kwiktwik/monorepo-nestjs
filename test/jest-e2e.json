@@ -12,5 +12,6 @@
   },
   "transformIgnorePatterns": [
     "node_modules/(?!(nanoid)/)"
-  ]
+  ],
+  "setupFilesAfterEnv": ["<rootDir>/test/setup-e2e.ts"]
 }

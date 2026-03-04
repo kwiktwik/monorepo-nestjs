@@ -73,11 +73,6 @@ Environment overrides:
 - `JWT_SECRET` - must match server secret for JWT validation.
 - `DATABASE_URL` - full connection string.
 
-Environment overrides:
-- `SEED_BASE_URL` - base server URL (default: http://localhost:4010)
-- `SEED_APP_ID` - X-App-ID header (default: com.sharekaro.kirana)
-- `SEED_JWT_TOKEN` - JWT from the seed output
-
 ## API Routes
 
 ### Authentication (No JWT required, only X-App-ID header)
