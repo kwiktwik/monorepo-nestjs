@@ -1118,37 +1118,40 @@ export async function POST(request: NextRequest) {
             const isAbuser =
               userMeta.length > 0 && userMeta[0].hasCancelledSubscription;
 
-            // Mark user as having cancelled a subscription (create or update)
-            // We use upsert to cleanly handle concurrent requests and missing records
-            try {
-              await db
-                .insert(userMetadata)
-                .values({
-                  userId: userId,
-                  appId: appId,
-                  hasCancelledSubscription: true,
-                  createdAt: now,
-                  updatedAt: now,
-                })
-                .onConflictDoUpdate({
-                  target: [userMetadata.userId, userMetadata.appId],
-                  set: {
+            // Mark user as abuser ONLY if they cancelled during the trial (paid_count === 0).
+            // If paid_count >= 1, they legitimately churned after paying — not an abuser.
+            const paidCycles = cancelledSub.paid_count ?? 0;
+            const isCancellingTrial = paidCycles === 0; // No full billing cycle was charged (only ₹5 addon)
+            if (isCancellingTrial) {
+              try {
+                await db
+                  .insert(userMetadata)
+                  .values({
+                    userId: userId,
+                    appId: appId,
                     hasCancelledSubscription: true,
+                    createdAt: now,
                     updatedAt: now,
-                  },
-                });
-
+                  })
+                  .onConflictDoUpdate({
+                    target: [userMetadata.userId, userMetadata.appId],
+                    set: {
+                      hasCancelledSubscription: true,
+                      updatedAt: now,
+                    },
+                  });
+                console.log(
+                  `[WEBHOOK ${requestId}] ✅ User ${userId} marked as trial abuser for app ${appId} (paid_count=0)`,
+                );
+              } catch (upsertError) {
+                console.error(
+                  `[WEBHOOK ${requestId}] ❌ Failed to upsert userMetadata:`,
+                  upsertError,
+                );
+              }
+            } else {
               console.log(
-                `[WEBHOOK ${requestId}] ✅ User ${userId} marked as subscription canceller for app ${appId}`,
-              );
-
-              // If we just marked them, they weren't an abuser before this request
-              // But for the calculation below, we might want to treat them as an abuser 
-              // if they were already marked. The isAbuser flag from the select above is correct.
-            } catch (upsertError) {
-              console.error(
-                `[WEBHOOK ${requestId}] ❌ Failed to upsert userMetadata:`,
-                upsertError,
+                `[WEBHOOK ${requestId}] ℹ️  User ${userId} churned after ${cancelledSub.paid_count} paid cycle(s) — not marking as abuser`,
               );
             }
 
@@ -1193,6 +1196,10 @@ export async function POST(request: NextRequest) {
                 updatedAt: now,
               })
               .where(eq(subscriptions.razorpaySubscriptionId, cancelledSub.id));
+
+            console.log(
+              `[WEBHOOK ${requestId}] ✅ Subscription ${cancelledSub.id} cancelled (access until ${effectiveEndAt.toISOString()}, abuser: ${isAbuser})`,
+            );
 
             console.log(
               `[WEBHOOK ${requestId}] ✅ Subscription ${cancelledSub.id} cancelled (access until ${effectiveEndAt.toISOString()}, abuser: ${isAbuser})`,
