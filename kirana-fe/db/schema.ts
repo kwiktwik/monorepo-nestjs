@@ -417,6 +417,7 @@ export const userMetadata = pgTable(
     appId: text("app_id").notNull().default("alertpay-default"), // App identifier for multi-app support
     upiVpa: text("upi_vpa"), // UPI Virtual Payment Address (e.g., "user@paytm")
     audioLanguage: text("audio_language"), // Audio language preference (e.g., "en", "hi")
+    hasCancelledSubscription: boolean("has_cancelled_subscription").notNull().default(false), // Track if user cancelled a subscription before
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
