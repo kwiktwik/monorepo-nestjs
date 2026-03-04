@@ -1,0 +1,562 @@
+[
+  {
+    "name": "login_screen_viewed",
+    "description": "User opened the login screen",
+    "purpose": "Measure login screen engagement and user flow",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "phone_number_entered",
+    "description": "User entered phone number",
+    "purpose": "Track phone number input engagement",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "truecaller_auth_attempted",
+    "description": "User initiated Truecaller authentication",
+    "purpose": "Track Truecaller authentication adoption and success rate",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "truecaller_auto_popup_shown",
+    "description": "Truecaller auto popup was shown on login screen",
+    "purpose": "Track auto-popup display vs manual button tap",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "otp_sent",
+    "description": "OTP sent successfully to user phone",
+    "purpose": "Track OTP delivery success rate and resend requests",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "otp_verified",
+    "description": "User verified OTP successfully",
+    "purpose": "Track login completion rate and conversion",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "otp_error",
+    "description": "OTP verification failed",
+    "purpose": "Track OTP failure patterns and debug issues",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "truecaller_auth_success",
+    "description": "Truecaller authentication successful",
+    "purpose": "Track Truecaller login success rate",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "truecaller_auth_error",
+    "description": "Truecaller authentication failed",
+    "purpose": "Track Truecaller login failures and debug issues",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "login_error",
+    "description": "Login error occurred",
+    "purpose": "Track login failures and debug issues",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "user_fetch_success",
+    "description": "User data fetched successfully",
+    "purpose": "Track user data retrieval success rate",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "user_fetch_failed",
+    "description": "User data fetch failed",
+    "purpose": "Track user data retrieval failures and debug issues",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "nav_login",
+    "description": "User navigated to login screen",
+    "purpose": "Track login screen navigation",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "nav_home",
+    "description": "User navigated to home screen",
+    "purpose": "Track home screen navigation",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "paywall_payment_success",
+    "description": "Premium payment successful",
+    "purpose": "Track premium subscription conversions",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "paywall_payment_failed",
+    "description": "Premium payment failed",
+    "purpose": "Track payment failures and debug issues",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "paywall_viewed",
+    "description": "User viewed paywall",
+    "purpose": "Track paywall view rate and engagement",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "fallback_screen_viewed",
+    "description": "User landed on fallback paywall screen",
+    "purpose": "Track fallback screen exposure after payment failure",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "subscription_restored",
+    "description": "User restored subscription",
+    "purpose": "Track subscription restore success",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "subscription_initiated",
+    "description": "User initiated subscription purchase",
+    "purpose": "Track subscription flow initiation",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "upi_app_selected",
+    "description": "User selected a UPI app for payment",
+    "purpose": "Track which UPI app users prefer for payments",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "error_occurred",
+    "description": "Application error occurred",
+    "purpose": "Track application errors for debugging",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "refer_and_earn_clicked",
+    "description": "User clicked refer and earn",
+    "purpose": "Track referral program engagement",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "logout_clicked",
+    "description": "User clicked logout",
+    "purpose": "Track logout frequency",
+    "type": "custom",
+    "source": "kwiktwik-kit"
+  },
+  {
+    "name": "notification_permission_granted",
+    "description": "User granted notification permission",
+    "purpose": "Track notification permission acceptance rate",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_permission_denied",
+    "description": "User denied notification permission",
+    "purpose": "Track notification permission denial reasons",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_read_allowed",
+    "description": "User enabled notification read feature",
+    "purpose": "Track notification read feature adoption",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_received",
+    "description": "Notification received from any app",
+    "purpose": "Track incoming payment notifications",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "user_notification_processed",
+    "description": "All the notification user getting on their device",
+    "purpose": "Track notification processing success",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_played_via_sound",
+    "description": "Notification played via sound alert",
+    "purpose": "Monitor sound notification usage",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_played_via_sound_failed",
+    "description": "Notification played via sound alert failed",
+    "purpose": "Monitor sound notification failures",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "test_notification_played",
+    "description": "User played test notification",
+    "purpose": "Track notification preview engagement",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "test_notification_played_failed",
+    "description": "User played test notification failed",
+    "purpose": "Track notification preview failures",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "battery_optimization_disabled",
+    "description": "User disabled battery optimization",
+    "purpose": "Track battery optimization settings for notifications",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "battery_optimization_enabled",
+    "description": "User enabled battery optimization",
+    "purpose": "Track battery optimization settings",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "sound_mute_toggled",
+    "description": "User toggled sound mute",
+    "purpose": "Track sound preferences",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "permissions_opened",
+    "description": "User opened permissions settings screen",
+    "purpose": "Track permissions screen engagement",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "date_filter_applied",
+    "description": "User applied date filter",
+    "purpose": "Track date filter usage patterns",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "language_changed",
+    "description": "User changed app language",
+    "purpose": "Track language switch frequency",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "default_language_set",
+    "description": "Default language set for user",
+    "purpose": "Track default language adoption",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "onboarding_completed",
+    "description": "User completed onboarding",
+    "purpose": "Track onboarding completion rate and drop-offs",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "payment_verification_failed",
+    "description": "Payment verification failed",
+    "purpose": "Monitor payment verification issues",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_processed_with_transaction",
+    "description": "Notification processed with transaction",
+    "purpose": "Track notification processed with transaction",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_complete_registration",
+    "description": "User completed registration (FB Standard Event)",
+    "purpose": "Track registration conversions for Meta ads optimization",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_initiated_checkout",
+    "description": "User initiated checkout (FB Standard Event)",
+    "purpose": "Track checkout initiation for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_add_payment_info",
+    "description": "User added payment info (FB Standard Event)",
+    "purpose": "Track payment info addition for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_purchase",
+    "description": "User completed purchase (FB Standard Event)",
+    "purpose": "Track purchases for Meta ads conversion tracking",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_add_to_cart",
+    "description": "User added item to cart (FB Standard Event)",
+    "purpose": "Track cart additions for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_view_content",
+    "description": "User viewed content (FB Standard Event)",
+    "purpose": "Track content views for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_search",
+    "description": "User performed search (FB Standard Event)",
+    "purpose": "Track search events for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_tutorial_completion",
+    "description": "User completed tutorial (FB Standard Event)",
+    "purpose": "Track tutorial completion for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_tutorial_start",
+    "description": "User started tutorial (FB Standard Event)",
+    "purpose": "Track tutorial start for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_unlock_achievement",
+    "description": "User unlocked achievement (FB Standard Event)",
+    "purpose": "Track achievements for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "fb_mobile_spent_credits",
+    "description": "User spent credits (FB Standard Event)",
+    "purpose": "Track credit spending for Meta ads",
+    "type": "facebook",
+    "source": "alertpay"
+  },
+  {
+    "name": "qr_code_generated",
+    "description": "QR code generated for payment",
+    "purpose": "Track QR code generation for payment requests",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "qr_code_shared",
+    "description": "QR code shared via social media",
+    "purpose": "Track QR code sharing activity",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "deep_link_received",
+    "description": "Deep link received and processed",
+    "purpose": "Track deep link usage and navigation",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "notification_sound_changed",
+    "description": "User changed notification sound preference",
+    "purpose": "Track notification sound preference changes",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "profile_name_clicked",
+    "description": "User clicked on profile name to edit",
+    "purpose": "Track profile editing engagement",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "contact_support_opened",
+    "description": "User opened contact support page",
+    "purpose": "Track support request frequency",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "privacy_policy_opened",
+    "description": "User opened privacy policy",
+    "purpose": "Track privacy policy engagement",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "terms_of_service_opened",
+    "description": "User opened terms of service",
+    "purpose": "Track terms of service engagement",
+    "type": "custom",
+    "source": "alertpay"
+  },
+  {
+    "name": "payment_captured",
+    "description": "Payment was successfully captured",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "payment_failed",
+    "description": "Payment failed",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "payment_authorized",
+    "description": "Payment was authorized",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_activated",
+    "description": "Subscription was activated",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_charged",
+    "description": "Subscription charge successful",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "cancel_subscription",
+    "description": "Subscription was cancelled",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_pending",
+    "description": "Subscription is pending",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_halted",
+    "description": "Subscription was halted",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_paused",
+    "description": "Subscription was paused",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_resumed",
+    "description": "Subscription was resumed",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_completed",
+    "description": "Subscription completed",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "subscription_authenticated",
+    "description": "Subscription authenticated",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "trial_not_cancel_in_4_hour",
+    "description": "User not cancelled trial within 4 hours",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "token_confirmed",
+    "description": "Token was confirmed",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "token_rejected",
+    "description": "Token was rejected",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "token_paused",
+    "description": "Token was paused",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "token_cancelled",
+    "description": "Token was cancelled",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  },
+  {
+    "name": "order_paid",
+    "description": "Order was paid",
+    "purpose": "Server-side tracked event",
+    "type": "custom",
+    "source": "kirana-fe"
+  }
+]

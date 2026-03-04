@@ -1,0 +1,1 @@
+ALTER TABLE "phonepe_subscriptions" ALTER COLUMN "merchant_subscription_id" SET DATA TYPE varchar(80);

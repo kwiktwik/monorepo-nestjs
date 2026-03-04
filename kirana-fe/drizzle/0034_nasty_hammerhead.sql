@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ADD COLUMN "razorpay_payment_id" text;

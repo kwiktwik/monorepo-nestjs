@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ADD COLUMN "four_hour_event_sent" boolean DEFAULT false NOT NULL;

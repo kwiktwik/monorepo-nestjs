@@ -1,0 +1,2 @@
+ALTER TABLE "abandoned_checkouts" ADD COLUMN "offer_expires_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "abandoned_checkouts_expiry_idx" ON "abandoned_checkouts" USING btree ("offer_expires_at");

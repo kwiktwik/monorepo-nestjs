@@ -1,0 +1,27 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kiranaapps.app",
+      "sha256_cert_fingerprints": [
+        "86:7B:33:BE:63:BD:D8:B7:21:22:2D:89:0A:EF:84:7A:D3:29:8A:77:D0:67:9F:FF:EA:3B:16:88:02:45:6C:44",
+        "96:C0:90:50:7B:96:D9:3D:8B:49:0B:28:32:A7:72:4A:DD:A2:31:C5:95:BF:5F:DF:62:96:5B:6D:0A:69:53:5A"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.paymentalert.app",
+      "sha256_cert_fingerprints": [
+        "DC:A1:C1:B9:F2:4F:B4:A4:D6:B0:17:3A:40:C0:F3:BC:08:87:DF:C6:E4:7A:57:F5:35:6B:00:DC:E3:95:D0:48"
+      ]
+    }
+  }
+]

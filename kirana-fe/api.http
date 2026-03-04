@@ -1,0 +1,3318 @@
+@baseUrl = https://alertpay.kiranaapps.com/api
+
+
+@baseUrlProd = https://api.kiranaapps.com/api
+
+@localUrl = http://localhost:3000/api
+
+
+@authToken = HyMviq1v0Ssw8JkKZTFNC2DReJFrGhPk
+
+
+### ===== AUTHENTICATION API =====
+### ===== MULTI-APP AUTHENTICATION =====
+# All authentication endpoints now support multi-app isolation via X-App-ID header
+# 
+# Registered Apps:
+# - alertpay-android: AlertPay Android mobile app
+# - alertpay-ios: AlertPay iOS mobile app
+# - alertpay-web: AlertPay web application
+# - alertpay-default: Default app for backward compatibility
+# 
+# User Isolation:
+# - Same phone number in different apps = different user accounts
+# - Users are identified by phoneNumber + appId combination
+# - Sessions are scoped to specific apps
+# 
+# Required Header:
+# X-App-ID: <your-app-id>
+# 
+# Error Responses:
+# - 400: Missing app ID
+# - 401: Invalid or disabled app ID
+# - 403: Feature not enabled for app
+
+### Send OTP (Alternative Route)
+# Alternative endpoint for sending OTP using Better Auth's direct API
+# This route provides the same functionality as /auth/send-otp but uses a different path
+# 
+# Headers:
+# - X-App-ID: App identifier (required, e.g., "alertpay-android")
+# 
+# Body Parameters:
+# - phoneNumber: Phone number in E.164 format (required, e.g., "+919876543210")
+#   Must include country code (e.g., +91 for India, +1 for US)
+# - appHash: Android app hash for SMS verification (optional, string)
+#   Used for Android SMS retriever API to automatically read OTP
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "OTP sent successfully",
+#   "data": { ... }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Phone number is required" | "Invalid phone number format" | "Missing app identifier"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Invalid or disabled app identifier: <app-id>"
+# }
+# 
+# Response (403 Forbidden):
+# {
+#   "error": "Feature 'otpLogin' is not enabled for app: <app-id>"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to send OTP: [error message]"
+# }
+POST {{baseUrlProd}}/phone-number/send-otp
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+918855866494",
+  "appHash": "122312ere"
+}
+
+### Send OTP (Local Development)
+POST {{baseUrl}}/phone-number/send-otp
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+918855866494",
+  "appHash": "your-app-hash-here"
+}
+
+### Send OTP - iOS App Example
+POST {{baseUrl}}/phone-number/send-otp
+Content-Type: application/json
+X-App-ID: alertpay-ios
+
+{
+  "phoneNumber": "+918855866494"
+}
+
+### Send OTP - Web App Example
+POST {{baseUrl}}/phone-number/send-otp
+Content-Type: application/json
+X-App-ID: alertpay-web
+
+{
+  "phoneNumber": "+918855866494"
+}
+
+### Send OTP - Test Mode (Works with all apps)
+# Test phone: +919999999999
+# Test OTP: 123456
+POST {{baseUrl}}/phone-number/send-otp
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+919999999999"
+}
+
+### Verify Phone Number with OTP (Alternative Route)
+# Alternative endpoint for verifying OTP using Better Auth's direct API
+# This route provides the same functionality as /auth/verify-otp but uses a different path
+# 
+# Headers:
+# - X-App-ID: App identifier (required, e.g., "alertpay-android")
+# 
+# Body Parameters:
+# - phoneNumber: Phone number in E.164 format (required, e.g., "+919876543210")
+#   Must match the phone number used in send-otp request
+# - code: The OTP code received via SMS (required, string, typically 4-8 digits)
+# - disableSession: Whether to disable session creation (optional, default: false)
+#   If true, no session will be created after verification
+# - updatePhoneNumber: Whether to update the phone number if user exists (optional, default: true)
+#   If true, updates the user's phone number if they already exist
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "OTP verified successfully",
+#   "data": {
+#     "status": true,
+#     "token": "session_token_here",
+#     "user": {
+#       "id": "user_id",
+#       "phoneNumber": "+919876543210",
+#       "phoneNumberVerified": true,
+#       ...
+#     },
+#     "appId": "alertpay-android"
+#   }
+# }
+# Response includes Set-Cookie headers for session management (if disableSession is false)
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Phone number is required" | "OTP code is required" | "Invalid format" | "Missing app identifier"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Invalid or expired OTP code" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (403 Forbidden):
+# {
+#   "error": "Feature 'otpLogin' is not enabled for app: <app-id>"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to verify OTP: [error message]"
+# }
+# 
+# Notes:
+# - OTP must be verified within the validity period
+# - After successful verification, user session is established (unless disableSession is true)
+# - Session cookies are automatically set in the response (if disableSession is false)
+# - Users are isolated per app (same phone number in different apps = different users)
+POST {{baseUrlProd}}/phone-number/verify
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+918855866494",
+  "code": "485019"
+}
+
+### Verify Phone Number - Without Session
+POST {{baseUrl}}/phone-number/verify
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+918855866494",
+  "code": "431882",
+  "disableSession": true,
+  "updatePhoneNumber": true
+}
+
+### Verify OTP - iOS App (Same Phone, Different User)
+# Same phone number as Android example above
+# Will create a DIFFERENT user account for iOS app
+POST {{baseUrl}}/phone-number/verify
+Content-Type: application/json
+X-App-ID: alertpay-ios
+
+{
+  "phoneNumber": "+918855866494",
+  "code": "123456"
+}
+
+### Verify OTP - Test Mode
+# Test phone: +919999999999
+# Test OTP: 123456
+POST {{baseUrl}}/phone-number/verify
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "phoneNumber": "+919999999999",
+  "code": "123456"
+}
+
+### Sign In with Phone Number
+# Signs in a user using phone number and password (after phone verification)
+# Body Parameters:
+# - phoneNumber: Phone number in E.164 format (required, e.g., "+1234567890")
+# - password: User's password (required, string)
+# - rememberMe: Whether to remember the session (optional, boolean, default: false)
+# 
+# Response: Returns user data and session cookies
+POST {{baseUrl}}/auth/sign-in-phone-number
+Content-Type: application/json
+
+{
+  "phoneNumber": "+1234567890",
+  "password": "user_password",
+  "rememberMe": true
+}
+
+### Google Sign-In (Android App)
+# Endpoint for Android app to sign in with Google
+# Accepts a Google ID token from Android app and creates/authenticates a Better Auth user
+# 
+# Body Parameters:
+# - idToken: Google ID token from Android app (required, string)
+# - callbackURL: Optional callback URL (optional, string)
+# 
+# Response: Returns Better Auth user data and session cookies
+POST {{baseUrl}}/auth/google-signin
+Content-Type: application/json
+
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMzQ1Njc4OTAifQ..."
+}
+
+### Google Sign-In with Callback URL
+POST {{baseUrl}}/auth/google-signin
+Content-Type: application/json
+
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMzQ1Njc4OTAifQ...",
+  "callbackURL": "/dashboard"
+}
+
+### Check Authentication Status (Android App)
+# Endpoint for Android app to check if request is authenticated
+# Works with both cookie-based authentication and Authorization header with Bearer token
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# 
+# Response (200 OK):
+# {
+#   "authenticated": true,
+#   "user": {
+#     "id": "user_id",
+#     "email": "user@example.com",
+#     "name": "User Name",
+#     "image": "https://...",
+#     "emailVerified": true
+#   },
+#   "session": {
+#     "expiresAt": "2024-12-31T23:59:59Z"
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "authenticated": false,
+#   "error": "No valid session found"
+# }
+GET {{baseUrl}}/auth/check
+
+### Check Authentication Status with Bearer Token (Android App)
+# This request demonstrates checking authentication using a Bearer token in the Authorization header.
+GET {{baseUrl}}/auth/check
+Accept: */*
+User-Agent: curl/7.68.0
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+
+### Test - Minimal headers (just Authorization)
+GET {{baseUrl}}/auth/check
+Authorization: Bearer eQ75A5VV3eZlF6ehmkQIASOZKCg1SCnk
+
+
+### Check Authentication Status (POST method)
+POST {{baseUrl}}/auth/check
+Content-Type: application/json
+
+### Verify One-Time Token
+# Verifies a one-time token using Better Auth's oneTimeToken plugin
+# One-time tokens are typically used for secure, single-use authentication flows
+# 
+# Body Parameters:
+# - token: The one-time token to verify (required, string)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Token verified successfully",
+#   "data": {
+#     "verified": true,
+#     ...
+#   }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "success": false,
+#   "error": "Token is required and must be a string"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "success": false,
+#   "error": "Invalid or expired token"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "success": false,
+#   "error": "Unknown error occurred"
+# }
+# 
+# Notes:
+# - One-time tokens are single-use and expire after verification or timeout
+# - Tokens must be verified within their validity period
+# - Once verified, the token cannot be used again
+POST {{baseUrl}}/auth/verify-one-time-token
+Content-Type: application/json
+
+{
+  "token": "lfTbaSfPCoikN68tKs74UIQbOYUviMiy"
+}
+
+### Verify One-Time Token - Example
+POST {{baseUrl}}/auth/verify-one-time-token
+Content-Type: application/json
+
+{
+  "token": "ott_abc123xyz789"
+}
+
+### Truecaller Token Exchange and User Profile
+# Exchanges authorization code for access token and fetches user profile using Truecaller OAuth2 flow
+# This endpoint performs both token exchange and user profile fetching in a single call
+# 
+# Headers:
+# - X-App-ID: App identifier (required, e.g., "alertpay-android")
+# 
+# Body Parameters:
+# - grant_type: "authorization_code" (required, hardcoded value)
+# - client_id: Your Truecaller client ID (required, string)
+# - code: Authorization code from Truecaller OAuth callback (required, string)
+#   This is the authorization code received from step 9 of Truecaller OAuth flow
+# - code_verifier: Code verifier used in PKCE flow (required, string)
+#   This is the code verifier from step 12 of Truecaller OAuth flow
+# 
+# Response (200 OK - Success):
+# {
+#   "success": true,
+#   "token": "session_token_here",
+#   "expires_at": "2026-02-14T15:50:00.000Z",
+#   "user": {
+#     "id": "user_xyz789",
+#     "name": "John Doe",
+#     "email": "john@example.com",
+#     "phoneNumber": "+919876543210",
+#     "image": "https://example.com/photo.jpg",
+#     "emailVerified": true,
+#     "phoneNumberVerified": true
+#   },
+#   "user_profile": {
+#     "sub": "13627101294235520",
+#     "given_name": "John",
+#     "family_name": "Doe",
+#     "phone_number": "91xxxxxxxxxx",
+#     "email": "john@example.com",
+#     "picture": "https://www.truecaller.com/xyz",
+#     "gender": "male/female",
+#     "phone_number_country_code": "IN",
+#     "phone_number_verified": true,
+#     "address": {
+#       "locality": "Bangalore",
+#       "postal_code": "5xxxxx"
+#     }
+#   },
+#   "appId": "alertpay-android"
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Missing required parameters" | "Invalid grant type" | "Missing app identifier"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Invalid or disabled app identifier: <app-id>"
+# }
+# 
+# Response (403 Forbidden):
+# {
+#   "error": "Forbidden - Invalid client ID, auth code, or code verifier" | "Feature 'truecallerLogin' is not enabled for app"
+# }
+# 
+# Response (429 Too Many Requests):
+# {
+#   "error": "Too Many Requests - Rate limit exceeded"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Internal Server Error - Unexpected error on server side"
+# }
+# 
+# Response (503 Service Unavailable):
+# {
+#   "error": "Service Unavailable - Resource unavailable due to server-side issue"
+# }
+# 
+# Notes:
+# - This endpoint exchanges the authorization code for an access token
+# - After obtaining the token, it automatically fetches the user profile
+# - Users are isolated per app (same phone number in different apps = different users)
+# - Requires openid scope to be included in the initial OAuth request for profile data
+POST {{baseUrl}}/truecaller/token
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "grant_type": "authorization_code",
+  "client_id": "ydjkygwywg7arqesdggwy6fqhufyrtgja2viy714e30",
+  "code": "srBLBpBKwDTR9UuR7gF_HBicO4k9SR5JaavVQp36RTDJ-NtVlmDOfzPpSEP_cjDKbBlgYMgyOiqCbygPHJxzrA==",
+  "code_verifier": "1XAdYTH7B-bY8ZLj6NzXotyDdNkJwkKnSqwoeiXw92yUix9Y70rirh6wdW5KJi6LTNVDNs_7cf02bSWiCe-4jw"
+}
+
+### Truecaller Token Exchange - iOS App Example
+# Same Truecaller account, different app = different user
+POST {{baseUrl}}/truecaller/token
+Content-Type: application/json
+X-App-ID: alertpay-ios
+
+{
+  "grant_type": "authorization_code",
+  "client_id": "your-truecaller-client-id",
+  "code": "authorization_code_from_callback",
+  "code_verifier": "code_verifier_from_pkce_flow"
+}
+
+### ===== BACKGROUND REMOVAL API =====
+
+### Trigger Background Removal
+# Triggers background removal for an uploaded image
+# This should be called AFTER the image has been successfully uploaded to R2
+# 
+# Headers:
+# - X-App-ID: App identifier (required, e.g., "alertpay-android")
+# - Authorization: Bearer token or session cookie (required)
+# 
+# Body Parameters:
+# - imageUrl: The public URL of the uploaded image (required, string)
+# - imageId: The database ID of the image record (required, number)
+# - key: The R2 key for the image (required, string)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Background removal task queued",
+#   "imageId": 123
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Missing required fields: imageUrl, imageId, key"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to trigger background removal"
+# }
+POST {{localUrl}}/background-removal
+Content-Type: application/json
+X-App-ID: jamun-andriod
+Authorization: Bearer {{authToken}}
+
+{
+  "imageUrl": "https://cnd.storyowl.app/jamun-andriod/WoIHGy328w69P33Tw3HfRngLRpemvUyP/user-images/1769912163965_pfp_1769912164723.png",
+  "imageId": 480,
+  "key": "jamun-andriod/WoIHGy328w69P33Tw3HfRngLRpemvUyP/user-images/1769912163965_pfp_1769912164723.png"
+}
+
+### ===== NOTIFICATIONS API =====
+
+### Get Notifications (Basic)
+# Query Parameters:
+# - page: Page number (default: 1)
+# - limit: Items per page (default: 10)
+# 
+# Note: Only returns notifications with isValid: true in metadata
+# All notifications are stored, but only those with valid amounts are returned
+# 
+# Response (200 OK):
+# {
+#   "data": [
+#     {
+#       "id": 1,
+#       "canReply": false,
+#       "packageName": "com.phonepe.app",
+#       "title": "Payment Received",
+#       "content": "You received ₹500",
+#       "hasRemoved": false,
+#       "haveExtraPicture": false,
+#       "onGoing": false,
+#       "createdAt": "2024-01-01T00:00:00Z",
+#       "metadata": {
+#         "from": "Payment",
+#         "amount": 500,
+#         "isValid": true
+#       }
+#     }
+#   ],
+#   "pagination": {
+#     "page": 1,
+#     "limit": 10,
+#     "total": 1,
+#     "totalPages": 1
+#   }
+# }
+GET {{baseUrl}}/notifications?page=1&limit=10
+
+### Get Notifications with filters
+# Query Parameters:
+# - packageName: Filter by package name (exact match)
+# - title: Filter by title (partial match, case-insensitive)
+# - hasRemoved: Filter by removal status (true/false)
+# - onGoing: Filter by ongoing status (true/false)
+# - startDate: Filter notifications created on or after this date (UTC format: YYYY-MM-DD or ISO 8601)
+# - endDate: Filter notifications created on or before this date (UTC format: YYYY-MM-DD or ISO 8601)
+# 
+# Note: Only returns notifications with isValid: true in metadata
+# All notifications are stored, but only those with valid amounts are returned
+GET {{baseUrl}}/notifications?page=1&limit=10&packageName=com.google.android.apps.nbu.paisa.user&title=paid&hasRemoved=false&onGoing=false
+
+### Get Notifications with date filter (UTC format)
+# Date formats supported:
+# - YYYY-MM-DD (e.g., 2024-01-01) - treated as UTC midnight
+# - ISO 8601 with timezone (e.g., 2024-01-01T00:00:00Z)
+# Examples:
+# - Single date: startDate=2024-01-01
+# - Date range: startDate=2024-01-01&endDate=2024-12-31
+# - Full ISO: startDate=2024-01-01T00:00:00Z&endDate=2024-12-31T23:59:59Z
+# 
+# Note: Only returns notifications with isValid: true in metadata
+GET {{baseUrl}}/notifications?page=1&limit=10&startDate=2024-01-01&endDate=2024-12-31
+
+### Get Notifications - Date range only
+GET {{baseUrl}}/notifications?startDate=2024-01-01&endDate=2024-12-31
+
+### Get Notifications - From start date only
+GET {{baseUrl}}/notifications?startDate=2024-01-01
+
+### Get Notifications - Until end date only
+GET {{baseUrl}}/notifications?endDate=2024-12-31
+
+### Create Notification
+# Body Parameters:
+# - canReply: Whether the notification can be replied to (optional, default: false)
+# - packageName: Package name of the app (required, string)
+# - title: Notification title (required, string)
+#   Amount and sender name are automatically extracted from title or content
+# - content: Notification content (optional, string)
+#   If content contains a number, it will be extracted and formatted in readNotification field
+# - hasRemoved: Whether the notification has been removed (optional, default: false)
+# - haveExtraPicture: Whether the notification has extra picture (optional, default: false)
+# - onGoing: Whether the notification is ongoing (optional, default: false)
+# 
+# Response (201 Created):
+# Returns the created notification with metadata object containing:
+# - id: Notification ID
+# - canReply: Reply capability status
+# - packageName: Package name
+# - title: Notification title
+# - content: Notification content
+# - readNotification: Formatted notification message (string)
+#   If content contains a number, format: "{number} received in your account"
+#   If no number found, returns empty string ""
+# - hasRemoved: Removal status
+# - haveExtraPicture: Extra picture status
+# - onGoing: Ongoing status
+# - createdAt: Creation timestamp (ISO 8601)
+# - metadata: Object with "from", "amount", and "isValid" fields
+#   - from: Extracted sender name (string, defaults to "Unknown" if not found)
+#   - amount: Extracted amount in paise (number, defaults to 0 if not found)
+#   - isValid: Boolean indicating if amount is valid (true if amount > 0, false otherwise)
+# 
+# Note: All notifications are stored regardless of validity.
+# Only notifications with isValid: true are returned in GET requests.
+POST {{baseUrl}}/notifications
+Content-Type: application/json
+
+{
+  "canReply": false,
+  "packageName": "com.google.android.apps.nbu.paisa.user",
+  "title": "AAKANKSHA JAGDALE",
+  "content": "V",
+  "hasRemoved": false,
+  "haveExtraPicture": false,
+  "onGoing": false
+}
+
+### Create Notification - With Amount in Content
+# Example showing readNotification field extraction and metadata
+# When content contains a number, readNotification will be formatted as "{number} received in your account"
+# Metadata will include extracted amount, from, and isValid fields
+POST {{baseUrl}}/notifications
+Content-Type: application/json
+
+{
+  "canReply": false,
+  "packageName": "com.phonepe.app",
+  "title": "Payment Received",
+  "content": "You received ₹500 from John Doe",
+  "hasRemoved": false,
+  "haveExtraPicture": false,
+  "onGoing": false
+}
+# Expected response includes:
+# - "readNotification": "500 received in your account"
+# - "metadata": { "from": "Payment", "amount": 500, "isValid": true }
+
+### ===== PUSH NOTIFICATIONS API =====
+# Sends push notifications via Firebase Cloud Messaging (FCM)
+# Requires: Session authentication (Cookie)
+
+### Register Push Token
+# Registers FCM device token for the authenticated user
+# Body Parameters:
+# - token: FCM device token (required)
+# - appId: App identifier (required, e.g., "alertpay-android")
+# - deviceModel: Device model (optional)
+# - osVersion: OS version (optional)
+#
+# Response (200 OK):
+# { "success": true }
+POST {{baseUrl}}/notifications/register
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+
+{
+  "token": "enOXfQ8GSb2jm4dyIvRpbo:APA91bGHWP0f4M8u48BpRaDHypFDIDE1AxBumwiBM34HAky9Zci89YAjiDsWYvNU8Ngj4IHRxpBMbZ8rLR2-ryWnMONRdTVIzBSKl_ypwrAEComyoTBRq9k",
+  "appId": "com.kiranaapps.app",
+  "deviceModel": "Pixel 7",
+  "osVersion": "14"
+}
+
+### Delete Push Token
+# Unregisters FCM device token for the authenticated user
+# Body Parameters:
+# - token: FCM device token (required)
+# - appId: App identifier (required)
+#
+# Response (200 OK):
+# { "success": true }
+DELETE {{baseUrl}}/notifications/register
+Content-Type: application/json
+
+{
+  "token": "fcm-device-token-here",
+  "appId": "alertpay-android"
+}
+
+### Send Push Notification
+# Sends a push notification either to a specific FCM token or to all devices for a user
+# Requires: Session authentication (Cookie)
+#
+# Option 1 - Send to specific device (use token):
+# Body Parameters:
+# - token: FCM device token (required for this option)
+# - title: Notification title (required)
+# - body: Notification body (required)
+# - data: Extra payload key-value pairs (optional)
+#
+# Option 2 - Send to user's devices (use userId + appId):
+# Body Parameters:
+# - userId: User ID (required for this option)
+# - appId: App identifier (required for this option)
+# - title: Notification title (required)
+# - body: Notification body (required)
+# - data: Extra payload key-value pairs (optional)
+#
+# Response (200 OK):
+# { "success": true, "method": "token" } or { "success": true, "method": "user", "userId": "...", "appId": "..." }
+POST {{localUrl}}/notifications/send
+Content-Type: application/json
+X-App-ID: com.paymentalert.app
+Authorization: Bearer 53opXcAOOByV1Kjkt3iZ7gOSnF1beacC
+
+{
+  "token": "ceGz2lCeSaS_RBWDR8jc1W:APA91bG-O_vHXtRdrMWL8Yo3rWw7dNAGhWYu5M1YFGaDYTMrrBpI76RTDxixeI_mAEcmj1q0_J9z-ZPK4tYKMnGh8mWHr1qR04L8dALCTw1o2ZZnG9mG65g",
+  "title": "Payment Received",
+  "body": "You received ₹500 from John Doe",
+  "data": { "type": "payment", "amount": "50000" }
+}
+
+### Test Send Push Notification (User Token)
+POST {{baseUrlProd}}/notifications/send
+Content-Type: application/json
+X-App-ID: com.paymentalert.app
+Authorization: Bearer 53opXcAOOByV1Kjkt3iZ7gOSnF1beacC
+
+{
+  "token": "d-kTd7YVQmatD-k-GY88zN:APA91bH_rLzNuqY4RpWO0Mts_OdXMlVNFHbG6zHWl53nxDWgKiV8iW7hHD_h9NcR2bdUkelAVlUkWvUmrAw7ItCqZ7cYXXVlQQgLuRabT6N5zB_7TYN8f7w",
+  "title": "Test Notification",
+  "body": "This is a test notification from api.http",
+  "data": { "type": "test" }
+}
+
+###
+# Send to all devices for a user
+# POST {{baseUrl}}/notifications/send
+# Content-Type: application/json
+#
+# {
+#   "userId": "user-id-here",
+#   "appId": "alertpay-android",
+#   "title": "Payment Received",
+#   "body": "You received ₹500 from John Doe",
+#   "data": { "type": "payment" }
+# }
+
+### ===== RAZORPAY UPI RECURRING PAYMENTS =====
+
+
+### 2. Create One-Time Order
+# Note: Receipt is automatically generated by the server
+POST {{baseUrl}}/razorpay/orders
+Content-Type: application/json
+
+{
+  "amount": 10000,
+  "currency": "INR",
+  "payment_method": "upi",
+  "upi": {
+    "vpa": "success@razorpay",
+    "flow": "collect"
+  },
+  "notes": {
+    "purpose": "one-time payment"
+  }
+}
+
+### 3. Create Recurring Order (UPI Autopay) - Monthly
+# Note: Receipt is automatically generated by the server
+# 
+# BACKEND DEFAULTS (when token is not provided):
+# - frequency: "monthly"
+# - max_amount: amount * 12 (e.g., 100 * 12 = 1200)
+# - expire_at: 30 days from now (Unix timestamp)
+#
+# Valid frequency values: "daily", "weekly", "monthly", "yearly", "as_presented"
+# Backend automatically calculates max_amount based on frequency:
+#   - daily: amount * 365
+#   - weekly: amount * 52
+#   - monthly: amount * 12
+#   - yearly: amount * 1
+#   - as_presented: amount * 12 (defaults to monthly multiplier)
+POST {{baseUrlProd}}/razorpay/orders
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "currency": "INR",
+  "payment_method": "upi",
+  "upi": {
+      "vpa": "rajatdhoot@ybl",
+      "flow": "collect"
+  },
+  "isRecurring": true,
+  "token": {
+      "frequency": "monthly",
+      "max_amount": 1200,
+      "expire_at": 1735689600
+  },
+  "notes": {
+      "name": "Rajat Dhoot",
+      "email": "rajatdhoot123@gmail.com",
+      "contact": "+918855866494"
+  }
+}
+
+### 3b. Create Recurring Order (UPI Autopay) - Using Defaults
+# Example without token object - backend will use defaults:
+# - frequency: "monthly"
+# - max_amount: 100 * 12 = 1200
+# - expire_at: 30 days from now
+POST {{baseUrlProd}}/razorpay/orders
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "currency": "INR",
+  "payment_method": "upi",
+  "upi": {
+      "vpa": "rajatdhoot@ybl",
+      "flow": "collect"
+  },
+  "isRecurring": true,
+  "notes": {
+      "name": "Rajat Dhoot",
+      "email": "rajatdhoot123@gmail.com",
+      "contact": "+918855866494"
+  }
+}
+
+### 3a. Create Recurring Order (UPI Autopay) - Weekly
+# Weekly recurring payment example
+# Backend will calculate max_amount as amount * 52 if not provided
+POST {{baseUrlProd}}/razorpay/orders
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "currency": "INR",
+  "payment_method": "upi",
+  "upi": {
+      "vpa": "rajatdhoot@ybl",
+      "flow": "collect"
+  },
+  "isRecurring": true,
+  "token": {
+      "frequency": "weekly",
+      "max_amount": 5200,
+      "expire_at": 1735689600
+  },
+  "notes": {
+      "name": "Rajat Dhoot",
+      "email": "rajatdhoot123@gmail.com",
+      "contact": "+918855866494"
+  }
+}
+
+### 4. Fetch Customer Tokens
+GET {{baseUrl}}/razorpay/tokens?customer_id=cust_XXXXXXXXXXXXX
+
+### 5. Create Subsequent Recurring Payment
+POST {{baseUrl}}/razorpay/payments/recurring
+Content-Type: application/json
+
+{
+  "email": "john.smith@example.com",
+  "contact": "+919876543210",
+  "amount": 50000,
+  "currency": "INR",
+  "order_id": "order_XXXXXXXXXXXXX",
+  "customer_id": "cust_XXXXXXXXXXXXX",
+  "token_id": "token_XXXXXXXXXXXXX",
+  "description": "Monthly subscription",
+  "notes": {
+    "month": "December 2024"
+  }
+}
+
+### 6. Delete Token
+DELETE {{baseUrl}}/razorpay/tokens?customer_id=cust_XXXXXXXXXXXXX&token_id=token_XXXXXXXXXXXXX
+
+### 7. Verify Payment Signature (Order or Subscription)
+# Verifies payment signature for both one-time orders and subscriptions
+# Uses HMAC SHA256 signature verification with key_secret from environment variables
+# 
+# Body Parameters:
+# - razorpay_order_id: Razorpay order ID (required for order payments, string)
+# - razorpay_subscription_id: Razorpay subscription ID (required for subscription payments, string)
+# - razorpay_payment_id: Razorpay payment ID (required, string)
+# - razorpay_signature: Payment signature from Razorpay (required, string)
+#   Generated by Razorpay and returned after payment completion
+# 
+# Signature Generation (as per Razorpay docs):
+# - For ORDERS: hmac_sha256(order_id + "|" + payment_id, secret)
+# - For SUBSCRIPTIONS: hmac_sha256(payment_id + "|" + subscription_id, secret)
+# Note: The order of IDs is DIFFERENT for subscriptions vs orders!
+# 
+# Security:
+# - The key_secret is ONLY read from environment variables (RAZORPAY_KEY_SECRET)
+# - Never send your key_secret in the request body
+# - Signature verification ensures payment authenticity
+# 
+# Notes:
+# - Provide EITHER razorpay_order_id OR razorpay_subscription_id (not both)
+# - The signature is generated by Razorpay and returned to your client
+# - Server verifies the signature using the secret from environment variables
+# 
+# Response (200 OK - Order Payment):
+# {
+#   "verified": true,
+#   "message": "Order payment verified successfully",
+#   "entityType": "order"
+# }
+# 
+# Response (200 OK - Subscription Payment):
+# {
+#   "verified": true,
+#   "message": "Subscription payment verified successfully",
+#   "entityType": "subscription"
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "verified": false,
+#   "error": "Invalid signature"
+# }
+# OR
+# {
+#   "error": "Missing required parameters. Provide either razorpay_order_id or razorpay_subscription_id along with razorpay_payment_id and razorpay_signature"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Verification failed"
+# }
+# 
+# Database Updates:
+# - For orders: Updates order status to "captured" and stores razorpayPaymentId
+# - For subscriptions: Updates subscription status to "active"
+
+### 7a. Verify Order Payment
+POST {{baseUrl}}/razorpay/verify
+Content-Type: application/json
+
+{
+  "razorpay_order_id": "order_XXXXXXXXXXXXX",
+  "razorpay_payment_id": "pay_XXXXXXXXXXXXX",
+  "razorpay_signature": "signature_XXXXXXXXXXXXX"
+}
+
+### 7b. Verify Subscription Payment
+POST {{baseUrl}}/razorpay/verify
+Content-Type: application/json
+
+{
+  "razorpay_subscription_id": "sub_XXXXXXXXXXXXX",
+  "razorpay_payment_id": "pay_XXXXXXXXXXXXX",
+  "razorpay_signature": "signature_XXXXXXXXXXXXX"
+}
+
+### ===== RAZORPAY SUBSCRIPTIONS =====
+
+### Create Subscription
+# Creates a new subscription with Razorpay
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# The user ID is automatically extracted from the authenticated session
+# 
+# Body Parameters:
+# - plan_id: Razorpay plan ID (required, string)
+# - quantity: Number of subscriptions (optional, default: 1)
+# - total_count: Total billing cycles (optional, default: 100)
+# - start_at: Subscription start timestamp in UNIX seconds (optional, defaults to 24 hours from now)
+# - notes: Additional metadata (required, must include email, contact)
+#   - email: User's email (required, string)
+#   - contact: User's phone number (required, string, e.g., "+919876543210")
+# 
+# Features:
+# - First payment addon of ₹5 (500 paise) charged immediately
+# - Full subscription charge happens after 24 hours when subscription activates
+# - Automatic customer creation/lookup
+# - Database persistence with subscription tracking
+# 
+# Response (200 OK):
+# {
+#   "subscription": {
+#     "id": "sub_XXXXXXXXXXXXX",
+#     "plan_id": "plan_XXXXXXXXXXXXX",
+#     "customer_id": "cust_XXXXXXXXXXXXX",
+#     "status": "created",
+#     "quantity": 1,
+#     "start_at": 1234567890,
+#     "charge_at": 1234567890,
+#     ...
+#   },
+#   "razorpaySubscription": {
+#     "key": "rzp_test_XXXXXXXX",
+#     "subscription_id": "sub_XXXXXXXXXXXXX",
+#     "name": "AlertPay Premium",
+#     "description": "Monthly subscription",
+#     "image": undefined,
+#     "callback_url": undefined,
+#     "amount": 15000,
+#     "currency": "INR",
+#     "prefill": {
+#       "name": undefined,
+#       "email": "test@example.com",
+#       "contact": "+919876543210"
+#     },
+#     "notes": { ... },
+#     "theme": {
+#       "color": "#F37254"
+#     }
+#   },
+#   "subscriptionId": "abc12345",
+#   "customerId": "cust_XXXXXXXXXXXXX",
+#   "message": "Subscription created successfully. First payment of ₹5 will be charged immediately."
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "plan_id is required" | "email and contact are required in notes"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to create subscription" | "Failed to create or find customer"
+# }
+POST {{localUrl}}/razorpay/subscriptions/v1
+Content-Type: application/json
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "total_count": 12,
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494"
+  }
+}
+
+### Create Subscription - With Bearer Token
+POST {{baseUrlProd}}/razorpay/subscriptions/v1
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "total_count": 12,
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494"
+  }
+}
+
+### Create Subscription v2 - With UPI Flow Support
+# Enhanced version of subscription endpoint with UPI flow control (Intent vs Collect)
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# App ID Required: X-App-ID header (e.g., "alertpay-android")
+# 
+# Body Parameters:
+# - plan_id: Razorpay plan ID (required, string)
+# - quantity: Number of subscriptions (optional, default: 1)
+# - start_at: Subscription start timestamp in UNIX seconds (optional, defaults to 24 hours from now)
+# - notes: Additional metadata (required, must include email, contact)
+#   - email: User's email (required, string)
+#   - contact: User's phone number (required, string, e.g., "+919876543210")
+# - flow: UPI payment flow type (optional, default: "intent")
+#   - "intent": UPI intent flow (opens UPI apps directly)
+#   - "collect": UPI collect flow (sends payment request to UPI ID)
+# - vpa: UPI ID/VPA (required for collect flow, string, e.g., "user@ybl")
+# 
+# UPI Flow Types:
+# - Intent Flow: Opens UPI apps (Google Pay, PhonePe, etc.) directly on user's device
+#   Best for mobile apps where user has UPI apps installed
+# - Collect Flow: Sends payment request to user's UPI ID
+#   Best for web or when you know user's VPA
+# 
+# Features:
+# - First payment addon of ₹5 (500 paise) charged immediately
+# - Full subscription charge happens after 24 hours when subscription activates
+# - Automatic customer creation/lookup
+# - Database persistence with subscription tracking
+# - Multi-app isolation (same user can have different subscriptions per app)
+# 
+# Response (200 OK):
+# {
+#   "subscription": {
+#     "id": "sub_XXXXXXXXXXXXX",
+#     "plan_id": "plan_XXXXXXXXXXXXX",
+#     "customer_id": "cust_XXXXXXXXXXXXX",
+#     "status": "created",
+#     "quantity": 1,
+#     "start_at": 1234567890,
+#     "charge_at": 1234567890,
+#     ...
+#   },
+#   "razorpaySubscription": {
+#     "key": "rzp_test_XXXXXXXX",
+#     "subscription_id": "sub_XXXXXXXXXXXXX",
+#     "name": "AlertPay Premium",
+#     "description": "Monthly subscription",
+#     "amount": 500,
+#     "max_amount": 15000,
+#     "currency": "INR",
+#     "prefill": {
+#       "name": undefined,
+#       "email": "test@example.com",
+#       "contact": "+919876543210"
+#     },
+#     "notes": { ... },
+#     "theme": {
+#       "color": "#F37254"
+#     },
+#     "_[flow]": "intent",
+#     "vpa": "user@ybl" // Only present for collect flow
+#   },
+#   "subscriptionId": "abc12345",
+#   "customerId": "cust_XXXXXXXXXXXXX",
+#   "message": "Subscription created successfully. First payment of ₹5 will be charged immediately."
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "plan_id is required" | "email and contact are required in notes" | 
+#            "flow must be either 'intent' or 'collect'" | 
+#            "vpa (UPI ID) is required for collect flow"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to create subscription" | "Failed to create or find customer"
+# }
+POST {{localUrl}}/razorpay/subscriptions/v2
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "flow": "intent",
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494"
+  }
+}
+
+### Create Subscription v2 - Production (Intent Flow)
+POST {{localUrl}}/razorpay/subscriptions/v2
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-App-ID: alertpay-android
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "flow": "intent",
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494"
+  }
+}
+
+### Create Subscription v2 - Collect Flow (with VPA)
+# Use this when you want to send payment request to user's UPI ID
+POST {{baseUrl}}/razorpay/subscriptions/v2
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "flow": "collect",
+  "vpa": "rajatdhoot@ybl",
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494"
+  }
+}
+
+### Create Subscription v2 - With Custom Start Time
+POST {{baseUrl}}/razorpay/subscriptions/v2
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "start_at": 1740384000,
+  "flow": "intent",
+  "notes": {
+    "email": "rajatdhoot123@gmail.com",
+    "contact": "+918855866494",
+    "name": "Rajat Dhoot",
+    "description": "Premium subscription with custom start time"
+  }
+}
+
+### ===== PHONEPE APIs =====
+# 
+# 🔒 SECURITY NOTE: Environment switching is restricted to team members only
+# 
+# Environment Control Methods:
+# 1. Query Parameter: ?env=DEV or ?env=PROD (team members only)
+# 2. HTTP Header: X-PhonePe-Env: DEV or PROD (team members only)
+# 
+# Team Member IDs are configured in TEAM_MEMBER_IDS environment variable
+# Non-team users will always use default environment based on NODE_ENV
+# 
+# === DEVELOPMENT MODE (Sandbox) ===
+# Uses test credentials - no real transactions
+# Merchant ID: PGTESTPAYUAT (or PHONEPE_MERCHANT_ID_DEV)
+# 
+# === PRODUCTION MODE (Live) ===
+# Uses real credentials - actual transactions occur
+# Merchant ID: PHONEPE_MERCHANT_ID_PROD
+# 
+# =========================================
+
+### Get Auth Token (Mobile) - Development Mode
+# Generates a Bearer token for PhonePe mobile SDK operations.
+# Uses DEV credentials in SANDBOX mode.
+# 
+# Team members can override environment: Add header X-PhonePe-Env: PROD
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "get-auth-token"
+}
+### Get PhonePe SDK Configuration
+# Retrieves the configuration required to initialize the PhonePe SDK on the client side.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
+X-PhonePe-Env: DEV
+
+{
+  "action": "get-sdk-config"
+}
+
+### Get Auth Token (Mobile) - Force Production Mode
+# 🚨 TEAM MEMBERS ONLY - Production environment override
+# Non-team members will receive 403 Forbidden error
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+X-PhonePe-Env: PROD
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "get-auth-token"
+}
+
+### Setup Subscription (Autopay Mobile SDK) - Development
+# Initiates a subscription setup flow for PhonePe Mobile SDK.
+# Returns an order token and generates a local subscription record.
+# Uses sandbox environment by default for safety.
+POST {{localUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "setup-subscription",
+  "maxAmount": 500,
+  "frequency": "MONTHLY",
+  "authWorkflowType": "TRANSACTION",
+  "amount": 1,
+  "amountType": "VARIABLE",
+  "redirectUrl": "alertpay://payment-callback"
+}
+
+### Setup Subscription - Force Production Mode
+# 🚨 TEAM MEMBERS ONLY - Production environment override
+# This will create REAL subscriptions that charge actual money
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+X-PhonePe-Env: PROD
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "setup-subscription",
+  "maxAmount": 500,
+  "frequency": "MONTHLY",
+  "authWorkflowType": "TRANSACTION",
+  "amount": 1,
+  "amountType": "VARIABLE",
+  "redirectUrl": "alertpay://payment-callback"
+}
+
+### Create Order Token (Mobile SDK) - Detailed
+# Creates an order token specifically for the PhonePe Mobile SDK.
+# Includes detailed payment flow configuration.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order-token",
+  "amount": 100,
+  "redirectUrl": "alertpay://payment-callback",
+  "disablePaymentRetry": false,
+  "merchantOrderId": "TX123456",
+  "expireAfter": 1200,
+  "metaInfo": {
+      "udf1": "additional-info-1"
+  },
+  "paymentFlow": {
+      "type": "PG_CHECKOUT",
+      "paymentModeConfig": {
+          "enabledPaymentModes": [
+              { "type": "UPI_INTENT" },
+              { "type": "UPI_COLLECT" },
+              { "type": "UPI_QR" },
+              { "type": "NET_BANKING" },
+              { "type": "CARD", "cardTypes": ["DEBIT_CARD", "CREDIT_CARD"] }
+          ],
+          "disabledPaymentModes": []
+      }
+  }
+}
+
+### Create Order Token - Force Production Mode
+# 🚨 TEAM MEMBERS ONLY - Production environment override
+# This will create REAL orders that charge actual money
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+X-PhonePe-Env: PROD
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order-token",
+  "amount": 100,
+  "redirectUrl": "alertpay://payment-callback",
+  "disablePaymentRetry": false
+}
+
+### Check Order Status (Mobile SDK)
+# Checks the status of an order using the Mobile SDK specific endpoint.
+# Environment detection based on original request context.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "check-status",
+  "merchantOrderId": "ORD12345678",
+  "type": "mobile"
+}
+
+### Check Order Status (Standard/Web)
+# Checks the status of an order using the standard checkout endpoint.
+# Environment detection based on original request context.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "check-status",
+  "merchantOrderId": "ORD12345678",
+  "type": "standard"
+}
+
+### Create Standard Order (Web) - Development
+# Creates a standard order using sandbox environment.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order",
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback"
+}
+
+### Create Standard Order - Force Production Mode
+# 🚨 TEAM MEMBERS ONLY - Production environment override
+# This will create REAL orders that charge actual money
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+X-PhonePe-Env: PROD
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order",
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback"
+}
+
+### Create Order With Auth (Merged) - Development
+# Creates order + returns auth token in one call. Single round-trip for checkout init.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order-with-auth",
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback"
+}
+
+### Create Standard Order - Query Parameter Override
+# Alternative method using query parameter instead of header
+# 🚨 TEAM MEMBERS ONLY
+POST {{baseUrl}}/phonepe?env=PROD
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order",
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback"
+}
+
+### Setup Subscription (Autopay Mobile SDK)
+# Initiates a subscription setup flow for the PhonePe Mobile SDK.
+# Returns an order token and generates a local subscription record.
+POST {{localUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "setup-subscription",
+  "maxAmount": 500,
+  "frequency": "MONTHLY",
+  "authWorkflowType": "TRANSACTION",
+  "amount": 1,
+  "amountType": "VARIABLE",
+  "redirectUrl": "alertpay://payment-callback"
+}
+
+### Create Order Token (Mobile SDK)
+# Creates an order token specifically for the PhonePe Mobile SDK.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order-token",
+  "amount": 100,
+  "redirectUrl": "alertpay://payment-callback",
+  "disablePaymentRetry": false
+}
+
+### Check Order Status (Mobile SDK)
+# Checks the status of an order using the Mobile SDK specific endpoint.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "check-status",
+  "merchantOrderId": "ORD12345678",
+  "type": "mobile"
+}
+
+### Check Order Status (Standard/Web)
+# Checks the status of an order using the standard checkout endpoint.
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "check-status",
+  "merchantOrderId": "ORD12345678",
+  "type": "standard"
+}
+
+### Create Standard Order (Web)
+POST {{baseUrl}}/phonepe
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "action": "create-order",
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback"
+}
+
+
+### ===== PHONEPE PG APIs (Payment Gateway - Node.js SDK) =====
+# REST-style endpoints using the official pg-sdk-node
+# Docs: https://developer.phonepe.com/payment-gateway/backend-sdk/nodejs-be-sdk
+#
+# All endpoints require:
+# - X-App-ID: App identifier (e.g., alertpay-android)
+# - Authorization: Bearer token (except webhook)
+
+### PG - Create SDK Order
+# Creates a PhonePe SDK Order token for mobile SDK flows.
+# Returns orderId, phonepeOrderId, state, expireAt, token
+POST {{baseUrl}}/phonepe/pg/create-sdk-order
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 100,
+  "redirectUrl": "alertpay://payment-callback",
+  "disablePaymentRetry": false
+}
+
+### PG - Initiate Payment
+# Initiates a PhonePe Standard Checkout payment (web redirect flow).
+# Returns orderId, phonepeOrderId, state, redirectUrl, expireAt
+POST {{baseUrl}}/phonepe/pg/initiate-payment
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 100,
+  "redirectUrl": "https://example.com/callback",
+  "message": "Payment for order",
+  "meta": {
+    "udf1": "user-defined-field-1",
+    "udf2": "user-defined-field-2"
+  }
+}
+
+### PG - Get Order Status
+# Checks the status of a PhonePe order.
+# Query param: merchantOrderId (required)
+GET {{baseUrl}}/phonepe/pg/order-status?merchantOrderId=ORD12345678
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### PG - Refund
+# Initiates a refund for a completed order.
+POST {{baseUrl}}/phonepe/pg/refund
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "originalMerchantOrderId": "ORD12345678",
+  "amount": 50,
+  "merchantRefundId": "RF_REFUND_001"
+}
+
+### PG - Webhook (Callback)
+# PhonePe calls this endpoint for payment/refund callbacks.
+# Requires Basic Auth: PHONEPE_PG_WEBHOOK_USERNAME / PHONEPE_PG_WEBHOOK_PASSWORD
+# Not typically called manually - listed for reference
+POST {{baseUrl}}/phonepe/pg/webhook
+Content-Type: application/json
+# Authorization: Basic <base64(username:password)> - set when testing
+
+
+### ===== VIDEO OVERLAY API =====
+
+### Video Overlay - Health Check
+# Check the status and configuration of the video overlay service
+# No authentication required
+# 
+# Response (200 OK):
+# {
+#   "status": "ok",
+#   "service": "video-overlay",
+#   "maxVideoSize": 104857600,
+#   "maxOverlays": 10,
+#   "supportedVideoFormats": ["mp4", "mov", "avi", "webm"],
+#   "supportedImageFormats": ["png", "jpg", "jpeg", "gif", "webp"]
+# }
+GET {{baseUrl}}/video/overlay
+
+### Video Overlay - Single Image at Fixed Position
+# Overlays a single image on a video at specified coordinates
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# 
+# Body Parameters:
+# - videoUrl: URL of the video to process (required, string)
+# - overlays: Array of overlay configurations (required, array)
+#   
+#   Image Source (one required):
+#   - imageUrl: URL of image to overlay (optional if imageData provided, string)
+#   - imageData: Base64 encoded image data (optional if imageUrl provided, string)
+#   
+#   Shape Configuration (optional):
+#   - imageShape: Shape of the overlay (optional, "CIRCLE" | "RECTANGLE" | "ROUNDED_RECTANGLE")
+#   - shapeImageUrl: URL of separate shape image (optional, string)
+#   
+#   Absolute Positioning (legacy support - pixels):
+#   - x: X coordinate in pixels (optional if percentage positioning provided, number)
+#   - y: Y coordinate in pixels (optional if percentage positioning provided, number)
+#   - width: Resize width in pixels (optional, number)
+#   - height: Resize height in pixels (optional, number)
+#   
+#   Percentage-Based Positioning (Android-compatible):
+#   - namePercentageWidth: Width of text/name overlay as % of video width (optional, 0-100)
+#   - imagePercentageWidth: Width of image as % of video width (optional, 0-100)
+#   - namePercentageBottom: Distance from bottom as % of video height (optional, 0-100)
+#   - namePercentageFromTop: Distance from top as % of video height (optional, 0-100)
+#   - imagePercentageFromTop: Image distance from top as % of video height (optional, 0-100)
+#   - namePercentageFromStart: Distance from left/start as % of video width (optional, 0-100)
+#   - imagePercentageFromStart: Image distance from left/start as % of video width (optional, 0-100)
+#   
+#   Timing (optional):
+#   - startTime: When to start showing overlay in seconds (optional, number)
+#   - endTime: When to stop showing overlay in seconds (optional, number)
+#   
+#   Note: Either absolute (x, y) OR percentage-based positioning is required.
+#         Percentage positioning takes precedence if both are provided.
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "videoUrl": "https://your-r2-bucket.com/videos/processed_1234567890.mp4",
+#   "processingTime": 15234
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Invalid overlay config: x and y coordinates must be numbers"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "success": false,
+#   "error": "Video processing failed: [error details]",
+#   "processingTime": 5234
+# }
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer qGWgpW0BoK6ByyyfvEoDfC8hyxQiFK8s
+
+{
+  "videoUrl": "https://media.crafto.app/enhanced-video/0d336dda-d3d5-4408-8056-fb1cfaa94c8e?dimension=480x720&size=3102852&vbr=1032609&abr=96599&type=Devotional&enhancedVideo=true",
+  "overlays": [
+    {
+      "imageUrl": "https://media.crafto.app/profile/62x62/b458c7ec-9f96-493a-97a6-c274063dd807?dimension=62x62",
+      "startTime": 0,
+      "endTime": 21.9,
+      "imageShape": "BLURRED CIRCLE",
+      "shapeImageUrl": "https://media.crafto.app/shape/62x62/b458c7ec-9f96-493a-97a6-c274063dd807?dimension=62x62",
+      "namePercentageWidth": null,
+      "imagePercentageWidth": 36.76,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": 69.22,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": 47.06
+    }
+  ]
+}
+
+### Video Overlay - Multiple Images with Timing
+# Overlays multiple images on a video with different timing
+# First overlay appears from 0-3 seconds, second from 3-6 seconds
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://via.placeholder.com/100/ff0000",
+      "x": 10,
+      "y": 10,
+      "startTime": 0,
+      "endTime": 3,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    },
+    {
+      "imageUrl": "https://via.placeholder.com/100/00ff00",
+      "x": 200,
+      "y": 200,
+      "startTime": 3,
+      "endTime": 6,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    }
+  ]
+}
+
+### Video Overlay - Base64 Image Data
+# Overlay using base64 encoded image data instead of URL
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
+  "overlays": [
+    {
+      "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "x": 50,
+      "y": 50,
+      "width": 100,
+      "height": 100,
+      "startTime": null,
+      "endTime": null,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    }
+  ]
+}
+
+### Video Overlay - With Resizing
+# Overlay image with custom width and height
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://via.placeholder.com/500",
+      "x": 100,
+      "y": 100,
+      "width": 150,
+      "height": 150,
+      "startTime": 0,
+      "endTime": 5,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    }
+  ]
+}
+
+### Video Overlay - Production Example
+POST {{baseUrlProd}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "videoUrl": "https://example.com/my-video.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://example.com/logo.png",
+      "x": 10,
+      "y": 10,
+      "width": 100,
+      "height": 100,
+      "startTime": null,
+      "endTime": null,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    }
+  ]
+}
+
+### Video Overlay - Percentage-Based Positioning (Working Example)
+# Uses percentage-based positioning for responsive overlays
+# This example uses a real 480x720 video with tested parameters
+# For a 480x720 video, this translates to:
+# - width = 176px (36.76% of 480)
+# - x = 226px (47.06% of 480)
+# - y = 498px (69.22% of 720)
+# 
+# The overlay image will be automatically scaled to the specified percentage width
+# while maintaining its aspect ratio (height auto-calculated)
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "videoUrl": "https://media.crafto.app/enhanced-video/0d336dda-d3d5-4408-8056-fb1cfaa94c8e?dimension=480x720&size=3102852&vbr=1032609&abr=96599&type=Devotional&enhancedVideo=true",
+  "overlays": [
+    {
+      "imageUrl": "https://cnd.storyowl.app/users/8kJDs_owMTSktoxBaMeco/1768502353482_1_pfp.png",
+      "imagePercentageWidth": 36.76,
+      "imagePercentageFromStart": 47.06,
+      "imagePercentageFromTop": 69.22
+    }
+  ]
+}
+
+### Video Overlay - Circle Crop (Working Example)
+# Crops the overlay image into a circle shape before applying to video
+# Uses FFmpeg geq filter to create circular transparency programmatically
+# The circle is created by setting alpha=0 for pixels outside the circle radius
+# 
+# For a 480x720 video with 36.76% width overlay:
+# - width = 176px (36.76% of 480) - circular crop applied before scaling
+# - x = 226px (47.06% of 480)
+# - y = 498px (69.22% of 720)
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "videoUrl": "https://media.crafto.app/enhanced-video/0d336dda-d3d5-4408-8056-fb1cfaa94c8e?dimension=480x720&size=3102852&vbr=1032609&abr=96599&type=Devotional&enhancedVideo=true",
+  "overlays": [
+    {
+      "imageUrl": "https://cnd.storyowl.app/users/8kJDs_owMTSktoxBaMeco/1768502353482_1_pfp.png",
+      "imageShape": "CIRCLE",
+      "imagePercentageWidth": 36.76,
+      "imagePercentageFromStart": 47.06,
+      "imagePercentageFromTop": 69.22
+    }
+  ]
+}
+
+### Video Overlay - Percentage-Based Positioning (Generic Example)
+# Generic example for any video size
+# For a 1920x1080 video, this translates to:
+# - width = 384px (20% of 1920)
+# - x = 192px (10% of 1920)
+# - y = 162px (15% of 1080)
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "videoUrl": "https://cnd.storyowl.app/sample-video.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://example.com/profile.png",
+      "imageShape": "CIRCLE",
+      "imagePercentageWidth": 20,
+      "imagePercentageFromTop": 15,
+      "imagePercentageFromStart": 10,
+      "startTime": 0,
+      "endTime": 30
+    }
+  ]
+}
+
+### Video Overlay - Bottom Positioning (Android-Compatible)
+# Positions overlay at bottom of video using percentage
+# For a 1920x1080 video:
+# - x = 960px (50% - centered)
+# - y = 972px (90% from top, or 10% from bottom)
+# - width = 576px (30% of width)
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://cnd.storyowl.app/sample-video.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://example.com/name-badge.png",
+      "startTime": null,
+      "endTime": null,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": 30,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": 10,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": 50,
+      "imagePercentageFromStart": null
+    }
+  ]
+}
+
+### Video Overlay - Android Direct Mapping
+# Direct mapping from Android overlay configuration
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://cnd.storyowl.app/payment-video.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://example.com/sender-avatar.png",
+      "imageShape": "CIRCLE",
+      "shapeImageUrl": "",
+      "namePercentageWidth": 0.0,
+      "imagePercentageWidth": 15.0,
+      "namePercentageBottom": 0.0,
+      "namePercentageFromTop": 20.0,
+      "imagePercentageFromTop": 20.0,
+      "namePercentageFromStart": 0.0,
+      "imagePercentageFromStart": 10.0,
+      "startTime": 0,
+      "endTime": 15
+    }
+  ]
+}
+
+### Video Overlay - Mixed Positioning
+# Combines absolute and percentage-based overlays
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+{
+  "videoUrl": "https://cnd.storyowl.app/sample-video.mp4",
+  "overlays": [
+    {
+      "imageUrl": "https://example.com/logo.png",
+      "x": 50,
+      "y": 50,
+      "width": 150,
+      "height": 150,
+      "startTime": null,
+      "endTime": null,
+      "imageShape": null,
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": null,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": null,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": null
+    },
+    {
+      "imageUrl": "https://example.com/profile.png",
+      "imageShape": "CIRCLE",
+      "shapeImageUrl": null,
+      "namePercentageWidth": null,
+      "imagePercentageWidth": 10,
+      "namePercentageBottom": null,
+      "namePercentageFromTop": null,
+      "imagePercentageFromTop": 5,
+      "namePercentageFromStart": null,
+      "imagePercentageFromStart": 85,
+      "startTime": 5,
+      "endTime": 25
+    }
+  ]
+}
+
+Content-Type: application/json
+Authorization: Bearer BsCGZnLSFwQXvWsmJRHhSIlflLoJEo4M
+
+{
+  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "quantity": 1,
+  "notes": {
+    "email": "test@example.com",
+    "contact": "+919876543210"
+  }
+}
+
+### Create Subscription - With Custom Start Time
+# Example with custom start_at timestamp (7 days from now)
+POST {{baseUrl}}/razorpay/subscriptions/v1
+Content-Type: application/json
+
+{
+  "plan_id": "plan_XXXXXXXXXXXXX",
+  "quantity": 2,
+  "total_count": 6,
+  "start_at": 1737360000,
+  "notes": {
+    "email": "customer@example.com",
+    "contact": "+919876543210",
+    "custom_field": "additional metadata"
+  }
+}
+
+### ===== UPLOAD API =====
+
+### Upload - Health Check
+# Check the status and configuration of the presigned URL upload service
+# No authentication required
+# 
+# Response (200 OK):
+# {
+#   "status": "ok",
+#   "service": "presigned-url-generator",
+#   "supportedFormats": ["jpg", "jpeg", "png", "gif", "webp"],
+#   "maxExpiresIn": 604800,
+#   "defaultExpiresIn": 3600
+# }
+GET {{baseUrl}}/upload/presigned-url
+
+### Upload - Generate Presigned URL
+# Generates a presigned URL for uploading user images to R2
+# The uploaded file will be stored with user ID prefix: users/{userId}/{timestamp}_{fileName}
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# 
+# Body Parameters:
+# - fileName: Name of the file to upload (required, string)
+#   Must have valid image extension: jpg, jpeg, png, gif, webp
+# - contentType: MIME type of the file (optional, default: "image/jpeg")
+# - expiresIn: URL expiration time in seconds (optional, default: 3600, max: 604800)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "uploadUrl": "https://{account}.r2.cloudflarestorage.com/...",
+#   "publicUrl": "https://cnd.storyowl.app/users/{userId}/{timestamp}_{fileName}",
+#   "key": "users/{userId}/{timestamp}_{fileName}",
+#   "expiresIn": 3600,
+#   "expiresAt": "2026-01-14T13:35:52.000Z"
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "fileName is required" | "Invalid file extension. Allowed: jpg, jpeg, png, gif, webp" | "expiresIn cannot exceed 604800 seconds (7 days)"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Usage:
+# 1. Call this endpoint to get uploadUrl and publicUrl
+# 2. Use uploadUrl to PUT your file (with Content-Type header)
+# 3. After successful upload, use publicUrl to access the file
+POST {{baseUrl}}/upload/presigned-url
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "fileName": "profile-picture.jpg",
+  "contentType": "image/jpeg"
+}
+
+### Upload - Generate Presigned URL with Custom Expiration
+# Example with 2 hour expiration (7200 seconds)
+POST {{baseUrl}}/upload/presigned-url
+Content-Type: application/json
+
+{
+  "fileName": "avatar.png",
+  "contentType": "image/png",
+  "expiresIn": 7200
+}
+
+### Upload - Generate Presigned URL for WebP
+POST {{baseUrl}}/upload/presigned-url
+Content-Type: application/json
+
+{
+  "fileName": "photo.webp",
+  "contentType": "image/webp",
+  "expiresIn": 1800
+}
+
+### Upload - Production Example
+POST {{baseUrlProd}}/upload/presigned-url
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "fileName": "user-image.jpg",
+  "contentType": "image/jpeg"
+}
+
+### ===== ANALYTICS API =====
+
+
+### Get Analytics (All periods)
+# Returns analytics for today, week, month, year, and all time
+# Also includes top apps by transaction count and total amount
+GET {{baseUrl}}/analytics
+
+### Get Analytics - Today only
+GET {{baseUrl}}/analytics?period=today
+
+### Get Analytics - Last 7 days
+GET {{baseUrl}}/analytics?period=week
+
+### Get Analytics - Last month
+GET {{baseUrl}}/analytics?period=month
+
+### Get Analytics - Last year
+GET {{baseUrl}}/analytics?period=year
+
+### Create Transaction (Capture Payment Notification)
+# Body Parameters:
+# - appName: Name of the app that sent the payment notification (required)
+# - amount: Payment amount in paise (required, positive number)
+# - currency: Currency code (optional, defaults to "INR")
+POST {{baseUrl}}/analytics
+Content-Type: application/json
+
+{
+  "appName": "PhonePe",
+  "amount": 50000,
+  "currency": "INR"
+}
+
+### Create Transaction - Example with WhatsApp
+POST {{baseUrl}}/analytics
+Content-Type: application/json
+
+{
+  "appName": "WhatsApp",
+  "amount": 10000
+}
+
+### Create Transaction - Example with Google Pay
+POST {{baseUrl}}/analytics
+Content-Type: application/json
+
+{
+  "appName": "Google Pay",
+  "amount": 25000,
+  "currency": "INR"
+}
+
+### ===== USER API =====
+
+### ===== USER API V1 (Multi-App Support) =====
+
+### Get User Profile V1 (AlertPay App)
+# Fetches the current authenticated user's profile information with app-specific features
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# - X-App-ID: App identifier (required, e.g., "alertpay-android", "jamun-android")
+# 
+# App-Specific Features:
+# - AlertPay apps: includes isPremium, upiVpa, audioLanguage, orders, subscriptions
+# - Sharekaro apps: basic profile only
+# - All apps: includes images array
+# 
+# Response (200 OK - AlertPay):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "user_id",
+#     "name": "User Name",
+#     "phoneNumber": "+919876543210",
+#     "email": "user@example.com",
+#     "accountType": "google" | "otp" | "truecaller" | "phoneNumber",
+#     "emailVerified": true,
+#     "phoneNumberVerified": true,
+#     "image": "https://..." | null,
+#     "images": [{ "id": 1, "imageUrl": "https://url1.com" }, { "id": 2, "imageUrl": "https://url2.com" }],
+#     "createdAt": "2024-12-24T13:08:35.165Z",
+#     "updatedAt": "2024-12-24T13:18:52.332Z",
+#     "appId": "alertpay-android",
+#     "upiVpa": "user@paytm" | null,
+#     "audioLanguage": "en-US",
+#     "isPremium": true
+#   }
+# }
+# 
+# Response (200 OK - Sharekaro):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "user_id",
+#     "name": "User Name",
+#     "phoneNumber": "+919876543210",
+#     "email": "user@example.com",
+#     "accountType": "google",
+#     "emailVerified": true,
+#     "phoneNumberVerified": true,
+#     "image": "https://..." | null,
+#     "images": [{ "id": 1, "imageUrl": "https://url1.com" }],
+#     "createdAt": "2024-12-24T13:08:35.165Z",
+#     "updatedAt": "2024-12-24T13:18:52.332Z",
+#     "appId": "jamun-android"
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (404 Not Found):
+# {
+#   "error": "User not found"
+# }
+GET {{baseUrlProd}}/user/v1
+X-App-ID: com.paymentalert.app
+Authorization: Bearer zxOdW2HWH0te60vZ4r0hlgsCVgg6O3Hq
+
+### Get User Profile V1 (AlertPay - Production)
+GET {{localUrl}}/user/v1
+X-App-ID: com.kiranaapps.app
+
+### Get User Profile V1 (Sharekaro App)
+GET {{baseUrl}}/user/v1
+X-App-ID: jamun-android
+
+### Update User Profile V1 (AlertPay App)
+# Updates the current authenticated user's profile with app-specific fields
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# - X-App-ID: App identifier (required)
+# 
+# Body Parameters:
+# - name*: User's name (required, string)
+# - phoneNumber*: User's phone number (required, E.164 format, e.g., "+919876543210")
+# - email: User's email (optional, string, must be valid email format)
+# - upiVpa: UPI VPA (optional, AlertPay apps only, format: "user@bank")
+# - audioLanguage: Audio language (optional, AlertPay apps only, e.g., "en-US", "hi-IN")
+# - images: Array of image URLs (optional, replaces all existing images for this app)
+# 
+# App-Specific Field Validation:
+# - upiVpa: Only allowed for AlertPay apps, returns 400 for other apps
+# - audioLanguage: Only allowed for AlertPay apps, returns 400 for other apps
+# - images: Allowed for all apps
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "User updated successfully",
+#   "data": {
+#     "id": "user_id",
+#     "name": "Updated Name",
+#     "phoneNumber": "+919876543210",
+#     "email": "updated@example.com",
+#     "accountType": "google",
+#     "emailVerified": true,
+#     "phoneNumberVerified": true,
+#     "image": null,
+#     "image": null,
+#     "images": [{ "id": 1, "imageUrl": "https://url1.com" }, { "id": 2, "imageUrl": "https://url2.com" }],
+#     "createdAt": "2024-12-24T13:08:35.165Z",
+#     "updatedAt": "2024-12-24T17:30:00.000Z",
+#     "appId": "alertpay-android",
+#     "upiVpa": "user@paytm",
+#     "audioLanguage": "en-US"
+#   }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Name is required" | 
+#            "Phone number is required" | 
+#            "Invalid phone number format" | 
+#            "Invalid email format" | 
+#            "Invalid UPI VPA format" |
+#            "UPI VPA field is not supported for jamun-android" |
+#            "Audio language field is not supported for jamun-android" |
+#            "Images must be an array of URLs" |
+#            "Invalid image URL format"
+# }
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "email": "john.doe@example.com",
+  "upiVpa": "john@paytm",
+  "audioLanguage": "en-US",
+  "images": [
+    "https://cnd.storyowl.app/users/user123/profile1.jpg",
+    "https://cnd.storyowl.app/users/user123/profile2.jpg"
+  ]
+}
+
+### Update User Profile V1 (AlertPay - Production)
+POST {{baseUrlProd}}/user/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "email": "john.doe@example.com",
+  "upiVpa": "john@paytm",
+  "audioLanguage": "hi-IN"
+}
+
+### Update User Profile V1 - Minimal (Required fields only)
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "name": "Jane Smith",
+  "phoneNumber": "+919876543211"
+}
+
+### Update User Profile V1 - With Images Only
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "images": [
+    "https://cnd.storyowl.app/users/user123/avatar1.jpg",
+    "https://cnd.storyowl.app/users/user123/avatar2.jpg",
+    "https://cnd.storyowl.app/users/user123/avatar3.jpg"
+  ]
+}
+
+### Update User Profile V1 - Clear Images
+# Pass empty array to remove all images for this app
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "images": []
+}
+
+### Update User Profile V1 (Sharekaro App)
+# Sharekaro apps don't support upiVpa or audioLanguage
+# Attempting to set these fields will return 400 error
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: jamun-android
+
+{
+  "name": "Jane Doe",
+  "phoneNumber": "+919876543210",
+  "email": "jane@example.com",
+  "images": [
+    "https://cnd.storyowl.app/users/user456/profile.jpg"
+  ]
+}
+
+### Update User Profile V1 - Invalid Field for App (Will Fail)
+# This will return 400 because upiVpa is not supported for sharekaro apps
+POST {{baseUrl}}/user/v1
+Content-Type: application/json
+X-App-ID: jamun-android
+
+{
+  "name": "Jane Doe",
+  "phoneNumber": "+919876543210",
+  "upiVpa": "jane@paytm"
+}
+
+### Delete User Image V1
+# Deletes a specific user image
+# 
+# Headers:
+# - Authorization: Bearer <token> (if using JWT token)
+# - X-App-ID: App identifier (required)
+# 
+# Body Parameters:
+# - imageId: The ID of the image to delete (required, integer)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Image deleted successfully"
+# }
+DELETE {{baseUrl}}/user/image/v1
+Content-Type: application/json
+X-App-ID: alertpay-android
+
+{
+  "imageId": 123
+}
+
+### Delete User Account V1 (AlertPay App)
+# Deletes the user and all associated data across ALL apps
+# 
+# Headers:
+# - Authorization: Bearer <hardcoded-token> (required)
+# - X-App-ID: App identifier (required)
+# 
+# Query Parameters OR Body:
+# - phoneNumber: Phone number in E.164 format (required, e.g., "+919876543210")
+# 
+# Note: This deletes the user GLOBALLY, not just for the specific app.
+# All data across all apps will be deleted:
+# - All sessions (across all apps)
+# - All accounts
+# - All user metadata (across all apps)
+# - All user images (across all apps)
+# - All notifications
+# - All orders
+# - All subscriptions
+# - The user record
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "User and all associated data deleted successfully across all apps",
+#   "appId": "alertpay-android"
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Phone number is required" | "Invalid phone number format"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - invalid token" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (404 Not Found):
+# {
+#   "error": "User not found"
+# }
+
+### Delete User V1 by Phone Number (Request Body)
+DELETE {{baseUrl}}/user/v1
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+X-App-ID: alertpay-android
+Content-Type: application/json
+
+{
+  "phoneNumber": "+917888149531"
+}
+
+### Delete User V1 (Production - Query Parameter)
+DELETE {{baseUrlProd}}/user/v1?phoneNumber=+919876543210
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+X-App-ID: alertpay-android
+
+### Delete User V1 (Production - Request Body)
+DELETE {{baseUrlProd}}/user/v1
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+X-App-ID: alertpay-android
+Content-Type: application/json
+
+{
+  "phoneNumber": "+919876543210"
+}
+
+### ===== USER API (Legacy - Without Multi-App Support) =====
+
+### Get User Profile
+# Fetches the current authenticated user's profile information
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "user_id",
+#     "name": "User Name",
+#     "phoneNumber": "+919876543210",
+#     "email": "user@example.com",
+#     "accountType": "google" | "otp" | "telegram" | "phoneNumber",
+#     "upiVpa": "user@paytm" | null,
+#     "audioLanguage": "en" | "hi" | null,
+#     "emailVerified": true,
+#     "phoneNumberVerified": true,
+#     "image": "https://..." | null,
+#     "createdAt": "2024-12-24T13:08:35.165Z",
+#     "updatedAt": "2024-12-24T13:18:52.332Z"
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (404 Not Found):
+# {
+#   "error": "User not found"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to fetch user data"
+# }
+GET {{baseUrl}}/user
+
+### Get User Profile with Bearer Token
+GET {{baseUrl}}/user
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+
+### Update User Profile
+# Updates the current authenticated user's profile information
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# 
+# Body Parameters:
+# - name*: User's name (required, string)
+# - phoneNumber*: User's phone number (required, E.164 format, e.g., "+919876543210")
+# - email: User's email (optional, string, must be valid email format)
+# - upiVpa: UPI Virtual Payment Address (optional, string, format: "user@bank")
+# - audioLanguage: Audio language preference (optional, string, e.g., "en", "hi")
+# 
+# Note: accountType is read-only and derived from the account table
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "User updated successfully",
+#   "data": {
+#     "id": "user_id",
+#     "name": "Updated Name",
+#     "phoneNumber": "+919876543210",
+#     "email": "updated@example.com",
+#     "accountType": "google",
+#     "upiVpa": "user@paytm",
+#     "audioLanguage": "en",
+#     "emailVerified": true,
+#     "phoneNumberVerified": true,
+#     "image": null,
+#     "createdAt": "2024-12-24T13:08:35.165Z",
+#     "updatedAt": "2024-12-24T17:30:00.000Z"
+#   }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Name is required" | "Phone number is required" | "Invalid phone number format" | "Invalid email format" | "Invalid UPI VPA format"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to update user"
+# }
+POST {{baseUrl}}/user
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "email": "john.doe@example.com",
+  "upiVpa": "john@paytm",
+  "audioLanguage": "en"
+}
+
+### Update User Profile - Minimal (Required fields only)
+POST {{baseUrl}}/user
+Content-Type: application/json
+
+{
+  "name": "Jane Smith",
+  "phoneNumber": "+919876543211"
+}
+
+### Update User Profile - With UPI VPA only
+POST {{baseUrl}}/user
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "upiVpa": "john@paytm"
+}
+
+### Update User Profile - With audio language only
+POST {{baseUrl}}/user
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "phoneNumber": "+919876543210",
+  "audioLanguage": "hi"
+}
+
+### Delete User Account
+# Deletes the current authenticated user and all associated data
+# 
+# This endpoint will explicitly delete:
+# - All sessions
+# - All accounts
+# - User metadata
+# - All notifications
+# - All orders
+# - The user record
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "User and all associated data deleted successfully"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (404 Not Found):
+# {
+#   "error": "User not found"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to delete user"
+# }
+# 
+# Warning: This action is irreversible. All user data will be permanently deleted.
+# 
+# The phoneNumber can be provided either as:
+# 1. Query parameter: ?phoneNumber=+919876543210
+# 2. Request body: { "phoneNumber": "+919876543210" }
+# 
+# Phone number must be in E.164 format (e.g., +919876543210)
+
+### Delete User by Phone Number (Query Parameter)
+DELETE {{baseUrl}}/user?phoneNumber=+918123664610
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+
+### Delete User by Phone Number (Request Body)
+DELETE {{baseUrl}}/user
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+Content-Type: application/json
+
+{
+  "phoneNumber": "+918595404595"
+}
+
+### Delete User Account (Production - Query Parameter)
+DELETE {{baseUrlProd}}/user?phoneNumber=+919876543210
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+
+### Delete User Account (Production - Request Body)
+DELETE {{baseUrlProd}}/user
+Authorization: Bearer djU-4meRO1gh_zskk8cfDbRUdSByU4z6
+Content-Type: application/json
+
+{
+  "phoneNumber": "+919876543210"
+}
+
+### ===== PLAY STORE RATING API =====
+
+### Store Play Store Rating
+# Stores a user's Play Store rating and review
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# App ID Required: X-App-ID header (e.g., "alertpay-android")
+# 
+# Body Parameters:
+# - rating*: Rating value from 1 to 5 (required, integer)
+# - review: Review text (optional, string, max 5000 characters)
+# - reviewTitle: Review title (optional, string, max 200 characters)
+# - packageName: Package name of the app (optional, string, e.g., "com.example.app")
+# - appVersion: App version when rating was submitted (optional, e.g., "1.2.3")
+# - deviceModel: Device model (optional, e.g., "Pixel 7")
+# - osVersion: Android OS version (optional, e.g., "14")
+# - language: Review language/locale (optional, e.g., "en-US")
+# - submittedToPlayStore: If true, marks this rating as submitted to Play Store (optional, default: false)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Rating stored successfully",
+#   "data": {
+#     "id": 1,
+#     "userId": "user_xyz789",
+#     "appId": "alertpay-android",
+#     "rating": 5,
+#     "review": "Great app!",
+#     "reviewTitle": null,
+#     "packageName": "com.alertpay.app",
+#     "appVersion": "1.2.3",
+#     "deviceModel": "Pixel 7",
+#     "osVersion": "14",
+#     "language": "en-US",
+#     "submittedToPlayStoreAt": null,
+#     "createdAt": "2026-01-30T12:00:00.000Z",
+#     "updatedAt": "2026-01-30T12:00:00.000Z"
+#   }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Rating is required" | "Rating must be a number between 1 and 5" | "Review text must be less than 5000 characters" | "Review title must be less than 200 characters"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (404 Not Found):
+# {
+#   "error": "User not found"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to store rating"
+# }
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Great app! Very useful for tracking payments.",
+  "packageName": "com.alertpay.app"
+}
+
+### Store Play Store Rating - With All Optional Fields
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Excellent app! Highly recommended.",
+  "reviewTitle": "Best payment app",
+  "packageName": "com.alertpay.app",
+  "appVersion": "1.2.3",
+  "deviceModel": "Pixel 7",
+  "osVersion": "14",
+  "language": "en-US",
+  "submittedToPlayStore": false
+}
+
+### Store Play Store Rating - Mark as Submitted to Play Store
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Love this app!",
+  "submittedToPlayStore": true
+}
+
+### Store Play Store Rating - Minimal (Rating Only)
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 4
+}
+
+### Store Play Store Rating - With Review Only
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Excellent app! Highly recommended."
+}
+
+### Store Play Store Rating - Production
+POST {{baseUrlProd}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Love this app!",
+  "packageName": "com.alertpay.app"
+}
+
+### Get Play Store Ratings
+# Retrieves Play Store ratings with pagination
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# App ID Required: X-App-ID header (e.g., "alertpay-android")
+# 
+# Query Parameters:
+# - userId: Filter by user ID (optional, defaults to current user)
+# - appId: Filter by app ID (optional, defaults to request app ID)
+# - submitted: Filter by submission to Play Store - "true" | "false" (optional; omit for all)
+# - limit: Maximum number of ratings to return (optional, default: 50, max: 100)
+# - offset: Number of ratings to skip (optional, default: 0)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "ratings": [
+#       {
+#         "id": 1,
+#         "userId": "user_xyz789",
+#         "appId": "alertpay-android",
+#         "rating": 5,
+#         "review": "Great app!",
+#         "reviewTitle": null,
+#         "packageName": "com.alertpay.app",
+#         "appVersion": "1.2.3",
+#         "deviceModel": "Pixel 7",
+#         "osVersion": "14",
+#         "language": "en-US",
+#         "submittedToPlayStoreAt": "2026-01-30T12:00:00.000Z",
+#         "createdAt": "2026-01-30T12:00:00.000Z",
+#         "updatedAt": "2026-01-30T12:00:00.000Z"
+#       }
+#     ],
+#     "pagination": {
+#       "total": 10,
+#       "limit": 50,
+#       "offset": 0,
+#       "hasMore": false
+#     }
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session" | "Invalid or disabled app identifier"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to retrieve ratings"
+# }
+GET {{baseUrl}}/playstore-rating
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - With Pagination
+GET {{baseUrl}}/playstore-rating?limit=20&offset=0
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - Filter by User
+GET {{baseUrl}}/playstore-rating?userId=user_xyz789&limit=10
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - Filter by App
+GET {{baseUrl}}/playstore-rating?appId=alertpay-android&limit=50
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - Only Not Submitted to Play Store
+GET {{baseUrl}}/playstore-rating?submitted=false
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - Only Submitted to Play Store
+GET {{baseUrl}}/playstore-rating?submitted=true
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Get Play Store Ratings - Production
+GET {{baseUrlProd}}/playstore-rating?limit=50
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### Mark Play Store Rating as Submitted
+# Marks a rating as submitted to the Play Store (sets submittedToPlayStoreAt).
+# Only the rating owner can update. Idempotent: if already submitted, returns current state.
+#
+# Path: :id = rating ID (integer)
+#
+# Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Rating marked as submitted to Play Store",
+#   "data": { ...rating with submittedToPlayStoreAt set }
+# }
+#
+# Response (404): Rating not found or access denied
+PATCH {{baseUrl}}/playstore-rating/1
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+### ===== CONFIG API =====
+
+### Get Application Configuration
+# Fetches application configuration settings including app info, features, limits, UI settings, and API settings
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "app": {
+#       "name": "AlertPay",
+#       "version": "1.0.0",
+#       "environment": "development"
+#     },
+#     "features": {
+#       "order": {
+#         "amount": 100,
+#         "currency": "INR",
+#         "payment_method": "upi",
+#         "isRecurring": true,
+#         "token": {
+#           "frequency": "monthly",
+#           "max_amount": 1200,
+#           "expire_at": 1735689600
+#         }
+#       }
+#     },
+#     "limits": {
+#       "maxOrdersPerDay": 100,
+#       "maxOrdersPerMonth": 1000,
+#       "maxRecurringOrders": 10
+#     },
+#     "ui": {
+#       "paywall": {
+#         "pricing": {
+#           "title": "₹100",
+#           "period": "month"
+#         },
+#         "heading": "Never miss a payment",
+#         "description": "Trusted by businesses across India",
+#         "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+#       },
+#       "theme": "light",
+#       "supportedLanguages": ["en", "hi"],
+#       "defaultLanguage": "en"
+#     },
+#     "api": {
+#       "timeout": 30000,
+#       "retryAttempts": 3
+#     }
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to fetch config"
+# }
+GET {{baseUrl}}/config
+
+### Get Application Configuration with Bearer Token
+GET {{baseUrl}}/config
+Authorization: Bearer ExqtvyAgDLOHHGrwPn8AYE2t0msAGkiu
+
+### Get Application Configuration V2
+# Fetches application configuration for the requesting app only
+# Filters config by x-app-id (or x-app-identifier) header
+# 
+# Headers:
+# - Cookie: Session cookies (if using cookie-based auth)
+# - Authorization: Bearer <token> (if using JWT token)
+# - X-App-ID: App identifier (required, e.g., "alertpay-android", "jamun-android")
+#   Alternative header: X-App-Identifier (also supported)
+# 
+# Behavior:
+# - If x-app-id is present and matches a known app → returns that app's config
+# - If x-app-id is missing or unknown → returns 401 Unauthorized
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "appId": "alertpay-android",
+#   "config": {
+#     // App-specific configuration data
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session" | 
+#            "Invalid or disabled app identifier: <app-id>" |
+#            "Configuration not found for app ID: <app-id>"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Failed to fetch config" | "Internal server error"
+# }
+GET {{baseUrl}}/config/v2
+Authorization: Bearer {{authToken}}
+X-App-ID: com.kiranaapps.app
+
+### Get Application Configuration V2 - Local Development
+GET {{localUrl}}/config/v2
+Authorization: Bearer {{authToken}}
+X-App-ID: alertpay-android
+
+### Get Application Configuration V2 - Production
+GET {{baseUrlProd}}/config/v2
+Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
+X-App-ID: com.kiranaapps.app
+
+### Get Application Configuration V2 - Sharekaro App
+GET {{baseUrl}}/config/v2
+Authorization: Bearer {{authToken}}
+X-App-ID: jamun-android
+
+### ===== EQUENCE SMS API (Direct) =====
+
+### Send OTP via Equence pushsms API (Direct - no intermediary server)
+# Calls https://api.equence.in/pushsms directly
+#
+# Environment Variables:
+# EQUENCE_USERNAME=sm9_tr
+# EQUENCE_PASSWORD=pfJY_05-
+# EQUENCE_TMPL_ID=1707176553065211775
+# EQUENCE_SENDER_ID=ALRTSN
+#
+# Phone: 10 digits or full number with country code (e.g., 918855866494)
+
+### Send OTP via Equence pushsms (with appHash)
+POST https://api.equence.in/pushsms
+Content-Type: application/json
+
+{
+  "username": "sm9_tr",
+  "password": "pfJY_05-",
+  "to": "918855866494",
+  "from": "ALRTSN",
+  "tmplId": "1707176553065211775",
+  "text": "123456 is your Alert Soundbox OTP for login. Do not share it with anyone.\n 33333"
+}
+
+### Send OTP via Equence pushsms (without appHash)
+POST https://api.equence.in/pushsms
+Content-Type: application/json
+
+{
+  "username": "sm9_tr",
+  "password": "pfJY_05-",
+  "to": "918855866494",
+  "from": "ALRTSN",
+  "tmplId": "1707176553065211775",
+  "text": "123456 is your Alert Soundbox OTP for login. Do not share it with anyone."
+}
+
+### ===== CRAFTO/KRAFTO API =====
+
+### Crafto Home Feed v1.7
+# Fetches Crafto quotes from database with pagination
+# Automatically migrates old Crafto URLs to new CDN URLs
+# 
+# Authentication: Required (via session cookies or Bearer token)
+# 
+# Query Parameters:
+# - offset: Offset string in YYYYMMDDHH format (optional, e.g., "2026011920")
+#   Represents IST timestamp for pagination cursor
+#   If not provided, uses current time (returns latest content)
+# - limit: Number of items per page (optional, default: 20, max: 100)
+# - category: Category type filter (optional, e.g., "motivational", "funny")
+#   Filter quotes by category type. Use /api/crafto/categories to get available categories
+# 
+# Offset Format:
+# - YYYY: 4-digit year
+# - MM: 2-digit month (01-12)
+# - DD: 2-digit day (01-31)
+# - HH: 2-digit hour (00-23) in IST timezone
+# Example: "2026011920" = January 19, 2026, 8:00 PM IST
+# 
+# Response (200 OK):
+# {
+#   "filterText": "motivational" | null,  // Category name if filtered, null otherwise
+#   "selectedFilterId": "motivational" | null,  // Category name if filtered, null otherwise
+#   "data": [
+#     {
+#       "type": "QUOTE",
+#       "data": {
+#         ... quote data (format varies by quote type)
+#       }
+#     }
+#   ],
+#   "offset": "2026011918" | null,  // Next page offset, null if no more pages
+#   "limit": 20,
+#   "popup": null,
+#   "isBuggyFeedAlertWhitelisted": false,
+#   "configuration": {
+#     "logImageLoadExceptionEvents": true,
+#     "logImageLoadSuccessEvent": false,
+#     "logVideoExceptionEvent": true,
+#     "logVideoLoadSuccessEvent": false
+#   }
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "Invalid offset format. Expected YYYYMMDDHH"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "error": "Internal server error"
+# }
+# 
+# Notes:
+# - Pagination uses time-based cursor (offset) instead of page numbers
+# - Returns quotes where createdAt <= offset date, ordered by newest first
+# - Automatically migrates old media.crafto.app URLs to new CDN
+# - Fetches limit+1 items to determine if more pages exist
+# - Next offset is calculated from last item's createdAt timestamp
+# - Category filtering: Use the category parameter to filter by category type
+#   Get available categories from /api/crafto/categories endpoint
+
+### Crafto Home Feed - First Page (Latest Content)
+GET {{baseUrl}}/crafto/home/v1.7
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - With Custom Limit
+GET {{baseUrl}}/crafto/home/v1.7?limit=50
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - With Offset (Pagination)
+# Use the offset value returned from previous response
+GET {{baseUrl}}/crafto/home/v1.7?offset=2026011920&limit=20
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - Filter by Category
+# Filter quotes by a specific category type
+# First, get available categories from /api/crafto/categories
+GET {{baseUrl}}/crafto/home/v1.7?category=motivational&limit=20
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - Filter by Category with Pagination
+# Combine category filter with pagination
+GET {{baseUrl}}/crafto/home/v1.7?category=funny&offset=2026011920&limit=20
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - Maximum Items Per Page
+GET {{baseUrl}}/crafto/home/v1.7?limit=100
+Authorization: Bearer {{authToken}}
+
+### Crafto Home Feed - Production
+GET {{baseUrlProd}}/crafto/home/v1.7?limit=20
+Authorization: Bearer {{authToken}}
+
+
+### Test Background Removal via URL (Next.js Proxy)
+POST {{localUrl}}/image-processing/remove-bg
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "image_url": "https://img.freepik.com/free-photo/bearded-man-denim-shirt-round-glasses_273609-11768.jpg?w=2000"
+}
+
+### Test Background Removal via File Upload (Next.js Proxy)
+# functionality depends on HTTP client support for file uploads
+POST {{baseUrl}}/image-processing/remove-bg
+Content-Type: multipart/form-data; boundary=boundary
+Authorization: Bearer {{authToken}}
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="test_image.jpg"
+Content-Type: image/jpeg
+
+###
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Great app! Very useful for tracking payments.",
+  "packageName": "com.alertpay.app"
+}
+
+### Store Play Store Rating - With All Optional Fields
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Excellent app! Highly recommended.",
+  "reviewTitle": "Best payment app",
+  "packageName": "com.alertpay.app",
+  "appVersion": "1.2.3",
+  "deviceModel": "Pixel 7",
+  "osVersion": "14",
+  "language": "en-US",
+  "submittedToPlayStore": false
+}
+
+### Store Play Store Rating - Mark as Submitted to Play Store
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Love this app!",
+  "submittedToPlayStore": true
+}
+
+### Store Play Store Rating - Minimal (Rating Only)
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 4
+}
+
+### Store Play Store Rating - With Review Only
+POST {{baseUrl}}/playstore-rating
+Content-Type: application/json
+X-App-ID: alertpay-android
+Authorization: Bearer {{authToken}}
+
+{
+  "rating": 5,
+  "review": "Excellent app! Highly recommended."
+}
+
+###
+
+POST https://preprod.kiranaapps.com/api/phonepe
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+X-PhonePe-Env: DEV
+Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
+
+{
+  "action": "create-order-with-auth",
+  "redirectUrl": "alertpay://order-app/payment-status"
+}
+
+###
+
+POST https://preprod.kiranaapps.com/api/phonepe
+Content-Type: application/json
+X-App-ID: com.paymentalert.app
+X-PhonePe-Env: DEV
+Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
+
+{
+  "action": "get-sdk-config"
+}

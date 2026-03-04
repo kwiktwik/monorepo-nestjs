@@ -1,0 +1,2 @@
+ALTER TABLE "play_store_ratings" ADD COLUMN "submitted_to_play_store_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "play_store_ratings_submittedAt_idx" ON "play_store_ratings" USING btree ("submitted_to_play_store_at");

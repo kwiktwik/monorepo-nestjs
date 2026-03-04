@@ -1,0 +1,408 @@
+@baseUrl = https://alertpay.kiranaapps.com/api
+@localUrl = http://localhost:8000/api
+
+# Bearer token from Better Auth (get from login response)
+@bearerToken = 7SNBqcNYl4WOu30s8RZcoEiHeGCxxCZG
+
+### ===== KRAFTO / CRAFTO API =====
+### These endpoints require authentication via Bearer token
+
+### ===== CATEGORIES =====
+
+### Get All Categories (Local)
+# Returns all unique category types from the crafto_quotes table
+# 
+# Response (200 OK):
+# {
+#   "categories": ["category1", "category2", ...],
+#   "count": 10
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+GET {{localUrl}}/crafto/categories
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get All Categories (Production)
+GET {{baseUrl}}/crafto/categories
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+
+### ===== FEED / HOME =====
+
+### Get Crafto Feed - First Page (Local)
+# Fetches the most recent crafto quotes
+# 
+# Query Parameters:
+# - cursor: (Recommended) Base64 encoded cursor for pagination
+#           Use the 'cursor' value from the previous response for the next page
+# - offset: (Deprecated) Offset string in YYYYMMDDHH format (IST timezone)
+#           If not provided, returns most recent quotes
+# - limit: (optional) Number of items per page (default: 20, max: 100)
+# - category: (optional) Category type filter (e.g., "motivational", "funny")
+# 
+# Response (200 OK):
+# {
+#   "filterText": null,
+#   "selectedFilterId": null,
+#   "data": [
+#     {
+#       "type": "QUOTE",
+#       "data": { ... raw_json content ... }
+#     },
+#     ...
+#   ],
+#   "offset": "2026011615",  // Deprecated: Use cursor instead
+#   "cursor": "eyJ0aW1lc3RhbXAiOiIyMDI2LTAxLTE2VDE1OjAwOjAwLjAwMFoiLCJpZCI6MTIzfQ==",  // Use this for next page
+#   "hasMore": true,  // Indicates if there are more items to load
+#   "limit": 20,
+#   "popup": null,
+#   "isBuggyFeedAlertWhitelisted": false,
+#   "configuration": {
+#     "logImageLoadExceptionEvents": true,
+#     "logImageLoadSuccessEvent": false,
+#     "logVideoExceptionEvent": true,
+#     "logVideoLoadSuccessEvent": false
+#   }
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+GET {{localUrl}}/crafto/home/v1.7
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - First Page (Production)
+GET {{baseUrl}}/crafto/home/v1.7
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - With Custom Limit (Local)
+# Fetch 50 items per page
+GET {{localUrl}}/crafto/home/v1.7?limit=50
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - Next Page with Cursor (Local) - RECOMMENDED
+# Infinite Scroll: Use the cursor from previous response to get next page
+# This is the RECOMMENDED approach for infinite scroll
+# Example cursor: eyJ0aW1lc3RhbXAiOiIyMDI2LTAxLTE2VDE1OjAwOjAwLjAwMFoiLCJpZCI6MTIzfQ==
+GET {{localUrl}}/crafto/home/v1.7?cursor=PASTE_CURSOR_FROM_PREVIOUS_RESPONSE&limit=20
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - With Offset (Local) - DEPRECATED
+# Pagination: Use the offset from previous response to get next page
+# Example offset: 2026011612 (YYYYMMDDHH in IST)
+# NOTE: This method is deprecated. Use cursor-based pagination instead.
+GET {{localUrl}}/crafto/home/v1.7?offset=2026011612&limit=20
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - With Category Filter (Local)
+# Filter by category type
+GET {{localUrl}}/crafto/home/v1.7?category=motivational&limit=20
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### Get Crafto Feed - With All Parameters (Production)
+GET {{baseUrl}}/crafto/home/v1.7?cursor=PASTE_CURSOR_FROM_PREVIOUS_RESPONSE&limit=30&category=funny
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+
+
+### ===== VIDEO OVERLAY =====
+
+### Video Overlay - Health Check (Local)
+# Returns service status and configuration
+# 
+# Response (200 OK):
+# {
+#   "status": "ok",
+#   "service": "video-overlay",
+#   "maxVideoSize": 104857600,
+#   "maxOverlays": 10,
+#   "supportedVideoFormats": [".mp4", ".mov", ".avi"],
+#   "supportedImageFormats": [".png", ".jpg", ".jpeg"]
+# }
+GET {{localUrl}}/video/overlay
+Content-Type: application/json
+
+### Video Overlay - Health Check (Production)
+GET {{baseUrl}}/video/overlay
+Content-Type: application/json
+
+### Video Overlay - Process Video (Local)
+# Processes a video with custom overlays (images/text)
+# Requires authentication via Bearer token
+# 
+# Request Body:
+# {
+#   "videoUrl": "https://example.com/video.mp4",
+#   "overlays": [
+#     {
+#       "type": "image",
+#       "imageUrl": "https://example.com/image.png",
+#       "imageShape": "CIRCLE",  // or "RECTANGLE", "ROUNDED_RECTANGLE", "BLURRED CIRCLE"
+#       "x": 10,
+#       "y": 10,
+#       "width": 100,
+#       "height": 100,
+#       "startTime": 0,
+#       "endTime": 5
+#     },
+#     {
+#       "type": "text",
+#       "text": "Hello World",
+#       "x": 50,
+#       "y": 50,
+#       "fontSize": 24,
+#       "fontColor": "#FFFFFF",
+#       "startTime": 0,
+#       "endTime": 10
+#     }
+#   ]
+# }
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "videoUrl": "https://storage.googleapis.com/...",
+#   "processingTime": 5423
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "videoUrl is required"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "success": false,
+#   "error": "Video processing failed",
+#   "processingTime": 1234
+# }
+POST {{localUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+{
+  "videoUrl": "https://storage.googleapis.com/alertpay-videos/sample-video.mp4",
+  "overlays": [
+    {
+      "type": "image",
+      "imageUrl": "https://example.com/logo.png",
+      "imageShape": "CIRCLE",
+      "x": 10,
+      "y": 10,
+      "width": 100,
+      "height": 100,
+      "startTime": 0,
+      "endTime": 5
+    },
+    {
+      "type": "text",
+      "text": "Sample Overlay",
+      "x": 50,
+      "y": 200,
+      "fontSize": 32,
+      "fontColor": "#FFFFFF",
+      "startTime": 0,
+      "endTime": 10
+    }
+  ]
+}
+
+### Video Overlay - Process Video (Production)
+POST {{baseUrl}}/video/overlay
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+{
+  "videoUrl": "https://storage.googleapis.com/alertpay-videos/sample-video.mp4",
+  "overlays": [
+    {
+      "type": "image",
+      "imageUrl": "https://example.com/logo.png",
+      "imageShape": "CIRCLE",
+      "x": 10,
+      "y": 10,
+      "width": 100,
+      "height": 100,
+      "startTime": 0,
+      "endTime": 5
+    }
+  ]
+}
+
+### ===== VIDEO OVERLAY V1 (Python Backend Proxy) =====
+### Note: This endpoint proxies all video overlay requests to the Python backend
+### for advanced video processing capabilities
+
+### Video Overlay V1 - Health Check (Local)
+# Health check that proxies to Python backend
+# 
+# Response (200 OK) - Python backend is healthy:
+# {
+#   "status": "ok",
+#   "service": "video-overlay-python"
+# }
+# 
+# Response (503 Service Unavailable) - Python backend unavailable:
+# {
+#   "status": "error",
+#   "service": "video-overlay",
+#   "error": "Python backend unavailable",
+#   "backendUrl": "http://localhost:8000"
+# }
+GET {{localUrl}}/video/overlay/v1
+Content-Type: application/json
+
+### Video Overlay V1 - Health Check (Production)
+GET {{baseUrl}}/video/overlay/v1
+Content-Type: application/json
+
+
+### ===== VIDEO OVERLAY BY CONTENT ID =====
+### Simplified endpoint - processes video using pre-configured overlay settings
+### Only requires contentId and image (URL or base64 data)
+
+### Video Overlay By Content ID - Process (Local)
+# Processes a video with pre-configured overlay settings from database
+# Only requires contentId and the image to overlay
+# Overlay position, timing, and shape are fetched from DB using contentId
+# Requires authentication via Bearer token
+# 
+# Request Body:
+# {
+#   "contentId": "quote_123",
+#   "imageUrl": "https://example.com/image.png"
+# }
+# 
+# OR with base64 image data:
+# {
+#   "contentId": "quote_123",
+#   "imageData": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+# }
+# 
+# Response (200 OK):
+# {
+#   "success": true,
+#   "videoUrl": "https://storage.googleapis.com/...",
+#   "processingTime": 5423
+# }
+# 
+# Response (400 Bad Request):
+# {
+#   "error": "contentId is required"
+# }
+# OR
+# {
+#   "error": "Either imageUrl or imageData must be provided"
+# }
+# 
+# Response (401 Unauthorized):
+# {
+#   "error": "Unauthorized - no valid session"
+# }
+# 
+# Response (500 Internal Server Error):
+# {
+#   "success": false,
+#   "error": "Video processing failed",
+#   "processingTime": 1234
+# }
+POST {{baseUrl}}/video/overlay/by-content-id
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+{
+  "contentId": "6601915",
+  "imageUrl": "https://cnd.storyowl.app/jamun-andriod/WoIHGy328w69P33Tw3HfRngLRpemvUyP/user-images/1769753529380_pfp_1769753528864.png"
+}
+
+### Video Overlay By Content ID - With Base64 Image (Local)
+POST {{baseUrl}}/video/overlay/by-content-id
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+{
+  "contentId": "6602187",
+  "imageData": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+}
+
+### Video Overlay By Content ID - Process (Production)
+POST {{localUrl}}/video/overlay/by-content-id
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+{
+  "contentId": "6391860",
+  "imageUrl": "https://img.freepik.com/premium-photo/man-with-beard-blue-shirt-is-standing-front-crowd_1187092-137326.jpg?w=2000",
+  "imagePercentageFromStart": 30,
+  "imagePercentageFromTop": 59.41,
+  "imagePercentageWidth": 44.41,
+  "imageSizeExperimentMultiplier": 0.7,
+  "increaseDefaultProfileSizeByValue": 10,
+  "imageShape": "CIRCLE",
+  "shapeImageUrl": "https://cnd.storyowl.app/migrated/migration_160FiikO3zmH0Vg1p69ZK.png"
+}
+
+### ===== IMAGE PROCESSING =====
+
+### Remove Background (Local)
+# Removes background from an uploaded image
+# Returns the image with transparent background in PNG format
+#
+# Request: Multipart form data with 'file' field
+# Response: Image file (image/png)
+POST {{localUrl}}/v1/image-processing/remove-bg
+Content-Type: multipart/form-data; boundary=boundary
+Authorization: Bearer {{bearerToken}}
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="test_image.jpg"
+Content-Type: image/jpeg
+
+< ./test_image.jpg
+--boundary--
+
+### Remove Background (Production)
+POST {{baseUrl}}/v1/image-processing/remove-bg
+Content-Type: multipart/form-data; boundary=boundary
+Authorization: Bearer {{bearerToken}}
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="test_image.jpg"
+Content-Type: image/jpeg
+
+< ./test_image.jpg
+--boundary--
+
+### Remove Background via URL (Local)
+# Removes background from an image URL
+POST {{localUrl}}/v1/image-processing/remove-bg
+Content-Type: application/x-www-form-urlencoded
+Authorization: Bearer {{bearerToken}}
+
+image_url=https://img.freepik.com/free-photo/bearded-man-denim-shirt-round-glasses_273609-11768.jpg?t=st=1769486744~exp=1769490344~hmac=a50d5e064bf827ffd4d75e0bc557cd5bac427c6c2e25815148130ec18c4fca49&w=2000
+
+### Remove Background via URL (Production)
+POST {{baseUrl}}/v1/image-processing/remove-bg
+Content-Type: application/x-www-form-urlencoded
+Authorization: Bearer {{bearerToken}}
+
+image_url=https://img.freepik.com/premium-photo/man-with-beard-blue-shirt-is-standing-front-crowd_1187092-137326.jpg?w=2000
+

@@ -1,0 +1,1 @@
+ALTER TABLE "user_images" ADD COLUMN "removed_bg_image_url" text;
