@@ -1119,44 +1119,36 @@ export async function POST(request: NextRequest) {
               userMeta.length > 0 && userMeta[0].hasCancelledSubscription;
 
             // Mark user as having cancelled a subscription (create or update)
-            if (!isAbuser) {
-              if (userMeta.length > 0) {
-                // Update existing record
-                await db
-                  .update(userMetadata)
-                  .set({
+            // We use upsert to cleanly handle concurrent requests and missing records
+            try {
+              await db
+                .insert(userMetadata)
+                .values({
+                  userId: userId,
+                  appId: appId,
+                  hasCancelledSubscription: true,
+                  createdAt: now,
+                  updatedAt: now,
+                })
+                .onConflictDoUpdate({
+                  target: [userMetadata.userId, userMetadata.appId],
+                  set: {
                     hasCancelledSubscription: true,
                     updatedAt: now,
-                  })
-                  .where(
-                    and(
-                      eq(userMetadata.userId, userId),
-                      eq(userMetadata.appId, appId),
-                    ),
-                  );
-              } else {
-                // Create new userMetadata record
-                try {
-                  await db.insert(userMetadata).values({
-                    userId: userId,
-                    appId: appId,
-                    hasCancelledSubscription: true,
-                    createdAt: now,
-                    updatedAt: now,
-                  });
-                  console.log(
-                    `[WEBHOOK ${requestId}] ✅ Created userMetadata for user ${userId} app ${appId}`,
-                  );
-                } catch (insertError) {
-                  console.error(
-                    `[WEBHOOK ${requestId}] ❌ Failed to create userMetadata:`,
-                    insertError,
-                  );
-                  // Don't throw - continue with subscription cancellation
-                }
-              }
+                  },
+                });
+
               console.log(
                 `[WEBHOOK ${requestId}] ✅ User ${userId} marked as subscription canceller for app ${appId}`,
+              );
+
+              // If we just marked them, they weren't an abuser before this request
+              // But for the calculation below, we might want to treat them as an abuser 
+              // if they were already marked. The isAbuser flag from the select above is correct.
+            } catch (upsertError) {
+              console.error(
+                `[WEBHOOK ${requestId}] ❌ Failed to upsert userMetadata:`,
+                upsertError,
               );
             }
 
