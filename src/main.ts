@@ -111,7 +111,7 @@ async function bootstrap() {
     process.env.USE_MOCK_DB === 'true' ||
     process.env.NODE_ENV === 'test'
   ) {
-    logger.log(`🐛 DB Debug UI: http://localhost:${port}/debug/db`);
+    logger.log(`🐛 DB Debug UI: http://localhost:${port}/api/debug/db`);
   }
 }
 
