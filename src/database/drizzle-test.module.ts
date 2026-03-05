@@ -76,7 +76,7 @@ import * as fs from 'fs';
 
           // Seed the in-memory database
           console.log('[DrizzleTestModule] Starting database seeding...');
-          const { seedDatabase } = require('../../scripts/test-db/seed');
+          const { seedDatabase } = require('../../../scripts/test-db/seed');
           await seedDatabase(dDb);
           console.log('[DrizzleTestModule] Database seeding completed ✓');
 
