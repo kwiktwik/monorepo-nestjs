@@ -6,6 +6,7 @@ import {
   subscriptions,
   subscriptionLogs,
   orders,
+  userMetadata,
 } from "@/db/schema";
 import { eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -132,7 +133,7 @@ export async function getUserBillingDataAction(userId: string) {
     const isFullAdmin = isAllowedAdmin(session.user.phoneNumber);
     const targetUserId = isFullAdmin ? userId : session.user.id;
 
-    const [razorpaySubs, razorpayOrders] = await Promise.all([
+    const [razorpaySubs, razorpayOrders, metadata] = await Promise.all([
       db
         .select({
           id: subscriptions.id,
@@ -158,6 +159,18 @@ export async function getUserBillingDataAction(userId: string) {
         })
         .from(orders)
         .where(eq(orders.userId, targetUserId)),
+      db
+        .select({
+          id: userMetadata.id,
+          appId: userMetadata.appId,
+          upiVpa: userMetadata.upiVpa,
+          audioLanguage: userMetadata.audioLanguage,
+          hasCancelledSubscription: userMetadata.hasCancelledSubscription,
+          createdAt: userMetadata.createdAt,
+          updatedAt: userMetadata.updatedAt,
+        })
+        .from(userMetadata)
+        .where(eq(userMetadata.userId, targetUserId)),
     ]);
 
     return {
@@ -165,6 +178,7 @@ export async function getUserBillingDataAction(userId: string) {
       data: {
         subscriptions: razorpaySubs,
         orders: razorpayOrders,
+        metadata,
       },
     };
   } catch (error) {

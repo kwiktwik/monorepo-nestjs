@@ -30,6 +30,15 @@ type AdminUserBillingData = {
     chargeAt: string | null;
     createdAt: string | null;
   }[];
+  metadata: {
+    id: number;
+    appId: string | null;
+    upiVpa: string | null;
+    audioLanguage: string | null;
+    hasCancelledSubscription: boolean;
+    createdAt: string | null;
+    updatedAt: string | null;
+  }[];
   orders: {
     id: string;
     appId: string | null;
@@ -344,7 +353,7 @@ export function AdminUserSearch({
 
           {billingData && !billingLoading && !billingError && (
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
                   <div className="text-zinc-500">Subscriptions</div>
                   <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -355,6 +364,12 @@ export function AdminUserSearch({
                   <div className="text-zinc-500">Orders</div>
                   <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                     {billingData.orders.length}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="text-zinc-500">User metadata records</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                    {billingData.metadata.length}
                   </div>
                 </div>
               </div>
@@ -387,6 +402,44 @@ export function AdminUserSearch({
                             <td className="px-4 py-2">{formatDateTime(sub.currentEnd)}</td>
                             <td className="px-4 py-2">{formatDateTime(sub.endAt)}</td>
                             <td className="px-4 py-2">{formatDateTime(sub.chargeAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {billingData.metadata.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
+                    User metadata (per app)
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
+                      <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">App</th>
+                          <th className="px-4 py-2 font-medium">UPI VPA</th>
+                          <th className="px-4 py-2 font-medium">Audio language</th>
+                          <th className="px-4 py-2 font-medium">Has cancelled subscription</th>
+                          <th className="px-4 py-2 font-medium">Created</th>
+                          <th className="px-4 py-2 font-medium">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {billingData.metadata.map((meta) => (
+                          <tr key={meta.id}>
+                            <td className="px-4 py-2">{meta.appId || "default"}</td>
+                            <td className="px-4 py-2 font-mono text-xs">
+                              {meta.upiVpa || "—"}
+                            </td>
+                            <td className="px-4 py-2">{meta.audioLanguage || "—"}</td>
+                            <td className="px-4 py-2">
+                              {meta.hasCancelledSubscription ? "Yes" : "No"}
+                            </td>
+                            <td className="px-4 py-2">{formatDateTime(meta.createdAt)}</td>
+                            <td className="px-4 py-2">{formatDateTime(meta.updatedAt)}</td>
                           </tr>
                         ))}
                       </tbody>
