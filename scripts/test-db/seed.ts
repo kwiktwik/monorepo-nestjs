@@ -8,9 +8,9 @@ import * as path from 'path';
  *
  * @param db The initialized drizzle instance
  */
-export async function seedDatabase(db: any) {
+async function seedDatabase(db: any) {
     try {
-        const seedFilePath = path.join(__dirname, '../drizzle/seed.json');
+        const seedFilePath = path.join(__dirname, 'seed.json');
         console.log(`Reading seed data from ${seedFilePath}...`);
 
         if (!fs.existsSync(seedFilePath)) {
@@ -20,6 +20,7 @@ export async function seedDatabase(db: any) {
         const seedData = JSON.parse(fs.readFileSync(seedFilePath, 'utf8'));
 
         // Define table insertion order to be safe (parents first)
+        // Note: team_notifications and abandoned_checkouts don't exist in schema
         const tablesToSeed = [
             { name: 'user', schema: schema.user },
             { name: 'account', schema: schema.account },
@@ -51,8 +52,8 @@ export async function seedDatabase(db: any) {
                     try {
                         await db.insert(tableSchema).values(chunk).onConflictDoNothing();
                         inserted += chunk.length;
-                    } catch (err) {
-                        console.warn(`Error inserting chunk in ${name}:`, err.message);
+                    } catch (err: any) {
+                        console.warn(`Error inserting chunk in ${name}:`, err.message || err);
                     }
                 }
 
@@ -69,3 +70,5 @@ export async function seedDatabase(db: any) {
         throw err;
     }
 }
+
+export { seedDatabase };
