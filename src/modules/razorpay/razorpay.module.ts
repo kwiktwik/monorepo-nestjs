@@ -1,5 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { RazorpayController } from './razorpay.controller';
+import { RazorpayPlansController } from './razorpay-plans.controller';
 import { RazorpayService } from './razorpay.service';
 import { RazorpayWebhookController } from './razorpay-webhook.controller';
 import { RazorpayWebhookService } from './razorpay-webhook.service';
@@ -34,7 +35,11 @@ function rawBodyMiddleware(
 
 @Module({
   imports: [AnalyticsModule],
-  controllers: [RazorpayController, RazorpayWebhookController],
+  controllers: [
+    RazorpayController,
+    RazorpayPlansController,
+    RazorpayWebhookController,
+  ],
   providers: [
     {
       provide: RazorpayService,
