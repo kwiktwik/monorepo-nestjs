@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import * as path from 'path';
 import * as fs from 'fs';
+import { seedDatabase } from '../../scripts/test-db/seed';
 
 @Global()
 @Module({
@@ -72,6 +73,12 @@ import * as fs from 'fs';
           console.log(
             '[DrizzleTestModule] All migrations applied successfully ✓',
           );
+
+          // Seed the in-memory database
+          console.log('[DrizzleTestModule] Starting database seeding...');
+          await seedDatabase(dDb);
+          console.log('[DrizzleTestModule] Database seeding completed ✓');
+
         } catch (error) {
           console.error('[DrizzleTestModule] Migration failed:', error);
           throw error;
@@ -83,4 +90,4 @@ import * as fs from 'fs';
   ],
   exports: [DRIZZLE_TOKEN],
 })
-export class DrizzleTestModule {}
+export class DrizzleTestModule { }
