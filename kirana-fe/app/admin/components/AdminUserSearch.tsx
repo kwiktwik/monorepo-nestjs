@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { searchUserAction, expireSubscriptionDataAction } from "../user-actions";
+import { useEffect, useState } from "react";
+import { searchUserAction, expireSubscriptionDataAction, getUserBillingDataAction } from "../user-actions";
 import { Search, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
 import { useAdminBackend } from "./AdminBackendContext";
 
@@ -19,6 +19,40 @@ type SelfUser = {
   phoneNumber?: string | null;
 };
 
+type AdminUserBillingData = {
+  subscriptions: {
+    id: string;
+    appId: string | null;
+    status: string | null;
+    startAt: string | null;
+    endAt: string | null;
+    currentEnd: string | null;
+    chargeAt: string | null;
+    createdAt: string | null;
+  }[];
+  phonepeSubscriptions: {
+    id: number;
+    appId: string | null;
+    merchantSubscriptionId: string | null;
+    state: string | null;
+    amount: number | null;
+    frequency: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    nextChargeDate: string | null;
+    createdAt: string | null;
+  }[];
+  orders: {
+    id: string;
+    appId: string | null;
+    status: string | null;
+    amount: number | null;
+    currency: string | null;
+    razorpayOrderId: string | null;
+    createdAt: string | null;
+  }[];
+};
+
 export function AdminUserSearch({
   restrictToSelf = false,
   selfUser,
@@ -33,6 +67,71 @@ export function AdminUserSearch({
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [billingData, setBillingData] = useState<AdminUserBillingData | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState("");
+
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString();
+  };
+
+  const formatAmount = (amount: number | null | undefined, currency?: string | null) => {
+    if (amount == null) return "—";
+    const rupees = amount / 100;
+    const prefix = currency || "INR";
+    return `${prefix} ${rupees.toFixed(2)}`;
+  };
+
+  // On first load (for local backend), show billing data for the current logged-in user (if provided)
+  useEffect(() => {
+    if (backend !== "local") return;
+    if (!selfUser || selectedUser || billingLoading) return;
+
+    const initialUser: AdminUser = {
+      id: selfUser.id,
+      name: selfUser.name ?? "",
+      email: selfUser.email ?? "",
+      phoneNumber: selfUser.phoneNumber ?? undefined,
+    };
+
+    setSelectedUser(initialUser);
+
+    let cancelled = false;
+    const load = async () => {
+      setBillingLoading(true);
+      setBillingError("");
+      try {
+        const res = await getUserBillingDataAction(selfUser.id);
+        if (!cancelled) {
+          if (res.success) {
+            setBillingData(res.data as unknown as AdminUserBillingData);
+          } else {
+            setBillingData(null);
+            setBillingError(res.error || "Failed to load billing data");
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setBillingData(null);
+          setBillingError("An unexpected error occurred while loading billing data");
+        }
+      } finally {
+        if (!cancelled) {
+          setBillingLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backend, selfUser, selectedUser, billingLoading]);
 
   if (backend === "kwiktwik") {
     return (
@@ -85,6 +184,26 @@ export function AdminUserSearch({
       alert("An unexpected error occurred during expiring");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleViewBilling = async (user: AdminUser) => {
+    setSelectedUser(user);
+    setBillingLoading(true);
+    setBillingError("");
+    try {
+      const res = await getUserBillingDataAction(user.id);
+      if (res.success) {
+        setBillingData(res.data as unknown as AdminUserBillingData);
+      } else {
+        setBillingData(null);
+        setBillingError(res.error || "Failed to load billing data");
+      }
+    } catch {
+      setBillingData(null);
+      setBillingError("An unexpected error occurred while loading billing data");
+    } finally {
+      setBillingLoading(false);
     }
   };
 
@@ -207,31 +326,42 @@ export function AdminUserSearch({
                     </div>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    {confirmDelete === u.id ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setConfirmDelete(null)}
-                          className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleDelete(u.id)}
-                          disabled={deletingId === u.id}
-                          className="flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {deletingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm Expire"}
-                        </button>
-                      </div>
-                    ) : (
+                    <div className="flex flex-col items-end gap-2">
                       <button
-                        onClick={() => setConfirmDelete(u.id)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleViewBilling(u)}
+                        className="inline-flex items-center gap-1.5 rounded border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Expire Subscriptions
+                        {billingLoading && selectedUser?.id === u.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : null}
+                        <span>View Billing</span>
                       </button>
-                    )}
+                      {confirmDelete === u.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleDelete(u.id)}
+                            disabled={deletingId === u.id}
+                            className="flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {deletingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm Expire"}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDelete(u.id)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Expire Subscriptions
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -244,6 +374,177 @@ export function AdminUserSearch({
           <div className="text-center py-10 text-zinc-500">
               No users found matching your search.
           </div>
+      )}
+
+      {selectedUser && (
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Billing overview for {selectedUser.name || selectedUser.email || selectedUser.id}
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Subscription and order data for this user.
+              </p>
+            </div>
+          </div>
+
+          {billingError && (
+            <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600 dark:bg-red-900/10 dark:text-red-400">
+              {billingError}
+            </div>
+          )}
+
+          {billingLoading && !billingError && (
+            <div className="flex items-center gap-2 text-xs text-zinc-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading billing data...
+            </div>
+          )}
+
+          {billingData && !billingLoading && !billingError && (
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="text-zinc-500">Razorpay subscriptions</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                    {billingData.subscriptions.length}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="text-zinc-500">PhonePe subscriptions</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                    {billingData.phonepeSubscriptions.length}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="text-zinc-500">Orders</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                    {billingData.orders.length}
+                  </div>
+                </div>
+              </div>
+
+              {billingData.subscriptions.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
+                    Razorpay subscriptions
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
+                      <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">ID</th>
+                          <th className="px-4 py-2 font-medium">App</th>
+                          <th className="px-4 py-2 font-medium">Status</th>
+                          <th className="px-4 py-2 font-medium">Start</th>
+                          <th className="px-4 py-2 font-medium">Current Period End</th>
+                          <th className="px-4 py-2 font-medium">End</th>
+                          <th className="px-4 py-2 font-medium">Next charge</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {billingData.subscriptions.map((sub) => (
+                          <tr key={sub.id}>
+                            <td className="px-4 py-2 font-mono">{sub.id}</td>
+                            <td className="px-4 py-2">{sub.appId || "default"}</td>
+                            <td className="px-4 py-2">{sub.status}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.startAt)}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.currentEnd)}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.endAt)}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.chargeAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {billingData.phonepeSubscriptions.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
+                    PhonePe subscriptions
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
+                      <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">Merchant sub ID</th>
+                          <th className="px-4 py-2 font-medium">App</th>
+                          <th className="px-4 py-2 font-medium">State</th>
+                          <th className="px-4 py-2 font-medium">Amount</th>
+                          <th className="px-4 py-2 font-medium">Frequency</th>
+                          <th className="px-4 py-2 font-medium">Start</th>
+                          <th className="px-4 py-2 font-medium">End</th>
+                          <th className="px-4 py-2 font-medium">Next charge</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {billingData.phonepeSubscriptions.map((sub) => (
+                          <tr key={sub.id}>
+                            <td className="px-4 py-2 font-mono">
+                              {sub.merchantSubscriptionId || "—"}
+                            </td>
+                            <td className="px-4 py-2">{sub.appId || "default"}</td>
+                            <td className="px-4 py-2">{sub.state}</td>
+                            <td className="px-4 py-2">
+                              {formatAmount(sub.amount, "INR")}
+                            </td>
+                            <td className="px-4 py-2">{sub.frequency || "—"}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.startDate)}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.endDate)}</td>
+                            <td className="px-4 py-2">{formatDateTime(sub.nextChargeDate)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {billingData.orders.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
+                    Orders
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
+                      <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">Order ID</th>
+                          <th className="px-4 py-2 font-medium">App</th>
+                          <th className="px-4 py-2 font-medium">Status</th>
+                          <th className="px-4 py-2 font-medium">Amount</th>
+                          <th className="px-4 py-2 font-medium">Currency</th>
+                          <th className="px-4 py-2 font-medium">Razorpay order</th>
+                          <th className="px-4 py-2 font-medium">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {billingData.orders.map((order) => (
+                          <tr key={order.id}>
+                            <td className="px-4 py-2 font-mono">{order.id}</td>
+                            <td className="px-4 py-2">{order.appId || "default"}</td>
+                            <td className="px-4 py-2">{order.status}</td>
+                            <td className="px-4 py-2">
+                              {formatAmount(order.amount, order.currency)}
+                            </td>
+                            <td className="px-4 py-2">{order.currency || "INR"}</td>
+                            <td className="px-4 py-2 font-mono text-xs">
+                              {order.razorpayOrderId || "—"}
+                            </td>
+                            <td className="px-4 py-2">{formatDateTime(order.createdAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
