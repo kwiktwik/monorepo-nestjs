@@ -6,10 +6,8 @@ import {
   subscriptions,
   phonepeSubscriptions,
   subscriptionLogs,
-  subscriptionStatusEnum,
-  phonepeSubscriptionStateEnum,
 } from "@/db/schema";
-import { and, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isAllowedAdmin, requireSubscriptionAdmin } from "@/lib/better-auth/auth-utils";
 
@@ -67,26 +65,6 @@ export async function expireSubscriptionDataAction(userId: string) {
 
     const now = new Date();
 
-    type SubscriptionStatus =
-      (typeof subscriptionStatusEnum.enumValues)[number];
-    type PhonepeSubscriptionState =
-      (typeof phonepeSubscriptionStateEnum.enumValues)[number];
-
-    const razorpayStatusesToExpire = [
-      "created",
-      "authenticated",
-      "active",
-      "pending",
-      "halted",
-    ] as const satisfies readonly SubscriptionStatus[];
-
-    const phonepeStatesToExpire = [
-      "CREATED",
-      "AUTHENTICATED",
-      "ACTIVE",
-      "PAUSED",
-    ] as const satisfies readonly PhonepeSubscriptionState[];
-
     const razorpaySubsToExpire = await db
       .select({
         id: subscriptions.id,
@@ -95,12 +73,7 @@ export async function expireSubscriptionDataAction(userId: string) {
         status: subscriptions.status,
       })
       .from(subscriptions)
-      .where(
-        and(
-          eq(subscriptions.userId, targetUserId),
-          inArray(subscriptions.status, razorpayStatusesToExpire),
-        ),
-      );
+      .where(eq(subscriptions.userId, targetUserId));
 
     const phonepeSubsToExpire = await db
       .select({
@@ -110,12 +83,7 @@ export async function expireSubscriptionDataAction(userId: string) {
         state: phonepeSubscriptions.state,
       })
       .from(phonepeSubscriptions)
-      .where(
-        and(
-          eq(phonepeSubscriptions.userId, targetUserId),
-          inArray(phonepeSubscriptions.state, phonepeStatesToExpire),
-        ),
-      );
+      .where(eq(phonepeSubscriptions.userId, targetUserId));
 
     if (razorpaySubsToExpire.length > 0) {
       await db
@@ -127,12 +95,7 @@ export async function expireSubscriptionDataAction(userId: string) {
           chargeAt: null,
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(subscriptions.userId, targetUserId),
-            inArray(subscriptions.status, razorpayStatusesToExpire),
-          ),
-        );
+        .where(eq(subscriptions.userId, targetUserId));
 
       await db.insert(subscriptionLogs).values(
         razorpaySubsToExpire.map((s) => ({
@@ -159,12 +122,7 @@ export async function expireSubscriptionDataAction(userId: string) {
           nextChargeDate: null,
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(phonepeSubscriptions.userId, targetUserId),
-            inArray(phonepeSubscriptions.state, phonepeStatesToExpire),
-          ),
-        );
+        .where(eq(phonepeSubscriptions.userId, targetUserId));
 
       await db.insert(subscriptionLogs).values(
         phonepeSubsToExpire.map((s) => ({
