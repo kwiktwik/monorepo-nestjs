@@ -8,7 +8,7 @@ import * as path from 'path';
  *
  * @param db The initialized drizzle instance
  */
-async function seedDatabase(db: any) {
+export async function seedDatabase(db: any) {
     try {
         const seedFilePath = path.join(__dirname, 'seed.json');
         console.log(`Reading seed data from ${seedFilePath}...`);
@@ -71,4 +71,3 @@ async function seedDatabase(db: any) {
     }
 }
 
-export { seedDatabase };

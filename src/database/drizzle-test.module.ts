@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import * as path from 'path';
 import * as fs from 'fs';
-import { seedDatabase } from '../../scripts/test-db/seed';
+
 
 @Global()
 @Module({
@@ -76,6 +76,7 @@ import { seedDatabase } from '../../scripts/test-db/seed';
 
           // Seed the in-memory database
           console.log('[DrizzleTestModule] Starting database seeding...');
+          const { seedDatabase } = require('../../scripts/test-db/seed');
           await seedDatabase(dDb);
           console.log('[DrizzleTestModule] Database seeding completed ✓');
 
