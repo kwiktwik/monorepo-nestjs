@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { searchUserAction, expireSubscriptionDataAction, getUserBillingDataAction } from "../user-actions";
 import { Search, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
 import { useAdminBackend } from "./AdminBackendContext";
@@ -73,53 +73,6 @@ export function AdminUserSearch({
     const prefix = currency || "INR";
     return `${prefix} ${rupees.toFixed(2)}`;
   };
-
-  // On first load (for local backend), show billing data for the current logged-in user (if provided)
-  useEffect(() => {
-    if (backend !== "local") return;
-    if (!selfUser || selectedUser || billingLoading) return;
-
-    const initialUser: AdminUser = {
-      id: selfUser.id,
-      name: selfUser.name ?? "",
-      email: selfUser.email ?? "",
-      phoneNumber: selfUser.phoneNumber ?? undefined,
-    };
-
-    setSelectedUser(initialUser);
-
-    let cancelled = false;
-    const load = async () => {
-      setBillingLoading(true);
-      setBillingError("");
-      try {
-        const res = await getUserBillingDataAction(selfUser.id);
-        if (!cancelled) {
-          if (res.success) {
-            setBillingData(res.data as unknown as AdminUserBillingData);
-          } else {
-            setBillingData(null);
-            setBillingError(res.error || "Failed to load billing data");
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setBillingData(null);
-          setBillingError("An unexpected error occurred while loading billing data");
-        }
-      } finally {
-        if (!cancelled) {
-          setBillingLoading(false);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [backend, selfUser, selectedUser, billingLoading]);
 
   if (backend === "kwiktwik") {
     return (
