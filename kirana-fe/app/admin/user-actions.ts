@@ -4,11 +4,10 @@ import { db } from "@/db";
 import {
   user,
   subscriptions,
-  phonepeSubscriptions,
   subscriptionLogs,
   orders,
 } from "@/db/schema";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isAllowedAdmin, requireSubscriptionAdmin } from "@/lib/better-auth/auth-utils";
 
@@ -76,16 +75,6 @@ export async function expireSubscriptionDataAction(userId: string) {
       .from(subscriptions)
       .where(eq(subscriptions.userId, targetUserId));
 
-    const phonepeSubsToExpire = await db
-      .select({
-        id: phonepeSubscriptions.id,
-        appId: phonepeSubscriptions.appId,
-        merchantSubscriptionId: phonepeSubscriptions.merchantSubscriptionId,
-        state: phonepeSubscriptions.state,
-      })
-      .from(phonepeSubscriptions)
-      .where(eq(phonepeSubscriptions.userId, targetUserId));
-
     if (razorpaySubsToExpire.length > 0) {
       await db
         .update(subscriptions)
@@ -114,39 +103,12 @@ export async function expireSubscriptionDataAction(userId: string) {
       );
     }
 
-    if (phonepeSubsToExpire.length > 0) {
-      await db
-        .update(phonepeSubscriptions)
-        .set({
-          state: "CANCELLED",
-          endDate: now,
-          nextChargeDate: null,
-          updatedAt: now,
-        })
-        .where(eq(phonepeSubscriptions.userId, targetUserId));
-
-      await db.insert(subscriptionLogs).values(
-        phonepeSubsToExpire.map((s) => ({
-          userId: targetUserId,
-          appId: s.appId ?? "alertpay-default",
-          subscriptionId: s.merchantSubscriptionId,
-          provider: "phonepe" as const,
-          action: "manual_expire",
-          status: "CANCELLED",
-          metadata: {
-            reason: "manual_expire_from_admin",
-            previousState: s.state,
-          },
-        })),
-      );
-    }
-
     revalidatePath("/admin");
     return {
       success: true,
       expired: {
         razorpay: razorpaySubsToExpire.length,
-        phonepe: phonepeSubsToExpire.length,
+        phonepe: 0,
       },
     };
   } catch (error) {
@@ -170,7 +132,7 @@ export async function getUserBillingDataAction(userId: string) {
     const isFullAdmin = isAllowedAdmin(session.user.phoneNumber);
     const targetUserId = isFullAdmin ? userId : session.user.id;
 
-    const [razorpaySubs, phonepeSubs, razorpayOrders] = await Promise.all([
+    const [razorpaySubs, razorpayOrders] = await Promise.all([
       db
         .select({
           id: subscriptions.id,
@@ -184,21 +146,6 @@ export async function getUserBillingDataAction(userId: string) {
         })
         .from(subscriptions)
         .where(eq(subscriptions.userId, targetUserId)),
-      db
-        .select({
-          id: phonepeSubscriptions.id,
-          appId: phonepeSubscriptions.appId,
-          merchantSubscriptionId: phonepeSubscriptions.merchantSubscriptionId,
-          state: phonepeSubscriptions.state,
-          amount: phonepeSubscriptions.amount,
-          frequency: phonepeSubscriptions.frequency,
-          startDate: phonepeSubscriptions.startDate,
-          endDate: phonepeSubscriptions.endDate,
-          nextChargeDate: phonepeSubscriptions.nextChargeDate,
-          createdAt: phonepeSubscriptions.createdAt,
-        })
-        .from(phonepeSubscriptions)
-        .where(eq(phonepeSubscriptions.userId, targetUserId)),
       db
         .select({
           id: orders.id,
@@ -217,7 +164,6 @@ export async function getUserBillingDataAction(userId: string) {
       success: true,
       data: {
         subscriptions: razorpaySubs,
-        phonepeSubscriptions: phonepeSubs,
         orders: razorpayOrders,
       },
     };

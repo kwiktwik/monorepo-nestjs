@@ -30,18 +30,6 @@ type AdminUserBillingData = {
     chargeAt: string | null;
     createdAt: string | null;
   }[];
-  phonepeSubscriptions: {
-    id: number;
-    appId: string | null;
-    merchantSubscriptionId: string | null;
-    state: string | null;
-    amount: number | null;
-    frequency: string | null;
-    startDate: string | null;
-    endDate: string | null;
-    nextChargeDate: string | null;
-    createdAt: string | null;
-  }[];
   orders: {
     id: string;
     appId: string | null;
@@ -174,8 +162,7 @@ export function AdminUserSearch({
       const res = await expireSubscriptionDataAction(userId);
       if (res.success) {
         const razorpay = res.expired?.razorpay ?? 0;
-        const phonepe = res.expired?.phonepe ?? 0;
-        alert(`Subscriptions expired successfully (razorpay: ${razorpay}, phonepe: ${phonepe})`);
+        alert(`Subscriptions expired successfully (razorpay: ${razorpay})`);
         setConfirmDelete(null);
       } else {
         alert("Error: " + (res.error || "Failed to expire subscriptions"));
@@ -404,17 +391,11 @@ export function AdminUserSearch({
 
           {billingData && !billingLoading && !billingError && (
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
-                  <div className="text-zinc-500">Razorpay subscriptions</div>
+                  <div className="text-zinc-500">Subscriptions</div>
                   <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                     {billingData.subscriptions.length}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
-                  <div className="text-zinc-500">PhonePe subscriptions</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                    {billingData.phonepeSubscriptions.length}
                   </div>
                 </div>
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950">
@@ -428,7 +409,7 @@ export function AdminUserSearch({
               {billingData.subscriptions.length > 0 && (
                 <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
                   <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
-                    Razorpay subscriptions
+                    Subscriptions
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
@@ -453,48 +434,6 @@ export function AdminUserSearch({
                             <td className="px-4 py-2">{formatDateTime(sub.currentEnd)}</td>
                             <td className="px-4 py-2">{formatDateTime(sub.endAt)}</td>
                             <td className="px-4 py-2">{formatDateTime(sub.chargeAt)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {billingData.phonepeSubscriptions.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white text-xs dark:border-zinc-800 dark:bg-zinc-900/50">
-                  <div className="border-b border-zinc-200 px-4 py-2 font-medium text-zinc-800 dark:border-zinc-800 dark:text-zinc-50">
-                    PhonePe subscriptions
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-t border-zinc-100 text-left dark:border-zinc-800">
-                      <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                        <tr>
-                          <th className="px-4 py-2 font-medium">Merchant sub ID</th>
-                          <th className="px-4 py-2 font-medium">App</th>
-                          <th className="px-4 py-2 font-medium">State</th>
-                          <th className="px-4 py-2 font-medium">Amount</th>
-                          <th className="px-4 py-2 font-medium">Frequency</th>
-                          <th className="px-4 py-2 font-medium">Start</th>
-                          <th className="px-4 py-2 font-medium">End</th>
-                          <th className="px-4 py-2 font-medium">Next charge</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {billingData.phonepeSubscriptions.map((sub) => (
-                          <tr key={sub.id}>
-                            <td className="px-4 py-2 font-mono">
-                              {sub.merchantSubscriptionId || "—"}
-                            </td>
-                            <td className="px-4 py-2">{sub.appId || "default"}</td>
-                            <td className="px-4 py-2">{sub.state}</td>
-                            <td className="px-4 py-2">
-                              {formatAmount(sub.amount, "INR")}
-                            </td>
-                            <td className="px-4 py-2">{sub.frequency || "—"}</td>
-                            <td className="px-4 py-2">{formatDateTime(sub.startDate)}</td>
-                            <td className="px-4 py-2">{formatDateTime(sub.endDate)}</td>
-                            <td className="px-4 py-2">{formatDateTime(sub.nextChargeDate)}</td>
                           </tr>
                         ))}
                       </tbody>
