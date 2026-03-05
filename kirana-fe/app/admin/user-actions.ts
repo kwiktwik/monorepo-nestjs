@@ -6,6 +6,7 @@ import {
   subscriptions,
   phonepeSubscriptions,
   subscriptionLogs,
+  orders,
 } from "@/db/schema";
 import { and, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -152,6 +153,78 @@ export async function expireSubscriptionDataAction(userId: string) {
     console.error("[expireSubscriptionDataAction] Error:", error);
     const message =
       error instanceof Error ? error.message : "Failed to expire subscription data";
+    return {
+      success: false,
+      error: message,
+    };
+  }
+}
+
+/**
+ * Fetches subscription and order-related billing data for a specific user.
+ * Only accessible to authorized subscription-admins.
+ */
+export async function getUserBillingDataAction(userId: string) {
+  try {
+    const session = await requireSubscriptionAdmin();
+    const isFullAdmin = isAllowedAdmin(session.user.phoneNumber);
+    const targetUserId = isFullAdmin ? userId : session.user.id;
+
+    const [razorpaySubs, phonepeSubs, razorpayOrders] = await Promise.all([
+      db
+        .select({
+          id: subscriptions.id,
+          appId: subscriptions.appId,
+          status: subscriptions.status,
+          startAt: subscriptions.startAt,
+          endAt: subscriptions.endAt,
+          currentEnd: subscriptions.currentEnd,
+          chargeAt: subscriptions.chargeAt,
+          createdAt: subscriptions.createdAt,
+        })
+        .from(subscriptions)
+        .where(eq(subscriptions.userId, targetUserId)),
+      db
+        .select({
+          id: phonepeSubscriptions.id,
+          appId: phonepeSubscriptions.appId,
+          merchantSubscriptionId: phonepeSubscriptions.merchantSubscriptionId,
+          state: phonepeSubscriptions.state,
+          amount: phonepeSubscriptions.amount,
+          frequency: phonepeSubscriptions.frequency,
+          startDate: phonepeSubscriptions.startDate,
+          endDate: phonepeSubscriptions.endDate,
+          nextChargeDate: phonepeSubscriptions.nextChargeDate,
+          createdAt: phonepeSubscriptions.createdAt,
+        })
+        .from(phonepeSubscriptions)
+        .where(eq(phonepeSubscriptions.userId, targetUserId)),
+      db
+        .select({
+          id: orders.id,
+          appId: orders.appId,
+          status: orders.status,
+          amount: orders.amount,
+          currency: orders.currency,
+          razorpayOrderId: orders.razorpayOrderId,
+          createdAt: orders.createdAt,
+        })
+        .from(orders)
+        .where(eq(orders.userId, targetUserId)),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        subscriptions: razorpaySubs,
+        phonepeSubscriptions: phonepeSubs,
+        orders: razorpayOrders,
+      },
+    };
+  } catch (error) {
+    console.error("[getUserBillingDataAction] Error:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to load billing data";
     return {
       success: false,
       error: message,
