@@ -497,6 +497,32 @@ export class AuthService {
       }
     }
 
+    // Upsert mock Truecaller account row (with appId for uniqueness)
+    const existingMockAccounts = await this.db
+      .select()
+      .from(schema.account)
+      .where(
+        and(
+          eq(schema.account.userId, userId),
+          eq(schema.account.providerId, 'truecaller'),
+          eq(schema.account.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    if (existingMockAccounts.length === 0) {
+      await this.db.insert(schema.account).values({
+        id: nanoid(),
+        accountId: 'mock_truecaller_sub',
+        providerId: 'truecaller',
+        userId,
+        appId,
+        idToken: 'mock_truecaller_sub',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
     const token = this.jwtService.sign({ sub: userId, appId });
     const userProfile = {
       sub: 'mock_truecaller_sub',
@@ -740,7 +766,7 @@ export class AuthService {
       }
     }
 
-    // Step 5: Create or update Truecaller account link
+    // Step 5: Create or update Truecaller account link (scoped per appId)
     const existingAccounts = await this.db
       .select()
       .from(schema.account)
@@ -748,6 +774,7 @@ export class AuthService {
         and(
           eq(schema.account.userId, userId),
           eq(schema.account.providerId, 'truecaller'),
+          eq(schema.account.appId, appId),
         ),
       )
       .limit(1);
@@ -770,6 +797,7 @@ export class AuthService {
         accountId: userInfoData.sub || phoneNumber,
         providerId: 'truecaller',
         userId,
+        appId,
         accessToken: access_token,
         idToken: userInfoData.sub,
         accessTokenExpiresAt: new Date(
@@ -847,12 +875,14 @@ export class AuthService {
           updatedAt: new Date(),
         });
 
-        // Create Google account record
+        // Create Google account record (scoped per appId)
         await this.db.insert(schema.account).values({
           id: nanoid(),
           accountId: payload.sub || email,
           providerId: 'google',
           userId,
+          appId,
+          idToken: payload.sub,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -883,6 +913,37 @@ export class AuthService {
             updatedAt: new Date(),
           })
           .where(eq(schema.user.id, userId));
+
+        // Upsert Google account row (refresh idToken, scoped per appId)
+        const existingGoogleAccount = await this.db
+          .select()
+          .from(schema.account)
+          .where(
+            and(
+              eq(schema.account.userId, userId),
+              eq(schema.account.providerId, 'google'),
+              eq(schema.account.appId, appId),
+            ),
+          )
+          .limit(1);
+
+        if (existingGoogleAccount.length === 0) {
+          await this.db.insert(schema.account).values({
+            id: nanoid(),
+            accountId: payload.sub || email,
+            providerId: 'google',
+            userId,
+            appId,
+            idToken: payload.sub,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        } else {
+          await this.db
+            .update(schema.account)
+            .set({ idToken: payload.sub, updatedAt: new Date() })
+            .where(eq(schema.account.id, existingGoogleAccount[0].id));
+        }
 
         // Check if user metadata exists for this app
         const metadata = await this.db

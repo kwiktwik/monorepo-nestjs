@@ -120,6 +120,7 @@ export const account = pgTable(
     userId: text('userId')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    appId: text('appId'),
     accessToken: text('accessToken'),
     refreshToken: text('refreshToken'),
     idToken: text('idToken'),
@@ -138,6 +139,9 @@ export const account = pgTable(
   },
   (table) => ({
     accountUserIdIdx: index('account_userId_idx').on(table.userId),
+    accountUserProviderAppUnique: unique(
+      'account_userId_providerId_appId_unique',
+    ).on(table.userId, table.providerId, table.appId),
   }),
 ).enableRLS();
 
