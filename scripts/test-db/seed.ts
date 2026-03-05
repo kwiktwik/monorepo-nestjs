@@ -2,6 +2,27 @@ import * as schema from '../../src/database/schema';
 import * as fs from 'fs';
 import * as path from 'path';
 
+function convertDates(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)) {
+            return new Date(obj);
+        }
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(convertDates);
+    }
+    if (typeof obj === 'object') {
+        const result: any = {};
+        for (const key of Object.keys(obj)) {
+            result[key] = convertDates(obj[key]);
+        }
+        return result;
+    }
+    return obj;
+}
+
 /**
  * Seeds an in-memory or actual Drizzle database instance using the extracted JSON data.
  * This is designed to be imported and used within test setup files (e.g. jest-e2e.json global setup or beforeEach).
@@ -47,7 +68,7 @@ export async function seedDatabase(db: any) {
                 let inserted = 0;
 
                 for (let i = 0; i < records.length; i += chunkSize) {
-                    const chunk = records.slice(i, i + chunkSize);
+                    const chunk = records.slice(i, i + chunkSize).map(convertDates);
 
                     try {
                         await db.insert(tableSchema).values(chunk).onConflictDoNothing();

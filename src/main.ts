@@ -105,6 +105,14 @@ async function bootstrap() {
   logger.log(`📋 Health check: http://localhost:${port}/health`);
   logger.log(`📖 Swagger docs: http://localhost:${port}/docs`);
   logger.log(`📱 Default X-App-ID: com.paymentalert.app`);
+
+  if (
+    process.env.ENABLE_DB_DEBUG === 'true' ||
+    process.env.USE_MOCK_DB === 'true' ||
+    process.env.NODE_ENV === 'test'
+  ) {
+    logger.log(`🐛 DB Debug UI: http://localhost:${port}/debug/db`);
+  }
 }
 
 void bootstrap();
