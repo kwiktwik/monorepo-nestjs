@@ -15,6 +15,13 @@
       "when": 1772687607562,
       "tag": "0001_fixed_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772692586257,
+      "tag": "0002_mute_bruce_banner",
+      "breakpoints": true
     }
   ]
 }
