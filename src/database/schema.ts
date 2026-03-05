@@ -64,6 +64,11 @@ export const phonepeSubscriptionStateEnum = pgEnum(
   ],
 );
 
+export const teamNotificationStatusEnum = pgEnum('team_notification_status', [
+  'SUCCESS',
+  'FAILED',
+]);
+
 // User table
 export const user = pgTable('user', {
   id: text('id').primaryKey().notNull(),
@@ -703,5 +708,67 @@ export const deviceSessions = pgTable(
     deviceSessionsUserIdIdx: index('device_sessions_user_id_idx').on(table.userId),
     deviceSessionsAppIdIdx: index('device_sessions_app_id_idx').on(table.appId),
     deviceSessionsCreatedAtIdx: index('device_sessions_created_at_idx').on(table.createdAt),
+  }),
+).enableRLS();
+
+// Team Notifications
+export const teamNotifications = pgTable(
+  'team_notifications',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    notificationLogId: integer('notification_log_id')
+      .notNull()
+      .references(() => notificationLogs.id, { onDelete: 'cascade' }),
+    transactionKey: text('transaction_key').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    recipientCount: integer('recipient_count').notNull().default(0),
+    status: teamNotificationStatusEnum('status').notNull().default('SUCCESS'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    teamNotificationsUserIdIdx: index('team_notifications_userId_idx').on(table.userId),
+    teamNotificationsLogIdIdx: index('team_notifications_logId_idx').on(table.notificationLogId),
+    teamNotificationsTransactionKeyIdx: index('team_notifications_transactionKey_idx').on(table.transactionKey),
+    teamNotificationsTransactionKeyUnique: unique('team_notifications_transactionKey_unique').on(table.transactionKey),
+  }),
+).enableRLS();
+
+// Abandoned Checkouts
+export const abandonedCheckouts = pgTable(
+  'abandoned_checkouts',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    appId: text('app_id').notNull(),
+    checkoutStartedAt: timestamp('checkout_started_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    offerExpiresAt: timestamp('offer_expires_at', { withTimezone: true }),
+    discountNotificationSent: boolean('discount_notification_sent').notNull().default(false),
+    discountNotificationSentAt: timestamp('discount_notification_sent_at', { withTimezone: true }),
+    notificationsSent: integer('notifications_sent').notNull().default(0),
+    lastNotificationSentAt: timestamp('last_notification_sent_at', { withTimezone: true }),
+    nextNotificationScheduledAt: timestamp('next_notification_scheduled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    abandonedCheckoutsUserIdIdx: index('abandoned_checkouts_userId_idx').on(table.userId),
+    abandonedCheckoutsAppIdIdx: index('abandoned_checkouts_appId_idx').on(table.appId),
+    abandonedCheckoutsUserAppIdx: index('abandoned_checkouts_user_app_idx').on(table.userId, table.appId),
+    abandonedCheckoutsTimeIdx: index('abandoned_checkouts_time_idx').on(table.checkoutStartedAt),
+    abandonedCheckoutsExpiryIdx: index('abandoned_checkouts_expiry_idx').on(table.offerExpiresAt),
+    abandonedCheckoutsNextNotifIdx: index('abandoned_checkouts_next_notif_idx').on(table.nextNotificationScheduledAt),
   }),
 ).enableRLS();
