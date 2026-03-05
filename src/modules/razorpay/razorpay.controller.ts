@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -63,5 +63,20 @@ export class RazorpayController {
   })
   async verifyPayment(@AppId() appId: string, @Body() dto: VerifyPaymentDto) {
     return this.razorpayService.verifyPayment(appId, dto);
+  }
+
+  @Get('plans')
+  @ApiOperation({ summary: 'Get all plans' })
+  @ApiResponse({ status: 200, description: 'Plans retrieved successfully' })
+  async getPlans(@AppId() appId: string) {
+    return this.razorpayService.getPlans(appId);
+  }
+
+  @Get('plans/:plan_id')
+  @ApiOperation({ summary: 'Get a specific plan by ID' })
+  @ApiResponse({ status: 200, description: 'Plan retrieved successfully' })
+  @ApiResponse({ status: 400, description: 'Plan not found' })
+  async getPlan(@AppId() appId: string, @Param('plan_id') planId: string) {
+    return this.razorpayService.getPlan(appId, planId);
   }
 }

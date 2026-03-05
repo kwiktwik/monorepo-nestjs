@@ -361,4 +361,14 @@ export class RazorpayService {
 
     return defaultPlanId;
   }
+
+  async getPlans(appId: string) {
+    const razorpay = this.getRazorpayInstance(appId);
+    return razorpay.plans.all();
+  }
+
+  async getPlan(appId: string, planId: string) {
+    const razorpay = this.getRazorpayInstance(appId);
+    return razorpay.plans.fetch(planId);
+  }
 }

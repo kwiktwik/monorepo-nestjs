@@ -23,6 +23,28 @@ function convertDates(obj: any): any {
     return obj;
 }
 
+function normalizeRecord(record: any, tableSchema: any): any {
+    if (record === null || record === undefined) return record;
+    const normalized: any = {};
+
+    // For Drizzle, we need to map input keys to the property names in the schema.
+    const schemaKeys = Object.keys(tableSchema).filter(k => k !== '_' && k !== '$inferSelect' && k !== '$inferInsert');
+
+    for (const key of schemaKeys) {
+        if (record[key] !== undefined) {
+            normalized[key] = record[key];
+        } else {
+            // Try snake_case version of the key
+            const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+            if (record[snakeKey] !== undefined) {
+                normalized[key] = record[snakeKey];
+            }
+        }
+    }
+
+    return normalized;
+}
+
 /**
  * Seeds an in-memory or actual Drizzle database instance using the extracted JSON data.
  * This is designed to be imported and used within test setup files (e.g. jest-e2e.json global setup or beforeEach).
@@ -68,7 +90,7 @@ export async function seedDatabase(db: any) {
                 let inserted = 0;
 
                 for (let i = 0; i < records.length; i += chunkSize) {
-                    const chunk = records.slice(i, i + chunkSize).map(convertDates);
+                    const chunk = records.slice(i, i + chunkSize).map(r => normalizeRecord(convertDates(r), tableSchema));
 
                     try {
                         await db.insert(tableSchema).values(chunk).onConflictDoNothing();

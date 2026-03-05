@@ -28,6 +28,35 @@ function convertDates(obj: any): any {
   return obj;
 }
 
+function normalizeRecord(record: any, tableSchema: any): any {
+  if (record === null || record === undefined) return record;
+  const normalized: any = {};
+
+  // For Drizzle, we need to map input keys to the property names in the schema.
+  // The tableSchema object has properties corresponding to the column names in the DB.
+  // However, it's easier to just try both the property name and the potential snake_case name for each.
+
+  // Get all property names from the table schema (those are the keys Drizzle expects)
+  const schemaKeys = Object.keys(tableSchema).filter(k => k !== '_' && k !== '$inferSelect' && k !== '$inferInsert');
+
+  for (const key of schemaKeys) {
+    if (record[key] !== undefined) {
+      normalized[key] = record[key];
+    } else {
+      // Try snake_case version of the key
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      if (record[snakeKey] !== undefined) {
+        normalized[key] = record[snakeKey];
+      }
+    }
+  }
+
+  // If there are keys in record not in schema (like id if it's not explicitly in keys for some reason), pass them along
+  // but strictly only if they match known columns. Actually, schemaKeys should cover it.
+
+  return normalized;
+}
+
 async function seedDatabase(db: any) {
   const seedFilePath = path.join(process.cwd(), 'scripts/test-db/seed.json');
   console.log(`Reading seed data from ${seedFilePath}...`);
@@ -59,7 +88,7 @@ async function seedDatabase(db: any) {
       let inserted = 0;
 
       for (let i = 0; i < records.length; i += chunkSize) {
-        const chunk = records.slice(i, i + chunkSize).map(convertDates);
+        const chunk = records.slice(i, i + chunkSize).map(r => normalizeRecord(convertDates(r), tableSchema));
 
         try {
           await db.insert(tableSchema).values(chunk).onConflictDoNothing();
