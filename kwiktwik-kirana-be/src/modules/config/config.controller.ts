@@ -18,15 +18,29 @@ import { USER_TYPES, DEEPLINK_CAMPAIGNS, type UserType, type DeeplinkCampaign } 
 @Controller('config')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   @Get('v2')
-  @ApiOperation({ summary: 'Get app configuration with dynamic paywall' })
+  @ApiOperation({ summary: 'Get app configuration (stable)' })
+  @ApiResponse({ status: 200, description: 'App config returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getConfig(@AppId() appId: string) {
+    const config = this.configService.getConfigSimple(appId);
+
+    return {
+      success: true,
+      appId,
+      config,
+    };
+  }
+
+  @Get('v3')
+  @ApiOperation({ summary: 'Get app configuration with dynamic paywall (v3)' })
   @ApiQuery({ name: 'userType', enum: Object.values(USER_TYPES), required: false, description: 'User type for paywall selection' })
   @ApiQuery({ name: 'deeplink', enum: Object.values(DEEPLINK_CAMPAIGNS), required: false, description: 'Deeplink campaign source' })
   @ApiResponse({ status: 200, description: 'App config returned with dynamic paywall' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getConfig(
+  async getConfigV3(
     @AppId() appId: string,
     @CurrentUser() user: any,
     @Query('userType') userType?: UserType,
@@ -34,7 +48,7 @@ export class ConfigController {
   ) {
     // Determine user type from query or user object
     const resolvedUserType: UserType = userType || user?.userType || USER_TYPES.NEW;
-    
+
     // Determine deeplink from query or user object
     const resolvedDeeplink: DeeplinkCampaign = deeplink || user?.deeplink || DEEPLINK_CAMPAIGNS.NONE;
 

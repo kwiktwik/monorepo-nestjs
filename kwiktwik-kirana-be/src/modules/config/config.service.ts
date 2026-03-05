@@ -12,7 +12,22 @@ export interface PaywallContext {
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
 
-  constructor(private readonly paywallEngine: PaywallEngineService) {}
+  constructor(private readonly paywallEngine: PaywallEngineService) { }
+
+  /**
+   * Get simple configuration for a specific app (original v2 logic)
+   */
+  getConfigSimple(appId: string): Record<string, any> {
+    const config = getConfigForAppId(appId);
+
+    if (!config) {
+      throw new NotFoundException(
+        `Configuration not found for app ID: ${appId}`,
+      );
+    }
+
+    return config;
+  }
 
   /**
    * Get configuration for a specific app with dynamic paywall based on context
@@ -107,8 +122,8 @@ export class ConfigService {
     const { PAYWALL_PLANS } = require('./config.data');
 
     // Priority: Deeplink > User Type
-    if (deeplink === DEEPLINK_CAMPAIGNS.MARKETING_50_PERCENT || 
-        deeplink === DEEPLINK_CAMPAIGNS.SEASONAL) {
+    if (deeplink === DEEPLINK_CAMPAIGNS.MARKETING_50_PERCENT ||
+      deeplink === DEEPLINK_CAMPAIGNS.SEASONAL) {
       return PAYWALL_PLANS.MARKETING_CAMPAIGN;
     }
 
