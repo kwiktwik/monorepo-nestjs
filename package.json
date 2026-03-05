@@ -8,7 +8,6 @@
   "scripts": {
     "test:db:setup": "drizzle-kit generate --config=drizzle.test.config.ts",
     "pretest": "npm run test:db:setup",
-    "prebuild": "npm test -- --runInBand --detectOpenHandles && npm run test:e2e -- --runInBand --detectOpenHandles",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
