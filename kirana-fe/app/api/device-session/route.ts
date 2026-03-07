@@ -73,10 +73,10 @@ export async function POST(request: NextRequest) {
       lastSession[0].appVersion !== body.appVersion;
 
     if (!hasChanged) {
-      // No change, return 304 Not Modified
+      // No change - use 200 (304 is not allowed when constructing Response)
       return NextResponse.json(
         { success: true, message: "No change detected" },
-        { status: 304 }
+        { status: 200 }
       );
     }
 
