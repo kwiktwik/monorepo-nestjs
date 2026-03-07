@@ -47,9 +47,14 @@ export async function POST(req: NextRequest) {
       appId = validateAppFeature(req, "otpLogin");
     } catch (error) {
       if (error instanceof Error && error.name === "AppValidationError") {
+        const potentialStatus = (error as any).statusCode || 401;
+        const validStatus = typeof potentialStatus === 'number' && potentialStatus >= 200 && potentialStatus <= 599 ? potentialStatus : 401;
+        if (potentialStatus !== validStatus) {
+          console.error(`[Verify] Invalid status code from AppValidationError:`, potentialStatus, `Defaulting to:`, validStatus);
+        }
         return NextResponse.json(
           { error: error.message },
-          { status: (error as any).statusCode || 401 }
+          { status: validStatus }
         );
       }
       throw error;
@@ -567,28 +572,37 @@ export async function POST(req: NextRequest) {
       if ((apiError && typeof apiError === "object" && "error" in apiError) ||
         (apiError instanceof Error && (apiError.name === "APIError" || apiError.stack?.includes("APIError") || (apiError as any).status))) {
         let finalErrorMessage = errorMessage;
-        let errorStatus = (apiError as any).status || 401;
+        let errorStatus: any = (apiError as any).status || 401;
 
         if (apiError && typeof apiError === "object" && "error" in apiError) {
           const errorObj = apiError as {
-            error?: { message?: string; status?: number };
+            error?: { message?: string; status?: number | string };
           };
           finalErrorMessage = errorObj.error?.message || errorMessage || "Verification failed";
           errorStatus = errorObj.error?.status || errorStatus;
+        }
+
+        // Validate status to prevent Next.js crashes
+        const parsedStatus = parseInt(String(errorStatus), 10);
+        const validStatus = !isNaN(parsedStatus) && parsedStatus >= 200 && parsedStatus <= 599 ? parsedStatus : 401;
+
+        if (errorStatus !== validStatus) {
+          console.error(`[${requestId}] [Verify] Invalid status code from Better Auth:`, errorStatus, `Defaulting to:`, validStatus);
         }
 
         // Log the specific error for debugging
         const totalDuration = Date.now() - startTime;
         console.error(`[${requestId}] [Verify] Better Auth error response`, {
           message: finalErrorMessage,
-          status: errorStatus,
+          status: validStatus,
+          originalStatus: errorStatus,
           phoneNumber: phoneNumber ? `${phoneNumber.slice(0, 4)}****${phoneNumber.slice(-2)}` : "unknown",
           totalDuration: `${totalDuration}ms`,
         });
 
         return NextResponse.json(
           { error: finalErrorMessage },
-          { status: errorStatus }
+          { status: validStatus }
         );
       }
 

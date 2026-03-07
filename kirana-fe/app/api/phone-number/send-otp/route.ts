@@ -31,9 +31,14 @@ export async function POST(req: NextRequest) {
       appId = validateAppFeature(req, "otpLogin");
     } catch (error) {
       if (error instanceof Error && error.name === "AppValidationError") {
+        const potentialStatus = (error as any).statusCode || 401;
+        const validStatus = typeof potentialStatus === 'number' && potentialStatus >= 200 && potentialStatus <= 599 ? potentialStatus : 401;
+        if (potentialStatus !== validStatus) {
+          console.error(`[Send OTP] Invalid status code from AppValidationError:`, potentialStatus, `Defaulting to:`, validStatus);
+        }
         return NextResponse.json(
           { error: error.message },
-          { status: (error as any).statusCode || 401 }
+          { status: validStatus }
         );
       }
       throw error;
