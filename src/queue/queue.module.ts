@@ -13,22 +13,18 @@ function createRedisConnection(config: ConfigService): Redis {
   const redisUrl = config.get<string>('REDIS_URL');
 
   if (!redisUrl) {
-    console.log(
-      '[QueueModule] REDIS_URL not configured. Using ioredis-mock for queues.',
+    throw new Error(
+      '[QueueModule] REDIS_URL is required for BullMQ queues. BullMQ uses Lua scripts that depend on native Redis features (cmsgpack) which are not available in ioredis-mock. Please set REDIS_URL in your environment variables.',
     );
-    const RedisMock = require('ioredis-mock').default;
-    return new RedisMock() as unknown as Redis;
   }
 
   const useRealRedis =
     !isMockMode() || config.get<boolean>('USE_REAL_REDIS_FOR_QUEUES', true);
 
   if (!useRealRedis) {
-    const RedisMock = require('ioredis-mock').default;
-    console.log(
-      '[QueueModule] Using ioredis-mock for queues (queues may fail with BullMQ)',
+    throw new Error(
+      '[QueueModule] Cannot use ioredis-mock with BullMQ. BullMQ requires real Redis due to Lua script dependencies (cmsgpack). Set USE_REAL_REDIS_FOR_QUEUES=true or provide REDIS_URL.',
     );
-    return new RedisMock() as unknown as Redis;
   }
 
   console.log(`[QueueModule] Connecting to Redis via URL`);
