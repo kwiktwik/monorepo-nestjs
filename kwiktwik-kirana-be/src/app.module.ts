@@ -16,6 +16,10 @@ import { NotificationEventsModule } from './modules/notification-events/notifica
 import { DeviceSessionModule } from './modules/device-session/device-session.module';
 import { HealthController } from './modules/health/health.controller';
 import { DbDebugModule } from './debug/db-debug.module';
+import { MqttModule } from './common/mqtt/mqtt.module';
+import { RedisModule } from './common/redis/redis.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { MessagesModule } from './modules/messages/messages.module';
 
 const dbModule =
   process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
@@ -40,7 +44,11 @@ const dbModule =
     NotificationModule,
     NotificationEventsModule,
     DeviceSessionModule,
+    MqttModule,
+    RedisModule,
+    ConversationsModule,
+    MessagesModule,
   ],
   controllers: [HealthController],
 })
-export class AppModule {}
+export class AppModule { }
