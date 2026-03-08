@@ -1107,6 +1107,30 @@ export const scheduledMessages = pgTable(
   }),
 ).enableRLS();
 
+// Webhook Events table for idempotency - tracks processed webhook events
+export const webhookEvents = pgTable(
+  'webhook_events',
+  {
+    id: serial('id').primaryKey(),
+    eventId: text('event_id').notNull().unique(), // x-razorpay-event-id header
+    provider: varchar('provider', { length: 50 }).notNull().default('razorpay'),
+    eventType: text('event_type').notNull(),
+    appId: text('app_id').notNull(),
+    processedAt: timestamp('processed_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    webhookEventsProviderIdx: index('webhook_events_provider_idx').on(
+      table.provider,
+    ),
+    webhookEventsAppIdIdx: index('webhook_events_app_id_idx').on(table.appId),
+    webhookEventsProcessedAtIdx: index('webhook_events_processed_at_idx').on(
+      table.processedAt,
+    ),
+  }),
+).enableRLS();
+
 // Relations
 export const appsRelations = relations(apps, ({ many }) => ({
   conversations: many(conversations),
