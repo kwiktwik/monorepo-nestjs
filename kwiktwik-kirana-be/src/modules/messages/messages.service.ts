@@ -41,9 +41,9 @@ export class MessagesService {
     conversationId: string,
     senderId: string,
     content: string,
+    appId: string,
     type: string = 'text',
     replyToId?: string,
-    appId?: string,
   ) {
     // Verify user is participant
     const conversation = await this.conversationsService.findById(
@@ -221,7 +221,7 @@ export class MessagesService {
     messageId: string,
     userId: string,
     content: string,
-    appId?: string,
+    appId: string,
   ) {
     const message = await this.db.query.messages.findFirst({
       where: eq(messages.id, messageId),
@@ -416,7 +416,7 @@ export class MessagesService {
     messageId: string,
     userId: string,
     reaction: string,
-    appId?: string,
+    appId: string,
   ) {
     const message = await this.db.query.messages.findFirst({
       where: eq(messages.id, messageId),
@@ -583,7 +583,7 @@ export class MessagesService {
       duration?: number;
       metadata?: Record<string, any>;
     },
-    appId?: string,
+    appId: string,
   ) {
     await this.conversationsService.findById(conversationId, userId);
 
@@ -626,6 +626,7 @@ export class MessagesService {
   async sendMediaMessage(
     conversationId: string,
     senderId: string,
+    appId: string,
     attachment: {
       type: string;
       url: string;
@@ -639,7 +640,6 @@ export class MessagesService {
       metadata?: Record<string, any>;
     },
     replyToId?: string,
-    appId?: string,
   ) {
     const conversation = await this.conversationsService.findById(
       conversationId,
