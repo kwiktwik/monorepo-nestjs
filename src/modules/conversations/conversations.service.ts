@@ -46,6 +46,7 @@ export class ConversationsService {
     const participantValues = participantIds.map((userId) => ({
       id: uuidv4(),
       conversationId: conversation.id,
+      appId,
       userId,
       role: userId === creatorId ? 'admin' : 'member',
     }));
@@ -215,6 +216,7 @@ export class ConversationsService {
     await this.db.insert(conversationParticipants).values({
       id: uuidv4(),
       conversationId,
+      appId: conversation.appId,
       userId: newUserId,
       role: 'member',
     });
