@@ -48,9 +48,9 @@ export class MessagesController {
       dto.conversationId,
       user.userId,
       dto.content,
+      appId,
       dto.type as any,
       dto.replyToId,
-      appId,
     );
   }
 
@@ -215,6 +215,7 @@ export class MessagesController {
     return this.messagesService.sendMediaMessage(
       dto.conversationId,
       user.userId,
+      appId,
       {
         type: dto.type,
         url: dto.url,
@@ -227,7 +228,6 @@ export class MessagesController {
         duration: dto.duration,
       },
       dto.replyToId,
-      appId,
     );
   }
 
