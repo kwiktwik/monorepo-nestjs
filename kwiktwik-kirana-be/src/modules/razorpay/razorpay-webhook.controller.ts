@@ -44,7 +44,7 @@ export class RazorpayWebhookController {
 
     if (!appId) {
       this.logger.warn(
-        '[WEBHOOK] Rejected webhook due to missing appId in query params',
+        `[WEBHOOK] Rejected webhook due to missing appId in query params | URL=${req.originalUrl || req.url}`,
       );
       throw new BadRequestException('App ID is required');
     }
