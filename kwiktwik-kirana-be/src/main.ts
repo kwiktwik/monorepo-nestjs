@@ -2,10 +2,25 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Disable default body parsing - we'll configure manually
+    bodyParser: false,
+  });
+
+  // Apply raw body parser FIRST for webhook routes (must be before JSON parser)
+  // This ensures Razorpay webhooks get raw body for signature verification
+  app.use('/api/razorpay/webhook', bodyParser.raw({ 
+    type: '*/*',
+    limit: '1mb',
+  }));
+  
+  // Apply JSON parser for all other routes
+  app.use(bodyParser.json({ limit: '10mb' }));
+  app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
   // All API routes under /api (health excluded for load balancers)
   app.setGlobalPrefix('api', { exclude: ['health'] });

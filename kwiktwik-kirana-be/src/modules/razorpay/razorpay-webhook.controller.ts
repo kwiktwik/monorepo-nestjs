@@ -64,28 +64,36 @@ export class RazorpayWebhookController {
       throw new BadRequestException('Missing event ID');
     }
 
-    // Get raw body from the request (set by raw body parser middleware)
-    const reqWithRawBody = req as { rawBody?: Buffer; body?: unknown };
+    // Get raw body - with bodyParser.raw() applied at main.ts level for production,
+    // req.body will be a Buffer. For testing, it may be a parsed object.
+    let bodyString: string;
     
-    // CRITICAL: Raw body MUST be a Buffer for signature verification
-    // The signature is computed on exact bytes, so JSON.stringify() won't work
-    if (!Buffer.isBuffer(reqWithRawBody.rawBody)) {
+    if (Buffer.isBuffer(req.body)) {
+      // Production: raw body from bodyParser.raw()
+      const rawBody = req.body as Buffer;
+      bodyString = rawBody.toString('utf-8');
+      this.logger.log(
+        `[WEBHOOK] Raw body captured for appId=${appId} | size=${rawBody.length} bytes`,
+      );
+    } else if (typeof req.body === 'object' && req.body !== null) {
+      // Testing: JSON was parsed, stringify it back
+      bodyString = JSON.stringify(req.body);
+      this.logger.log(
+        `[WEBHOOK] Parsed body for appId=${appId} | re-serialized for signature verification`,
+      );
+    } else if (typeof req.body === 'string') {
+      // Testing or edge case: body is already a string
+      bodyString = req.body;
+    } else {
       this.logger.error(
-        `[WEBHOOK] CRITICAL: Raw body is not a Buffer for appId=${appId}. ` +
-        `This will cause signature verification to fail. ` +
-        `Ensure raw body middleware is configured correctly.`
+        `[WEBHOOK] CRITICAL: req.body is not valid for appId=${appId}. ` +
+        `Type: ${typeof req.body}. ` +
+        `Ensure raw body parser is configured in main.ts before JSON parser.`
       );
       throw new BadRequestException(
-        'Webhook raw body not available. Contact support.'
+        'Webhook body not available. Contact support.'
       );
     }
-    
-    const rawBody = reqWithRawBody.rawBody;
-    const bodyString = rawBody.toString('utf-8');
-    
-    this.logger.log(
-      `[WEBHOOK] Raw body captured for appId=${appId} | size=${rawBody.length} bytes | bodyLength=${bodyString.length} chars`,
-    );
 
     return this.webhookService.processWebhook(
       appId,
