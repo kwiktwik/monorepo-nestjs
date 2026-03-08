@@ -12,9 +12,7 @@ import { MockInAppChannel } from './services/mock-in-app.channel';
 import { MockPushChannel } from './services/mock-push.channel';
 import { MockSmsChannel } from './services/mock-sms.channel';
 import { NotificationQueueService } from './services/notification-queue.service';
-import {
-  NOTIFICATION_QUEUE_NAME,
-} from './services/notification.processor';
+import { NOTIFICATION_QUEUE_NAME } from './services/notification.processor';
 import { QueueModule, isRedisAvailable } from '../../queue/queue.module';
 
 @Module({})
@@ -78,42 +76,6 @@ export class NotificationEventsModule {
           },
         },
       });
-
-      // Provide stub controller
-      const StubNotificationEventsController = class {
-        constructor(
-          private readonly notificationEventsService: NotificationEventsService,
-          private readonly notificationQueueService: NotificationQueueService,
-        ) {}
-
-        async ingest(
-          user: { userId: string },
-          appId: string,
-          payload: any,
-        ) {
-          throw new ServiceUnavailableException(
-            'Notification queue service requires Redis. Please configure REDIS_URL.',
-          );
-        }
-
-        async scheduleCheckoutAbandoned(
-          user: { userId: string },
-          appId: string,
-          body: any,
-        ) {
-          throw new ServiceUnavailableException(
-            'Notification queue service requires Redis. Please configure REDIS_URL.',
-          );
-        }
-
-        async getQueueStats() {
-          throw new ServiceUnavailableException(
-            'Notification queue service requires Redis. Please configure REDIS_URL.',
-          );
-        }
-      };
-
-      controllers.push(StubNotificationEventsController);
     }
 
     return {
