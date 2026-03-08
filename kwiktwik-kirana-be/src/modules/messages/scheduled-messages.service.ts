@@ -34,10 +34,10 @@ export class ScheduledMessagesService {
     conversationId: string,
     senderId: string,
     content: string,
-    type: string = 'text',
+    appId: string,
     sendAt: Date,
+    type: string = 'text',
     replyToId?: string,
-    appId?: string,
   ) {
     if (sendAt <= new Date()) {
       throw new BadRequestException('Scheduled time must be in the future');
@@ -56,13 +56,14 @@ export class ScheduledMessagesService {
       .values({
         id: uuidv4(),
         conversationId,
+        appId,
         senderId,
         content,
         type,
         replyToId: replyToId || null,
         sendAt,
         status: 'pending',
-        metadata: appId ? { appId } : {},
+        metadata: {},
       })
       .returning();
 
@@ -150,6 +151,7 @@ export class ScheduledMessagesService {
         .values({
           id: uuidv4(),
           conversationId: scheduled.conversationId,
+          appId: scheduled.appId,
           senderId: scheduled.senderId,
           content: scheduled.content,
           type: scheduled.type,

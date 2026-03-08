@@ -263,10 +263,10 @@ export class MessagesController {
       dto.conversationId,
       user.userId,
       dto.content,
-      dto.type || 'text',
-      new Date(dto.sendAt),
-      dto.replyToId,
       appId,
+      new Date(dto.sendAt),
+      dto.type || 'text',
+      dto.replyToId,
     );
   }
 
