@@ -3,12 +3,11 @@ import {
   Post,
   Req,
   Headers,
-  Query,
   BadRequestException,
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { RazorpayWebhookService } from './razorpay-webhook.service';
 
@@ -20,17 +19,10 @@ export class RazorpayWebhookController {
   constructor(private readonly webhookService: RazorpayWebhookService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Handle Razorpay webhook for specific app' })
-  @ApiQuery({
-    name: 'appId',
-    description:
-      'App identifier (e.g., com.paymentalert.app, com.sharekaro.kirana)',
-    required: true,
-  })
+  @ApiOperation({ summary: 'Handle Razorpay webhook' })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid signature or bad request' })
   async handleWebhook(
-    @Query('appId') appId: string,
     @Req() req: Request,
     @Headers('x-razorpay-signature') signature: string,
     @Headers('x-razorpay-event-id') eventId: string,
@@ -47,40 +39,40 @@ export class RazorpayWebhookController {
       rawBodyString = 'Unable to extract body';
     }
 
-    // Try to parse and extract event type for logging
+    // Parse the webhook payload to extract account_id and event type
+    let accountId: string | null = null;
     let eventType = 'unknown';
     try {
       const parsed = JSON.parse(rawBodyString);
       eventType = parsed.event || 'unknown';
+      accountId = parsed.account_id || null;
     } catch {
       // Keep as unknown if parsing fails
     }
 
     this.logger.log(
-      `[WEBHOOK] Incoming Razorpay webhook | appId=${
-        appId || 'N/A'
-      } | eventId=${eventId || 'N/A'} | eventType=${eventType} | signature=${signature ? 'present' : 'missing'} | content-type=${
+      `[WEBHOOK] Incoming Razorpay webhook | accountId=${accountId || 'N/A'} | eventId=${eventId || 'N/A'} | eventType=${eventType} | signature=${signature ? 'present' : 'missing'} | content-type=${
         (req.headers['content-type'] as string) || 'N/A'
       }`,
     );
 
-    if (!appId) {
+    if (!accountId) {
       this.logger.warn(
-        `[WEBHOOK] Rejected webhook due to missing appId in query params | URL=${req.originalUrl || req.url} | eventType=${eventType} | body=${rawBodyString.substring(0, 500)}...`,
+        `[WEBHOOK] Rejected webhook due to missing account_id in payload | URL=${req.originalUrl || req.url}`,
       );
-      throw new BadRequestException('App ID is required');
+      throw new BadRequestException('Missing account_id in webhook payload');
     }
 
     if (!signature) {
       this.logger.warn(
-        `[WEBHOOK] Rejected webhook for appId=${appId} due to missing signature header`,
+        `[WEBHOOK] Rejected webhook due to missing signature header | URL=${req.originalUrl || req.url}`,
       );
       throw new UnauthorizedException('Missing webhook signature');
     }
 
     if (!eventId) {
       this.logger.warn(
-        `[WEBHOOK] Rejected webhook for appId=${appId} due to missing event ID header`,
+        `[WEBHOOK] Rejected webhook due to missing event ID header | URL=${req.originalUrl || req.url}`,
       );
       throw new BadRequestException('Missing event ID');
     }
@@ -88,36 +80,36 @@ export class RazorpayWebhookController {
     // Get raw body - with bodyParser.raw() applied at main.ts level for production,
     // req.body will be a Buffer. For testing, it may be a parsed object.
     let bodyString: string;
-    
+
     if (Buffer.isBuffer(req.body)) {
       // Production: raw body from bodyParser.raw()
       const rawBody = req.body as Buffer;
       bodyString = rawBody.toString('utf-8');
       this.logger.log(
-        `[WEBHOOK] Raw body captured for appId=${appId} | size=${rawBody.length} bytes`,
+        `[WEBHOOK] Raw body captured | size=${rawBody.length} bytes`,
       );
     } else if (typeof req.body === 'object' && req.body !== null) {
       // Testing: JSON was parsed, stringify it back
       bodyString = JSON.stringify(req.body);
       this.logger.log(
-        `[WEBHOOK] Parsed body for appId=${appId} | re-serialized for signature verification`,
+        `[WEBHOOK] Parsed body | re-serialized for signature verification`,
       );
     } else if (typeof req.body === 'string') {
       // Testing or edge case: body is already a string
       bodyString = req.body;
     } else {
       this.logger.error(
-        `[WEBHOOK] CRITICAL: req.body is not valid for appId=${appId}. ` +
-        `Type: ${typeof req.body}. ` +
-        `Ensure raw body parser is configured in main.ts before JSON parser.`
+        `[WEBHOOK] CRITICAL: req.body is not valid. ` +
+          `Type: ${typeof req.body}. ` +
+          `Ensure raw body parser is configured in main.ts before JSON parser.`,
       );
       throw new BadRequestException(
-        'Webhook body not available. Contact support.'
+        'Webhook body not available. Contact support.',
       );
     }
 
     return this.webhookService.processWebhook(
-      appId,
+      accountId,
       bodyString,
       signature,
       eventId,

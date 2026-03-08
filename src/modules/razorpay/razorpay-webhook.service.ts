@@ -164,7 +164,64 @@ export class RazorpayWebhookService {
   }
 
   /**
-   * Get webhook secret for a specific app
+   * Get all configured webhook secrets with their app IDs
+   * Finds all environment variables starting with RAZORPAY_WEBHOOK_SECRET_
+   * Returns array of { appId, secret } objects
+   */
+  private getAllWebhookSecrets(): Array<{ appId: string; secret: string }> {
+    const secrets: Array<{ appId: string; secret: string }> = [];
+
+    // Get all environment variable keys
+    const envKeys = Object.keys(process.env);
+
+    // Find all RAZORPAY_WEBHOOK_SECRET_ variables
+    const webhookSecretKeys = envKeys.filter((key) =>
+      key.startsWith('RAZORPAY_WEBHOOK_SECRET_'),
+    );
+
+    for (const key of webhookSecretKeys) {
+      const secret = process.env[key];
+      if (secret) {
+        // Convert RAZORPAY_WEBHOOK_SECRET_COM_EXAMPLE_APP to com.example.app
+        const normalizedAppId = key
+          .replace('RAZORPAY_WEBHOOK_SECRET_', '')
+          .replace(/_/g, '.')
+          .toLowerCase();
+
+        secrets.push({ appId: normalizedAppId, secret });
+      }
+    }
+
+    if (secrets.length === 0) {
+      this.logger.error(
+        '[WEBHOOK] No webhook secrets configured. Please set RAZORPAY_WEBHOOK_SECRET_{APP_ID} environment variables.',
+      );
+    }
+
+    return secrets;
+  }
+
+  /**
+   * Find the app ID by trying to verify signature against all configured secrets
+   * Returns the appId if signature matches, null otherwise
+   */
+  private findAppBySignature(
+    body: string,
+    signature: string,
+  ): { appId: string; secret: string } | null {
+    const allSecrets = this.getAllWebhookSecrets();
+
+    for (const { appId, secret } of allSecrets) {
+      if (this.verifySignature(body, signature, secret)) {
+        return { appId, secret };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get webhook secret for a specific app (kept for backward compatibility)
    * Environment variable naming convention:
    * - RAZORPAY_WEBHOOK_SECRET_{APP_ID}
    *   where APP_ID is normalized (dots replaced with underscores, uppercase)
@@ -304,9 +361,13 @@ export class RazorpayWebhookService {
 
   /**
    * Process webhook from Razorpay
+   * @param accountId - account_id from webhook payload (required, for logging)
+   * @param body - Raw webhook body
+   * @param signature - Razorpay signature header
+   * @param eventId - Razorpay event ID header
    */
   async processWebhook(
-    appId: string,
+    accountId: string,
     body: string,
     signature: string,
     eventId: string,
@@ -324,21 +385,22 @@ export class RazorpayWebhookService {
         return { received: true };
       }
 
-      // Get webhook secret for this app
-      const webhookSecret = this.getWebhookSecret(appId);
+      // Try to find matching app by verifying signature against all configured secrets
+      const matchedApp = this.findAppBySignature(body, signature);
 
-      // Verify signature
-      if (!this.verifySignature(body, signature, webhookSecret)) {
+      if (!matchedApp) {
         this.logger.error(
-          `[WEBHOOK ${requestId}] ❌ Signature verification FAILED for app: ${appId}`,
+          `[WEBHOOK ${requestId}] ❌ Signature verification FAILED - no matching app found | accountId: ${accountId || 'N/A'} | tried ${this.getAllWebhookSecrets().length} secret(s)`,
         );
         throw new UnauthorizedException('Invalid signature');
       }
 
+      const appId = matchedApp.appId;
+
       const event: RazorpayWebhookPayload = JSON.parse(body);
       const ids = this.extractWebhookIds(event);
       this.logger.log(
-        `[WEBHOOK ${requestId}] 🔔 Received ${event.event} ${this.formatWebhookIds(ids)} | App: ${appId} | EventID: ${eventId}`,
+        `[WEBHOOK ${requestId}] 🔔 Received ${event.event} ${this.formatWebhookIds(ids)} | App: ${appId} | Account: ${accountId || 'N/A'} | EventID: ${eventId}`,
       );
 
       // Mark event as processed BEFORE handling to prevent race conditions
