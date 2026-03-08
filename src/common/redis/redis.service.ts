@@ -4,42 +4,82 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private client: Redis;
-  private pubClient: Redis;
-  private subClient: Redis;
+  private client: Redis | null = null;
+  private pubClient: Redis | null = null;
+  private subClient: Redis | null = null;
+  private isEnabled = false;
 
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    const redisConfig = {
-      host: this.configService.get('REDIS_HOST', 'localhost'),
-      port: this.configService.get('REDIS_PORT', 6379),
-      password: this.configService.get('REDIS_PASSWORD') || undefined,
-    };
+    const redisUrl = this.configService.get<string>('REDIS_URL');
+    const redisHost = this.configService.get<string>('REDIS_HOST');
 
-    this.client = new Redis(redisConfig);
-    this.pubClient = new Redis(redisConfig);
-    this.subClient = new Redis(redisConfig);
+    // Skip Redis initialization if not configured
+    if (!redisUrl && !redisHost) {
+      console.log(
+        '[RedisService] Redis not configured. Redis features disabled.',
+      );
+      this.isEnabled = false;
+      return;
+    }
 
-    this.client.on('connect', () => console.log('✅ Redis connected'));
-    this.client.on('error', (err) => console.error('Redis error:', err));
+    const redisConfig = redisUrl
+      ? { url: redisUrl }
+      : {
+          host: this.configService.get('REDIS_HOST', 'localhost'),
+          port: this.configService.get('REDIS_PORT', 6379),
+          password: this.configService.get('REDIS_PASSWORD') || undefined,
+        };
+
+    // Create clients with error handling
+    this.client = this.createRedisClient(redisConfig, 'main');
+    this.pubClient = this.createRedisClient(redisConfig, 'pub');
+    this.subClient = this.createRedisClient(redisConfig, 'sub');
+
+    this.isEnabled = true;
+  }
+
+  private createRedisClient(config: any, name: string): Redis {
+    const client = config.url ? new Redis(config.url) : new Redis(config);
+
+    client.on('connect', () => {
+      console.log(`✅ Redis ${name} connected`);
+    });
+
+    client.on('error', (err) => {
+      // Only log first error to avoid spam
+      if (err.message?.includes('ECONNREFUSED')) {
+        console.log(
+          `[RedisService] ${name} client connection refused (Redis not available)`,
+        );
+      } else {
+        console.error(`[RedisService] ${name} client error:`, err.message);
+      }
+    });
+
+    return client;
   }
 
   async onModuleDestroy() {
-    await this.client.quit();
-    await this.pubClient.quit();
-    await this.subClient.quit();
+    if (this.client) await this.client.quit();
+    if (this.pubClient) await this.pubClient.quit();
+    if (this.subClient) await this.subClient.quit();
   }
 
-  getClient(): Redis {
+  isRedisEnabled(): boolean {
+    return this.isEnabled;
+  }
+
+  getClient(): Redis | null {
     return this.client;
   }
 
-  getPubClient(): Redis {
+  getPubClient(): Redis | null {
     return this.pubClient;
   }
 
-  getSubClient(): Redis {
+  getSubClient(): Redis | null {
     return this.subClient;
   }
 
@@ -49,16 +89,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     appId: string,
     ttl: number = 300,
   ): Promise<void> {
+    if (!this.client) return;
     const key = `user:online:${appId}:${userId}`;
     await this.client.setex(key, ttl, '1');
   }
 
   async setUserOffline(userId: string, appId: string): Promise<void> {
+    if (!this.client) return;
     const key = `user:online:${appId}:${userId}`;
     await this.client.del(key);
   }
 
   async isUserOnline(userId: string, appId: string): Promise<boolean> {
+    if (!this.client) return false;
     const key = `user:online:${appId}:${userId}`;
     return (await this.client.exists(key)) === 1;
   }
@@ -69,6 +112,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     participants: string[],
     ttl: number = 3600,
   ): Promise<void> {
+    if (!this.client) return;
     const key = `conversation:participants:${conversationId}`;
     await this.client.del(key);
     if (participants.length > 0) {
@@ -78,6 +122,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getConversationParticipants(conversationId: string): Promise<string[]> {
+    if (!this.client) return [];
     const key = `conversation:participants:${conversationId}`;
     return this.client.smembers(key);
   }
@@ -89,6 +134,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     debounceMs: number = 3000,
     ttl: number = 5,
   ): Promise<boolean> {
+    if (!this.client || !this.pubClient) return false;
     const key = `typing:${conversationId}:${userId}`;
     const debounceKey = `typing_debounce:${conversationId}:${userId}`;
 
@@ -118,6 +164,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     userId: string,
     ttl: number = 5,
   ): Promise<void> {
+    if (!this.client || !this.pubClient) return;
     const key = `typing:${conversationId}:${userId}`;
     await this.client.setex(key, ttl, '1');
     await this.pubClient.publish(
@@ -127,6 +174,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeTyping(conversationId: string, userId: string): Promise<void> {
+    if (!this.client || !this.pubClient) return;
     const key = `typing:${conversationId}:${userId}`;
     await this.client.del(key);
     await this.pubClient.publish(
@@ -136,6 +184,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getTypingUsers(conversationId: string): Promise<string[]> {
+    if (!this.client) return [];
     const pattern = `typing:${conversationId}:*`;
     const keys = await this.client.keys(pattern);
     return keys.map((k) => k.split(':').pop() as string);
@@ -143,11 +192,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   // Message queue for offline users
   async queueMessage(userId: string, message: any): Promise<void> {
+    if (!this.client) return;
     const key = `message:queue:${userId}`;
     await this.client.rpush(key, JSON.stringify(message));
   }
 
   async getQueuedMessages(userId: string): Promise<any[]> {
+    if (!this.client) return [];
     const key = `message:queue:${userId}`;
     const messages = await this.client.lrange(key, 0, -1);
     await this.client.del(key);
@@ -160,17 +211,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     appData: any,
     ttl: number = 3600,
   ): Promise<void> {
+    if (!this.client) return;
     const key = `app:${apiKey}`;
     await this.client.setex(key, ttl, JSON.stringify(appData));
   }
 
   async getCachedApp(apiKey: string): Promise<any | null> {
+    if (!this.client) return null;
     const key = `app:${apiKey}`;
     const data = await this.client.get(key);
     return data ? JSON.parse(data) : null;
   }
 
   async invalidateAppCache(apiKey: string): Promise<void> {
+    if (!this.client) return;
     const key = `app:${apiKey}`;
     await this.client.del(key);
   }
@@ -182,17 +236,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     data: any,
     ttl: number = 86400,
   ): Promise<void> {
+    if (!this.client) return;
     const key = `session:${userId}:${sessionId}`;
     await this.client.setex(key, ttl, JSON.stringify(data));
   }
 
   async getUserSession(userId: string, sessionId: string): Promise<any | null> {
+    if (!this.client) return null;
     const key = `session:${userId}:${sessionId}`;
     const data = await this.client.get(key);
     return data ? JSON.parse(data) : null;
   }
 
   async deleteUserSession(userId: string, sessionId: string): Promise<void> {
+    if (!this.client) return;
     const key = `session:${userId}:${sessionId}`;
     await this.client.del(key);
   }
@@ -203,6 +260,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     limit: number,
     windowSeconds: number,
   ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
+    if (!this.client) {
+      // Allow all requests if Redis is not available
+      return { allowed: true, remaining: limit, resetIn: windowSeconds };
+    }
     const current = await this.client.incr(key);
 
     if (current === 1) {
