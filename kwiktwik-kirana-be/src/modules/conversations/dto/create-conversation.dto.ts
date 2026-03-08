@@ -6,7 +6,10 @@ export class CreateConversationDto {
   @IsEnum(['direct', 'group'])
   type: 'direct' | 'group';
 
-  @ApiProperty({ type: [String], example: ['uuid-of-user-1', 'uuid-of-user-2'] })
+  @ApiProperty({
+    type: [String],
+    example: ['uuid-of-user-1', 'uuid-of-user-2'],
+  })
   @IsArray()
   @IsUUID('4', { each: true })
   participantIds: string[];

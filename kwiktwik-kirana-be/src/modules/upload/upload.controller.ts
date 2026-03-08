@@ -39,4 +39,27 @@ export class UploadController {
   ) {
     return this.uploadService.getPresignedUrl(user.userId, appId, dto);
   }
+
+  @Post('chat-media')
+  @ApiOperation({
+    summary: 'Get presigned URL for chat media',
+    description:
+      'Get a presigned URL for uploading images, videos, audio, or files to chat. Requires JWT.',
+  })
+  @ApiResponse({ status: 200, description: 'Presigned URL generated' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getChatMediaPresignedUrl(
+    @CurrentUser() user: { userId: string; appId: string },
+    @AppId() appId: string,
+    @Body()
+    dto: {
+      fileName: string;
+      contentType: string;
+      expiresIn?: number;
+      conversationId?: string;
+    },
+  ) {
+    return this.uploadService.getChatMediaPresignedUrl(user.userId, appId, dto);
+  }
 }

@@ -1,4 +1,13 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards, Get, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+  Get,
+  Query,
+} from '@nestjs/common';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import {
   ApiBearerAuth,
@@ -26,7 +35,11 @@ export class NotificationEventsController {
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiBearerAuth('JWT')
-  @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
   @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({ summary: 'Ingest an event for notifications' })
   @ApiBody({ type: NotificationEventDto })
@@ -35,15 +48,25 @@ export class NotificationEventsController {
     @AppId() appId: string,
     @Body() payload: NotificationEventDto,
   ) {
-    return this.notificationEventsService.ingestEvent(user.userId, appId, payload);
+    return this.notificationEventsService.ingestEvent(
+      user.userId,
+      appId,
+      payload,
+    );
   }
 
   @Post('checkout-abandoned')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiBearerAuth('JWT')
-  @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
   @UseGuards(AppIdGuard, JwtAuthGuard)
-  @ApiOperation({ summary: 'Schedule a checkout abandoned check (delayed 30 min by default)' })
+  @ApiOperation({
+    summary: 'Schedule a checkout abandoned check (delayed 30 min by default)',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -52,14 +75,19 @@ export class NotificationEventsController {
         amount: { type: 'number', example: 999 },
         currency: { type: 'string', example: 'INR' },
         planName: { type: 'string', example: 'Premium Monthly' },
-        delayMinutes: { type: 'number', example: 30, description: 'Delay in minutes (default: 30)' },
+        delayMinutes: {
+          type: 'number',
+          example: 30,
+          description: 'Delay in minutes (default: 30)',
+        },
       },
     },
   })
   async scheduleCheckoutAbandoned(
     @CurrentUser() user: { userId: string },
     @AppId() appId: string,
-    @Body() body: {
+    @Body()
+    body: {
       orderId?: string;
       amount?: number;
       currency?: string;
@@ -68,18 +96,19 @@ export class NotificationEventsController {
     },
   ) {
     const delayMs = (body.delayMinutes ?? 30) * 60 * 1000;
-    
-    const jobId = await this.notificationQueueService.scheduleCheckoutAbandonedCheck(
-      user.userId,
-      appId,
-      {
-        orderId: body.orderId,
-        amount: body.amount,
-        currency: body.currency,
-        planName: body.planName,
-      },
-      delayMs,
-    );
+
+    const jobId =
+      await this.notificationQueueService.scheduleCheckoutAbandonedCheck(
+        user.userId,
+        appId,
+        {
+          orderId: body.orderId,
+          amount: body.amount,
+          currency: body.currency,
+          planName: body.planName,
+        },
+        delayMs,
+      );
 
     return {
       accepted: true,
@@ -92,7 +121,11 @@ export class NotificationEventsController {
   @Get('queue/stats')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT')
-  @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
   @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({ summary: 'Get notification queue statistics' })
   async getQueueStats() {

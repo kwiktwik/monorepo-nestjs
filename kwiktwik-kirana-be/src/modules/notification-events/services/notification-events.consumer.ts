@@ -1,6 +1,15 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+  Inject,
+} from '@nestjs/common';
 import { InMemoryEventBus } from './in-memory-event-bus';
-import { EventEnvelope, NotificationChannelType } from '../types/notification-event.types';
+import {
+  EventEnvelope,
+  NotificationChannelType,
+} from '../types/notification-event.types';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, sql, and, inArray } from 'drizzle-orm';
@@ -15,7 +24,9 @@ const PROCESSING_INTERVAL_MS = 5000; // Process every 5 seconds
 const BATCH_SIZE = 10; // Max events to process per batch
 
 @Injectable()
-export class NotificationEventsConsumer implements OnModuleInit, OnModuleDestroy {
+export class NotificationEventsConsumer
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(NotificationEventsConsumer.name);
   private intervalId: NodeJS.Timeout | null = null;
 
@@ -28,7 +39,9 @@ export class NotificationEventsConsumer implements OnModuleInit, OnModuleDestroy
   onModuleInit(): void {
     this.logger.log('Starting notification events batch processor...');
     this.logger.log(`Mock mode: ${isMockMode()}`);
-    this.logger.log(`Processing interval: ${PROCESSING_INTERVAL_MS}ms, Batch size: ${BATCH_SIZE}`);
+    this.logger.log(
+      `Processing interval: ${PROCESSING_INTERVAL_MS}ms, Batch size: ${BATCH_SIZE}`,
+    );
 
     // Start the polling interval
     this.intervalId = setInterval(() => {

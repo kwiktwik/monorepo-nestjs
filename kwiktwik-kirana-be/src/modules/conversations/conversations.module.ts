@@ -9,4 +9,4 @@ import { UserModule } from '../user/user.module';
   providers: [ConversationsService],
   exports: [ConversationsService],
 })
-export class ConversationsModule { }
+export class ConversationsModule {}

@@ -8,7 +8,10 @@ import { MockPushChannel } from './services/mock-push.channel';
 import { MockSmsChannel } from './services/mock-sms.channel';
 import { NotificationEventsConsumer } from './services/notification-events.consumer';
 import { NotificationQueueService } from './services/notification-queue.service';
-import { NotificationProcessor, NOTIFICATION_QUEUE_NAME } from './services/notification.processor';
+import {
+  NotificationProcessor,
+  NOTIFICATION_QUEUE_NAME,
+} from './services/notification.processor';
 import { QueueModule } from '../../queue/queue.module';
 
 @Module({
@@ -33,4 +36,4 @@ import { QueueModule } from '../../queue/queue.module';
   ],
   exports: [NotificationQueueService, NotificationEventsService],
 })
-export class NotificationEventsModule { }
+export class NotificationEventsModule {}

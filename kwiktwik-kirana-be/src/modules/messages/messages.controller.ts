@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
+import { ScheduledMessagesService } from './scheduled-messages.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,7 +31,10 @@ import { EditMessageDto } from './dto/edit-message.dto';
 @ApiBearerAuth('JWT')
 @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 export class MessagesController {
-  constructor(private messagesService: MessagesService) {}
+  constructor(
+    private messagesService: MessagesService,
+    private scheduledMessagesService: ScheduledMessagesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Send a message' })
@@ -185,5 +189,117 @@ export class MessagesController {
   @ApiResponse({ status: 200, description: 'List of reactions' })
   async getReactions(@Param('id') messageId: string, @CurrentUser() user: any) {
     return this.messagesService.getReactions(messageId, user.userId);
+  }
+
+  @Post('media')
+  @ApiOperation({ summary: 'Send a media message' })
+  @ApiResponse({ status: 201, description: 'Media message sent' })
+  async sendMediaMessage(
+    @Body()
+    dto: {
+      conversationId: string;
+      type: string;
+      url: string;
+      thumbnailUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      mimeType?: string;
+      width?: number;
+      height?: number;
+      duration?: number;
+      replyToId?: string;
+    },
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    return this.messagesService.sendMediaMessage(
+      dto.conversationId,
+      user.userId,
+      {
+        type: dto.type,
+        url: dto.url,
+        thumbnailUrl: dto.thumbnailUrl,
+        fileName: dto.fileName,
+        fileSize: dto.fileSize,
+        mimeType: dto.mimeType,
+        width: dto.width,
+        height: dto.height,
+        duration: dto.duration,
+      },
+      dto.replyToId,
+      appId,
+    );
+  }
+
+  @Get('media/:conversationId')
+  @ApiOperation({ summary: 'Get media attachments in a conversation' })
+  @ApiResponse({ status: 200, description: 'List of media attachments' })
+  async getMediaAttachments(
+    @Param('conversationId') conversationId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.messagesService.getMediaAttachments(
+      conversationId,
+      user.userId,
+    );
+  }
+
+  @Post('schedule')
+  @ApiOperation({ summary: 'Schedule a message for later delivery' })
+  @ApiResponse({ status: 201, description: 'Message scheduled' })
+  async scheduleMessage(
+    @Body()
+    dto: {
+      conversationId: string;
+      content: string;
+      type?: string;
+      sendAt: string;
+      replyToId?: string;
+    },
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    return this.scheduledMessagesService.scheduleMessage(
+      dto.conversationId,
+      user.userId,
+      dto.content,
+      dto.type || 'text',
+      new Date(dto.sendAt),
+      dto.replyToId,
+      appId,
+    );
+  }
+
+  @Get('scheduled')
+  @ApiOperation({ summary: 'Get all scheduled messages for current user' })
+  @ApiResponse({ status: 200, description: 'List of scheduled messages' })
+  async getScheduledMessages(@CurrentUser() user: any) {
+    return this.scheduledMessagesService.getUserScheduledMessages(user.userId);
+  }
+
+  @Get('scheduled/conversation/:conversationId')
+  @ApiOperation({ summary: 'Get scheduled messages in a conversation' })
+  @ApiResponse({ status: 200, description: 'List of scheduled messages' })
+  async getConversationScheduledMessages(
+    @Param('conversationId') conversationId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.scheduledMessagesService.getScheduledMessages(
+      conversationId,
+      user.userId,
+    );
+  }
+
+  @Delete('schedule/:id')
+  @ApiOperation({ summary: 'Cancel a scheduled message' })
+  @ApiResponse({ status: 200, description: 'Scheduled message cancelled' })
+  async cancelScheduledMessage(
+    @Param('id') messageId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.scheduledMessagesService.cancelScheduledMessage(
+      messageId,
+      user.userId,
+    );
   }
 }

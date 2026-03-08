@@ -13,7 +13,7 @@ export class MockInAppChannel implements NotificationChannel {
 
   async send(event: EventEnvelope): Promise<NotificationChannelResult> {
     const payloadPreview = JSON.stringify(event.payload).slice(0, 100);
-    
+
     this.logger.log(
       `🔔 [MOCK IN-APP] Event: ${event.eventType} | User: ${event.userId} | App: ${event.appId}`,
     );

@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { NotificationChannelType } from '../types/notification-event.types';
-import { NotificationJobData, NotificationJobType, NOTIFICATION_QUEUE_NAME } from './notification.processor';
+import {
+  NotificationJobData,
+  NotificationJobType,
+  NOTIFICATION_QUEUE_NAME,
+} from './notification.processor';
 
 /**
  * Default delay for checkout abandoned checks (30 minutes)
@@ -41,25 +45,21 @@ export class NotificationQueueService {
       createdAt: now.toISOString(),
     };
 
-    const job = await this.notificationQueue.add(
-      eventData.eventType,
-      jobData,
-      {
-        delay: delayMs,
-        jobId: `delayed-${eventData.eventId}-${Date.now()}`,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: 50,
+    const job = await this.notificationQueue.add(eventData.eventType, jobData, {
+      delay: delayMs,
+      jobId: `delayed-${eventData.eventId}-${Date.now()}`,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000,
       },
-    );
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    });
 
     this.logger.log(
       `📅 [SCHEDULED] Event: ${eventData.eventType} | User: ${eventData.userId} ` +
-      `| Job: ${job.id} | Delay: ${delayMs}ms | Scheduled for: ${scheduledFor.toISOString()}`,
+        `| Job: ${job.id} | Delay: ${delayMs}ms | Scheduled for: ${scheduledFor.toISOString()}`,
     );
 
     return job.id!;
@@ -69,7 +69,7 @@ export class NotificationQueueService {
    * Schedule a checkout abandoned check
    * This will check if user is premium after the delay period
    * If not premium, send notification to complete purchase
-   * 
+   *
    * @param userId User ID
    * @param appId App ID
    * @param checkoutData Checkout related data
@@ -87,13 +87,13 @@ export class NotificationQueueService {
     delayMs: number = DEFAULT_DELAY_MS,
   ): Promise<string> {
     const eventId = `checkout-abandoned-${userId}-${Date.now()}`;
-    
+
     this.logger.log(
       `🛒 [CHECKOUT] Scheduling abandoned check for user ${userId} ` +
-      `| Order: ${checkoutData.orderId || 'N/A'} | Amount: ${checkoutData.amount || 'N/A'} ` +
-      `| Plan: ${checkoutData.planName || 'N/A'}`,
+        `| Order: ${checkoutData.orderId || 'N/A'} | Amount: ${checkoutData.amount || 'N/A'} ` +
+        `| Plan: ${checkoutData.planName || 'N/A'}`,
     );
-    
+
     return this.scheduleDelayedEvent(
       {
         eventId,
@@ -138,10 +138,12 @@ export class NotificationQueueService {
   /**
    * Get all delayed jobs (useful for debugging)
    */
-  async getDelayedJobs(): Promise<Array<{ id: string; data: NotificationJobData; delay: number }>> {
+  async getDelayedJobs(): Promise<
+    Array<{ id: string; data: NotificationJobData; delay: number }>
+  > {
     const jobs = await this.notificationQueue.getDelayed();
-    
-    return jobs.map(job => ({
+
+    return jobs.map((job) => ({
       id: job.id!,
       data: job.data,
       delay: job.delay || 0,

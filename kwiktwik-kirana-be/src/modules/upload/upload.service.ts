@@ -125,4 +125,96 @@ export class UploadService {
       expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
     };
   }
+
+  async getChatMediaPresignedUrl(
+    userId: string,
+    appId: string,
+    dto: {
+      fileName: string;
+      contentType: string;
+      expiresIn?: number;
+      conversationId?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+    expiresIn: number;
+    expiresAt: string;
+  }> {
+    if (!this.s3Client) {
+      throw new InternalServerErrorException(
+        'R2 storage not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env',
+      );
+    }
+
+    const { fileName, contentType, expiresIn = 3600, conversationId } = dto;
+
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/webm',
+      'video/quicktime',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/ogg',
+      'audio/webm',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain',
+      'text/csv',
+    ];
+
+    if (!allowedTypes.includes(contentType)) {
+      throw new BadRequestException(
+        `Invalid content type. Allowed: ${allowedTypes.join(', ')}`,
+      );
+    }
+
+    let fileType: string;
+    if (contentType.startsWith('image/')) {
+      fileType = 'images';
+    } else if (contentType.startsWith('video/')) {
+      fileType = 'videos';
+    } else if (contentType.startsWith('audio/')) {
+      fileType = 'audio';
+    } else {
+      fileType = 'files';
+    }
+
+    const timestamp = Date.now();
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const conversationFolder = conversationId ? `${conversationId}/` : '';
+    const key = `${appId}/${userId}/chat/${fileType}/${conversationFolder}${timestamp}_${sanitizedFileName}`;
+    const fullKey = this.projectFolder ? `${this.projectFolder}/${key}` : key;
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: fullKey,
+      ContentType: contentType,
+    });
+
+    const presignedUrl = await getSignedUrl(this.s3Client, command, {
+      expiresIn,
+    });
+
+    const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${fullKey}`;
+
+    return {
+      success: true,
+      uploadUrl: presignedUrl,
+      publicUrl,
+      key,
+      expiresIn,
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    };
+  }
 }
