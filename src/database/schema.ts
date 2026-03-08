@@ -71,6 +71,25 @@ export const teamNotificationStatusEnum = pgEnum('team_notification_status', [
   'FAILED',
 ]);
 
+// Apps table - master list of applications
+export const apps = pgTable(
+  'apps',
+  {
+    id: text('id').primaryKey(), // e.g., 'com.paymentalert.app'
+    name: varchar('name', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 100 }).notNull().unique(),
+    description: text('description'),
+    isActive: boolean('is_active').default(true).notNull(),
+    settings: jsonb('settings').$type<Record<string, any>>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    slugIdx: index('apps_slug_idx').on(table.slug),
+    isActiveIdx: index('apps_is_active_idx').on(table.isActive),
+  }),
+).enableRLS();
+
 // User table
 export const user = pgTable('user', {
   id: text('id').primaryKey().notNull(),
@@ -843,6 +862,9 @@ export const conversationParticipants = pgTable(
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -857,6 +879,11 @@ export const conversationParticipants = pgTable(
       table.conversationId,
     ),
     userIdx: index('conversation_participants_user_idx').on(table.userId),
+    appConversationIdx: index('cp_app_conversation_idx').on(
+      table.appId,
+      table.conversationId,
+    ),
+    appUserIdx: index('cp_app_user_idx').on(table.appId, table.userId),
   }),
 ).enableRLS();
 
@@ -868,6 +895,9 @@ export const messages = pgTable(
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     senderId: text('sender_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -892,6 +922,14 @@ export const messages = pgTable(
       table.conversationId,
       table.createdAt,
     ),
+    appConversationIdx: index('messages_app_conversation_idx').on(
+      table.appId,
+      table.conversationId,
+    ),
+    appSenderIdx: index('messages_app_sender_idx').on(
+      table.appId,
+      table.senderId,
+    ),
   }),
 ).enableRLS();
 
@@ -903,6 +941,9 @@ export const messageReads = pgTable(
     messageId: uuid('message_id')
       .notNull()
       .references(() => messages.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -911,6 +952,14 @@ export const messageReads = pgTable(
   (table) => ({
     messageIdx: index('message_reads_message_idx').on(table.messageId),
     userIdx: index('message_reads_user_idx').on(table.userId),
+    appMessageIdx: index('message_reads_app_message_idx').on(
+      table.appId,
+      table.messageId,
+    ),
+    appUserIdx: index('message_reads_app_user_idx').on(
+      table.appId,
+      table.userId,
+    ),
   }),
 ).enableRLS();
 
@@ -922,6 +971,9 @@ export const typingIndicators = pgTable(
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -930,6 +982,10 @@ export const typingIndicators = pgTable(
   },
   (table) => ({
     conversationIdx: index('typing_indicators_conversation_idx').on(
+      table.conversationId,
+    ),
+    appConversationIdx: index('typing_app_conversation_idx').on(
+      table.appId,
       table.conversationId,
     ),
   }),
@@ -943,6 +999,9 @@ export const messageReactions = pgTable(
     messageId: uuid('message_id')
       .notNull()
       .references(() => messages.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -955,6 +1014,10 @@ export const messageReactions = pgTable(
     uniqueUserReaction: unique('message_reactions_unique').on(
       table.messageId,
       table.userId,
+    ),
+    appMessageIdx: index('reactions_app_message_idx').on(
+      table.appId,
+      table.messageId,
     ),
   }),
 ).enableRLS();
@@ -970,6 +1033,9 @@ export const mediaAttachments = pgTable(
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     uploadedBy: text('uploaded_by')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -990,6 +1056,10 @@ export const mediaAttachments = pgTable(
     conversationIdx: index('media_attachments_conversation_idx').on(
       table.conversationId,
     ),
+    appConversationIdx: index('media_attachments_app_conversation_idx').on(
+      table.appId,
+      table.conversationId,
+    ),
   }),
 ).enableRLS();
 
@@ -1001,6 +1071,9 @@ export const scheduledMessages = pgTable(
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
     senderId: text('sender_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -1023,10 +1096,29 @@ export const scheduledMessages = pgTable(
     ),
     statusIdx: index('scheduled_messages_status_idx').on(table.status),
     sendAtIdx: index('scheduled_messages_send_at_idx').on(table.sendAt),
+    appConversationIdx: index('scheduled_messages_app_conversation_idx').on(
+      table.appId,
+      table.conversationId,
+    ),
+    appSenderIdx: index('scheduled_messages_app_sender_idx').on(
+      table.appId,
+      table.senderId,
+    ),
   }),
 ).enableRLS();
 
 // Relations
+export const appsRelations = relations(apps, ({ many }) => ({
+  conversations: many(conversations),
+  participants: many(conversationParticipants),
+  messages: many(messages),
+  messageReads: many(messageReads),
+  messageReactions: many(messageReactions),
+  typingIndicators: many(typingIndicators),
+  mediaAttachments: many(mediaAttachments),
+  scheduledMessages: many(scheduledMessages),
+}));
+
 export const userRelations = relations(user, ({ many }) => ({
   messages: many(messages),
   conversations: many(conversationParticipants),
@@ -1036,6 +1128,10 @@ export const userRelations = relations(user, ({ many }) => ({
 export const conversationsRelations = relations(
   conversations,
   ({ one, many }) => ({
+    app: one(apps, {
+      fields: [conversations.appId],
+      references: [apps.id],
+    }),
     createdByUser: one(user, {
       fields: [conversations.createdBy],
       references: [user.id],
@@ -1048,6 +1144,10 @@ export const conversationsRelations = relations(
 export const conversationParticipantsRelations = relations(
   conversationParticipants,
   ({ one }) => ({
+    app: one(apps, {
+      fields: [conversationParticipants.appId],
+      references: [apps.id],
+    }),
     conversation: one(conversations, {
       fields: [conversationParticipants.conversationId],
       references: [conversations.id],
@@ -1060,6 +1160,10 @@ export const conversationParticipantsRelations = relations(
 );
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
+  app: one(apps, {
+    fields: [messages.appId],
+    references: [apps.id],
+  }),
   conversation: one(conversations, {
     fields: [messages.conversationId],
     references: [conversations.id],
@@ -1078,6 +1182,10 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
 }));
 
 export const messageReadsRelations = relations(messageReads, ({ one }) => ({
+  app: one(apps, {
+    fields: [messageReads.appId],
+    references: [apps.id],
+  }),
   message: one(messages, {
     fields: [messageReads.messageId],
     references: [messages.id],
@@ -1089,9 +1197,31 @@ export const messageReadsRelations = relations(messageReads, ({ one }) => ({
 }));
 
 // Relations for new tables
+export const typingIndicatorsRelations = relations(
+  typingIndicators,
+  ({ one }) => ({
+    app: one(apps, {
+      fields: [typingIndicators.appId],
+      references: [apps.id],
+    }),
+    conversation: one(conversations, {
+      fields: [typingIndicators.conversationId],
+      references: [conversations.id],
+    }),
+    user: one(user, {
+      fields: [typingIndicators.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
 export const messageReactionsRelations = relations(
   messageReactions,
   ({ one }) => ({
+    app: one(apps, {
+      fields: [messageReactions.appId],
+      references: [apps.id],
+    }),
     message: one(messages, {
       fields: [messageReactions.messageId],
       references: [messages.id],
@@ -1106,6 +1236,10 @@ export const messageReactionsRelations = relations(
 export const mediaAttachmentsRelations = relations(
   mediaAttachments,
   ({ one }) => ({
+    app: one(apps, {
+      fields: [mediaAttachments.appId],
+      references: [apps.id],
+    }),
     message: one(messages, {
       fields: [mediaAttachments.messageId],
       references: [messages.id],
@@ -1124,6 +1258,10 @@ export const mediaAttachmentsRelations = relations(
 export const scheduledMessagesRelations = relations(
   scheduledMessages,
   ({ one }) => ({
+    app: one(apps, {
+      fields: [scheduledMessages.appId],
+      references: [apps.id],
+    }),
     conversation: one(conversations, {
       fields: [scheduledMessages.conversationId],
       references: [conversations.id],

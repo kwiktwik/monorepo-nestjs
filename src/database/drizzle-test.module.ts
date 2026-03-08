@@ -37,14 +37,19 @@ function normalizeRecord(record: any, tableSchema: any): any {
   // However, it's easier to just try both the property name and the potential snake_case name for each.
 
   // Get all property names from the table schema (those are the keys Drizzle expects)
-  const schemaKeys = Object.keys(tableSchema).filter(k => k !== '_' && k !== '$inferSelect' && k !== '$inferInsert');
+  const schemaKeys = Object.keys(tableSchema).filter(
+    (k) => k !== '_' && k !== '$inferSelect' && k !== '$inferInsert',
+  );
 
   for (const key of schemaKeys) {
     if (record[key] !== undefined) {
       normalized[key] = record[key];
     } else {
       // Try snake_case version of the key
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      const snakeKey = key.replace(
+        /[A-Z]/g,
+        (letter) => `_${letter.toLowerCase()}`,
+      );
       if (record[snakeKey] !== undefined) {
         normalized[key] = record[snakeKey];
       }
@@ -88,7 +93,9 @@ async function seedDatabase(db: any) {
       let inserted = 0;
 
       for (let i = 0; i < records.length; i += chunkSize) {
-        const chunk = records.slice(i, i + chunkSize).map(r => normalizeRecord(convertDates(r), tableSchema));
+        const chunk = records
+          .slice(i, i + chunkSize)
+          .map((r) => normalizeRecord(convertDates(r), tableSchema));
 
         try {
           await db.insert(tableSchema).values(chunk).onConflictDoNothing();
@@ -98,7 +105,9 @@ async function seedDatabase(db: any) {
         }
       }
 
-      console.log(`Finished seeding '${name}' (attempted: ${records.length}, successful/ignored: ${inserted})`);
+      console.log(
+        `Finished seeding '${name}' (attempted: ${records.length}, successful/ignored: ${inserted})`,
+      );
     } else {
       console.log(`No data found for table '${name}' in seed.json`);
     }
@@ -106,7 +115,6 @@ async function seedDatabase(db: any) {
 
   console.log('Seed completed successfully!');
 }
-
 
 @Global()
 @Module({
@@ -178,7 +186,6 @@ async function seedDatabase(db: any) {
           console.log('[DrizzleTestModule] Starting database seeding...');
           await seedDatabase(dDb);
           console.log('[DrizzleTestModule] Database seeding completed ✓');
-
         } catch (error) {
           console.error('[DrizzleTestModule] Migration failed:', error);
           throw error;
@@ -190,4 +197,4 @@ async function seedDatabase(db: any) {
   ],
   exports: [DRIZZLE_TOKEN],
 })
-export class DrizzleTestModule { }
+export class DrizzleTestModule {}

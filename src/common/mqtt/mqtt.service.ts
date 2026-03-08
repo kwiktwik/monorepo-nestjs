@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as mqtt from 'mqtt';
 
@@ -12,12 +17,16 @@ export interface MqttMessage {
 export class MqttService implements OnModuleInit, OnModuleDestroy {
   private client: mqtt.MqttClient;
   private readonly logger = new Logger(MqttService.name);
-  private messageHandlers: Map<string, (message: MqttMessage) => void> = new Map();
+  private messageHandlers: Map<string, (message: MqttMessage) => void> =
+    new Map();
 
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    const brokerUrl = this.configService.get('MQTT_BROKER_URL', 'mqtt://localhost:1883');
+    const brokerUrl = this.configService.get(
+      'MQTT_BROKER_URL',
+      'mqtt://localhost:1883',
+    );
     const username = this.configService.get('MQTT_USERNAME');
     const password = this.configService.get('MQTT_PASSWORD');
 
@@ -86,7 +95,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Subscribe to a topic
-  async subscribe(topic: string, handler?: (message: MqttMessage) => void): Promise<void> {
+  async subscribe(
+    topic: string,
+    handler?: (message: MqttMessage) => void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.client.subscribe(topic, { qos: 1 }, (err) => {
         if (err) {
@@ -120,7 +132,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish a message
-  async publish(topic: string, payload: any, options: mqtt.IClientPublishOptions = {}): Promise<void> {
+  async publish(
+    topic: string,
+    payload: any,
+    options: mqtt.IClientPublishOptions = {},
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const message = JSON.stringify({
         ...payload,
@@ -144,13 +160,23 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish to a user's personal topic
-  async publishToUser(appId: string, userId: string, event: string, data: any): Promise<void> {
+  async publishToUser(
+    appId: string,
+    userId: string,
+    event: string,
+    data: any,
+  ): Promise<void> {
     const topic = `app/${appId}/user/${userId}/${event}`;
     await this.publish(topic, data);
   }
 
   // Publish to a conversation topic
-  async publishToConversation(appId: string, conversationId: string, event: string, data: any): Promise<void> {
+  async publishToConversation(
+    appId: string,
+    conversationId: string,
+    event: string,
+    data: any,
+  ): Promise<void> {
     const topic = `app/${appId}/conversation/${conversationId}/${event}`;
     await this.publish(topic, data);
   }
@@ -162,7 +188,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Subscribe to user events
-  async subscribeToUser(appId: string, userId: string, handler: (message: MqttMessage) => void): Promise<void> {
+  async subscribeToUser(
+    appId: string,
+    userId: string,
+    handler: (message: MqttMessage) => void,
+  ): Promise<void> {
     const topic = `app/${appId}/user/${userId}/#`;
     await this.subscribe(topic, handler);
   }

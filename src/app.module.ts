@@ -51,4 +51,4 @@ const dbModule =
   ],
   controllers: [HealthController],
 })
-export class AppModule { }
+export class AppModule {}

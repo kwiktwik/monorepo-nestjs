@@ -6,7 +6,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiHeader,
+} from '@nestjs/swagger';
 import { DeviceSessionService } from './device-session.service';
 import { CreateDeviceSessionDto } from './dto/create-device-session.dto';
 import { AppIdGuard } from '../../common/guards/app-id.guard';

@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NotificationEventDto } from './dto/notification-event.dto';
-import {
-  NotificationChannelType,
-} from './types/notification-event.types';
+import { NotificationChannelType } from './types/notification-event.types';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';

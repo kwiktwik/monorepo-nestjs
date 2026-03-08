@@ -87,7 +87,10 @@ export class AuthService {
 
     // TEST MODE: Skip SMS for test number
     if (normalized === AuthService.TEST_PHONE) {
-      return { message: 'OTP sent successfully (test mode - use 123456)', mockCode: AuthService.TEST_OTP };
+      return {
+        message: 'OTP sent successfully (test mode - use 123456)',
+        mockCode: AuthService.TEST_OTP,
+      };
     }
 
     // Cleanup old OTPs (older than 24 hours)
@@ -490,10 +493,20 @@ export class AuthService {
       const metadata = await this.db
         .select()
         .from(schema.userMetadata)
-        .where(and(eq(schema.userMetadata.userId, userId), eq(schema.userMetadata.appId, appId)))
+        .where(
+          and(
+            eq(schema.userMetadata.userId, userId),
+            eq(schema.userMetadata.appId, appId),
+          ),
+        )
         .limit(1);
       if (metadata.length === 0) {
-        await this.db.insert(schema.userMetadata).values({ userId, appId, createdAt: new Date(), updatedAt: new Date() });
+        await this.db.insert(schema.userMetadata).values({
+          userId,
+          appId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
     }
 
@@ -573,7 +586,9 @@ export class AuthService {
   }> {
     // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
     if (isMockMode()) {
-      this.logger.log(`[MOCK Truecaller] Returning hardcoded test user for app=${appId}`);
+      this.logger.log(
+        `[MOCK Truecaller] Returning hardcoded test user for app=${appId}`,
+      );
       return this.mockTruecallerSignin(appId);
     }
 
@@ -606,8 +621,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         tokenData.error_description ||
-        tokenData.error ||
-        `Truecaller token exchange failed (${tokenResponse.status})`,
+          tokenData.error ||
+          `Truecaller token exchange failed (${tokenResponse.status})`,
       );
     }
 
@@ -638,8 +653,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         userInfoData.error_description ||
-        userInfoData.error ||
-        `Truecaller profile fetch failed (${userInfoResponse.status})`,
+          userInfoData.error ||
+          `Truecaller profile fetch failed (${userInfoResponse.status})`,
       );
     }
 

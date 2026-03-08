@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -11,6 +12,7 @@ import { eq, and, desc, lt, gt, sql, inArray } from 'drizzle-orm';
 import { RedisService } from '../../common/redis/redis.service';
 import { MqttService } from '../../common/mqtt/mqtt.service';
 import { ConversationsService } from '../conversations/conversations.service';
+import { ChatPushNotificationService } from './chat-push-notification.service';
 import { v4 as uuidv4 } from 'uuid';
 
 const {
@@ -20,15 +22,19 @@ const {
   conversationParticipants,
   messageReactions,
   mediaAttachments,
+  user,
 } = schema;
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     @Inject(DRIZZLE_TOKEN) private db: NodePgDatabase<typeof schema>,
     private redisService: RedisService,
     private mqttService: MqttService,
     private conversationsService: ConversationsService,
+    private chatPushNotificationService: ChatPushNotificationService,
   ) {}
 
   async send(
@@ -51,6 +57,7 @@ export class MessagesService {
       .values({
         id: uuidv4(),
         conversationId,
+        appId: conversation.appId,
         senderId,
         content,
         type,
@@ -83,6 +90,33 @@ export class MessagesService {
             message,
             conversationId,
           });
+
+          try {
+            const sender = await this.db.query.user.findFirst({
+              where: eq(user.id, senderId),
+              columns: { name: true },
+            });
+            const senderName = sender?.name || 'Someone';
+            const conversationName =
+              await this.chatPushNotificationService.getConversationName(
+                conversationId,
+                appId,
+              );
+
+            await this.chatPushNotificationService.sendPushNotification(
+              appId,
+              userId,
+              senderName,
+              conversationName,
+              content,
+              type,
+              conversationId,
+            );
+          } catch (error) {
+            this.logger.error(
+              `Failed to send push notification: ${(error as Error).message}`,
+            );
+          }
         }
       }
     }
@@ -297,6 +331,7 @@ export class MessagesService {
       .values({
         id: uuidv4(),
         messageId,
+        appId: message.appId,
         userId,
       })
       .returning();
@@ -430,6 +465,7 @@ export class MessagesService {
       .values({
         id: uuidv4(),
         messageId,
+        appId: message.appId,
         userId,
         reaction,
       })
@@ -529,5 +565,174 @@ export class MessagesService {
       total: reactions.length,
       grouped,
     };
+  }
+
+  async addMediaAttachment(
+    conversationId: string,
+    userId: string,
+    attachment: {
+      messageId?: string;
+      type: string;
+      url: string;
+      thumbnailUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      mimeType?: string;
+      width?: number;
+      height?: number;
+      duration?: number;
+      metadata?: Record<string, any>;
+    },
+    appId?: string,
+  ) {
+    await this.conversationsService.findById(conversationId, userId);
+
+    const [attachmentRecord] = await this.db
+      .insert(mediaAttachments)
+      .values({
+        id: uuidv4(),
+        messageId: attachment.messageId || null,
+        conversationId,
+        appId: appId,
+        uploadedBy: userId,
+        type: attachment.type,
+        url: attachment.url,
+        thumbnailUrl: attachment.thumbnailUrl || null,
+        fileName: attachment.fileName || null,
+        fileSize: attachment.fileSize || null,
+        mimeType: attachment.mimeType || null,
+        width: attachment.width || null,
+        height: attachment.height || null,
+        duration: attachment.duration || null,
+        metadata: attachment.metadata || {},
+      })
+      .returning();
+
+    if (attachment.messageId && appId) {
+      await this.mqttService.publishToConversation(
+        appId,
+        conversationId,
+        'message/media',
+        {
+          messageId: attachment.messageId,
+          attachment: attachmentRecord,
+        },
+      );
+    }
+
+    return attachmentRecord;
+  }
+
+  async sendMediaMessage(
+    conversationId: string,
+    senderId: string,
+    attachment: {
+      type: string;
+      url: string;
+      thumbnailUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      mimeType?: string;
+      width?: number;
+      height?: number;
+      duration?: number;
+      metadata?: Record<string, any>;
+    },
+    replyToId?: string,
+    appId?: string,
+  ) {
+    const conversation = await this.conversationsService.findById(
+      conversationId,
+      senderId,
+    );
+
+    const content = attachment.fileName || `[${attachment.type}]`;
+
+    const [message] = await this.db
+      .insert(messages)
+      .values({
+        id: uuidv4(),
+        conversationId,
+        appId: conversation.appId,
+        senderId,
+        content,
+        type: attachment.type,
+        replyToId: replyToId || null,
+        metadata: {
+          ...attachment.metadata,
+          mediaUrl: attachment.url,
+          thumbnailUrl: attachment.thumbnailUrl,
+          fileSize: attachment.fileSize,
+          mimeType: attachment.mimeType,
+          width: attachment.width,
+          height: attachment.height,
+          duration: attachment.duration,
+        },
+      })
+      .returning();
+
+    await this.conversationsService.updateLastMessage(conversationId, content);
+
+    const [attachmentRecord] = await this.db
+      .insert(mediaAttachments)
+      .values({
+        id: uuidv4(),
+        messageId: message.id,
+        conversationId,
+        appId: conversation.appId,
+        uploadedBy: senderId,
+        type: attachment.type,
+        url: attachment.url,
+        thumbnailUrl: attachment.thumbnailUrl || null,
+        fileName: attachment.fileName || null,
+        fileSize: attachment.fileSize || null,
+        mimeType: attachment.mimeType || null,
+        width: attachment.width || null,
+        height: attachment.height || null,
+        duration: attachment.duration || null,
+        metadata: attachment.metadata || {},
+      })
+      .returning();
+
+    const participantIds = conversation.participants.map((p) => p.userId);
+
+    if (appId) {
+      await this.mqttService.publishToConversation(
+        appId,
+        conversationId,
+        'message/new',
+        {
+          message: {
+            ...message,
+            attachments: [attachmentRecord],
+          },
+          conversationId,
+        },
+      );
+
+      for (const userId of participantIds) {
+        if (userId !== senderId) {
+          await this.mqttService.publishToUser(appId, userId, 'message/new', {
+            message: {
+              ...message,
+              attachments: [attachmentRecord],
+            },
+            conversationId,
+          });
+        }
+      }
+    }
+
+    return { message, attachment: attachmentRecord };
+  }
+
+  async getMediaAttachments(conversationId: string, userId: string) {
+    await this.conversationsService.findById(conversationId, userId);
+
+    return this.db.query.mediaAttachments.findMany({
+      where: eq(mediaAttachments.conversationId, conversationId),
+      orderBy: [desc(mediaAttachments.createdAt)],
+      limit: 100,
+    });
   }
 }

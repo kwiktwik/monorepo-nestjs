@@ -14,7 +14,10 @@ export type EventListener = (event: EventEnvelope) => Promise<void> | void;
 @Injectable()
 export class InMemoryEventBus {
   private readonly logger = new Logger(InMemoryEventBus.name);
-  private readonly channelMap: Record<NotificationChannelType, NotificationChannel>;
+  private readonly channelMap: Record<
+    NotificationChannelType,
+    NotificationChannel
+  >;
   private readonly listeners = new Set<EventListener>();
 
   constructor(
