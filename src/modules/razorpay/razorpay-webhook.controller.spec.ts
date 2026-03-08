@@ -40,6 +40,7 @@ describe('RazorpayWebhookController', () => {
       const response = await request(app.getHttpServer())
         .post('/razorpay/webhook?appId=com.test.app')
         .set('x-razorpay-signature', 'valid-signature')
+        .set('x-razorpay-event-id', 'test-event-123')
         .send({ event: 'payment.authorized' });
 
       expect(response.status).toBe(201);
@@ -50,6 +51,7 @@ describe('RazorpayWebhookController', () => {
       const response = await request(app.getHttpServer())
         .post('/razorpay/webhook')
         .set('x-razorpay-signature', 'signature')
+        .set('x-razorpay-event-id', 'test-event-123')
         .send({});
 
       expect(response.status).toBe(400);
@@ -58,6 +60,7 @@ describe('RazorpayWebhookController', () => {
     it('should handle missing signature', async () => {
       const response = await request(app.getHttpServer())
         .post('/razorpay/webhook?appId=com.test.app')
+        .set('x-razorpay-event-id', 'test-event-123')
         .send({ event: 'payment.authorized' });
 
       expect(response.status).toBe(401);
@@ -71,6 +74,7 @@ describe('RazorpayWebhookController', () => {
       const response = await request(app.getHttpServer())
         .post('/razorpay/webhook?appId=com.test.app')
         .set('x-razorpay-signature', 'invalid-signature')
+        .set('x-razorpay-event-id', 'test-event-123')
         .send({ event: 'payment.authorized' });
 
       expect(response.status).toBe(400);

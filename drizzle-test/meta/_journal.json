@@ -22,6 +22,20 @@
       "when": 1772692586257,
       "tag": "0002_mute_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772779612786,
+      "tag": "0003_giant_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772971470698,
+      "tag": "0004_green_calypso",
+      "breakpoints": true
     }
   ]
 }
