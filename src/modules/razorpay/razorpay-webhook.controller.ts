@@ -65,26 +65,26 @@ export class RazorpayWebhookController {
     }
 
     // Get raw body from the request (set by raw body parser middleware)
-    const reqWithRawBody = req as { rawBody?: Buffer; body: unknown };
-    const rawBody = reqWithRawBody.rawBody || reqWithRawBody.body;
-    console.log('[Razorpay] Request type:', {
-      hasRawBody: !!reqWithRawBody.rawBody,
-      bodyType: typeof reqWithRawBody.body,
-      isBuffer: Buffer.isBuffer(reqWithRawBody.rawBody),
-    });
-    const bodyString = Buffer.isBuffer(rawBody)
-      ? rawBody.toString('utf-8')
-      : JSON.stringify(rawBody);
-
-    const rawLength = Buffer.isBuffer(rawBody)
-      ? rawBody.length
-      : ((rawBody as { length?: number })?.length ?? 0);
+    const reqWithRawBody = req as { rawBody?: Buffer; body?: unknown };
+    
+    // CRITICAL: Raw body MUST be a Buffer for signature verification
+    // The signature is computed on exact bytes, so JSON.stringify() won't work
+    if (!Buffer.isBuffer(reqWithRawBody.rawBody)) {
+      this.logger.error(
+        `[WEBHOOK] CRITICAL: Raw body is not a Buffer for appId=${appId}. ` +
+        `This will cause signature verification to fail. ` +
+        `Ensure raw body middleware is configured correctly.`
+      );
+      throw new BadRequestException(
+        'Webhook raw body not available. Contact support.'
+      );
+    }
+    
+    const rawBody = reqWithRawBody.rawBody;
+    const bodyString = rawBody.toString('utf-8');
+    
     this.logger.log(
-      `[WEBHOOK] Parsed request body for appId=${appId} | isBuffer=${Buffer.isBuffer(
-        rawBody,
-      )} | rawLength=${rawLength} | bodyStringLength=${
-        bodyString?.length ?? 0
-      }`,
+      `[WEBHOOK] Raw body captured for appId=${appId} | size=${rawBody.length} bytes | bodyLength=${bodyString.length} chars`,
     );
 
     return this.webhookService.processWebhook(
