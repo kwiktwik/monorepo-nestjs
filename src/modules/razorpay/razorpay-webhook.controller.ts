@@ -35,17 +35,38 @@ export class RazorpayWebhookController {
     @Headers('x-razorpay-signature') signature: string,
     @Headers('x-razorpay-event-id') eventId: string,
   ) {
+    // Extract raw body first for logging purposes
+    let rawBodyString: string;
+    if (Buffer.isBuffer(req.body)) {
+      rawBodyString = (req.body as Buffer).toString('utf-8');
+    } else if (typeof req.body === 'object' && req.body !== null) {
+      rawBodyString = JSON.stringify(req.body);
+    } else if (typeof req.body === 'string') {
+      rawBodyString = req.body;
+    } else {
+      rawBodyString = 'Unable to extract body';
+    }
+
+    // Try to parse and extract event type for logging
+    let eventType = 'unknown';
+    try {
+      const parsed = JSON.parse(rawBodyString);
+      eventType = parsed.event || 'unknown';
+    } catch {
+      // Keep as unknown if parsing fails
+    }
+
     this.logger.log(
       `[WEBHOOK] Incoming Razorpay webhook | appId=${
         appId || 'N/A'
-      } | eventId=${eventId || 'N/A'} | signature=${signature ? 'present' : 'missing'} | content-type=${
+      } | eventId=${eventId || 'N/A'} | eventType=${eventType} | signature=${signature ? 'present' : 'missing'} | content-type=${
         (req.headers['content-type'] as string) || 'N/A'
       }`,
     );
 
     if (!appId) {
       this.logger.warn(
-        `[WEBHOOK] Rejected webhook due to missing appId in query params | URL=${req.originalUrl || req.url}`,
+        `[WEBHOOK] Rejected webhook due to missing appId in query params | URL=${req.originalUrl || req.url} | eventType=${eventType} | body=${rawBodyString.substring(0, 500)}...`,
       );
       throw new BadRequestException('App ID is required');
     }
