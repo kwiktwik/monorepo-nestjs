@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ConfigModule as NestConfigModule, ConfigService } from '@nestjs/config';
 import { DrizzleModule } from './database/drizzle.module';
 import { DrizzleTestModule } from './database/drizzle-test.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -42,12 +42,17 @@ const dbModule =
     BackgroundRemovalModule,
     VideoOverlayModule,
     NotificationModule,
-    NotificationEventsModule,
+    // Dynamic modules that check Redis availability
+    NotificationEventsModule.forRoot({
+      get: (key: string) => process.env[key],
+    } as ConfigService),
     DeviceSessionModule,
     MqttModule,
     RedisModule,
     ConversationsModule,
-    MessagesModule,
+    MessagesModule.forRoot({
+      get: (key: string) => process.env[key],
+    } as ConfigService),
   ],
   controllers: [HealthController],
 })
