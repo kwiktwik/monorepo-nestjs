@@ -232,17 +232,73 @@ export class RazorpayWebhookService {
   }
 
   /**
+   * Check if a webhook event has already been processed
+   */
+  private async isEventAlreadyProcessed(eventId: string): Promise<boolean> {
+    try {
+      const existing = await this.db
+        .select({ id: schema.webhookEvents.id })
+        .from(schema.webhookEvents)
+        .where(eq(schema.webhookEvents.eventId, eventId))
+        .limit(1);
+
+      return existing.length > 0;
+    } catch (error) {
+      this.logger.error(
+        `[WEBHOOK] Failed to check if event ${eventId} is already processed:`,
+        error,
+      );
+      // If we can't verify, we'll process it anyway (fail open is safer than fail closed for webhooks)
+      return false;
+    }
+  }
+
+  /**
+   * Mark a webhook event as processed
+   */
+  private async markEventAsProcessed(
+    eventId: string,
+    eventType: string,
+    appId: string,
+  ): Promise<void> {
+    try {
+      await this.db.insert(schema.webhookEvents).values({
+        eventId,
+        provider: 'razorpay',
+        eventType,
+        appId,
+      });
+    } catch (error) {
+      // If it's a unique constraint violation, the event was already processed
+      // This is fine, just log it
+      this.logger.warn(
+        `[WEBHOOK] Event ${eventId} was already in database (possible race condition)`,
+      );
+    }
+  }
+
+  /**
    * Process webhook from Razorpay
    */
   async processWebhook(
     appId: string,
     body: string,
     signature: string,
+    eventId: string,
   ): Promise<{ received: boolean }> {
     const requestId = randomBytes(8).toString('hex');
     const startTime = Date.now();
 
     try {
+      // Check for duplicate event first (idempotency)
+      const isDuplicate = await this.isEventAlreadyProcessed(eventId);
+      if (isDuplicate) {
+        this.logger.log(
+          `[WEBHOOK ${requestId}] ⚠️ Duplicate event detected: ${eventId} - returning 200 without processing`,
+        );
+        return { received: true };
+      }
+
       // Get webhook secret for this app
       const webhookSecret = this.getWebhookSecret(appId);
 
@@ -257,8 +313,11 @@ export class RazorpayWebhookService {
       const event: RazorpayWebhookPayload = JSON.parse(body);
       const ids = this.extractWebhookIds(event);
       this.logger.log(
-        `[WEBHOOK ${requestId}] 🔔 Received ${event.event} ${this.formatWebhookIds(ids)} | App: ${appId}`,
+        `[WEBHOOK ${requestId}] 🔔 Received ${event.event} ${this.formatWebhookIds(ids)} | App: ${appId} | EventID: ${eventId}`,
       );
+
+      // Mark event as processed BEFORE handling to prevent race conditions
+      await this.markEventAsProcessed(eventId, event.event, appId);
 
       // Generic Subscription Webhook Logging
       if (ids.subscriptionId) {

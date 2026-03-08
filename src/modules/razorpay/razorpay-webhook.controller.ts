@@ -33,11 +33,12 @@ export class RazorpayWebhookController {
     @Query('appId') appId: string,
     @Req() req: Request,
     @Headers('x-razorpay-signature') signature: string,
+    @Headers('x-razorpay-event-id') eventId: string,
   ) {
     this.logger.log(
       `[WEBHOOK] Incoming Razorpay webhook | appId=${
         appId || 'N/A'
-      } | signature=${signature ? 'present' : 'missing'} | content-type=${
+      } | eventId=${eventId || 'N/A'} | signature=${signature ? 'present' : 'missing'} | content-type=${
         (req.headers['content-type'] as string) || 'N/A'
       }`,
     );
@@ -54,6 +55,13 @@ export class RazorpayWebhookController {
         `[WEBHOOK] Rejected webhook for appId=${appId} due to missing signature header`,
       );
       throw new UnauthorizedException('Missing webhook signature');
+    }
+
+    if (!eventId) {
+      this.logger.warn(
+        `[WEBHOOK] Rejected webhook for appId=${appId} due to missing event ID header`,
+      );
+      throw new BadRequestException('Missing event ID');
     }
 
     // Get raw body from the request (set by raw body parser middleware)
@@ -79,6 +87,11 @@ export class RazorpayWebhookController {
       }`,
     );
 
-    return this.webhookService.processWebhook(appId, bodyString, signature);
+    return this.webhookService.processWebhook(
+      appId,
+      bodyString,
+      signature,
+      eventId,
+    );
   }
 }
