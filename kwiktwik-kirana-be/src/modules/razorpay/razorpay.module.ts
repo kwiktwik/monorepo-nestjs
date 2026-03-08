@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, Logger } from '@nestjs/common';
 import { RazorpayController } from './razorpay.controller';
 import { RazorpayPlansController } from './razorpay-plans.controller';
 import { RazorpayService } from './razorpay.service';
@@ -14,20 +14,43 @@ interface RawBodyRequest extends Request {
   rawBody?: Buffer;
 }
 
-// Custom middleware to preserve raw body for webhook signature verification
+const logger = new Logger('RazorpayRawBodyMiddleware');
+
+/**
+ * Custom middleware to preserve raw body buffer for webhook signature verification.
+ * This is CRITICAL for Razorpay webhook signature verification to work correctly.
+ * 
+ * The raw body must be preserved exactly as received (byte-for-byte) because
+ * the signature is computed on the exact raw bytes of the request body.
+ * Any transformation (JSON parsing, whitespace changes, key reordering) will
+ * break signature verification.
+ */
 function rawBodyMiddleware(
   req: RawBodyRequest,
   res: Response,
   next: NextFunction,
 ) {
-  bodyParser.raw({ type: 'application/json' })(
+  bodyParser.raw({ 
+    type: '*/*',  // Accept any content type to be safe
+    limit: '1mb', // Razorpay webhooks shouldn't exceed this
+  })(
     req,
     res,
     (err: Error | null) => {
-      if (err) return next(err);
-      req.rawBody = req.body;
-      // Convert buffer to string for JSON parsing later
-      req.body = req.body.toString('utf8');
+      if (err) {
+        logger.error('Failed to parse raw body:', err.message);
+        return next(err);
+      }
+      
+      // Save the raw Buffer before any transformation
+      // This is the EXACT bytes that Razorpay signed
+      if (Buffer.isBuffer(req.body)) {
+        req.rawBody = req.body;
+        logger.debug(`Raw body captured: ${req.body.length} bytes`);
+      } else {
+        logger.warn('req.body is not a Buffer after bodyParser.raw()');
+      }
+      
       next();
     },
   );
