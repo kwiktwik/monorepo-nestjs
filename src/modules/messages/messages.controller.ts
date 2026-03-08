@@ -1,5 +1,21 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiHeader,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
@@ -14,7 +30,7 @@ import { EditMessageDto } from './dto/edit-message.dto';
 @ApiBearerAuth('JWT')
 @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 export class MessagesController {
-  constructor(private messagesService: MessagesService) { }
+  constructor(private messagesService: MessagesService) {}
 
   @Post()
   @ApiOperation({ summary: 'Send a message' })
@@ -43,6 +59,7 @@ export class MessagesController {
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('after') after?: string,
+    @Query('cursor') cursor?: string,
   ) {
     return this.messagesService.getMessages(
       conversationId,
@@ -50,6 +67,7 @@ export class MessagesController {
       limit ? parseInt(limit) : 50,
       before,
       after,
+      cursor,
     );
   }
 
@@ -62,7 +80,12 @@ export class MessagesController {
     @CurrentUser() user: any,
     @AppId() appId: string,
   ) {
-    return this.messagesService.edit(messageId, user.userId, dto.content, appId);
+    return this.messagesService.edit(
+      messageId,
+      user.userId,
+      dto.content,
+      appId,
+    );
   }
 
   @Delete(':id')
@@ -127,5 +150,40 @@ export class MessagesController {
   async getTypingUsers(@Param('conversationId') conversationId: string) {
     const userIds = await this.messagesService.getTypingUsers(conversationId);
     return { typingUsers: userIds };
+  }
+
+  @Post(':id/react')
+  @ApiOperation({ summary: 'Add or update reaction on a message' })
+  @ApiResponse({ status: 200, description: 'Reaction added/updated' })
+  async addReaction(
+    @Param('id') messageId: string,
+    @Body('reaction') reaction: string,
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    return this.messagesService.addReaction(
+      messageId,
+      user.userId,
+      reaction,
+      appId,
+    );
+  }
+
+  @Delete(':id/react')
+  @ApiOperation({ summary: 'Remove reaction from a message' })
+  @ApiResponse({ status: 200, description: 'Reaction removed' })
+  async removeReaction(
+    @Param('id') messageId: string,
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    return this.messagesService.removeReaction(messageId, user.userId, appId);
+  }
+
+  @Get(':id/reactions')
+  @ApiOperation({ summary: 'Get reactions for a message' })
+  @ApiResponse({ status: 200, description: 'List of reactions' })
+  async getReactions(@Param('id') messageId: string, @CurrentUser() user: any) {
+    return this.messagesService.getReactions(messageId, user.userId);
   }
 }

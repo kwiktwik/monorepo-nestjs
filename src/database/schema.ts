@@ -546,9 +546,7 @@ export const notificationEvents = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     payload: jsonb('payload').notNull(),
-    status: notificationEventStatusEnum('status')
-      .notNull()
-      .default('PENDING'),
+    status: notificationEventStatusEnum('status').notNull().default('PENDING'),
     retryCount: integer('retry_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -711,9 +709,13 @@ export const deviceSessions = pgTable(
       .notNull(),
   },
   (table) => ({
-    deviceSessionsUserIdIdx: index('device_sessions_user_id_idx').on(table.userId),
+    deviceSessionsUserIdIdx: index('device_sessions_user_id_idx').on(
+      table.userId,
+    ),
     deviceSessionsAppIdIdx: index('device_sessions_app_id_idx').on(table.appId),
-    deviceSessionsCreatedAtIdx: index('device_sessions_created_at_idx').on(table.createdAt),
+    deviceSessionsCreatedAtIdx: index('device_sessions_created_at_idx').on(
+      table.createdAt,
+    ),
   }),
 ).enableRLS();
 
@@ -729,9 +731,7 @@ export const teamNotifications = pgTable(
       .notNull()
       .references(() => notificationLogs.id, { onDelete: 'cascade' }),
     transactionKey: text('transaction_key').notNull(),
-    sentAt: timestamp('sent_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
     recipientCount: integer('recipient_count').notNull().default(0),
     status: teamNotificationStatusEnum('status').notNull().default('SUCCESS'),
     errorMessage: text('error_message'),
@@ -740,10 +740,18 @@ export const teamNotifications = pgTable(
       .notNull(),
   },
   (table) => ({
-    teamNotificationsUserIdIdx: index('team_notifications_userId_idx').on(table.userId),
-    teamNotificationsLogIdIdx: index('team_notifications_logId_idx').on(table.notificationLogId),
-    teamNotificationsTransactionKeyIdx: index('team_notifications_transactionKey_idx').on(table.transactionKey),
-    teamNotificationsTransactionKeyUnique: unique('team_notifications_transactionKey_unique').on(table.transactionKey),
+    teamNotificationsUserIdIdx: index('team_notifications_userId_idx').on(
+      table.userId,
+    ),
+    teamNotificationsLogIdIdx: index('team_notifications_logId_idx').on(
+      table.notificationLogId,
+    ),
+    teamNotificationsTransactionKeyIdx: index(
+      'team_notifications_transactionKey_idx',
+    ).on(table.transactionKey),
+    teamNotificationsTransactionKeyUnique: unique(
+      'team_notifications_transactionKey_unique',
+    ).on(table.transactionKey),
   }),
 ).enableRLS();
 
@@ -760,103 +768,263 @@ export const abandonedCheckouts = pgTable(
       .defaultNow()
       .notNull(),
     offerExpiresAt: timestamp('offer_expires_at', { withTimezone: true }),
-    discountNotificationSent: boolean('discount_notification_sent').notNull().default(false),
-    discountNotificationSentAt: timestamp('discount_notification_sent_at', { withTimezone: true }),
+    discountNotificationSent: boolean('discount_notification_sent')
+      .notNull()
+      .default(false),
+    discountNotificationSentAt: timestamp('discount_notification_sent_at', {
+      withTimezone: true,
+    }),
     notificationsSent: integer('notifications_sent').notNull().default(0),
-    lastNotificationSentAt: timestamp('last_notification_sent_at', { withTimezone: true }),
-    nextNotificationScheduledAt: timestamp('next_notification_scheduled_at', { withTimezone: true }),
+    lastNotificationSentAt: timestamp('last_notification_sent_at', {
+      withTimezone: true,
+    }),
+    nextNotificationScheduledAt: timestamp('next_notification_scheduled_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => ({
-    abandonedCheckoutsUserIdIdx: index('abandoned_checkouts_userId_idx').on(table.userId),
-    abandonedCheckoutsAppIdIdx: index('abandoned_checkouts_appId_idx').on(table.appId),
-    abandonedCheckoutsUserAppIdx: index('abandoned_checkouts_user_app_idx').on(table.userId, table.appId),
-    abandonedCheckoutsTimeIdx: index('abandoned_checkouts_time_idx').on(table.checkoutStartedAt),
-    abandonedCheckoutsExpiryIdx: index('abandoned_checkouts_expiry_idx').on(table.offerExpiresAt),
-    abandonedCheckoutsNextNotifIdx: index('abandoned_checkouts_next_notif_idx').on(table.nextNotificationScheduledAt),
+    abandonedCheckoutsUserIdIdx: index('abandoned_checkouts_userId_idx').on(
+      table.userId,
+    ),
+    abandonedCheckoutsAppIdIdx: index('abandoned_checkouts_appId_idx').on(
+      table.appId,
+    ),
+    abandonedCheckoutsUserAppIdx: index('abandoned_checkouts_user_app_idx').on(
+      table.userId,
+      table.appId,
+    ),
+    abandonedCheckoutsTimeIdx: index('abandoned_checkouts_time_idx').on(
+      table.checkoutStartedAt,
+    ),
+    abandonedCheckoutsExpiryIdx: index('abandoned_checkouts_expiry_idx').on(
+      table.offerExpiresAt,
+    ),
+    abandonedCheckoutsNextNotifIdx: index(
+      'abandoned_checkouts_next_notif_idx',
+    ).on(table.nextNotificationScheduledAt),
   }),
 ).enableRLS();
 
 // --- Messaging Tables ---
 
 // Conversations table
-export const conversations = pgTable('conversations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  appId: text('app_id').notNull(),
-  type: varchar('type', { length: 50 }).notNull().default('direct'), // direct, group
-  name: varchar('name', { length: 255 }),
-  description: text('description'),
-  avatarUrl: varchar('avatar_url', { length: 500 }),
-  createdBy: text('created_by').notNull().references(() => user.id),
-  lastMessageAt: timestamp('last_message_at'),
-  lastMessagePreview: text('last_message_preview'),
-  metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  appIdIdx: index('conversations_app_id_idx').on(table.appId),
-  typeIdx: index('conversations_type_idx').on(table.type),
-})).enableRLS();
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    appId: text('app_id').notNull(),
+    type: varchar('type', { length: 50 }).notNull().default('direct'), // direct, group
+    name: varchar('name', { length: 255 }),
+    description: text('description'),
+    avatarUrl: varchar('avatar_url', { length: 500 }),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => user.id),
+    lastMessageAt: timestamp('last_message_at'),
+    lastMessagePreview: text('last_message_preview'),
+    metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    appIdIdx: index('conversations_app_id_idx').on(table.appId),
+    typeIdx: index('conversations_type_idx').on(table.type),
+  }),
+).enableRLS();
 
 // Conversation participants (many-to-many)
-export const conversationParticipants = pgTable('conversation_participants', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  role: varchar('role', { length: 50 }).notNull().default('member'), // admin, member
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
-  lastReadAt: timestamp('last_read_at'),
-  mutedUntil: timestamp('muted_until'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => ({
-  conversationIdx: index('conversation_participants_conversation_idx').on(table.conversationId),
-  userIdx: index('conversation_participants_user_idx').on(table.userId),
-})).enableRLS();
+export const conversationParticipants = pgTable(
+  'conversation_participants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 50 }).notNull().default('member'), // admin, member
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    lastReadAt: timestamp('last_read_at'),
+    mutedUntil: timestamp('muted_until'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationIdx: index('conversation_participants_conversation_idx').on(
+      table.conversationId,
+    ),
+    userIdx: index('conversation_participants_user_idx').on(table.userId),
+  }),
+).enableRLS();
 
 // Messages table
-export const messages = pgTable('messages', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
-  senderId: text('sender_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  content: text('content').notNull(),
-  type: varchar('type', { length: 50 }).notNull().default('text'), // text, image, video, file, system
-  replyToId: uuid('reply_to_id'),
-  metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
-  isEdited: boolean('is_edited').default(false).notNull(),
-  editedAt: timestamp('edited_at'),
-  isDeleted: boolean('is_deleted').default(false).notNull(),
-  deletedAt: timestamp('deleted_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  conversationIdx: index('messages_conversation_idx').on(table.conversationId),
-  senderIdx: index('messages_sender_idx').on(table.senderId),
-  createdAtIdx: index('messages_created_at_idx').on(table.createdAt),
-})).enableRLS();
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    senderId: text('sender_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    type: varchar('type', { length: 50 }).notNull().default('text'), // text, image, video, file, system
+    replyToId: uuid('reply_to_id'),
+    metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
+    isEdited: boolean('is_edited').default(false).notNull(),
+    editedAt: timestamp('edited_at'),
+    isDeleted: boolean('is_deleted').default(false).notNull(),
+    deletedAt: timestamp('deleted_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationIdx: index('messages_conversation_idx').on(
+      table.conversationId,
+    ),
+    senderIdx: index('messages_sender_idx').on(table.senderId),
+    createdAtIdx: index('messages_created_at_idx').on(table.createdAt),
+    conversationCreatedAtIdx: index('messages_conversation_created_at_idx').on(
+      table.conversationId,
+      table.createdAt,
+    ),
+  }),
+).enableRLS();
 
 // Message read receipts
-export const messageReads = pgTable('message_reads', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  readAt: timestamp('read_at').defaultNow().notNull(),
-}, (table) => ({
-  messageIdx: index('message_reads_message_idx').on(table.messageId),
-  userIdx: index('message_reads_user_idx').on(table.userId),
-})).enableRLS();
+export const messageReads = pgTable(
+  'message_reads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    messageIdx: index('message_reads_message_idx').on(table.messageId),
+    userIdx: index('message_reads_user_idx').on(table.userId),
+  }),
+).enableRLS();
 
 // Typing indicators cache
-export const typingIndicators = pgTable('typing_indicators', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  isTyping: boolean('is_typing').default(true).notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  conversationIdx: index('typing_indicators_conversation_idx').on(table.conversationId),
-})).enableRLS();
+export const typingIndicators = pgTable(
+  'typing_indicators',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    isTyping: boolean('is_typing').default(true).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationIdx: index('typing_indicators_conversation_idx').on(
+      table.conversationId,
+    ),
+  }),
+).enableRLS();
+
+// Message reactions table
+export const messageReactions = pgTable(
+  'message_reactions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    reaction: varchar('reaction', { length: 50 }).notNull(), // emoji unicode or shortcode
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    messageIdx: index('message_reactions_message_idx').on(table.messageId),
+    userIdx: index('message_reactions_user_idx').on(table.userId),
+    uniqueUserReaction: unique('message_reactions_unique').on(
+      table.messageId,
+      table.userId,
+    ),
+  }),
+).enableRLS();
+
+// Media attachments for messages
+export const mediaAttachments = pgTable(
+  'media_attachments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    messageId: uuid('message_id').references(() => messages.id, {
+      onDelete: 'cascade',
+    }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    uploadedBy: text('uploaded_by')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 50 }).notNull(), // image, video, file, audio
+    url: varchar('url', { length: 1000 }).notNull(),
+    thumbnailUrl: varchar('thumbnail_url', { length: 1000 }),
+    fileName: varchar('file_name', { length: 255 }),
+    fileSize: integer('file_size'),
+    mimeType: varchar('mime_type', { length: 100 }),
+    width: integer('width'),
+    height: integer('height'),
+    duration: integer('duration'), // for video/audio in seconds
+    metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    messageIdx: index('media_attachments_message_idx').on(table.messageId),
+    conversationIdx: index('media_attachments_conversation_idx').on(
+      table.conversationId,
+    ),
+  }),
+).enableRLS();
+
+// Scheduled messages table
+export const scheduledMessages = pgTable(
+  'scheduled_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    senderId: text('sender_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    type: varchar('type', { length: 50 }).notNull().default('text'),
+    replyToId: uuid('reply_to_id').references(() => messages.id, {
+      onDelete: 'cascade',
+    }),
+    sendAt: timestamp('send_at').notNull(),
+    status: varchar('status', { length: 50 }).notNull().default('pending'), // pending, sent, failed, cancelled
+    sentAt: timestamp('sent_at'),
+    errorMessage: text('error_message'),
+    metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationIdx: index('scheduled_messages_conversation_idx').on(
+      table.conversationId,
+    ),
+    statusIdx: index('scheduled_messages_status_idx').on(table.status),
+    sendAtIdx: index('scheduled_messages_send_at_idx').on(table.sendAt),
+  }),
+).enableRLS();
 
 // Relations
 export const userRelations = relations(user, ({ many }) => ({
@@ -865,25 +1033,31 @@ export const userRelations = relations(user, ({ many }) => ({
   reads: many(messageReads),
 }));
 
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  createdByUser: one(user, {
-    fields: [conversations.createdBy],
-    references: [user.id],
+export const conversationsRelations = relations(
+  conversations,
+  ({ one, many }) => ({
+    createdByUser: one(user, {
+      fields: [conversations.createdBy],
+      references: [user.id],
+    }),
+    participants: many(conversationParticipants),
+    messages: many(messages),
   }),
-  participants: many(conversationParticipants),
-  messages: many(messages),
-}));
+);
 
-export const conversationParticipantsRelations = relations(conversationParticipants, ({ one }) => ({
-  conversation: one(conversations, {
-    fields: [conversationParticipants.conversationId],
-    references: [conversations.id],
+export const conversationParticipantsRelations = relations(
+  conversationParticipants,
+  ({ one }) => ({
+    conversation: one(conversations, {
+      fields: [conversationParticipants.conversationId],
+      references: [conversations.id],
+    }),
+    user: one(user, {
+      fields: [conversationParticipants.userId],
+      references: [user.id],
+    }),
   }),
-  user: one(user, {
-    fields: [conversationParticipants.userId],
-    references: [user.id],
-  }),
-}));
+);
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
   conversation: one(conversations, {
@@ -899,6 +1073,8 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [messages.id],
   }),
   reads: many(messageReads),
+  reactions: many(messageReactions),
+  attachments: many(mediaAttachments),
 }));
 
 export const messageReadsRelations = relations(messageReads, ({ one }) => ({
@@ -911,3 +1087,54 @@ export const messageReadsRelations = relations(messageReads, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Relations for new tables
+export const messageReactionsRelations = relations(
+  messageReactions,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [messageReactions.messageId],
+      references: [messages.id],
+    }),
+    user: one(user, {
+      fields: [messageReactions.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const mediaAttachmentsRelations = relations(
+  mediaAttachments,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [mediaAttachments.messageId],
+      references: [messages.id],
+    }),
+    conversation: one(conversations, {
+      fields: [mediaAttachments.conversationId],
+      references: [conversations.id],
+    }),
+    uploadedByUser: one(user, {
+      fields: [mediaAttachments.uploadedBy],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const scheduledMessagesRelations = relations(
+  scheduledMessages,
+  ({ one }) => ({
+    conversation: one(conversations, {
+      fields: [scheduledMessages.conversationId],
+      references: [conversations.id],
+    }),
+    sender: one(user, {
+      fields: [scheduledMessages.senderId],
+      references: [user.id],
+    }),
+    replyTo: one(messages, {
+      fields: [scheduledMessages.replyToId],
+      references: [messages.id],
+    }),
+  }),
+);

@@ -44,7 +44,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Cache user online status
-  async setUserOnline(userId: string, appId: string, ttl: number = 300): Promise<void> {
+  async setUserOnline(
+    userId: string,
+    appId: string,
+    ttl: number = 300,
+  ): Promise<void> {
     const key = `user:online:${appId}:${userId}`;
     await this.client.setex(key, ttl, '1');
   }
@@ -78,7 +82,37 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.smembers(key);
   }
 
-  // Typing indicators
+  // Typing indicators with debouncing
+  async setTypingWithDebounce(
+    conversationId: string,
+    userId: string,
+    debounceMs: number = 3000,
+    ttl: number = 5,
+  ): Promise<boolean> {
+    const key = `typing:${conversationId}:${userId}`;
+    const debounceKey = `typing_debounce:${conversationId}:${userId}`;
+
+    // Check if we're still within the debounce window
+    const exists = await this.client.exists(debounceKey);
+    if (exists) {
+      // Still within debounce window, just extend TTL
+      await this.client.setex(key, ttl, '1');
+      return false; // No need to broadcast
+    }
+
+    // Set both keys
+    await this.client.setex(key, ttl, '1');
+    await this.client.setex(debounceKey, Math.ceil(debounceMs / 1000), '1');
+
+    // Broadcast typing event
+    await this.pubClient.publish(
+      `typing:${conversationId}`,
+      JSON.stringify({ userId, isTyping: true }),
+    );
+
+    return true; // Broadcasted
+  }
+
   async setTyping(
     conversationId: string,
     userId: string,
@@ -121,7 +155,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // App cache
-  async cacheApp(apiKey: string, appData: any, ttl: number = 3600): Promise<void> {
+  async cacheApp(
+    apiKey: string,
+    appData: any,
+    ttl: number = 3600,
+  ): Promise<void> {
     const key = `app:${apiKey}`;
     await this.client.setex(key, ttl, JSON.stringify(appData));
   }
@@ -138,7 +176,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // User session cache
-  async cacheUserSession(userId: string, sessionId: string, data: any, ttl: number = 86400): Promise<void> {
+  async cacheUserSession(
+    userId: string,
+    sessionId: string,
+    data: any,
+    ttl: number = 86400,
+  ): Promise<void> {
     const key = `session:${userId}:${sessionId}`;
     await this.client.setex(key, ttl, JSON.stringify(data));
   }
@@ -161,7 +204,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     windowSeconds: number,
   ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
     const current = await this.client.incr(key);
-    
+
     if (current === 1) {
       await this.client.expire(key, windowSeconds);
     }
