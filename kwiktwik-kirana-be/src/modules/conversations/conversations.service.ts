@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Inject,
+} from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../database/schema';
@@ -15,7 +20,7 @@ export class ConversationsService {
     @Inject(DRIZZLE_TOKEN) private db: NodePgDatabase<typeof schema>,
     private redisService: RedisService,
     private mqttService: MqttService,
-  ) { }
+  ) {}
 
   async create(
     appId: string,
@@ -25,17 +30,20 @@ export class ConversationsService {
     name?: string,
     description?: string,
   ) {
-    const [conversation] = await this.db.insert(conversations).values({
-      id: uuidv4(),
-      appId,
-      type,
-      name: name || null,
-      description: description || null,
-      createdBy: creatorId,
-    }).returning();
+    const [conversation] = await this.db
+      .insert(conversations)
+      .values({
+        id: uuidv4(),
+        appId,
+        type,
+        name: name || null,
+        description: description || null,
+        createdBy: creatorId,
+      })
+      .returning();
 
     // Add participants
-    const participantValues = participantIds.map(userId => ({
+    const participantValues = participantIds.map((userId) => ({
       id: uuidv4(),
       conversationId: conversation.id,
       userId,
@@ -52,9 +60,14 @@ export class ConversationsService {
 
     // Notify participants via MQTT
     for (const userId of participantIds) {
-      await this.mqttService.publishToUser(appId, userId, 'conversation/created', {
-        conversation,
-      });
+      await this.mqttService.publishToUser(
+        appId,
+        userId,
+        'conversation/created',
+        {
+          conversation,
+        },
+      );
     }
 
     return this.findById(conversation.id, creatorId);
@@ -77,33 +90,40 @@ export class ConversationsService {
     }
 
     // Check if user is participant
-    const isParticipant = conversation.participants.some(p => p.userId === userId);
+    const isParticipant = conversation.participants.some(
+      (p) => p.userId === userId,
+    );
     if (!isParticipant) {
-      throw new ForbiddenException('You are not a participant of this conversation');
+      throw new ForbiddenException(
+        'You are not a participant of this conversation',
+      );
     }
 
     return conversation;
   }
 
   async getUserConversations(appId: string, userId: string) {
-    const participations = await this.db.query.conversationParticipants.findMany({
-      where: eq(conversationParticipants.userId, userId),
-      with: {
-        conversation: {
-          with: {
-            participants: {
-              with: {
-                user: true,
+    const participations =
+      await this.db.query.conversationParticipants.findMany({
+        where: eq(conversationParticipants.userId, userId),
+        with: {
+          conversation: {
+            with: {
+              participants: {
+                with: {
+                  user: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
     return participations
-      .map(p => p.conversation)
-      .filter((c): c is NonNullable<typeof c> => c !== null && c.appId === appId)
+      .map((p) => p.conversation)
+      .filter(
+        (c): c is NonNullable<typeof c> => c !== null && c.appId === appId,
+      )
       .sort((a, b) => {
         const aTime = a.lastMessageAt?.getTime() || 0;
         const bTime = b.lastMessageAt?.getTime() || 0;
@@ -116,9 +136,10 @@ export class ConversationsService {
     userId: string,
     otherUserId: string,
   ) {
-    const userParticipations = await this.db.query.conversationParticipants.findMany({
-      where: eq(conversationParticipants.userId, userId),
-    });
+    const userParticipations =
+      await this.db.query.conversationParticipants.findMany({
+        where: eq(conversationParticipants.userId, userId),
+      });
 
     if (userParticipations.length === 0) {
       return this.create(appId, userId, 'direct', [userId, otherUserId]);
@@ -135,12 +156,13 @@ export class ConversationsService {
     });
 
     for (const conversation of directConversations) {
-      const otherParticipants = await this.db.query.conversationParticipants.findMany({
-        where: and(
-          eq(conversationParticipants.conversationId, conversation.id),
-          eq(conversationParticipants.userId, otherUserId),
-        ),
-      });
+      const otherParticipants =
+        await this.db.query.conversationParticipants.findMany({
+          where: and(
+            eq(conversationParticipants.conversationId, conversation.id),
+            eq(conversationParticipants.userId, otherUserId),
+          ),
+        });
 
       if (otherParticipants.length > 0) {
         return this.findById(conversation.id, userId);
@@ -150,11 +172,9 @@ export class ConversationsService {
     return this.create(appId, userId, 'direct', [userId, otherUserId]);
   }
 
-  async updateLastMessage(
-    conversationId: string,
-    messagePreview: string,
-  ) {
-    await this.db.update(conversations)
+  async updateLastMessage(conversationId: string, messagePreview: string) {
+    await this.db
+      .update(conversations)
       .set({
         lastMessageAt: new Date(),
         lastMessagePreview: messagePreview.substring(0, 100),
@@ -172,14 +192,19 @@ export class ConversationsService {
     const conversation = await this.findById(conversationId, userId);
 
     if (conversation.type !== 'group') {
-      throw new ForbiddenException('Cannot add participants to direct conversations');
+      throw new ForbiddenException(
+        'Cannot add participants to direct conversations',
+      );
     }
+
+    // Only admins can add participants
+    await this.requireAdmin(conversationId, userId);
 
     // Check if already a participant
     const existing = await this.db.query.conversationParticipants.findFirst({
       where: and(
         eq(conversationParticipants.conversationId, conversationId),
-        eq(conversationParticipants.userId, newUserId)
+        eq(conversationParticipants.userId, newUserId),
       ),
     });
 
@@ -195,16 +220,22 @@ export class ConversationsService {
     });
 
     // Update Redis cache
-    const currentParticipants = await this.redisService.getConversationParticipants(conversationId);
-    await this.redisService.cacheConversationParticipants(
-      conversationId,
-      [...currentParticipants, newUserId],
-    );
+    const currentParticipants =
+      await this.redisService.getConversationParticipants(conversationId);
+    await this.redisService.cacheConversationParticipants(conversationId, [
+      ...currentParticipants,
+      newUserId,
+    ]);
 
     // Notify the new participant
-    await this.mqttService.publishToUser(appId, newUserId, 'conversation/added', {
-      conversationId,
-    });
+    await this.mqttService.publishToUser(
+      appId,
+      newUserId,
+      'conversation/added',
+      {
+        conversationId,
+      },
+    );
 
     return this.findById(conversationId, userId);
   }
@@ -217,34 +248,56 @@ export class ConversationsService {
   ) {
     const conversation = await this.findById(conversationId, userId);
 
-    await this.db.delete(conversationParticipants)
-      .where(and(
-        eq(conversationParticipants.conversationId, conversationId),
-        eq(conversationParticipants.userId, removeUserId)
-      ));
+    // Users can remove themselves, but removing others requires admin
+    if (removeUserId !== userId) {
+      await this.requireAdmin(conversationId, userId);
+    }
+
+    // Cannot remove the creator
+    if (removeUserId === conversation.createdBy) {
+      throw new ForbiddenException('Cannot remove the conversation creator');
+    }
+
+    await this.db
+      .delete(conversationParticipants)
+      .where(
+        and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, removeUserId),
+        ),
+      );
 
     // Update Redis cache
-    const currentParticipants = await this.redisService.getConversationParticipants(conversationId);
+    const currentParticipants =
+      await this.redisService.getConversationParticipants(conversationId);
     await this.redisService.cacheConversationParticipants(
       conversationId,
-      currentParticipants.filter(id => id !== removeUserId),
+      currentParticipants.filter((id) => id !== removeUserId),
     );
 
     // Notify the removed user
-    await this.mqttService.publishToUser(appId, removeUserId, 'conversation/removed', {
-      conversationId,
-    });
+    await this.mqttService.publishToUser(
+      appId,
+      removeUserId,
+      'conversation/removed',
+      {
+        conversationId,
+      },
+    );
 
     return { message: 'Participant removed' };
   }
 
   async markAsRead(conversationId: string, userId: string) {
-    await this.db.update(conversationParticipants)
+    await this.db
+      .update(conversationParticipants)
       .set({ lastReadAt: new Date() })
-      .where(and(
-        eq(conversationParticipants.conversationId, conversationId),
-        eq(conversationParticipants.userId, userId)
-      ));
+      .where(
+        and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, userId),
+        ),
+      );
 
     return { message: 'Marked as read' };
   }
@@ -253,7 +306,7 @@ export class ConversationsService {
     const participant = await this.db.query.conversationParticipants.findFirst({
       where: and(
         eq(conversationParticipants.conversationId, conversationId),
-        eq(conversationParticipants.userId, userId)
+        eq(conversationParticipants.userId, userId),
       ),
     });
 
@@ -264,7 +317,7 @@ export class ConversationsService {
     const unreadMessages = await this.db.query.messages.findMany({
       where: and(
         eq(messages.conversationId, conversationId),
-        eq(messages.isDeleted, false)
+        eq(messages.isDeleted, false),
       ),
     });
 
@@ -272,8 +325,171 @@ export class ConversationsService {
       return unreadMessages.length;
     }
 
-    return unreadMessages.filter(m =>
-      m.createdAt > participant.lastReadAt! && m.senderId !== userId
+    return unreadMessages.filter(
+      (m) => m.createdAt > participant.lastReadAt! && m.senderId !== userId,
     ).length;
+  }
+
+  // Admin helper methods
+  private async checkIsAdmin(
+    conversationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const participant = await this.db.query.conversationParticipants.findFirst({
+      where: and(
+        eq(conversationParticipants.conversationId, conversationId),
+        eq(conversationParticipants.userId, userId),
+      ),
+    });
+
+    return participant?.role === 'admin';
+  }
+
+  private async requireAdmin(
+    conversationId: string,
+    userId: string,
+  ): Promise<void> {
+    const isAdmin = await this.checkIsAdmin(conversationId, userId);
+    if (!isAdmin) {
+      throw new ForbiddenException('Admin privileges required for this action');
+    }
+  }
+
+  async promoteToAdmin(
+    conversationId: string,
+    userId: string,
+    promoteUserId: string,
+    appId: string,
+  ) {
+    await this.findById(conversationId, userId);
+
+    // Only admins can promote
+    await this.requireAdmin(conversationId, userId);
+
+    // Check if user to promote is a participant
+    const participant = await this.db.query.conversationParticipants.findFirst({
+      where: and(
+        eq(conversationParticipants.conversationId, conversationId),
+        eq(conversationParticipants.userId, promoteUserId),
+      ),
+    });
+
+    if (!participant) {
+      throw new NotFoundException('User is not a participant in this group');
+    }
+
+    if (participant.role === 'admin') {
+      throw new ForbiddenException('User is already an admin');
+    }
+
+    await this.db
+      .update(conversationParticipants)
+      .set({ role: 'admin' })
+      .where(eq(conversationParticipants.id, participant.id));
+
+    // Notify the promoted user
+    await this.mqttService.publishToUser(
+      appId,
+      promoteUserId,
+      'conversation/admin-promoted',
+      {
+        conversationId,
+        promotedBy: userId,
+      },
+    );
+
+    return { message: 'User promoted to admin' };
+  }
+
+  async demoteFromAdmin(
+    conversationId: string,
+    userId: string,
+    demoteUserId: string,
+    appId: string,
+  ) {
+    await this.findById(conversationId, userId);
+
+    // Only admins can demote
+    await this.requireAdmin(conversationId, userId);
+
+    // Cannot demote the creator
+    const conversation = await this.db.query.conversations.findFirst({
+      where: eq(conversations.id, conversationId),
+    });
+
+    if (demoteUserId === conversation?.createdBy) {
+      throw new ForbiddenException('Cannot demote the conversation creator');
+    }
+
+    // Check if user to demote is a participant
+    const participant = await this.db.query.conversationParticipants.findFirst({
+      where: and(
+        eq(conversationParticipants.conversationId, conversationId),
+        eq(conversationParticipants.userId, demoteUserId),
+      ),
+    });
+
+    if (!participant) {
+      throw new NotFoundException('User is not a participant in this group');
+    }
+
+    if (participant.role !== 'admin') {
+      throw new ForbiddenException('User is not an admin');
+    }
+
+    await this.db
+      .update(conversationParticipants)
+      .set({ role: 'member' })
+      .where(eq(conversationParticipants.id, participant.id));
+
+    // Notify the demoted user
+    await this.mqttService.publishToUser(
+      appId,
+      demoteUserId,
+      'conversation/admin-demoted',
+      {
+        conversationId,
+        demotedBy: userId,
+      },
+    );
+
+    return { message: 'User demoted to member' };
+  }
+
+  async updateGroup(
+    conversationId: string,
+    userId: string,
+    updates: { name?: string; description?: string; avatarUrl?: string },
+    appId: string,
+  ) {
+    await this.findById(conversationId, userId);
+
+    // Only admins can update group details
+    await this.requireAdmin(conversationId, userId);
+
+    await this.db
+      .update(conversations)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(conversations.id, conversationId));
+
+    // Notify all participants
+    const participants =
+      await this.redisService.getConversationParticipants(conversationId);
+    for (const participantId of participants) {
+      await this.mqttService.publishToUser(
+        appId,
+        participantId,
+        'conversation/updated',
+        {
+          conversationId,
+          updates,
+        },
+      );
+    }
+
+    return this.findById(conversationId, userId);
   }
 }
