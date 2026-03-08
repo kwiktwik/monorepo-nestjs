@@ -22,6 +22,14 @@ import { ANALYTICS_EVENTS } from '../analytics/analytics.constants';
 export class RazorpayWebhookService {
   private readonly logger = new Logger(RazorpayWebhookService.name);
 
+  /**
+   * FEATURE FLAG: Analytics/Events tracking
+   * Set to true to enable analytics event tracking
+   * Currently disabled as events are handled by a separate service
+   * TODO: Re-enable when migrating to this service for analytics
+   */
+  private readonly ANALYTICS_ENABLED = false;
+
   constructor(
     private config: ConfigService,
     @Inject(DRIZZLE_TOKEN)
@@ -30,6 +38,11 @@ export class RazorpayWebhookService {
   ) {}
 
   private async getUserInfoForAnalytics(userId: string) {
+    // Analytics disabled - kept for future re-enabling
+    if (!this.ANALYTICS_ENABLED) {
+      return null;
+    }
+
     try {
       console.log('[Razorpay] getUserInfoForAnalytics called with:', {
         userId,
@@ -69,6 +82,12 @@ export class RazorpayWebhookService {
     eventName: string,
     eventProperties: EventProperties,
   ) {
+    // Analytics disabled - kept for future re-enabling
+    // To re-enable: Set ANALYTICS_ENABLED = true at the top of the class
+    if (!this.ANALYTICS_ENABLED) {
+      return;
+    }
+
     try {
       const orderInfo = await this.db
         .select({
@@ -108,6 +127,12 @@ export class RazorpayWebhookService {
     eventProperties: EventProperties,
     facebookCustomData?: EventProperties,
   ) {
+    // Analytics disabled - kept for future re-enabling
+    // To re-enable: Set ANALYTICS_ENABLED = true at the top of the class
+    if (!this.ANALYTICS_ENABLED) {
+      return;
+    }
+
     try {
       const subInfo = await this.db
         .select({
@@ -452,7 +477,7 @@ export class RazorpayWebhookService {
 
     if (payment?.order_id && payment?.id) {
       try {
-        await this.db
+        const result = await this.db
           .update(schema.orders)
           .set({
             status: 'authorized',
@@ -460,23 +485,31 @@ export class RazorpayWebhookService {
             paymentMetadata: payment as any,
             updatedAt: new Date(),
           })
-          .where(eq(schema.orders.razorpayOrderId, payment.order_id));
-        this.logger.log(
-          `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to AUTHORIZED`,
-        );
+          .where(eq(schema.orders.razorpayOrderId, payment.order_id))
+          .returning({ id: schema.orders.id });
 
-        await this.trackOrderAnalytics(
-          requestId,
-          payment.order_id,
-          ANALYTICS_EVENTS.PAYMENT_AUTHORIZED,
-          {
-            payment_id: payment.id,
-            order_id: payment.order_id,
-            amount: payment.amount / 100,
-            currency: payment.currency || 'INR',
-            method: payment.method,
-          },
-        );
+        if (result.length === 0) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment authorized`,
+          );
+        } else {
+          this.logger.log(
+            `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to AUTHORIZED`,
+          );
+
+          await this.trackOrderAnalytics(
+            requestId,
+            payment.order_id,
+            ANALYTICS_EVENTS.PAYMENT_AUTHORIZED,
+            {
+              payment_id: payment.id,
+              order_id: payment.order_id,
+              amount: payment.amount / 100,
+              currency: payment.currency || 'INR',
+              method: payment.method,
+            },
+          );
+        }
       } catch (error) {
         this.logger.error(
           `[WEBHOOK ${requestId}] ❌ Failed to update order to authorized:`,
@@ -495,7 +528,7 @@ export class RazorpayWebhookService {
 
     if (payment?.order_id && payment?.id) {
       try {
-        await this.db
+        const result = await this.db
           .update(schema.orders)
           .set({
             status: 'captured',
@@ -503,23 +536,31 @@ export class RazorpayWebhookService {
             paymentMetadata: payment as any,
             updatedAt: new Date(),
           })
-          .where(eq(schema.orders.razorpayOrderId, payment.order_id));
-        this.logger.log(
-          `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to CAPTURED`,
-        );
+          .where(eq(schema.orders.razorpayOrderId, payment.order_id))
+          .returning({ id: schema.orders.id });
 
-        await this.trackOrderAnalytics(
-          requestId,
-          payment.order_id,
-          ANALYTICS_EVENTS.PAYMENT_CAPTURED,
-          {
-            payment_id: payment.id,
-            order_id: payment.order_id,
-            amount: payment.amount / 100,
-            currency: payment.currency || 'INR',
-            method: payment.method,
-          },
-        );
+        if (result.length === 0) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment captured`,
+          );
+        } else {
+          this.logger.log(
+            `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to CAPTURED`,
+          );
+
+          await this.trackOrderAnalytics(
+            requestId,
+            payment.order_id,
+            ANALYTICS_EVENTS.PAYMENT_CAPTURED,
+            {
+              payment_id: payment.id,
+              order_id: payment.order_id,
+              amount: payment.amount / 100,
+              currency: payment.currency || 'INR',
+              method: payment.method,
+            },
+          );
+        }
       } catch (error) {
         this.logger.error(
           `[WEBHOOK ${requestId}] ❌ Failed to update order to captured:`,
@@ -575,6 +616,10 @@ export class RazorpayWebhookService {
               error_description: payment.error_description,
             },
           );
+        } else {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment failed`,
+          );
         }
       }
 
@@ -603,26 +648,34 @@ export class RazorpayWebhookService {
 
     if (token?.id && token?.order_id) {
       try {
-        await this.db
+        const result = await this.db
           .update(schema.orders)
           .set({
             tokenId: token.id,
             updatedAt: new Date(),
           })
-          .where(eq(schema.orders.razorpayOrderId, token.order_id));
-        this.logger.log(
-          `[WEBHOOK ${requestId}] ✅ Token ${token.id} saved for order ${token.order_id}`,
-        );
+          .where(eq(schema.orders.razorpayOrderId, token.order_id))
+          .returning({ id: schema.orders.id });
 
-        await this.trackOrderAnalytics(
-          requestId,
-          token.order_id,
-          ANALYTICS_EVENTS.TOKEN_CONFIRMED,
-          {
-            token_id: token.id,
-            order_id: token.order_id,
-          },
-        );
+        if (result.length === 0) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${token.order_id} not found for token confirmed`,
+          );
+        } else {
+          this.logger.log(
+            `[WEBHOOK ${requestId}] ✅ Token ${token.id} saved for order ${token.order_id}`,
+          );
+
+          await this.trackOrderAnalytics(
+            requestId,
+            token.order_id,
+            ANALYTICS_EVENTS.TOKEN_CONFIRMED,
+            {
+              token_id: token.id,
+              order_id: token.order_id,
+            },
+          );
+        }
       } catch (error) {
         this.logger.error(
           `[WEBHOOK ${requestId}] ❌ Failed to save token:`,
@@ -1053,26 +1106,38 @@ export class RazorpayWebhookService {
           .where(eq(schema.orders.razorpayOrderId, order.id))
           .limit(1);
 
-        if (
-          existingOrder.length > 0 &&
-          existingOrder[0].status === 'captured'
-        ) {
+        if (existingOrder.length === 0) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${order.id} not found in database - cannot update to captured`,
+          );
+          return;
+        }
+
+        if (existingOrder[0].status === 'captured') {
           this.logger.log(
             `[WEBHOOK ${requestId}] ℹ️ Order ${order.id} already captured, skipping`,
           );
           return;
         }
 
-        await this.db
+        const result = await this.db
           .update(schema.orders)
           .set({
             status: 'captured',
             updatedAt: new Date(),
           })
-          .where(eq(schema.orders.razorpayOrderId, order.id));
-        this.logger.log(
-          `[WEBHOOK ${requestId}] ✅ Order ${order.id} updated to CAPTURED`,
-        );
+          .where(eq(schema.orders.razorpayOrderId, order.id))
+          .returning({ id: schema.orders.id });
+
+        if (result.length === 0) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Order ${order.id} update failed - no rows affected`,
+          );
+        } else {
+          this.logger.log(
+            `[WEBHOOK ${requestId}] ✅ Order ${order.id} updated to CAPTURED`,
+          );
+        }
       } catch (error) {
         this.logger.error(
           `[WEBHOOK ${requestId}] ❌ Failed to update order to captured:`,
