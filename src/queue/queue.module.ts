@@ -10,6 +10,16 @@ import { isMockMode } from '../common/utils/is-mock-mode';
  * Set USE_REAL_REDIS_FOR_QUEUES=true to force real Redis even in mock mode.
  */
 function createRedisConnection(config: ConfigService): Redis {
+  const redisUrl = config.get<string>('REDIS_URL');
+
+  if (!redisUrl) {
+    console.log(
+      '[QueueModule] REDIS_URL not configured. Using ioredis-mock for queues.',
+    );
+    const RedisMock = require('ioredis-mock').default;
+    return new RedisMock() as unknown as Redis;
+  }
+
   const useRealRedis =
     !isMockMode() || config.get<boolean>('USE_REAL_REDIS_FOR_QUEUES', true);
 
@@ -21,21 +31,8 @@ function createRedisConnection(config: ConfigService): Redis {
     return new RedisMock() as unknown as Redis;
   }
 
-  const redisUrl = config.get<string>('REDIS_URL');
-  const redisHost = config.get<string>('REDIS_HOST', 'localhost');
-  const redisPort = config.get<number>('REDIS_PORT', 6379);
-
-  if (redisUrl) {
-    console.log(`[QueueModule] Connecting to Redis via URL`);
-    return new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-    });
-  }
-
-  console.log(`[QueueModule] Connecting to Redis at ${redisHost}:${redisPort}`);
-  return new Redis({
-    host: redisHost,
-    port: redisPort,
+  console.log(`[QueueModule] Connecting to Redis via URL`);
+  return new Redis(redisUrl, {
     maxRetriesPerRequest: null,
   });
 }
