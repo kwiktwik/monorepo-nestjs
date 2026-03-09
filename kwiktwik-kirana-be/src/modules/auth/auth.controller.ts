@@ -38,7 +38,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
   @ApiResponse({
     status: 429,
-    description: 'Rate limit exceeded (60s cooldown, 10/day per number)',
+    description: 'Rate limit exceeded (20 OTPs/hour per phone number)',
   })
   async sendOtp(@Body() sendOtpDto: SendOtpDto, @Req() req: Request) {
     const ipAddress =
@@ -48,6 +48,53 @@ export class AuthController {
       'unknown';
 
     const result = await this.authService.sendOtp(
+      sendOtpDto.phoneNumber,
+      sendOtpDto.appHash,
+      ipAddress,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  @Post('v2/phone-number/send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send OTP v2 (with legacy app detection)',
+    description:
+      'Send OTP with kirana-fe (legacy Flutter app) user detection. Returns error if user already exists in legacy system.',
+  })
+  @ApiResponse({ status: 200, description: 'OTP sent successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User exists in legacy system - use alternate backend',
+    schema: {
+      example: {
+        success: true,
+        message: 'User already registered on legacy system',
+        error: 'USE_ALTERNATE_BACKEND',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (20 OTPs/hour per phone number)',
+  })
+  async sendOtpV2(@Body() sendOtpDto: SendOtpDto, @Req() req: Request) {
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (req.headers['x-real-ip'] as string) ||
+      req.socket.remoteAddress ||
+      'unknown';
+
+    const result = await this.authService.sendOtpV2(
       sendOtpDto.phoneNumber,
       sendOtpDto.appHash,
       ipAddress,

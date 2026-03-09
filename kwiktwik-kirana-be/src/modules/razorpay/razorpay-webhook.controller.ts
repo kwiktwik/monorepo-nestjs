@@ -30,7 +30,7 @@ export class RazorpayWebhookController {
     // Extract raw body first for logging purposes
     let rawBodyString: string;
     if (Buffer.isBuffer(req.body)) {
-      rawBodyString = (req.body as Buffer).toString('utf-8');
+      rawBodyString = req.body.toString('utf-8');
     } else if (typeof req.body === 'object' && req.body !== null) {
       rawBodyString = JSON.stringify(req.body);
     } else if (typeof req.body === 'string') {
@@ -83,7 +83,7 @@ export class RazorpayWebhookController {
 
     if (Buffer.isBuffer(req.body)) {
       // Production: raw body from bodyParser.raw()
-      const rawBody = req.body as Buffer;
+      const rawBody = req.body;
       bodyString = rawBody.toString('utf-8');
       this.logger.log(
         `[WEBHOOK] Raw body captured | size=${rawBody.length} bytes`,

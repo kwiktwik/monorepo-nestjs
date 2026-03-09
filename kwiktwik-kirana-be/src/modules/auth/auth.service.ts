@@ -20,6 +20,9 @@ import { AuthUserResponse } from './types';
 export type { AuthUserResponse } from './types';
 import { isMockMode } from '../../common/utils/is-mock-mode';
 
+/** Kirana-FE (legacy Flutter app) app IDs */
+const KIRANA_FE_APP_IDS = ['com.kiranaapps.app'];
+
 interface TruecallerTokenData {
   access_token?: string;
   expires_in?: number;
@@ -71,9 +74,93 @@ export class AuthService {
     }
   }
 
+  /**
+   * Check if a user exists in kirana-fe (legacy Flutter app)
+   * Returns true if the phone number has metadata for any kirana-fe app
+   */
+  async checkKiranaFeUser(phoneNumber: string): Promise<boolean> {
+    const normalized = normalizePhoneNumber(phoneNumber);
+
+    // Find user by phone number
+    const userRecord = await this.db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.phoneNumber, normalized))
+      .limit(1);
+
+    if (userRecord.length === 0) {
+      return false; // User doesn't exist anywhere
+    }
+
+    const userId = userRecord[0].id;
+
+    // Check if user has metadata for any kirana-fe app
+    const kiranaMetadata = await this.db
+      .select()
+      .from(schema.userMetadata)
+      .where(
+        and(
+          eq(schema.userMetadata.userId, userId),
+          sql`${schema.userMetadata.appId} IN (${KIRANA_FE_APP_IDS.map((id) => `'${id}'`).join(',')})`,
+        ),
+      )
+      .limit(1);
+
+    return kiranaMetadata.length > 0;
+  }
+
   /** Test phone for local dev - use OTP 123456 without sending SMS */
   private static readonly TEST_PHONE = '+919999999999';
   private static readonly TEST_OTP = '123456';
+
+  /** Rate limiting: 20 OTPs per hour per phone number */
+  private static readonly OTP_RATE_LIMIT = 20;
+  private static readonly OTP_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+  /**
+   * Check rate limit for OTP requests
+   * Returns retryAfter in seconds if limit exceeded, null if allowed
+   */
+  private async checkOtpRateLimit(
+    phoneNumber: string,
+  ): Promise<number | null> {
+    const normalized = normalizePhoneNumber(phoneNumber);
+    const windowStart = new Date(Date.now() - AuthService.OTP_RATE_WINDOW_MS);
+
+    // Count OTPs sent to this phone number in the last hour
+    const recentOtps = await this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(schema.otpCodes)
+      .where(
+        and(
+          eq(schema.otpCodes.phoneNumber, normalized),
+          gte(schema.otpCodes.createdAt, windowStart),
+        ),
+      );
+
+    const count = recentOtps[0]?.count ?? 0;
+
+    if (count >= AuthService.OTP_RATE_LIMIT) {
+      // Find when the oldest OTP in the window was created to calculate retry after
+      const oldestOtp = await this.db
+        .select({ createdAt: schema.otpCodes.createdAt })
+        .from(schema.otpCodes)
+        .where(eq(schema.otpCodes.phoneNumber, normalized))
+        .orderBy(schema.otpCodes.createdAt)
+        .limit(1);
+
+      if (oldestOtp.length > 0) {
+        const oldestTime = new Date(oldestOtp[0].createdAt).getTime();
+        const retryAfter = Math.ceil(
+          (oldestTime + AuthService.OTP_RATE_WINDOW_MS - Date.now()) / 1000,
+        );
+        return Math.max(0, retryAfter);
+      }
+      return AuthService.OTP_RATE_WINDOW_MS / 1000; // Default: full hour
+    }
+
+    return null; // Rate limit not exceeded
+  }
 
   /**
    * Send OTP to phone number with abuse prevention
@@ -90,6 +177,98 @@ export class AuthService {
       return {
         message: 'OTP sent successfully (test mode - use 123456)',
         mockCode: AuthService.TEST_OTP,
+      };
+    }
+
+    // Check rate limit (20 OTPs per hour)
+    const retryAfter = await this.checkOtpRateLimit(normalized);
+    if (retryAfter !== null) {
+      return {
+        message: `Rate limit exceeded. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+        retryAfter,
+      };
+    }
+
+    // Cleanup old OTPs (older than 24 hours)
+    await this.db
+      .delete(schema.otpCodes)
+      .where(sql`${schema.otpCodes.createdAt} < NOW() - INTERVAL '24 hours'`);
+
+    // Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in database
+    await this.db.insert(schema.otpCodes).values({
+      phoneNumber: normalized,
+      codeHash,
+      ipAddress,
+      expiresAt,
+    });
+
+    // Send SMS via Equence API (skip in mock mode)
+    if (isMockMode()) {
+      this.logger.log(`[MOCK SMS] OTP for ${normalized} is: ${code}`);
+      return { message: 'OTP sent successfully (mock mode)', mockCode: code };
+    }
+
+    await this.sendSms(normalized, code, appHash);
+
+    return { message: 'OTP sent successfully' };
+  }
+
+  /**
+   * Send OTP v2 - with kirana-fe (legacy Flutter app) user detection
+   * Returns error if user already exists in kirana-fe system
+   */
+  async sendOtpV2(
+    phoneNumber: string,
+    appHash: string | undefined,
+    ipAddress: string,
+  ): Promise<{
+    message: string;
+    retryAfter?: number;
+    mockCode?: string;
+    error?: string;
+    alternateBackend?: string;
+    alternateEndpoints?: {
+      sendOtp: string;
+      verifyOtp: string;
+    };
+  }> {
+    const normalized = normalizePhoneNumber(phoneNumber);
+
+    // Check if user exists in kirana-fe (legacy Flutter app)
+    const isKiranaFeUser = await this.checkKiranaFeUser(normalized);
+
+    if (isKiranaFeUser) {
+      return {
+        message: 'User already registered on legacy system',
+        error: 'USE_ALTERNATE_BACKEND',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+        },
+      };
+    }
+
+    // For new users, proceed with normal OTP flow
+    // TEST MODE: Skip SMS for test number
+    if (normalized === AuthService.TEST_PHONE) {
+      return {
+        message: 'OTP sent successfully (test mode - use 123456)',
+        mockCode: AuthService.TEST_OTP,
+      };
+    }
+
+    // Check rate limit (20 OTPs per hour)
+    const retryAfter = await this.checkOtpRateLimit(normalized);
+    if (retryAfter !== null) {
+      return {
+        message: `Rate limit exceeded. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+        retryAfter,
       };
     }
 

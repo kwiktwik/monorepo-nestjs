@@ -13,11 +13,14 @@ async function bootstrap() {
 
   // Apply raw body parser FIRST for webhook routes (must be before JSON parser)
   // This ensures Razorpay webhooks get raw body for signature verification
-  app.use('/api/razorpay/webhook', bodyParser.raw({ 
-    type: '*/*',
-    limit: '1mb',
-  }));
-  
+  app.use(
+    '/api/razorpay/webhook',
+    bodyParser.raw({
+      type: '*/*',
+      limit: '1mb',
+    }),
+  );
+
   // Apply JSON parser for all other routes
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
