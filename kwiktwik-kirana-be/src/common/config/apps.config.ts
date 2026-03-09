@@ -19,6 +19,22 @@ export interface AppConfig {
  * Only apps defined here can authenticate via the API
  */
 export const REGISTERED_APPS: Record<string, AppConfig> = {
+  'com.kiranaapps.app': {
+    id: 'com.kiranaapps.app',
+    name: 'Kirana Apps (Legacy Flutter)',
+    description:
+      'Legacy Flutter app - users should be redirected to api.kiranaapps.com',
+    enabled: true,
+    rateLimit: {
+      maxRequests: 100,
+      windowMs: 15 * 60 * 1000,
+    },
+    features: {
+      otpLogin: true,
+      truecallerLogin: true,
+      googleLogin: true,
+    },
+  },
   'com.sharestatus.app': {
     id: 'com.sharestatus.app',
     name: 'ShareStatus',
