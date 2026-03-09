@@ -1,11 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from './drizzle.module';
-import { newDb } from 'pg-mem';
+import { DataType, newDb } from 'pg-mem';
 import { applyIntegrationsToPool } from 'drizzle-pgmem';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import * as path from 'path';
 import * as fs from 'fs';
+import { randomUUID } from 'crypto';
 
 function convertDates(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -123,6 +124,13 @@ async function seedDatabase(db: any) {
       provide: DRIZZLE_TOKEN,
       useFactory: async () => {
         const db = newDb();
+        db.public.registerFunction({
+          name: 'gen_random_uuid',
+          returns: DataType.uuid,
+          impure: true,
+          implementation: () => randomUUID(),
+        });
+
         const pg = db.adapters.createPg();
         const Pool = pg.Pool;
         const pool = new Pool();

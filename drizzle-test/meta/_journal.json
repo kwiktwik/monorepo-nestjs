@@ -36,6 +36,13 @@
       "when": 1772971470698,
       "tag": "0004_green_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773047491320,
+      "tag": "0005_fearless_scrambler",
+      "breakpoints": true
     }
   ]
 }
