@@ -59,12 +59,12 @@ interface UnifiedLoginResponse {
   description:
     'App identifier (e.g. com.paymentalert.app, com.sharekaro.kirana)',
 })
-@Controller('api/v1/auth')
+@Controller('v1/auth')
 @UseGuards(AppIdGuard)
 export class AuthV1Controller {
   private readonly logger = new Logger(AuthV1Controller.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('login/:provider')
   @HttpCode(HttpStatus.OK)
