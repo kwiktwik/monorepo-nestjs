@@ -3,7 +3,6 @@ import {
   Post,
   Body,
   UseGuards,
-  Param,
   HttpCode,
   HttpStatus,
   Logger,
@@ -16,7 +15,9 @@ import {
   ApiOperation,
   ApiHeader,
   ApiResponse,
-  ApiParam,
+  ApiBody,
+  ApiExtraModels,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import {
   AuthService,
@@ -28,6 +29,7 @@ import { AppId } from '../../common/decorators/app-id.decorator';
 import { LoginOtpDto } from './dto/login-otp.dto';
 import { LoginTruecallerDto } from './dto/login-truecaller.dto';
 import { LoginGoogleDto } from './dto/login-google.dto';
+import { UnifiedLoginDto } from './dto/unified-login.dto';
 
 type ProviderType = 'otp' | 'truecaller' | 'google';
 
@@ -56,6 +58,7 @@ interface UnifiedLoginResponse {
   description:
     'App identifier (e.g. com.paymentalert.app, com.sharekaro.kirana)',
 })
+@ApiExtraModels(LoginOtpDto, LoginTruecallerDto, LoginGoogleDto)
 @Controller('api/v1/auth')
 @UseGuards(AppIdGuard)
 export class AuthV1Controller {
@@ -70,10 +73,22 @@ export class AuthV1Controller {
     description:
       'Login with OTP, Truecaller, or Google. First checks for kirana-fe (legacy Flutter app) user detection.',
   })
-  @ApiParam({
-    name: 'provider',
-    enum: ['otp', 'truecaller', 'google'],
-    description: 'Authentication provider type',
+  @ApiBody({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(LoginOtpDto) },
+        { $ref: getSchemaPath(LoginTruecallerDto) },
+        { $ref: getSchemaPath(LoginGoogleDto) },
+      ],
+      discriminator: {
+        propertyName: 'provider',
+        mapping: {
+          otp: getSchemaPath(LoginOtpDto),
+          truecaller: getSchemaPath(LoginTruecallerDto),
+          google: getSchemaPath(LoginGoogleDto),
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 200,
@@ -124,21 +139,16 @@ export class AuthV1Controller {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async unifiedLogin(
-    @Param('provider') provider: ProviderType,
     @Body() credentials: LoginOtpDto | LoginTruecallerDto | LoginGoogleDto,
     @AppId() appId: string,
   ): Promise<UnifiedLoginResponse> {
-    this.logger.log(`[Unified Login] Provider: ${provider}, App: ${appId}`);
-
-    // Validate provider
-    if (!['otp', 'truecaller', 'google'].includes(provider)) {
-      throw new BadRequestException(
-        `Invalid provider: ${provider}. Must be one of: otp, truecaller, google`,
-      );
-    }
+    this.logger.log(`[Unified Login] App: ${appId}`);
 
     try {
-      // Route to appropriate login method
+      // Determine provider from the presence of specific fields
+      const provider = this.detectProvider(credentials);
+      this.logger.log(`[Unified Login] Provider detected: ${provider}`);
+
       switch (provider) {
         case 'otp':
           return await this.loginWithOtp(credentials as LoginOtpDto, appId);
@@ -153,15 +163,16 @@ export class AuthV1Controller {
             appId,
           );
         default:
-          throw new BadRequestException('Invalid provider');
+          throw new BadRequestException(
+            'Unable to detect authentication provider',
+          );
       }
     } catch (error) {
       this.logger.error(
-        `[Unified Login] Error for provider ${provider}:`,
+        `[Unified Login] Error:`,
         error instanceof Error ? error.message : 'Unknown error',
       );
 
-      // Re-throw known exceptions
       if (
         error instanceof UnauthorizedException ||
         error instanceof BadRequestException
@@ -169,11 +180,37 @@ export class AuthV1Controller {
         throw error;
       }
 
-      // Wrap unknown errors
       throw new InternalServerErrorException(
         `Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
+  }
+
+  private detectProvider(
+    credentials: LoginOtpDto | LoginTruecallerDto | LoginGoogleDto,
+  ): ProviderType {
+    // Check for OTP: has 'code' field (6 digits)
+    if (
+      'code' in credentials &&
+      credentials.code &&
+      credentials.code.match(/^\d{6}$/)
+    ) {
+      return 'otp';
+    }
+
+    // Check for Truecaller: has 'code_verifier' field
+    if ('code_verifier' in credentials && credentials.code_verifier) {
+      return 'truecaller';
+    }
+
+    // Check for Google: has 'idToken' field
+    if ('idToken' in credentials && credentials.idToken) {
+      return 'google';
+    }
+
+    throw new BadRequestException(
+      'Unable to determine authentication provider. Please provide valid credentials.',
+    );
   }
 
   private createAlternateBackendResponse(): UnifiedLoginResponse {
@@ -214,7 +251,7 @@ export class AuthV1Controller {
       normalizedPhone,
       dto.code,
       appId,
-      'otp', // authProvider
+      'otp',
     );
 
     this.logger.log(`[OTP Login] Success for user: ${result.user.id}`);
@@ -251,7 +288,7 @@ export class AuthV1Controller {
       dto.code_verifier,
       dto.client_id,
       appId,
-      'truecaller', // authProvider
+      'truecaller',
     );
 
     this.logger.log(`[Truecaller Login] Success for user: ${result.user.id}`);
@@ -269,25 +306,23 @@ export class AuthV1Controller {
     dto: LoginGoogleDto,
     appId: string,
   ): Promise<UnifiedLoginResponse> {
-    // Check for kirana-fe user detection first (if phone number provided)
-    if (dto.phoneNumber) {
-      const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
-      const isKiranaFeUser =
-        await this.authService.checkKiranaFeUser(normalizedPhone);
+    // Check for kirana-fe user detection first
+    const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
+    const isKiranaFeUser =
+      await this.authService.checkKiranaFeUser(normalizedPhone);
 
-      if (isKiranaFeUser) {
-        this.logger.log(
-          `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
-        );
-        return this.createAlternateBackendResponse();
-      }
+    if (isKiranaFeUser) {
+      this.logger.log(
+        `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
+      );
+      return this.createAlternateBackendResponse();
     }
 
     // Proceed with Google Sign-In
     const result = await this.authService.googleSignin(
       dto.idToken,
       appId,
-      'google', // authProvider
+      'google',
     );
 
     this.logger.log(`[Google Login] Success for user: ${result.user.id}`);
