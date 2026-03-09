@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   UseGuards,
+  Param,
   HttpCode,
   HttpStatus,
   Logger,
@@ -15,9 +16,8 @@ import {
   ApiOperation,
   ApiHeader,
   ApiResponse,
+  ApiParam,
   ApiBody,
-  ApiExtraModels,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import {
   AuthService,
@@ -26,10 +26,11 @@ import {
 } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
-import { LoginOtpDto } from './dto/login-otp.dto';
-import { LoginTruecallerDto } from './dto/login-truecaller.dto';
-import { LoginGoogleDto } from './dto/login-google.dto';
-import { UnifiedLoginDto } from './dto/unified-login.dto';
+import {
+  LoginOtpDto,
+  LoginTruecallerDto,
+  LoginGoogleDto,
+} from './dto/login.dto';
 
 type ProviderType = 'otp' | 'truecaller' | 'google';
 
@@ -58,7 +59,6 @@ interface UnifiedLoginResponse {
   description:
     'App identifier (e.g. com.paymentalert.app, com.sharekaro.kirana)',
 })
-@ApiExtraModels(LoginOtpDto, LoginTruecallerDto, LoginGoogleDto)
 @Controller('api/v1/auth')
 @UseGuards(AppIdGuard)
 export class AuthV1Controller {
@@ -73,19 +73,37 @@ export class AuthV1Controller {
     description:
       'Login with OTP, Truecaller, or Google. First checks for kirana-fe (legacy Flutter app) user detection.',
   })
+  @ApiParam({
+    name: 'provider',
+    enum: ['otp', 'truecaller', 'google'],
+    description: 'Authentication provider type',
+    example: 'otp',
+  })
   @ApiBody({
-    schema: {
-      oneOf: [
-        { $ref: getSchemaPath(LoginOtpDto) },
-        { $ref: getSchemaPath(LoginTruecallerDto) },
-        { $ref: getSchemaPath(LoginGoogleDto) },
-      ],
-      discriminator: {
-        propertyName: 'provider',
-        mapping: {
-          otp: getSchemaPath(LoginOtpDto),
-          truecaller: getSchemaPath(LoginTruecallerDto),
-          google: getSchemaPath(LoginGoogleDto),
+    description: 'Login credentials based on provider type',
+    type: LoginOtpDto, // Default for Swagger, actual validation is manual
+    examples: {
+      otp: {
+        summary: 'OTP Login',
+        value: {
+          phoneNumber: '+919876543210',
+          code: '123456',
+        },
+      },
+      truecaller: {
+        summary: 'Truecaller Login',
+        value: {
+          phoneNumber: '+919876543210',
+          code: 'auth_code_from_truecaller',
+          code_verifier: 'pkce_verifier',
+          client_id: 'your_client_id',
+        },
+      },
+      google: {
+        summary: 'Google Login',
+        value: {
+          phoneNumber: '+919876543210',
+          idToken: 'google_id_token_jwt',
         },
       },
     },
@@ -139,16 +157,21 @@ export class AuthV1Controller {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async unifiedLogin(
+    @Param('provider') provider: ProviderType,
     @Body() credentials: LoginOtpDto | LoginTruecallerDto | LoginGoogleDto,
     @AppId() appId: string,
   ): Promise<UnifiedLoginResponse> {
-    this.logger.log(`[Unified Login] App: ${appId}`);
+    this.logger.log(`[Unified Login] Provider: ${provider}, App: ${appId}`);
+
+    // Validate provider
+    if (!['otp', 'truecaller', 'google'].includes(provider)) {
+      throw new BadRequestException(
+        `Invalid provider: ${provider}. Must be one of: otp, truecaller, google`,
+      );
+    }
 
     try {
-      // Determine provider from the presence of specific fields
-      const provider = this.detectProvider(credentials);
-      this.logger.log(`[Unified Login] Provider detected: ${provider}`);
-
+      // Route to appropriate login method
       switch (provider) {
         case 'otp':
           return await this.loginWithOtp(credentials as LoginOtpDto, appId);
@@ -163,13 +186,11 @@ export class AuthV1Controller {
             appId,
           );
         default:
-          throw new BadRequestException(
-            'Unable to detect authentication provider',
-          );
+          throw new BadRequestException('Invalid provider');
       }
     } catch (error) {
       this.logger.error(
-        `[Unified Login] Error:`,
+        `[Unified Login] Error for provider ${provider}:`,
         error instanceof Error ? error.message : 'Unknown error',
       );
 
@@ -184,33 +205,6 @@ export class AuthV1Controller {
         `Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
-  }
-
-  private detectProvider(
-    credentials: LoginOtpDto | LoginTruecallerDto | LoginGoogleDto,
-  ): ProviderType {
-    // Check for OTP: has 'code' field (6 digits)
-    if (
-      'code' in credentials &&
-      credentials.code &&
-      credentials.code.match(/^\d{6}$/)
-    ) {
-      return 'otp';
-    }
-
-    // Check for Truecaller: has 'code_verifier' field
-    if ('code_verifier' in credentials && credentials.code_verifier) {
-      return 'truecaller';
-    }
-
-    // Check for Google: has 'idToken' field
-    if ('idToken' in credentials && credentials.idToken) {
-      return 'google';
-    }
-
-    throw new BadRequestException(
-      'Unable to determine authentication provider. Please provide valid credentials.',
-    );
   }
 
   private createAlternateBackendResponse(): UnifiedLoginResponse {
