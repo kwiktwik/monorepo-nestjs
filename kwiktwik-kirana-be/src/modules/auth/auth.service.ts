@@ -19,6 +19,7 @@ import { nanoid } from 'nanoid';
 import { AuthUserResponse } from './types';
 export type { AuthUserResponse } from './types';
 import { isMockMode } from '../../common/utils/is-mock-mode';
+import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
 
 /** Kirana-FE (legacy Flutter app) app IDs */
 const KIRANA_FE_APP_IDS = ['com.kiranaapps.app'];
@@ -67,6 +68,7 @@ export class AuthService {
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
     private jwtService: JwtService,
+    private kiranaFeService: KiranaFeInternalService,
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (clientId) {
@@ -76,10 +78,30 @@ export class AuthService {
 
   /**
    * Check if a user exists in kirana-fe (legacy Flutter app)
-   * Returns true if the phone number has metadata for any kirana-fe app
+   * First tries HTTP API call to kirana-fe, falls back to local DB check
+   * Returns true if the phone number exists in kirana-fe
    */
   async checkKiranaFeUser(phoneNumber: string): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
+
+    // Try HTTP API call to kirana-fe first (most accurate)
+    try {
+      this.logger.log(
+        `[checkKiranaFeUser] Checking via HTTP API: ${normalized}`,
+      );
+      const exists = await this.kiranaFeService.checkUserExists(normalized);
+      this.logger.log(`[checkKiranaFeUser] HTTP API result: ${exists}`);
+      return exists;
+    } catch (error) {
+      this.logger.warn(
+        `[checkKiranaFeUser] HTTP API failed, falling back to DB check:`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+      // Continue to fallback
+    }
+
+    // Fallback: Check local database (shared with kirana-fe)
+    this.logger.log(`[checkKiranaFeUser] Checking via local DB: ${normalized}`);
 
     // Find user by phone number
     const userRecord = await this.db

@@ -4,7 +4,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthV1Controller } from './auth-v1.controller';
+import { InternalAuthController } from './internal-auth.controller';
 import { AuthService } from './auth.service';
+import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
 import { JwtStrategy } from './jwt.strategy';
 
 @Module({
@@ -21,8 +23,8 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, AuthV1Controller],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  controllers: [AuthController, AuthV1Controller, InternalAuthController],
+  providers: [AuthService, KiranaFeInternalService, JwtStrategy],
+  exports: [AuthService, KiranaFeInternalService],
 })
 export class AuthModule {}

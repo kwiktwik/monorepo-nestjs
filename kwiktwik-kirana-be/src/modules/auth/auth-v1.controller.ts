@@ -10,7 +10,9 @@ import {
   BadRequestException,
   UnauthorizedException,
   InternalServerErrorException,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -31,6 +33,7 @@ import {
   LoginTruecallerDto,
   LoginGoogleDto,
 } from './dto/login.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
 
 type ProviderType = 'otp' | 'truecaller' | 'google';
 
@@ -64,7 +67,109 @@ interface UnifiedLoginResponse {
 export class AuthV1Controller {
   private readonly logger = new Logger(AuthV1Controller.name);
 
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
+
+  @Post('send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send OTP (v1)',
+    description:
+      'Send OTP to phone number. First checks for kirana-fe (legacy Flutter app) user detection. Rate limited: 20 OTPs/hour per phone number.',
+  })
+  @ApiBody({ type: SendOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'OTP sent successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'User exists in kirana-fe legacy system - use alternate backend',
+    schema: {
+      example: {
+        success: true,
+        message: 'User already registered on legacy system',
+        error: 'USE_ALTERNATE_BACKEND',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (20 OTPs/hour per phone number)',
+    schema: {
+      example: {
+        success: true,
+        message: 'Rate limit exceeded. Please try again in 45 minutes.',
+        retryAfter: 2700,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid phone number format',
+  })
+  async sendOtp(
+    @Body() dto: SendOtpDto,
+    @AppId() appId: string,
+    @Req() req: Request,
+  ) {
+    this.logger.log(`[Send OTP v1] Phone: ${dto.phoneNumber}, App: ${appId}`);
+
+    // Normalize phone number
+    const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
+
+    // Check for kirana-fe user detection first
+    const isKiranaFeUser =
+      await this.authService.checkKiranaFeUser(normalizedPhone);
+
+    if (isKiranaFeUser) {
+      this.logger.log(
+        `[Send OTP v1] Kirana-FE user detected: ${normalizedPhone}`,
+      );
+      return {
+        success: true,
+        message: 'User already registered on legacy system',
+        error: 'USE_ALTERNATE_BACKEND',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+          truecaller: '/api/auth/truecaller/token',
+          google: '/api/auth/google-signin',
+        },
+      };
+    }
+
+    // Get client IP for rate limiting
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (req.headers['x-real-ip'] as string) ||
+      req.socket.remoteAddress ||
+      'unknown';
+
+    // Send OTP
+    const result = await this.authService.sendOtp(
+      normalizedPhone,
+      dto.appHash,
+      ipAddress,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
 
   @Post('login/:provider')
   @HttpCode(HttpStatus.OK)
