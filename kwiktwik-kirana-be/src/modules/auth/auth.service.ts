@@ -47,7 +47,7 @@ interface TruecallerUserInfo {
 }
 
 /** Normalize phone to E.164 for consistent storage/lookup (e.g. +918855966494) */
-function normalizePhoneNumber(phone: string): string {
+export function normalizePhoneNumber(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 10 && /^[6-9]/.test(digits)) {
     return `+91${digits}`;
@@ -121,9 +121,7 @@ export class AuthService {
    * Check rate limit for OTP requests
    * Returns retryAfter in seconds if limit exceeded, null if allowed
    */
-  private async checkOtpRateLimit(
-    phoneNumber: string,
-  ): Promise<number | null> {
+  private async checkOtpRateLimit(phoneNumber: string): Promise<number | null> {
     const normalized = normalizePhoneNumber(phoneNumber);
     const windowStart = new Date(Date.now() - AuthService.OTP_RATE_WINDOW_MS);
 
@@ -388,6 +386,7 @@ export class AuthService {
     phoneNumber: string,
     code: string,
     appId: string,
+    authProvider?: string,
   ): Promise<{ token: string; user: AuthUserResponse }> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
@@ -396,7 +395,7 @@ export class AuthService {
       normalized === AuthService.TEST_PHONE &&
       code === AuthService.TEST_OTP
     ) {
-      return this.verifyTestOtp(appId);
+      return this.verifyTestOtp(appId, authProvider);
     }
 
     // Find most recent non-verified OTP for this phone number
@@ -536,11 +535,19 @@ export class AuthService {
       }
     }
 
-    // Generate JWT token
-    const token = this.jwtService.sign({
-      sub: userId,
-      appId,
-    });
+    // Generate JWT token with optional auth provider info
+    const tokenPayload: { sub: string; appId: string; authProvider?: string } =
+      {
+        sub: userId,
+        appId,
+      };
+
+    // Add auth provider if provided (for v1 unified login)
+    if (authProvider) {
+      tokenPayload.authProvider = authProvider;
+    }
+
+    const token = this.jwtService.sign(tokenPayload);
 
     return {
       token,
@@ -557,6 +564,7 @@ export class AuthService {
   /** Test mode: find or create user for +919999999999 and return token */
   private async verifyTestOtp(
     appId: string,
+    authProvider?: string,
   ): Promise<{ token: string; user: AuthUserResponse }> {
     const normalized = AuthService.TEST_PHONE;
     const cleanPhone = normalized.replace(/\D/g, '');
@@ -616,7 +624,18 @@ export class AuthService {
       }
     }
 
-    const token = this.jwtService.sign({ sub: userId, appId });
+    const tokenPayload: { sub: string; appId: string; authProvider?: string } =
+      {
+        sub: userId,
+        appId,
+      };
+
+    // Add auth provider if provided (for v1 unified login)
+    if (authProvider) {
+      tokenPayload.authProvider = authProvider;
+    }
+
+    const token = this.jwtService.sign(tokenPayload);
     return {
       token,
       user: {
@@ -715,7 +734,13 @@ export class AuthService {
       });
     }
 
-    const token = this.jwtService.sign({ sub: userId, appId });
+    const tokenPayload: { sub: string; appId: string; authProvider?: string } =
+      {
+        sub: userId,
+        appId,
+      };
+
+    const token = this.jwtService.sign(tokenPayload);
     const userProfile = {
       sub: 'mock_truecaller_sub',
       given_name: 'Test',
@@ -747,6 +772,7 @@ export class AuthService {
     codeVerifier: string,
     clientId: string,
     appId: string,
+    authProvider?: string,
   ): Promise<{
     token: string;
     user: AuthUserResponse;
@@ -1002,11 +1028,345 @@ export class AuthService {
       });
     }
 
-    // Step 6: Generate JWT token
-    const token = this.jwtService.sign({
-      sub: userId,
-      appId,
+    // Step 6: Generate JWT token with auth provider info
+    const tokenPayload: { sub: string; appId: string; authProvider?: string } =
+      {
+        sub: userId,
+        appId,
+      };
+
+    // Add auth provider if provided (for v1 unified login)
+    if (authProvider) {
+      tokenPayload.authProvider = authProvider;
+    }
+
+    const token = this.jwtService.sign(tokenPayload);
+
+    return {
+      token,
+      user: {
+        id: userId,
+        name: userRecord[0].name,
+        email: userRecord[0].email,
+        phoneNumber: normalized,
+        phoneNumberVerified: true,
+        image: userRecord[0].image ?? undefined,
+      },
+      userProfile,
+    };
+  }
+
+  /**
+   * Truecaller Sign-In v2 - with kirana-fe (legacy Flutter app) user detection
+   * Returns error if user already exists in kirana-fe system
+   */
+  async truecallerSigninV2(
+    code: string,
+    codeVerifier: string,
+    clientId: string,
+    appId: string,
+    authProvider?: string,
+  ): Promise<
+    | {
+        token: string;
+        user: AuthUserResponse;
+        userProfile: {
+          sub?: string;
+          given_name?: string;
+          family_name?: string;
+          phone_number?: string;
+          email?: string;
+          picture?: string;
+          gender?: string;
+          phone_number_country_code?: string;
+          phone_number_verified?: boolean;
+          address?: Record<string, unknown>;
+        };
+      }
+    | {
+        error: 'USE_ALTERNATE_BACKEND';
+        message: string;
+        alternateBackend: string;
+        alternateEndpoints: {
+          sendOtp: string;
+          verifyOtp: string;
+          truecaller: string;
+        };
+      }
+  > {
+    // First, do the normal Truecaller signin to get the phone number
+    // We need to intercept before user creation to check for kirana-fe
+
+    // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
+    if (isMockMode()) {
+      this.logger.log(
+        `[MOCK Truecaller V2] Returning hardcoded test user for app=${appId}`,
+      );
+      return this.mockTruecallerSignin(appId);
+    }
+
+    // Step 1: Exchange authorization code for access token
+    this.logger.log(`[Truecaller V2 Token] App ID: ${appId}`);
+
+    const tokenResponse = await fetch(
+      'https://oauth-account-noneu.truecaller.com/v1/token',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          code,
+          code_verifier: codeVerifier,
+        }).toString(),
+      },
+    );
+
+    const tokenData = (await tokenResponse.json()) as TruecallerTokenData;
+
+    if (!tokenResponse.ok) {
+      this.logger.error(
+        '[Truecaller V2 Token] Exchange failed:',
+        tokenResponse.status,
+        tokenData,
+      );
+      throw new UnauthorizedException(
+        tokenData.error_description ||
+          tokenData.error ||
+          `Truecaller token exchange failed (${tokenResponse.status})`,
+      );
+    }
+
+    const { access_token, expires_in } = tokenData;
+
+    if (!access_token) {
+      throw new UnauthorizedException(
+        'No access token received from Truecaller',
+      );
+    }
+
+    // Step 2: Fetch user profile via OIDC userinfo endpoint
+    const userInfoResponse = await fetch(
+      'https://oauth-account-noneu.truecaller.com/v1/userinfo',
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${access_token}` },
+      },
+    );
+
+    const userInfoData = (await userInfoResponse.json()) as TruecallerUserInfo;
+
+    if (!userInfoResponse.ok) {
+      this.logger.error(
+        '[Truecaller V2 UserInfo] Fetch failed:',
+        userInfoResponse.status,
+        userInfoData,
+      );
+      throw new UnauthorizedException(
+        userInfoData.error_description ||
+          userInfoData.error ||
+          `Truecaller profile fetch failed (${userInfoResponse.status})`,
+      );
+    }
+
+    this.logger.log('[Truecaller V2 UserInfo] Profile received:', {
+      sub: userInfoData.sub,
+      phone_number: userInfoData.phone_number,
+      given_name: userInfoData.given_name,
     });
+
+    // Step 3: Extract phone number
+    const phoneNumber = userInfoData.phone_number;
+
+    if (!phoneNumber) {
+      this.logger.error(
+        '[Truecaller V2 UserInfo] No phone_number in response:',
+        userInfoData,
+      );
+      throw new UnauthorizedException('No phone number in Truecaller profile');
+    }
+
+    const normalized = normalizePhoneNumber(phoneNumber);
+
+    // Step 4: Check if user exists in kirana-fe (legacy Flutter app)
+    const isKiranaFeUser = await this.checkKiranaFeUser(normalized);
+
+    if (isKiranaFeUser) {
+      return {
+        error: 'USE_ALTERNATE_BACKEND',
+        message: 'User already registered on legacy system',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+          truecaller: '/api/auth/truecaller/token',
+        },
+      };
+    }
+
+    // Step 5: For new users, proceed with normal user creation/signin
+    // Build userProfile object
+    const userProfile = {
+      sub: userInfoData.sub,
+      given_name: userInfoData.given_name,
+      family_name: userInfoData.family_name,
+      phone_number: userInfoData.phone_number,
+      email: userInfoData.email,
+      picture: userInfoData.picture,
+      gender: userInfoData.gender,
+      phone_number_country_code: userInfoData.phone_number_country_code,
+      phone_number_verified: userInfoData.phone_number_verified,
+      address: userInfoData.address,
+    };
+
+    const userEmail =
+      userInfoData.email ||
+      `${phoneNumber?.replace(/\D/g, '') || 'unknown'}@alertpay.local`;
+    const userName =
+      (userInfoData.given_name && userInfoData.family_name
+        ? `${userInfoData.given_name} ${userInfoData.family_name}`
+        : userInfoData.given_name || userInfoData.family_name) ||
+      `User ${phoneNumber?.slice(-4) || 'Unknown'}`;
+
+    // Find or create user
+    let userRecord = await this.db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.phoneNumber, normalized))
+      .limit(1);
+
+    let userId: string;
+
+    if (userRecord.length === 0) {
+      this.logger.log(
+        `[Truecaller V2 UserInfo] Creating new user for app ${appId}`,
+      );
+      userId = nanoid();
+      await this.db.insert(schema.user).values({
+        id: userId,
+        name: userName,
+        email: userEmail,
+        emailVerified: !!userInfoData.email,
+        phoneNumber: normalized,
+        phoneNumberVerified: userInfoData.phone_number_verified ?? true,
+        image: userInfoData.picture || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await this.db.insert(schema.userMetadata).values({
+        userId,
+        appId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      userRecord = await this.db
+        .select()
+        .from(schema.user)
+        .where(eq(schema.user.id, userId))
+        .limit(1);
+    } else {
+      userId = userRecord[0].id;
+      this.logger.log(
+        `[Truecaller V2 UserInfo] Found existing user ${userId} for app ${appId}`,
+      );
+
+      await this.db
+        .update(schema.user)
+        .set({
+          name: userName,
+          image: userInfoData.picture || userRecord[0].image,
+          emailVerified: userInfoData.email
+            ? true
+            : userRecord[0].emailVerified,
+          phoneNumber: normalized,
+          phoneNumberVerified:
+            userInfoData.phone_number_verified ??
+            userRecord[0].phoneNumberVerified,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.user.id, userId));
+
+      // Ensure user metadata exists for this app
+      const metadata = await this.db
+        .select()
+        .from(schema.userMetadata)
+        .where(
+          and(
+            eq(schema.userMetadata.userId, userId),
+            eq(schema.userMetadata.appId, appId),
+          ),
+        )
+        .limit(1);
+
+      if (metadata.length === 0) {
+        await this.db.insert(schema.userMetadata).values({
+          userId,
+          appId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    // Step 6: Create or update Truecaller account link (scoped per appId)
+    const existingAccounts = await this.db
+      .select()
+      .from(schema.account)
+      .where(
+        and(
+          eq(schema.account.userId, userId),
+          eq(schema.account.providerId, 'truecaller'),
+          eq(schema.account.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    if (existingAccounts.length > 0) {
+      await this.db
+        .update(schema.account)
+        .set({
+          accessToken: access_token,
+          idToken: userInfoData.sub,
+          accessTokenExpiresAt: new Date(
+            Date.now() + (expires_in ?? 3600) * 1000,
+          ),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.account.id, existingAccounts[0].id));
+    } else {
+      await this.db.insert(schema.account).values({
+        id: nanoid(),
+        accountId: userInfoData.sub || phoneNumber,
+        providerId: 'truecaller',
+        userId,
+        appId,
+        accessToken: access_token,
+        idToken: userInfoData.sub,
+        accessTokenExpiresAt: new Date(
+          Date.now() + (expires_in ?? 3600) * 1000,
+        ),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Step 7: Generate JWT token with auth provider info
+    const tokenPayload: { sub: string; appId: string; authProvider?: string } =
+      {
+        sub: userId,
+        appId,
+      };
+
+    // Add auth provider if provided (for v1 unified login)
+    if (authProvider) {
+      tokenPayload.authProvider = authProvider;
+    }
+
+    const token = this.jwtService.sign(tokenPayload);
 
     return {
       token,
@@ -1028,6 +1388,7 @@ export class AuthService {
   async googleSignin(
     idToken: string,
     appId: string,
+    authProvider?: string,
   ): Promise<{ token: string; user: AuthUserResponse }> {
     if (!this.googleClient) {
       throw new BadRequestException('Google OAuth is not configured');

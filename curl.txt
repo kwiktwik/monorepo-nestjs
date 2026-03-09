@@ -1,0 +1,4 @@
+curl -L -X POST https://services.kiranaapps.com/api/phone-number/send-otp \
+  -H "Content-Type: application/json" \
+  -H "X-App-ID: com.kiranaapps.app" \
+  -d '{"phoneNumber": "+918855866494"}'
