@@ -40,6 +40,10 @@ async function bootstrap() {
     .setVersion('1.0')
     .addServer(baseUrl, 'Local development')
     .addTag('auth', 'Authentication - OTP & Google Sign-in')
+    .addTag(
+      'auth-v1',
+      'Authentication v1 - Unified Login (OTP, Truecaller, Google)',
+    )
     .addTag('config', 'App Configuration')
     .addTag('user', 'User Management')
     .addTag('feed', 'Home Feed & Categories')
