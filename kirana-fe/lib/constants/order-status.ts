@@ -13,6 +13,7 @@ export const ORDER_STATUS = {
   FAILED: "failed",
   CANCELLED: "cancelled",
   ACTIVE: "active",
+  REFUNDED: "refunded",
 } as const;
 
 // Type for order status
@@ -32,6 +33,7 @@ export function getOrderStatusDisplayName(status: OrderStatus): string {
     [ORDER_STATUS.FAILED]: "Failed",
     [ORDER_STATUS.CANCELLED]: "Cancelled",
     [ORDER_STATUS.ACTIVE]: "Active",
+    [ORDER_STATUS.REFUNDED]: "Refunded",
   };
   return displayNames[status];
 }
@@ -52,6 +54,7 @@ export function isOrderTerminal(status: OrderStatus): boolean {
     status === ORDER_STATUS.CAPTURED ||
     status === ORDER_STATUS.FAILED ||
     status === ORDER_STATUS.CANCELLED ||
-    status === ORDER_STATUS.ACTIVE
+    status === ORDER_STATUS.ACTIVE ||
+    status === ORDER_STATUS.REFUNDED
   );
 }

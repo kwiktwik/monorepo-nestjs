@@ -7,6 +7,8 @@ export const ANALYTICS_EVENTS = {
   PAYMENT_CAPTURED: "payment_captured",
   PAYMENT_FAILED: "payment_failed",
   PAYMENT_AUTHORIZED: "payment_authorized",
+  PAYMENT_REFUNDED: "payment_refunded",
+  PAYMENT_REFUND_FAILED: "payment_refund_failed",
 
   // Subscription events
   SUBSCRIPTION_ACTIVATED: "subscription_activated",

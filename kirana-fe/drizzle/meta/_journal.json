@@ -281,6 +281,13 @@
       "when": 1772514336922,
       "tag": "0039_wealthy_proudstar",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1773163181342,
+      "tag": "0040_crazy_dazzler",
+      "breakpoints": true
     }
   ]
 }
