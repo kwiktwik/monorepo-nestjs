@@ -9,7 +9,42 @@
 @authToken = HyMviq1v0Ssw8JkKZTFNC2DReJFrGhPk
 
 
-### ===== AUTHENTICATION API =====
+### ===== AUTHENTICATION API (v1 Compat) =====
+# These endpoints mirror the backend's path structure for authentication
+
+### Send OTP (v1 Compat)
+POST {{baseUrlProd}}/v1/auth/send-otp
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+
+{
+  "phoneNumber": "+918855866494",
+  "appHash": "optional-hash"
+}
+
+### OTP Login (v1 Compat)
+POST {{baseUrlProd}}/v1/auth/login/otp
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+
+{
+  "phoneNumber": "+918855866494",
+  "code": "752347"
+}
+
+### Truecaller Login (v1 Compat)
+POST {{baseUrlProd}}/v1/auth/login/truecaller
+Content-Type: application/json
+X-App-ID: com.kiranaapps.app
+
+{
+  "phoneNumber": "+918855866494",
+  "code": "srBLBpBK...",
+  "code_verifier": "1XAdYTH7...",
+  "client_id": "ydjkygwy..."
+}
+
+### ===== AUTHENTICATION API (Old) =====
 ### ===== MULTI-APP AUTHENTICATION =====
 # All authentication endpoints now support multi-app isolation via X-App-ID header
 # 
