@@ -119,32 +119,9 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3002',
-      'http://localhost:5173',
-      'http://localhost:4200',
-      'http://localhost:4010',
-      'http://127.0.0.1:3002',
-      'http://127.0.0.1:5173',
-      'https://build.kiranaapps.com',
-      'https://preprod.kiranaapps.com',
-      'https://alertpay.kiranaapps.com',
-      'https://api.kiranaapps.com',
-      'https://services.kiranaapps.com',
-      'https://api.sharekaro.shop',
-      'https://app.sharekaro.shop',
-    ],
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-App-ID',
-      'x-app-id',
-      'X-App-Identifier',
-      'x-app-identifier',
-    ],
   });
 
   // Enable global validation pipe
