@@ -30,10 +30,20 @@ async function bootstrap() {
 
   // Swagger API documentation
   const port = process.env.PORT || 3002;
-  const baseUrl = `http://localhost:${port}`;
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProduction = nodeEnv === 'production';
 
   // Basic Auth Middleware for Swagger
   const swaggerAuthMiddleware = (req: any, res: any, next: any) => {
+    // Prevent Cloudflare from caching the swagger-ui-init.js file
+    // which contains the inlined Swagger JSON spec
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, max-age=0',
+    );
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
     const [login, password] = Buffer.from(b64auth, 'base64')
       .toString()
@@ -64,9 +74,10 @@ async function bootstrap() {
       'API documentation for ShareStatus/Kirana backend - Authentication, Config, User management',
     )
     .setVersion('1.0')
-    .addServer(baseUrl, 'Local development')
+    .addServer('/', 'Current server')
     .addServer('https://api.kiranaapps.com', 'Production API')
     .addServer('https://services.kiranaapps.com', 'Production Services')
+    .addServer(`http://localhost:${port}`, 'Local development')
     .addTag('auth', 'Authentication - OTP & Google Sign-in')
     .addTag(
       'auth-v1',
