@@ -57,17 +57,5 @@ module.exports = {
         CRON_SECRET: "Xv8UHlz740SH", // Pass through from system env
       },
     },
-    {
-      name: "discount-notifications-cron",
-      cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
-      script: "scripts/discount-notifications-cron.js",
-      cron_restart: "*/30 * * * *", // Run every 30 minutes
-      autorestart: false, // Don't auto-restart, only run on cron schedule
-      watch: false,
-      env_production: {
-        BASE_URL: "https://api.kiranaapps.com", // Production domain
-        CRON_SECRET: "Xv8UHlz740SH", // Pass through from system env
-      },
-    },
   ],
 };
