@@ -215,7 +215,7 @@ export async function updateUserMetadata(
 export async function createSessionWithApp(
   userId: string,
   appId: string,
-  req: NextRequest | Request
+  req?: NextRequest | Request | null
 ): Promise<string> {
   const sessionToken = nanoid(32);
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
@@ -229,10 +229,10 @@ export async function createSessionWithApp(
     createdAt: new Date(),
     updatedAt: new Date(),
     ipAddress:
-      req.headers.get("x-forwarded-for") ||
-      req.headers.get("x-real-ip") ||
+      req?.headers.get("x-forwarded-for") ||
+      req?.headers.get("x-real-ip") ||
       null,
-    userAgent: req.headers.get("user-agent") || null,
+    userAgent: req?.headers.get("user-agent") || null,
   });
 
   return sessionToken;
