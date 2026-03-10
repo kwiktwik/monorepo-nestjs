@@ -126,9 +126,9 @@ export interface SendOtpRequest {
  */
 export interface SendOtpResponse {
   success: boolean;
-  message: string;
+  message?: string;
   /** Error code - "USE_ALTERNATE_BACKEND" means user exists in kirana-fe */
-  error?: "USE_ALTERNATE_BACKEND";
+  error?: "USE_ALTERNATE_BACKEND" | string;
   /** Alternate backend URL (for kirana-fe users) */
   alternateBackend?: string;
   /** Alternate backend endpoints (for kirana-fe users) */
