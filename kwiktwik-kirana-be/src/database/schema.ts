@@ -1300,3 +1300,6 @@ export const scheduledMessagesRelations = relations(
     }),
   }),
 );
+
+// Migration logs (for tracking user migrations from kirana-fe)
+export { migrationLogs } from './schema/migration-logs.schema';
