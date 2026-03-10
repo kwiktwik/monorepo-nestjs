@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { 
-  user, 
-  userMetadata, 
-  account, 
-  pushToken, 
-  deviceSession,
-  userImage,
-  playStoreRating,
-  subscription,
-  order,
-  abandonedCheckout,
-  subscriptionLog,
-  phonepeOrder,
-  phonepeSubscription
+import {
+  user,
+  userMetadata,
+  account,
+  pushTokens,
+  deviceSessions,
+  userImages,
+  playStoreRatings,
+  subscriptions,
+  orders,
+  abandonedCheckouts,
+  subscriptionLogs,
+  phonepeOrders,
+  phonepeSubscriptions
 } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -59,16 +59,16 @@ export async function POST(req: NextRequest) {
     const [
       metadata,
       accounts,
-      pushTokens,
-      deviceSessions,
-      userImages,
-      playStoreRatings,
-      subscriptions,
-      orders,
-      abandonedCheckouts,
-      subscriptionLogs,
-      phonepeOrders,
-      phonepeSubscriptions
+      pushTokensData,
+      deviceSessionsData,
+      userImagesData,
+      playStoreRatingsData,
+      subscriptionsData,
+      ordersData,
+      abandonedCheckoutsData,
+      subscriptionLogsData,
+      phonepeOrdersData,
+      phonepeSubscriptionsData
     ] = await Promise.all([
       // User metadata
       db.select()
@@ -78,57 +78,57 @@ export async function POST(req: NextRequest) {
       // Linked accounts (Google, Truecaller, etc)
       db.select()
         .from(account)
-        .where(and(eq(account.userId, userId), eq(account.appId, appId))),
+        .where(eq(account.userId, userId)),
 
       // Push tokens
       db.select()
-        .from(pushToken)
-        .where(and(eq(pushToken.userId, userId), eq(pushToken.appId, appId))),
+        .from(pushTokens)
+        .where(and(eq(pushTokens.userId, userId), eq(pushTokens.appId, appId))),
 
       // Device sessions
       db.select()
-        .from(deviceSession)
-        .where(and(eq(deviceSession.userId, userId), eq(deviceSession.appId, appId))),
+        .from(deviceSessions)
+        .where(and(eq(deviceSessions.userId, userId), eq(deviceSessions.appId, appId))),
 
       // User images
       db.select()
-        .from(userImage)
-        .where(and(eq(userImage.userId, userId), eq(userImage.appId, appId))),
+        .from(userImages)
+        .where(and(eq(userImages.userId, userId), eq(userImages.appId, appId))),
 
       // Play Store ratings
       db.select()
-        .from(playStoreRating)
-        .where(and(eq(playStoreRating.userId, userId), eq(playStoreRating.appId, appId))),
+        .from(playStoreRatings)
+        .where(and(eq(playStoreRatings.userId, userId), eq(playStoreRatings.appId, appId))),
 
       // Subscriptions
       db.select()
-        .from(subscription)
-        .where(and(eq(subscription.userId, userId), eq(subscription.appId, appId))),
+        .from(subscriptions)
+        .where(and(eq(subscriptions.userId, userId), eq(subscriptions.appId, appId))),
 
       // Orders
       db.select()
-        .from(order)
-        .where(and(eq(order.userId, userId), eq(order.appId, appId))),
+        .from(orders)
+        .where(and(eq(orders.userId, userId), eq(orders.appId, appId))),
 
       // Abandoned checkouts
       db.select()
-        .from(abandonedCheckout)
-        .where(and(eq(abandonedCheckout.userId, userId), eq(abandonedCheckout.appId, appId))),
+        .from(abandonedCheckouts)
+        .where(and(eq(abandonedCheckouts.userId, userId), eq(abandonedCheckouts.appId, appId))),
 
       // Subscription logs
       db.select()
-        .from(subscriptionLog)
-        .where(and(eq(subscriptionLog.userId, userId), eq(subscriptionLog.appId, appId))),
+        .from(subscriptionLogs)
+        .where(and(eq(subscriptionLogs.userId, userId), eq(subscriptionLogs.appId, appId))),
 
       // PhonePe orders
       db.select()
-        .from(phonepeOrder)
-        .where(and(eq(phonepeOrder.userId, userId), eq(phonepeOrder.appId, appId))),
+        .from(phonepeOrders)
+        .where(eq(phonepeOrders.merchantUserId, userId)),
 
       // PhonePe subscriptions
       db.select()
-        .from(phonepeSubscription)
-        .where(and(eq(phonepeSubscription.userId, userId), eq(phonepeSubscription.appId, appId))),
+        .from(phonepeSubscriptions)
+        .where(and(eq(phonepeSubscriptions.userId, userId), eq(phonepeSubscriptions.appId, appId))),
     ]);
 
     return NextResponse.json({
@@ -136,16 +136,16 @@ export async function POST(req: NextRequest) {
       phoneNumber,
       metadata,
       accounts,
-      pushTokens,
-      deviceSessions,
-      userImages,
-      playStoreRatings,
-      subscriptions,
-      orders,
-      abandonedCheckouts,
-      subscriptionLogs,
-      phonepeOrders,
-      phonepeSubscriptions,
+      pushTokens: pushTokensData,
+      deviceSessions: deviceSessionsData,
+      userImages: userImagesData,
+      playStoreRatings: playStoreRatingsData,
+      subscriptions: subscriptionsData,
+      orders: ordersData,
+      abandonedCheckouts: abandonedCheckoutsData,
+      subscriptionLogs: subscriptionLogsData,
+      phonepeOrders: phonepeOrdersData,
+      phonepeSubscriptions: phonepeSubscriptionsData,
     });
 
   } catch (error) {
