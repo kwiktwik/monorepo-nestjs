@@ -39,6 +39,7 @@ type WebhookLogIds = {
   subscriptionId?: string;
   invoiceId?: string;
   tokenId?: string;
+  refundId?: string;
 };
 
 type AuthorizedPaymentForFacebook = {
@@ -59,6 +60,9 @@ function extractWebhookIds(event: unknown): WebhookLogIds {
         entity?: { id?: string; latest_invoice?: { id?: string } };
       };
       token?: { entity?: { id?: string; order_id?: string } };
+      refund?: {
+        entity?: { id?: string; payment_id?: string; order_id?: string };
+      };
     };
   };
 
@@ -66,14 +70,16 @@ function extractWebhookIds(event: unknown): WebhookLogIds {
   const order = e?.payload?.order?.entity;
   const subscription = e?.payload?.subscription?.entity;
   const token = e?.payload?.token?.entity;
+  const refund = e?.payload?.refund?.entity;
 
   return {
     event: e?.event,
-    paymentId: payment?.id,
-    orderId: payment?.order_id ?? order?.id ?? token?.order_id,
+    paymentId: payment?.id || refund?.payment_id,
+    orderId: payment?.order_id ?? order?.id ?? token?.order_id ?? refund?.order_id,
     subscriptionId: subscription?.id,
     invoiceId: payment?.invoice_id ?? subscription?.latest_invoice?.id,
     tokenId: token?.id,
+    refundId: refund?.id,
   };
 }
 
@@ -84,6 +90,7 @@ function formatWebhookIds(ids: WebhookLogIds) {
   if (ids.subscriptionId) parts.push(`subscriptionId=${ids.subscriptionId}`);
   if (ids.invoiceId) parts.push(`invoiceId=${ids.invoiceId}`);
   if (ids.tokenId) parts.push(`tokenId=${ids.tokenId}`);
+  if (ids.refundId) parts.push(`refundId=${ids.refundId}`);
   return parts.length > 0 ? parts.join(" ") : "no-ids";
 }
 
@@ -1456,6 +1463,69 @@ export async function POST(request: NextRequest) {
         } else {
           console.warn(
             `[WEBHOOK ${requestId}] ⚠️  Missing order id in order.paid event`,
+          );
+        }
+        break;
+
+      case "refund.created":
+      case "refund.processed":
+      case "refund.failed":
+        const refundEntity = event.payload?.refund?.entity;
+        const refundPayment = event.payload?.payment?.entity;
+        const orderIdFromIds = ids.orderId;
+
+        if (orderIdFromIds && refundEntity) {
+          console.log(
+            `[WEBHOOK ${requestId}] 💸 ${event.event} refundId=${refundEntity.id} paymentId=${refundPayment?.id || refundEntity.payment_id} orderId=${orderIdFromIds}`,
+          );
+
+          if (event.event !== "refund.failed") {
+            try {
+              // We use the payment entity if available to ensure we have all details
+              // otherwise we can construct a minimal payment object from the refund entity
+              const paymentData = refundPayment || {
+                id: refundEntity.payment_id,
+                order_id: refundEntity.order_id,
+                amount: refundPayment?.amount || 0, // Fallback if payment entity is missing
+                currency: refundPayment?.currency || "INR",
+              };
+
+              await getOrCreateOrderFromPayment(
+                paymentData,
+                requestId,
+                ORDER_STATUS.REFUNDED,
+                eventTime,
+              );
+            } catch (error) {
+              console.error(
+                `[WEBHOOK ${requestId}] ❌ Failed to process refund (refundId=${refundEntity.id}):`,
+                error,
+              );
+            }
+          }
+
+          // Track refund analytics
+          const analyticsEvent =
+            event.event === "refund.failed"
+              ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
+              : ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+
+          await trackOrderAnalytics(
+            requestId,
+            orderIdFromIds,
+            analyticsEvent,
+            {
+              refund_id: refundEntity.id,
+              payment_id: refundPayment?.id || refundEntity.payment_id,
+              order_id: orderIdFromIds,
+              amount: (refundEntity.amount || 0) / 100,
+              currency: refundEntity.currency || "INR",
+              status: refundEntity.status,
+            },
+          );
+        } else {
+          console.warn(
+            `[WEBHOOK ${requestId}] ⚠️  ${event.event} missing order_id`,
           );
         }
         break;
