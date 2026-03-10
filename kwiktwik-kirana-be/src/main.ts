@@ -32,6 +32,32 @@ async function bootstrap() {
   const port = process.env.PORT || 4010;
   const baseUrl = `http://localhost:${port}`;
 
+  // Basic Auth Middleware for Swagger
+  const swaggerAuthMiddleware = (req: any, res: any, next: any) => {
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64')
+      .toString()
+      .split(':');
+
+    const expectedUser = process.env.SWAGGER_USER || 'kirana';
+    const expectedPass = process.env.SWAGGER_PASSWORD || 'kirana@kwiktwik';
+
+    if (
+      login &&
+      password &&
+      login === expectedUser &&
+      password === expectedPass
+    ) {
+      return next();
+    }
+
+    res.set('WWW-Authenticate', 'Basic realm="Swagger API Docs"');
+    res.status(401).send('Authentication required.');
+  };
+
+  // Protect swagger endpoints
+  app.use(['/docs', '/docs-json'], swaggerAuthMiddleware);
+
   const config = new DocumentBuilder()
     .setTitle('KwikTwik Kirana API')
     .setDescription(
@@ -39,6 +65,8 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addServer(baseUrl, 'Local development')
+    .addServer('https://api.kiranaapps.com', 'Production API')
+    .addServer('https://services.kiranaapps.com', 'Production Services')
     .addTag('auth', 'Authentication - OTP & Google Sign-in')
     .addTag(
       'auth-v1',
