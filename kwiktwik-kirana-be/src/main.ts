@@ -130,6 +130,7 @@ async function bootstrap() {
       'https://build.kiranaapps.com',
       'https://preprod.kiranaapps.com',
       'https://alertpay.kiranaapps.com',
+      'https://api.kiranaapps.com',
       'https://services.kiranaapps.com',
       'https://api.sharekaro.shop',
       'https://app.sharekaro.shop',
