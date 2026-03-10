@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { razorpay } from "@/lib/razorpay";
 import Razorpay from "razorpay";
 import { db } from "@/db";
-import { subscriptions, abandonedCheckouts } from "@/db/schema";
+import { subscriptions } from "@/db/schema";
 import { nanoid } from "nanoid";
 import { auth } from "@/lib/better-auth/auth";
 import { validateAppId, AppValidationError } from "@/lib/utils/app-validator";
-import { and, eq, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 interface RazorpayCustomer {
   id: string;
@@ -18,10 +18,7 @@ interface RazorpayCustomer {
   notes?: Record<string, string | number | null>;
 }
 
-// Discount plan ID for users who abandoned checkout 30+ minutes ago
-const DISCOUNT_PLAN_ID = "plan_SL3uNUOHS4ouiR";
-const DISCOUNT_ELIGIBILITY_MINUTES = 30;
-const DISCOUNT_OFFER_HOURS = 24;
+
 
 // Create subscription with Razorpay
 // https://razorpay.com/docs/api/payments/subscriptions/create-subscription/
@@ -67,13 +64,13 @@ export async function POST(request: NextRequest) {
     // Extract device/app metadata from request headers
     const deviceMeta: Record<string, string> = {};
     const headerMap: [string, string][] = [
-      ["X-App-Version",        "app_version"],
-      ["X-Build-Number",       "build_number"],
-      ["X-Locale",             "locale"],
-      ["X-Platform",           "platform"],
-      ["X-Android-SDK-Version","android_sdk"],
-      ["X-Android-Release",    "android_release"],
-      ["X-Android-Incremental","android_incremental"],
+      ["X-App-Version", "app_version"],
+      ["X-Build-Number", "build_number"],
+      ["X-Locale", "locale"],
+      ["X-Platform", "platform"],
+      ["X-Android-SDK-Version", "android_sdk"],
+      ["X-Android-Release", "android_release"],
+      ["X-Android-Incremental", "android_incremental"],
     ];
     for (const [header, key] of headerMap) {
       const value = request.headers.get(header);
@@ -125,69 +122,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check discount eligibility - has user abandoned checkout 3+ hours ago?
-    const lastAbandonedCheckout = await db
-      .select()
-      .from(abandonedCheckouts)
-      .where(
-        and(
-          eq(abandonedCheckouts.userId, userId),
-          eq(abandonedCheckouts.appId, appId),
-        )
-      )
-      .orderBy(desc(abandonedCheckouts.checkoutStartedAt))
-      .limit(1);
 
-    const thirtyMinutesAgo = new Date(Date.now() - DISCOUNT_ELIGIBILITY_MINUTES * 60 * 1000);
-    const isEligibleForDiscount = lastAbandonedCheckout.length > 0 &&
-      lastAbandonedCheckout[0].checkoutStartedAt < thirtyMinutesAgo;
-
-    // Check if discount offer has expired (24 hours from when first eligible)
-    let isOfferExpired = false;
-    let calculatedExpiry: Date | null = null;
-
-    if (isEligibleForDiscount) {
-      if (lastAbandonedCheckout[0].offerExpiresAt) {
-        // Use stored expiration time
-        isOfferExpired = new Date() > lastAbandonedCheckout[0].offerExpiresAt;
-      } else {
-        // Calculate expiration: checkoutStartedAt + 30 mins + 24 hours
-        calculatedExpiry = new Date(
-          lastAbandonedCheckout[0].checkoutStartedAt.getTime() +
-          (DISCOUNT_ELIGIBILITY_MINUTES * 60 * 1000) +
-          (DISCOUNT_OFFER_HOURS * 60 * 60 * 1000)
-        );
-        isOfferExpired = new Date() > calculatedExpiry;
-      }
-    }
-
-    // Use discount plan only if eligible and offer not expired
-    const finalPlanId = (isEligibleForDiscount && !isOfferExpired) ? DISCOUNT_PLAN_ID : plan_id;
-
-    // Track this checkout attempt ONLY if user is not already eligible for discount (not expired)
-    // This prevents resetting the 30-min timer for users who already qualify for discount
-    if (!(isEligibleForDiscount && !isOfferExpired)) {
-      await db.insert(abandonedCheckouts).values({
-        userId,
-        appId,
-        checkoutStartedAt: new Date(),
-      });
-    } else {
-
-      // Set expiration time if not already set (first time becoming eligible)
-      if (!lastAbandonedCheckout[0].offerExpiresAt) {
-        const offerExpiresAt = calculatedExpiry || new Date(Date.now() + DISCOUNT_OFFER_HOURS * 60 * 60 * 1000);
-        await db
-          .update(abandonedCheckouts)
-          .set({ offerExpiresAt })
-          .where(eq(abandonedCheckouts.id, lastAbandonedCheckout[0].id));
-      }
-    }
 
     // Fetch plan details from Razorpay to get currency, amount, and billing cycles
     let planDetails;
     try {
-      planDetails = await razorpay.plans.fetch(finalPlanId);
+      planDetails = await razorpay.plans.fetch(plan_id);
     } catch (error: any) {
       console.error("Error fetching plan:", error);
       return NextResponse.json(
@@ -238,7 +178,7 @@ export async function POST(request: NextRequest) {
     // Create subscription with Razorpay
     // First payment addon of ₹5 (500 paise)
     const subscription = await razorpay.subscriptions.create({
-      plan_id: finalPlanId,
+      plan_id: plan_id,
       customer_notify: true,
       quantity,
       total_count,
@@ -251,7 +191,7 @@ export async function POST(request: NextRequest) {
     await db.insert(subscriptions).values({
       id: subscriptionId,
       razorpaySubscriptionId: subscription.id,
-      razorpayPlanId: finalPlanId,
+      razorpayPlanId: plan_id,
       userId: userId,
       appId: appId,
       customerId: email,
@@ -302,14 +242,8 @@ export async function POST(request: NextRequest) {
       },
       subscriptionId,
       customerId,
-      isDiscountApplied: isEligibleForDiscount && !isOfferExpired,
-      isOfferExpired,
-      planId: finalPlanId,
-      message: (isEligibleForDiscount && !isOfferExpired)
-        ? "Discount applied! Subscription created with special pricing. First payment of ₹5 will be charged immediately."
-        : isOfferExpired
-          ? "Discount offer expired. Subscription created at regular price. First payment of ₹5 will be charged immediately."
-          : "Subscription created successfully. First payment of ₹5 will be charged immediately.",
+      planId: plan_id,
+      message: "Subscription created successfully. First payment of ₹5 will be charged immediately.",
     });
   } catch (error: any) {
     console.error("Error creating subscription:", error);
