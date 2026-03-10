@@ -16,7 +16,6 @@ import type { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
-  ApiHeader,
   ApiResponse,
   ApiParam,
   ApiBody,
@@ -56,12 +55,6 @@ interface UnifiedLoginResponse {
 }
 
 @ApiTags('auth-v1')
-@ApiHeader({
-  name: 'X-App-ID',
-  required: true,
-  description:
-    'App identifier (e.g. com.paymentalert.app, com.sharekaro.kirana)',
-})
 @Controller('v1/auth')
 @UseGuards(AppIdGuard)
 export class AuthV1Controller {

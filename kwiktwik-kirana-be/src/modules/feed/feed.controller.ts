@@ -1,7 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiHeader,
   ApiOperation,
   ApiQuery,
   ApiResponse,
@@ -14,7 +13,6 @@ import { FeedService } from './feed.service';
 
 @ApiTags('feed')
 @ApiBearerAuth('JWT')
-@ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 @Controller('feed')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class FeedController {

@@ -3,7 +3,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiHeader,
   ApiResponse,
 } from '@nestjs/swagger';
 import { ConfigService } from './config.service';
@@ -13,7 +12,6 @@ import { AppId } from '../../common/decorators/app-id.decorator';
 
 @ApiTags('config')
 @ApiBearerAuth('JWT')
-@ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 @Controller('config')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class ConfigController {

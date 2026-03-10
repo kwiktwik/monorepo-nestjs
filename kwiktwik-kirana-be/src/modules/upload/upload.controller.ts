@@ -2,7 +2,6 @@ import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -16,7 +15,6 @@ import { PresignedUrlDto } from './dto/presigned-url.dto';
 
 @ApiTags('upload')
 @ApiBearerAuth('JWT')
-@ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 @Controller('upload')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class UploadController {

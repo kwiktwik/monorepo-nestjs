@@ -74,10 +74,10 @@ async function bootstrap() {
       'API documentation for ShareStatus/Kirana backend - Authentication, Config, User management',
     )
     .setVersion('1.0')
-    .addServer('/api', 'Current server')
-    .addServer('https://api.kiranaapps.com/api', 'Production API')
-    .addServer('https://services.kiranaapps.com/api', 'Production Services')
-    .addServer(`http://localhost:${port}/api`, 'Local development')
+    .addServer('/', 'Current server')
+    .addServer('https://api.kiranaapps.com', 'Production API')
+    .addServer('https://services.kiranaapps.com', 'Production Services')
+    .addServer(`http://localhost:${port}`, 'Local development')
     .addTag('auth', 'Authentication - OTP & Google Sign-in')
     .addTag(
       'auth-v1',

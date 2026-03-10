@@ -7,7 +7,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiHeader, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService, AuthUserResponse } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
@@ -18,12 +18,6 @@ import { TruecallerSigninDto } from './dto/truecaller-signin.dto';
 import type { Request } from 'express';
 
 @ApiTags('auth')
-@ApiHeader({
-  name: 'X-App-ID',
-  required: true,
-  description:
-    'App identifier (e.g. com.paymentalert.app, com.sharekaro.kirana)',
-})
 @Controller()
 @UseGuards(AppIdGuard)
 export class AuthController {

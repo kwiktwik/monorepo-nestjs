@@ -12,7 +12,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiHeader,
   ApiResponse,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
@@ -30,7 +29,6 @@ interface AuthUser {
 
 @ApiTags('user')
 @ApiBearerAuth('JWT')
-@ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
 @Controller('user')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class UserController {
