@@ -76,8 +76,8 @@ export async function syncOrdersAction(razorpayOrderIds: string[], targetAppId: 
             // Find user in our DB
             const dbUser = await db.query.user.findFirst({
                 where: or(
-                    email ? eq(user.email, email) : undefined,
-                    contact ? eq(user.phoneNumber, contact) : undefined
+                    email ? eq(user.email, String(email)) : undefined,
+                    contact ? eq(user.phoneNumber, String(contact)) : undefined
                 ),
             });
 
