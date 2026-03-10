@@ -69,7 +69,7 @@ This script:
 4. Verifies the database status of each event after processing (PENDING -> PROCESSING -> COMPLETED).
 
 Environment overrides:
-- `SEED_BASE_URL` - base server URL (default: http://localhost:4010)
+- `SEED_BASE_URL` - base server URL (default: http://localhost:3002)
 - `JWT_SECRET` - must match server secret for JWT validation.
 - `DATABASE_URL` - full connection string.
 
@@ -122,4 +122,4 @@ pnpm run build
 pm2 start ecosystem.config.cjs --only kwiktwik-kirana-be
 ```
 
-Port: **4010**
+Port: **3002**
