@@ -25,7 +25,7 @@ try {
 }
 
 const { Pool } = pg;
-const BASE_URL = process.env.SEED_BASE_URL || 'http://localhost:4010';
+const BASE_URL = process.env.SEED_BASE_URL || 'http://localhost:3002';
 const APP_ID = 'com.paymentalert.app';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-this-in-production';
 

@@ -92,7 +92,7 @@ if (outputJson) {
   console.log('='.repeat(60));
   console.log('\n📖 To use with Swagger UI:');
   console.log('   1. Start mock server: pnpm start:dev:mock');
-  console.log('   2. Open http://localhost:4010/docs');
+  console.log('   2. Open http://localhost:3002/docs');
   console.log('   3. Click "Authorize" button');
   console.log('   4. Paste the token in the JWT field');
   console.log('   5. X-App-ID is pre-set to: com.paymentalert.app');

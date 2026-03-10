@@ -26,7 +26,7 @@ Edit `.env` with your actual values:
 pnpm run start:dev
 ```
 
-Server runs on: http://localhost:4010
+Server runs on: http://localhost:3002
 
 ### 4. Production Build
 ```bash
@@ -46,25 +46,25 @@ pnpm run start:prod
 
 ### Health Check
 ```bash
-curl http://localhost:4010/health
+curl http://localhost:3002/health
 ```
 
 ### Authentication (requires X-App-ID header)
 ```bash
 # Send OTP
-curl -X POST http://localhost:4010/api/phone-number/send-otp \
+curl -X POST http://localhost:3002/api/phone-number/send-otp \
   -H "Content-Type: application/json" \
   -H "X-App-ID: com.sharestatus.app" \
   -d '{"phoneNumber": "+919876543210"}'
 
 # Verify OTP
-curl -X POST http://localhost:4010/api/phone-number/verify \
+curl -X POST http://localhost:3002/api/phone-number/verify \
   -H "Content-Type: application/json" \
   -H "X-App-ID: com.sharestatus.app" \
   -d '{"phoneNumber": "+919876543210", "code": "123456"}'
 
 # Google Sign-In
-curl -X POST http://localhost:4010/api/auth/google-signin \
+curl -X POST http://localhost:3002/api/auth/google-signin \
   -H "Content-Type: application/json" \
   -H "X-App-ID: com.sharestatus.app" \
   -d '{"idToken": "google-id-token-here"}'
@@ -73,24 +73,24 @@ curl -X POST http://localhost:4010/api/auth/google-signin \
 ### Protected Routes (require X-App-ID + Authorization header)
 ```bash
 # Get Config
-curl http://localhost:4010/api/config/v2 \
+curl http://localhost:3002/api/config/v2 \
   -H "X-App-ID: com.sharestatus.app" \
   -H "Authorization: Bearer <jwt-token>"
 
 # Get User Profile
-curl http://localhost:4010/api/user/v1 \
+curl http://localhost:3002/api/user/v1 \
   -H "X-App-ID: com.sharestatus.app" \
   -H "Authorization: Bearer <jwt-token>"
 
 # Update User Profile
-curl -X POST http://localhost:4010/api/user/v1 \
+curl -X POST http://localhost:3002/api/user/v1 \
   -H "Content-Type: application/json" \
   -H "X-App-ID: com.sharestatus.app" \
   -H "Authorization: Bearer <jwt-token>" \
   -d '{"name": "John Doe", "phoneNumber": "+919876543210"}'
 
 # Delete User Account
-curl -X DELETE http://localhost:4010/api/user/v1 \
+curl -X DELETE http://localhost:3002/api/user/v1 \
   -H "X-App-ID: com.sharestatus.app" \
   -H "Authorization: Bearer <jwt-token>"
 ```

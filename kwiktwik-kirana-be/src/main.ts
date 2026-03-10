@@ -29,7 +29,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api', { exclude: ['health'] });
 
   // Swagger API documentation
-  const port = process.env.PORT || 4010;
+  const port = process.env.PORT || 3002;
   const baseUrl = `http://localhost:${port}`;
 
   // Basic Auth Middleware for Swagger
@@ -110,10 +110,10 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'http://localhost:3002',
-      'http://localhost:4010',
       'http://localhost:5173',
       'http://localhost:4200',
-      'http://127.0.0.1:4010',
+      'http://localhost:4010',
+      'http://127.0.0.1:3002',
       'http://127.0.0.1:5173',
       'https://app.storyowl.app',
       'https://build.kiranaapps.com',
