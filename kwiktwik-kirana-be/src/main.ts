@@ -122,6 +122,15 @@ async function bootstrap() {
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-App-ID',
+      'x-app-id',
+      'X-App-Identifier',
+      'x-app-identifier',
+    ],
   });
 
   // Enable global validation pipe
