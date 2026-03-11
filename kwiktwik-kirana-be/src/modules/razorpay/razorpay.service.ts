@@ -193,25 +193,59 @@ export class RazorpayService {
     );
     let customerId: string;
     try {
-      const customer = await razorpay.customers.create({
+      const customer = (await razorpay.customers.create({
         name: email,
         email,
         contact,
-        fail_existing: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fail_existing: '0' as any, // Razorpay REST API expects string '0', SDK types are wrong
         notes,
-      });
+      })) as unknown as { id: string };
       customerId = customer.id;
       this.logger.log(
-        `[createSubscriptionV2] ✅ Customer ready | customerId=${customerId}`,
+        `[createSubscriptionV2] ✅ Customer created | customerId=${customerId}`,
       );
+      console.log(customer)
     } catch (error) {
-      this.logger.error(
-        `[createSubscriptionV2] ❌ Failed to create/find customer`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        'Failed to create or find customer',
-      );
+      const err = error as { statusCode?: number; error?: { code?: string; description?: string } };
+      // Razorpay returns 400 "Customer already exists" even when fail_existing='0' in some cases.
+      // Fall back to fetching the existing customer by email.
+      if (
+        err?.statusCode === 400 &&
+        err?.error?.code === 'BAD_REQUEST_ERROR' &&
+        err?.error?.description?.toLowerCase().includes('customer already exists')
+      ) {
+        this.logger.warn(
+          `[createSubscriptionV2] Customer already exists, fetching existing customer for email=${email}`,
+        );
+        try {
+          const existingCustomers = await razorpay.customers.all({ email } as unknown as Record<string, never>);
+          const items = (existingCustomers as unknown as { items: { id: string }[] }).items;
+          if (items && items.length > 0) {
+            customerId = items[0].id;
+            this.logger.log(
+              `[createSubscriptionV2] ✅ Existing customer found | customerId=${customerId}`,
+            );
+          } else {
+            this.logger.error(
+              `[createSubscriptionV2] ❌ Could not find existing customer for email=${email}`,
+            );
+            throw new InternalServerErrorException('Failed to create or find customer');
+          }
+        } catch (fetchError) {
+          this.logger.error(
+            `[createSubscriptionV2] ❌ Failed to fetch existing customer`,
+            fetchError,
+          );
+          throw new InternalServerErrorException('Failed to create or find customer');
+        }
+      } else {
+        this.logger.error(
+          `[createSubscriptionV2] ❌ Failed to create/find customer`,
+          error,
+        );
+        throw new InternalServerErrorException('Failed to create or find customer');
+      }
     }
 
     // Calculate start_at
