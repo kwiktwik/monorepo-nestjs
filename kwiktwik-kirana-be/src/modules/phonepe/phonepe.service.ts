@@ -14,6 +14,7 @@ import {
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 export type PaymentModeType =
@@ -434,6 +435,44 @@ export class PhonePeService {
       this.logger.log(
         `[PhonePe] Status checked: ${merchantOrderId} - ${response.state}`,
       );
+
+      // Map PhonePe state to order status
+      let orderStatus: string | null = null;
+      const state = response.state;
+
+      if (state === 'COMPLETED') {
+        orderStatus = 'captured';
+      } else if (state === 'FAILED') {
+        orderStatus = 'failed';
+      } else if (state === 'CANCELLED') {
+        orderStatus = 'cancelled';
+      }
+
+      // Update order status if payment is in final state
+      if (orderStatus) {
+        try {
+          await this.db
+            .update(schema.orders)
+            .set({
+              status: orderStatus as any,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.orders.id, merchantOrderId),
+                eq(schema.orders.appId, appId),
+              ),
+            );
+          this.logger.log(
+            `[PhonePe] Order ${merchantOrderId} updated to ${orderStatus}`,
+          );
+        } catch (dbError) {
+          this.logger.error(
+            `[PhonePe] Failed to update order ${merchantOrderId} status:`,
+            dbError,
+          );
+        }
+      }
 
       return {
         orderId: merchantOrderId,

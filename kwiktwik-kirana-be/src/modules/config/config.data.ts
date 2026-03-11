@@ -78,7 +78,7 @@ export const APP_CONFIGS = {
     },
     features: {
       ...baseConfig.features,
-      subscription: { plan_id: 'plan_SHgypikeI443LO' } as SubscriptionConfig,
+      subscription: { plan_id: 'plan_S3FaBrk7sjPQEU' } as SubscriptionConfig,
     },
     videos: {
       en: {
