@@ -271,13 +271,13 @@ const kwiktwikConfig = {
   api: { timeout: 30000, retryAttempts: 3 },
 };
 
-/** com.paymentalert.app: same as alertpayConfig but with plan_SHgypikeI443LO */
+/** com.paymentalert.app: same as alertpayConfig but with plan_S3FaBrk7sjPQEU */
 const paymentalertAppConfig = {
   ...alertpayConfig,
   features: {
     ...alertpayConfig.features,
     subscription: {
-      plan_id: "plan_SHgypikeI443LO",
+      plan_id: "plan_S3FaBrk7sjPQEU",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
