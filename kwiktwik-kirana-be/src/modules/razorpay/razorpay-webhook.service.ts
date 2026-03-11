@@ -11,7 +11,7 @@ import { eq, sql } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { RazorpayWebhookPayload } from './dto/webhook-payload.dto';
+import { RazorpayWebhookPayload, RazorpaySubscriptionEntity } from './dto/webhook-payload.dto';
 import {
   AnalyticsService,
   EventProperties,
@@ -534,9 +534,12 @@ export class RazorpayWebhookService {
     }
   }
 
-  private getSubscriptionUpdateData(subscription: any, eventTime: Date) {
+  private getSubscriptionUpdateData(
+    subscription: RazorpaySubscriptionEntity,
+    eventTime: Date,
+  ) {
     return {
-      status: subscription.status as any,
+      status: subscription.status,
       quantity: subscription.quantity,
       totalCount: subscription.total_count,
       paidCount: subscription.paid_count || 0,
@@ -546,7 +549,7 @@ export class RazorpayWebhookService {
       chargeAt: subscription.charge_at ? new Date(subscription.charge_at * 1000) : null,
       currentStart: subscription.current_start ? new Date(subscription.current_start * 1000) : null,
       currentEnd: subscription.current_end ? new Date(subscription.current_end * 1000) : null,
-      metadata: subscription as any,
+      metadata: subscription,
       updatedAt: eventTime,
     };
   }

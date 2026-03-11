@@ -42,7 +42,7 @@ export interface RazorpaySubscriptionEntity {
   total_count: number;
   paid_count?: number;
   remaining_count?: number;
-  status: string;
+  status: 'created' | 'authenticated' | 'active' | 'pending' | 'halted' | 'paused' | 'cancelled' | 'completed' | 'expired';
   start_at?: number;
   end_at?: number;
   charge_at?: number;
