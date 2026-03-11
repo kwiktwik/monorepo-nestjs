@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
@@ -22,13 +23,14 @@ interface RazorpayCredentials {
 
 @Injectable()
 export class RazorpayService {
+  private readonly logger = new Logger(RazorpayService.name);
   private razorpayInstances: Map<string, Razorpay> = new Map();
 
   constructor(
     private config: ConfigService,
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
-  ) {}
+  ) { }
 
   /**
    * Get Razorpay credentials for a specific app
@@ -123,19 +125,36 @@ export class RazorpayService {
     const email = notes.email;
     const contact = notes.contact;
 
+    this.logger.log(
+      `[createSubscriptionV2] START | userId=${userId} appId=${appId} flow=${flow} plan_id=${dto.plan_id ?? 'auto'} is_trial=${dto.plan_id ?? '-'} user_segment=${dto.plan_id ?? '-'}`,
+    );
+    this.logger.log(
+      `[createSubscriptionV2] DTO notes: email=${email} contact=${contact} name=${notes.name ?? '-'}`,
+    );
+
     const plan_id = dto.plan_id || this.getDefaultPlanId(appId);
+    this.logger.log(`[createSubscriptionV2] Resolved plan_id=${plan_id}`);
 
     if (!email || !contact) {
+      this.logger.warn(
+        `[createSubscriptionV2] ❌ Missing email or contact | email=${email} contact=${contact}`,
+      );
       throw new BadRequestException('email and contact are required in notes');
     }
 
     if (flow === 'collect' && !vpa) {
+      this.logger.warn(
+        `[createSubscriptionV2] ❌ collect flow requires vpa but vpa is missing`,
+      );
       throw new BadRequestException(
         'vpa (UPI ID) is required for collect flow',
       );
     }
 
     if (flow !== 'intent' && flow !== 'collect') {
+      this.logger.warn(
+        `[createSubscriptionV2] ❌ Invalid flow value: '${flow}'`,
+      );
       throw new BadRequestException(
         "flow must be either 'intent' or 'collect'",
       );
@@ -144,13 +163,23 @@ export class RazorpayService {
     const razorpay = this.getRazorpayInstance(appId);
 
     // Fetch plan details from Razorpay
+    this.logger.log(
+      `[createSubscriptionV2] Fetching plan details for plan_id=${plan_id}`,
+    );
     let planDetails: { item: { amount: number; currency: string } };
     try {
       planDetails = (await razorpay.plans.fetch(plan_id)) as {
         item: { amount: number; currency: string };
       };
+      this.logger.log(
+        `[createSubscriptionV2] ✅ Plan fetched | amount=${planDetails?.item?.amount} currency=${planDetails?.item?.currency}`,
+      );
     } catch (error) {
       const err = error as { error?: { description?: string } };
+      this.logger.error(
+        `[createSubscriptionV2] ❌ Failed to fetch plan plan_id=${plan_id}`,
+        err,
+      );
       throw new BadRequestException(
         err?.error?.description || 'Invalid plan_id',
       );
@@ -159,6 +188,9 @@ export class RazorpayService {
     const total_count = 100;
 
     // Find or create customer
+    this.logger.log(
+      `[createSubscriptionV2] Creating/finding Razorpay customer for email=${email}`,
+    );
     let customerId: string;
     try {
       const customer = await razorpay.customers.create({
@@ -169,7 +201,14 @@ export class RazorpayService {
         notes,
       });
       customerId = customer.id;
+      this.logger.log(
+        `[createSubscriptionV2] ✅ Customer ready | customerId=${customerId}`,
+      );
     } catch (error) {
+      this.logger.error(
+        `[createSubscriptionV2] ❌ Failed to create/find customer`,
+        error,
+      );
       throw new InternalServerErrorException(
         'Failed to create or find customer',
       );
@@ -182,9 +221,15 @@ export class RazorpayService {
     if (subscriptionStartAt > 4765046400 * 1000) {
       subscriptionStartAt = Math.floor(subscriptionStartAt / 1000);
     }
+    this.logger.log(
+      `[createSubscriptionV2] start_at=${subscriptionStartAt} (raw dto.start_at=${dto.start_at ?? 'not provided'})`,
+    );
 
     // Create subscription
-    let subscription: { id: string; [key: string]: unknown };
+    this.logger.log(
+      `[createSubscriptionV2] Creating Razorpay subscription | plan_id=${plan_id} quantity=${quantity} total_count=${total_count} start_at=${subscriptionStartAt}`,
+    );
+    let subscription: { id: string;[key: string]: unknown };
     try {
       subscription = (await razorpay.subscriptions.create({
         plan_id,
@@ -193,48 +238,73 @@ export class RazorpayService {
         total_count,
         start_at: subscriptionStartAt,
         notes,
-      })) as unknown as { id: string; [key: string]: unknown };
+      })) as unknown as { id: string;[key: string]: unknown };
+      this.logger.log(
+        `[createSubscriptionV2] ✅ Razorpay subscription created | razorpaySubscriptionId=${subscription.id}`,
+      );
     } catch (error) {
       const err = error as { error?: { description?: string } };
+      this.logger.error(
+        `[createSubscriptionV2] ❌ Failed to create Razorpay subscription`,
+        err,
+      );
       throw new BadRequestException(
         err?.error?.description || 'Failed to create subscription',
       );
     }
 
     const subscriptionId = nanoid(8);
+    this.logger.log(
+      `[createSubscriptionV2] Inserting subscription into DB | internalId=${subscriptionId} razorpayId=${subscription.id}`,
+    );
 
-    await this.db.insert(schema.subscriptions).values({
-      id: subscriptionId,
-      razorpaySubscriptionId: subscription.id,
-      razorpayPlanId: plan_id,
-      userId,
-      appId,
-      customerId: email,
-      razorpayCustomerId: customerId,
-      status: 'created',
-      quantity,
-      totalCount: total_count,
-      paidCount: 0,
-      remainingCount: total_count,
-      startAt: new Date(subscriptionStartAt * 1000),
-      endAt: subscription.end_at
-        ? new Date(Number(subscription.end_at) * 1000)
-        : null,
-      chargeAt: subscription.charge_at
-        ? new Date(Number(subscription.charge_at) * 1000)
-        : null,
-      currentStart: subscription.current_start
-        ? new Date(Number(subscription.current_start) * 1000)
-        : null,
-      currentEnd: subscription.current_end
-        ? new Date(Number(subscription.current_end) * 1000)
-        : null,
-      notes: notes,
-      metadata: subscription,
-    });
+    try {
+      await this.db.insert(schema.subscriptions).values({
+        id: subscriptionId,
+        razorpaySubscriptionId: subscription.id,
+        razorpayPlanId: plan_id,
+        userId,
+        appId,
+        customerId: email,
+        razorpayCustomerId: customerId,
+        status: 'created',
+        quantity,
+        totalCount: total_count,
+        paidCount: 0,
+        remainingCount: total_count,
+        startAt: new Date(subscriptionStartAt * 1000),
+        endAt: subscription.end_at
+          ? new Date(Number(subscription.end_at) * 1000)
+          : null,
+        chargeAt: subscription.charge_at
+          ? new Date(Number(subscription.charge_at) * 1000)
+          : null,
+        currentStart: subscription.current_start
+          ? new Date(Number(subscription.current_start) * 1000)
+          : null,
+        currentEnd: subscription.current_end
+          ? new Date(Number(subscription.current_end) * 1000)
+          : null,
+        notes: notes,
+        metadata: subscription,
+      });
+      this.logger.log(
+        `[createSubscriptionV2] ✅ DB insert success | internalId=${subscriptionId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[createSubscriptionV2] ❌ DB insert failed | internalId=${subscriptionId} razorpayId=${subscription.id}`,
+        error,
+      );
+      throw error;
+    }
 
     const keyId = this.getKeyId(appId);
     const maxAmount = planDetails?.item?.amount ?? 19900;
+
+    this.logger.log(
+      `[createSubscriptionV2] ✅ DONE | internalId=${subscriptionId} razorpayId=${subscription.id} maxAmount=${maxAmount}`,
+    );
 
     return {
       subscription,

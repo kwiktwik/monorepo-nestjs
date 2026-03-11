@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Logger } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -20,7 +20,9 @@ import { VerifyPaymentDto } from './dto/verify-payment.dto';
 @Controller('razorpay')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class RazorpayController {
-  constructor(private readonly razorpayService: RazorpayService) {}
+  private readonly logger = new Logger(RazorpayController.name);
+
+  constructor(private readonly razorpayService: RazorpayService) { }
 
   @Post('subscriptions/v2')
   @ApiOperation({
@@ -34,6 +36,10 @@ export class RazorpayController {
     @AppId() appId: string,
     @Body() dto: CreateSubscriptionV2Dto,
   ) {
+    this.logger.log(
+      `[createSubscriptionV2] Incoming request | userId=${user.userId} appId=${appId} body=${JSON.stringify(dto)}`,
+    );
+
     let planId = dto.plan_id;
 
     if (!planId) {
@@ -41,6 +47,13 @@ export class RazorpayController {
         isTrial: dto.is_trial === 'true',
         userSegment: dto.user_segment,
       });
+      this.logger.log(
+        `[createSubscriptionV2] Resolved dynamic planId=${planId} | isTrial=${dto.is_trial} userSegment=${dto.user_segment}`,
+      );
+    } else {
+      this.logger.log(
+        `[createSubscriptionV2] Using provided planId=${planId}`,
+      );
     }
 
     return this.razorpayService.createSubscriptionV2(user.userId, appId, {

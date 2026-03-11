@@ -35,7 +35,7 @@ export class RazorpayWebhookService {
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
     private analyticsService: AnalyticsService,
-  ) {}
+  ) { }
 
   private async getUserInfoForAnalytics(userId: string) {
     // Analytics disabled - kept for future re-enabling
