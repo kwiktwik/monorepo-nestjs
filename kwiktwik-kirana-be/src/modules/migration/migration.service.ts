@@ -1,3 +1,13 @@
+/**
+ * Migration Service
+ * 
+ * SAFETY NOTICE: This service handles migration FROM kirana-fe (old system) TO kwiktwik-kirana-be (new system)
+ * - Data from kirana-fe is fetched via HTTP API calls (read-only, NEVER modified or deleted)
+ * - Data is inserted into kwiktwik-kirana-be tables only
+ * - When MIGRATION_SAFE_MODE=true (default), failed migrations will NOT roll back/delete any data
+ * - Original data in kirana-fe is ALWAYS preserved and never at risk
+ */
+
 import { Injectable, Logger, BadRequestException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
@@ -41,6 +51,7 @@ export class MigrationService {
     heartbeatInterval: number;
     staleThreshold: number;
     lockTtl: number;
+    safeMode: boolean;
   };
 
   constructor(
@@ -58,6 +69,7 @@ export class MigrationService {
       heartbeatInterval: this.configService.get('MIGRATION_HEARTBEAT_INTERVAL_MS', 30000),
       staleThreshold: this.configService.get('MIGRATION_STALE_THRESHOLD_MS', 300000),
       lockTtl: this.configService.get('MIGRATION_LOCK_TTL_MS', 90000),
+      safeMode: this.configService.get('MIGRATION_SAFE_MODE', true),
     };
   }
 
@@ -692,9 +704,24 @@ export class MigrationService {
   /**
    * Rollback migration by deleting all inserted data
    * Ensures atomicity - all or nothing
+   * 
+   * SAFETY: This ONLY deletes data from kwiktwik-kirana-be (new system)
+   * It NEVER deletes data from kirana-fe (old system) - that data is read-only
+   * When MIGRATION_SAFE_MODE is enabled, rollback is skipped entirely
    */
   private async rollbackMigration(userId: string, migratedTables: string[]): Promise<void> {
     if (!userId || migratedTables.length === 0) {
+      return;
+    }
+
+    // SAFETY CHECK: If safe mode is enabled, skip rollback to preserve all data
+    if (this.config.safeMode) {
+      this.logger.warn(
+        `[SAFE MODE] Migration failed for user ${userId}, but rollback is DISABLED. ` +
+        `Data in migrated tables will NOT be deleted. ` +
+        `Tables that would have been rolled back: ${migratedTables.join(', ')}. ` +
+        `Note: Original data in kirana-fe (old system) is NEVER affected.`
+      );
       return;
     }
 
@@ -728,6 +755,9 @@ export class MigrationService {
 
   /**
    * Delete data from a specific table for a user
+   * 
+   * SAFETY: This ONLY deletes from kwiktwik-kirana-be tables (schema.*)
+   * It NEVER touches kirana-fe (old system) data - those are accessed via HTTP API only
    */
   private async deleteTableData(tableName: string, userId: string): Promise<void> {
     const tableMap: Record<string, any> = {

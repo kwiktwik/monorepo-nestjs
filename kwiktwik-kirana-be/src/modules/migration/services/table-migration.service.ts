@@ -1,3 +1,12 @@
+/**
+ * Table Migration Service
+ *
+ * SAFETY NOTICE: This service ONLY inserts data into kwiktwik-kirana-be tables
+ * - All operations are INSERT only into the new system's database
+ * - NO delete or update operations on kirana-fe (old system)
+ * - Original data in kirana-fe is ALWAYS preserved
+ */
+
 import { Injectable, Logger } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
