@@ -3,7 +3,7 @@ import { desc, lte, eq, and } from "drizzle-orm";
 import { kwiktwikDb } from "@/app/(krafto)/db";
 import { craftoQuotes } from "@/app/(krafto)/drizzle/schema";
 import { auth } from "@/lib/better-auth/auth";
-
+import { isCraftoUrl, migrateCraftoUrl } from "@/lib/media-migration";
 import { extractAppId, validateAppId, AppValidationError } from "@/lib/utils/app-validator";
 
 interface QuoteResponse {
@@ -119,6 +119,44 @@ function formatQuoteResponse(rawJson: Record<string, unknown>): QuoteResponse {
   };
 }
 
+/**
+ * Recursively find and migrate Crafto URLs in an object/array
+ */
+async function migrateUrlsInObject(obj: any): Promise<boolean> {
+  let changed = false;
+
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      if (typeof obj[i] === 'string' && isCraftoUrl(obj[i])) {
+        const newUrl = await migrateCraftoUrl(obj[i]);
+        if (newUrl !== obj[i]) {
+          obj[i] = newUrl;
+          changed = true;
+        }
+      } else if (typeof obj[i] === 'object' && obj[i] !== null) {
+        if (await migrateUrlsInObject(obj[i])) {
+          changed = true;
+        }
+      }
+    }
+  } else if (typeof obj === 'object' && obj !== null) {
+    for (const key in obj) {
+      if (typeof obj[key] === 'string' && isCraftoUrl(obj[key])) {
+        const newUrl = await migrateCraftoUrl(obj[key]);
+        if (newUrl !== obj[key]) {
+          obj[key] = newUrl;
+          changed = true;
+        }
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        if (await migrateUrlsInObject(obj[key])) {
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return changed;
+}
 
 /**
  * GET /api/crafto/home/v1.7
@@ -264,7 +302,54 @@ export async function GET(request: NextRequest) {
     const hasNextPage = quotes.length > limit;
     const quotesToReturn = hasNextPage ? quotes.slice(0, limit) : quotes;
 
+    // Process migrations for Crafto URLs
+    await Promise.all(quotesToReturn.map(async (quote) => {
+      let requiresUpdate = false;
+      const updates: Partial<typeof craftoQuotes.$inferInsert> = {};
 
+      // Check rawJson
+      if (quote.rawJson) {
+        const raw = quote.rawJson as Record<string, any>;
+        // Deep copy to avoid mutating if we don't save? No, we want to mutate to return updated data
+        const jsonChanged = await migrateUrlsInObject(raw);
+        if (jsonChanged) {
+          updates.rawJson = raw;
+          requiresUpdate = true;
+        }
+      }
+
+      // Check individual columns
+      if (isCraftoUrl(quote.url)) {
+        updates.url = await migrateCraftoUrl(quote.url!);
+        requiresUpdate = true;
+      }
+      if (isCraftoUrl(quote.videoUrl)) {
+        updates.videoUrl = await migrateCraftoUrl(quote.videoUrl!);
+        requiresUpdate = true;
+      }
+      if (isCraftoUrl(quote.previewImageUrl)) {
+        updates.previewImageUrl = await migrateCraftoUrl(quote.previewImageUrl!);
+        requiresUpdate = true;
+      }
+      if (isCraftoUrl(quote.stickerUrl)) {
+        updates.stickerUrl = await migrateCraftoUrl(quote.stickerUrl!);
+        requiresUpdate = true;
+      }
+
+      if (requiresUpdate) {
+        await kwiktwikDb
+          .update(craftoQuotes)
+          .set(updates)
+          .where(eq(craftoQuotes.id, quote.id));
+
+        // Update local object for response
+        if (updates.url) quote.url = updates.url;
+        if (updates.videoUrl) quote.videoUrl = updates.videoUrl;
+        if (updates.previewImageUrl) quote.previewImageUrl = updates.previewImageUrl;
+        if (updates.stickerUrl) quote.stickerUrl = updates.stickerUrl;
+        // rawJson is already mutated in place
+      }
+    }));
 
     // Calculate next cursor and offset from the last item
     let nextOffset: string | null = null;
