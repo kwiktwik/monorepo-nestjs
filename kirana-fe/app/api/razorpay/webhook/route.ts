@@ -1479,19 +1479,14 @@ export async function POST(request: NextRequest) {
             `[WEBHOOK ${requestId}] 💸 ${event.event} refundId=${refundEntity.id} paymentId=${refundPayment?.id || refundEntity.payment_id} orderId=${orderIdFromIds}`,
           );
 
-          if (event.event !== "refund.failed") {
+          // Only mark the order as REFUNDED when the refund is fully processed.
+          // refund.created = refund initiated (do NOT change order status yet)
+          // refund.processed = refund complete → update order to REFUNDED
+          // refund.failed = refund failed → do nothing to order status
+          if (event.event === "refund.processed" && refundPayment) {
             try {
-              // We use the payment entity if available to ensure we have all details
-              // otherwise we can construct a minimal payment object from the refund entity
-              const paymentData = refundPayment || {
-                id: refundEntity.payment_id,
-                order_id: refundEntity.order_id,
-                amount: refundPayment?.amount || 0, // Fallback if payment entity is missing
-                currency: refundPayment?.currency || "INR",
-              };
-
               await getOrCreateOrderFromPayment(
-                paymentData,
+                refundPayment,
                 requestId,
                 ORDER_STATUS.REFUNDED,
                 eventTime,
@@ -1504,7 +1499,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Track refund analytics
+          // Track refund analytics for all refund events
           const analyticsEvent =
             event.event === "refund.failed"
               ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
