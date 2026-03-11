@@ -21,6 +21,11 @@ import {
   EventProperties,
 } from '../analytics/analytics.service';
 import { ANALYTICS_EVENTS } from '../analytics/analytics.constants';
+import {
+  getWebhookSecretEnvVar,
+  getRegisteredAppIds,
+  validateWebhookConfiguration,
+} from '../../common/config/apps.config';
 
 @Injectable()
 export class RazorpayWebhookService {
@@ -169,40 +174,56 @@ export class RazorpayWebhookService {
 
   /**
    * Get all configured webhook secrets with their app IDs
-   * Finds all environment variables starting with RAZORPAY_WEBHOOK_SECRET_
+   * Uses registered apps from constants to ensure only valid apps are processed
    * Returns array of { appId, secret } objects
    */
   private getAllWebhookSecrets(): Array<{ appId: string; secret: string }> {
     const secrets: Array<{ appId: string; secret: string }> = [];
+    const registeredAppIds = getRegisteredAppIds();
 
-    // Get all environment variable keys
-    const envKeys = Object.keys(process.env);
+    // Iterate through registered apps and get their webhook secrets
+    for (const appId of registeredAppIds) {
+      const envVarName = getWebhookSecretEnvVar(appId);
+      if (!envVarName) {
+        this.logger.warn(
+          `[WEBHOOK] App "${appId}" is registered but has no webhook secret env var mapping`,
+        );
+        continue;
+      }
 
-    // Find all RAZORPAY_WEBHOOK_SECRET_ variables
-    const webhookSecretKeys = envKeys.filter((key) =>
-      key.startsWith('RAZORPAY_WEBHOOK_SECRET_'),
-    );
-
-    for (const key of webhookSecretKeys) {
-      const secret = process.env[key];
+      const secret = process.env[envVarName];
       if (secret) {
-        // Convert RAZORPAY_WEBHOOK_SECRET_COM_EXAMPLE_APP to com.example.app
-        const normalizedAppId = key
-          .replace('RAZORPAY_WEBHOOK_SECRET_', '')
-          .replace(/_/g, '.')
-          .toLowerCase();
-
-        secrets.push({ appId: normalizedAppId, secret });
+        secrets.push({ appId, secret });
+      } else {
+        this.logger.warn(
+          `[WEBHOOK] Webhook secret not configured for app: ${appId}. Please set ${envVarName} environment variable.`,
+        );
       }
     }
 
     if (secrets.length === 0) {
       this.logger.error(
-        '[WEBHOOK] No webhook secrets configured. Please set RAZORPAY_WEBHOOK_SECRET_{APP_ID} environment variables.',
+        `[WEBHOOK] No webhook secrets configured. Please set environment variables for registered apps: ${registeredAppIds.join(', ')}`,
       );
     }
 
     return secrets;
+  }
+
+  /**
+   * Validate webhook configuration on startup
+   * Logs warnings for missing configurations
+   */
+  onModuleInit() {
+    const validation = validateWebhookConfiguration();
+    if (!validation.valid) {
+      this.logger.warn(
+        `[WEBHOOK] Missing webhook secrets for apps: ${validation.missing.join(', ')}`,
+      );
+    }
+    this.logger.log(
+      `[WEBHOOK] Configured for apps: ${validation.configured.join(', ')}`,
+    );
   }
 
   /**
@@ -226,23 +247,25 @@ export class RazorpayWebhookService {
 
   /**
    * Get webhook secret for a specific app (kept for backward compatibility)
-   * Environment variable naming convention:
-   * - RAZORPAY_WEBHOOK_SECRET_{APP_ID}
-   *   where APP_ID is normalized (dots replaced with underscores, uppercase)
+   * Uses APP_WEBHOOK_SECRETS constant to validate app is registered
    */
   private getWebhookSecret(appId: string): string {
     if (!appId) {
       throw new InternalServerErrorException('App ID is required');
     }
 
-    const normalizedAppId = appId.replace(/\./g, '_').toUpperCase();
-    const secret = this.config.get<string>(
-      `RAZORPAY_WEBHOOK_SECRET_${normalizedAppId}`,
-    );
+    const envVarName = getWebhookSecretEnvVar(appId);
+    if (!envVarName) {
+      throw new InternalServerErrorException(
+        `App "${appId}" is not a registered application. Registered apps: ${getRegisteredAppIds().join(', ')}`,
+      );
+    }
+
+    const secret = this.config.get<string>(envVarName);
 
     if (!secret) {
       throw new InternalServerErrorException(
-        `Webhook secret not found for app: ${appId}. Please set RAZORPAY_WEBHOOK_SECRET_${normalizedAppId} environment variable.`,
+        `Webhook secret not found for app: ${appId}. Please set ${envVarName} environment variable.`,
       );
     }
 

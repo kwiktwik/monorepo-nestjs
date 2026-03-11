@@ -110,3 +110,61 @@ export function getRegisteredAppIds(): string[] {
 export function getEnabledApps(): AppConfig[] {
   return Object.values(REGISTERED_APPS).filter((app) => app.enabled);
 }
+
+/**
+ * Generate webhook secret environment variable name from app ID
+ * Pattern: com.example.app -> RAZORPAY_WEBHOOK_SECRET_COM_EXAMPLE_APP
+ */
+export function generateWebhookSecretEnvVar(appId: string): string {
+  return `RAZORPAY_WEBHOOK_SECRET_${appId.replace(/\./g, '_').toUpperCase()}`;
+}
+
+/**
+ * Get webhook secret environment variable name for a registered app
+ * Returns null if app is not registered
+ */
+export function getWebhookSecretEnvVar(appId: string): string | null {
+  if (!REGISTERED_APPS[appId]) {
+    return null;
+  }
+  return generateWebhookSecretEnvVar(appId);
+}
+
+/**
+ * Get all registered app IDs that have webhook secrets configured
+ * (All registered apps should have webhook secrets)
+ */
+export function getRegisteredAppIdsWithWebhooks(): string[] {
+  return getRegisteredAppIds();
+}
+
+/**
+ * Validate that all registered apps have proper webhook configuration
+ * Throws error if any app is missing webhook secret env var (at runtime)
+ */
+export function validateWebhookConfiguration(): {
+  valid: boolean;
+  missing: string[];
+  configured: string[];
+} {
+  const registeredAppIds = getRegisteredAppIds();
+  const missing: string[] = [];
+  const configured: string[] = [];
+
+  for (const appId of registeredAppIds) {
+    const envVar = getWebhookSecretEnvVar(appId);
+    if (!envVar) {
+      missing.push(appId);
+    } else if (process.env[envVar]) {
+      configured.push(appId);
+    } else {
+      missing.push(`${appId} (env: ${envVar})`);
+    }
+  }
+
+  return {
+    valid: missing.length === 0,
+    missing,
+    configured,
+  };
+}
