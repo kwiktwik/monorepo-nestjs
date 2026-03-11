@@ -21,6 +21,26 @@ interface RazorpayCredentials {
   key_secret: string;
 }
 
+interface RazorpayCustomer {
+  id: string;
+  entity: string;
+  name: string;
+  email: string;
+  contact: string;
+  gstin: string | null;
+  notes: Record<string, string>;
+  shipping_address: unknown[];
+  created_at: number;
+}
+
+interface RazorpayCreateCustomerParams {
+  name: string;
+  email: string;
+  contact: string;
+  fail_existing?: string; // '0' = return existing, '1' = throw if exists (default)
+  notes?: Record<string, unknown>;
+}
+
 @Injectable()
 export class RazorpayService {
   private readonly logger = new Logger(RazorpayService.name);
@@ -188,65 +208,23 @@ export class RazorpayService {
     const total_count = 100;
 
     // Find or create customer
+    // fail_existing: '0' instructs Razorpay to return the existing customer instead of throwing
     this.logger.log(
       `[createSubscriptionV2] Creating/finding Razorpay customer for email=${email}`,
     );
-    let customerId: string;
-    try {
-      const customer = (await razorpay.customers.create({
-        name: email,
-        email,
-        contact,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        fail_existing: '0' as any, // Razorpay REST API expects string '0', SDK types are wrong
-        notes,
-      })) as unknown as { id: string };
-      customerId = customer.id;
-      this.logger.log(
-        `[createSubscriptionV2] ✅ Customer created | customerId=${customerId}`,
-      );
-      console.log(customer)
-    } catch (error) {
-      const err = error as { statusCode?: number; error?: { code?: string; description?: string } };
-      // Razorpay returns 400 "Customer already exists" even when fail_existing='0' in some cases.
-      // Fall back to fetching the existing customer by email.
-      if (
-        err?.statusCode === 400 &&
-        err?.error?.code === 'BAD_REQUEST_ERROR' &&
-        err?.error?.description?.toLowerCase().includes('customer already exists')
-      ) {
-        this.logger.warn(
-          `[createSubscriptionV2] Customer already exists, fetching existing customer for email=${email}`,
-        );
-        try {
-          const existingCustomers = await razorpay.customers.all({ email } as unknown as Record<string, never>);
-          const items = (existingCustomers as unknown as { items: { id: string }[] }).items;
-          if (items && items.length > 0) {
-            customerId = items[0].id;
-            this.logger.log(
-              `[createSubscriptionV2] ✅ Existing customer found | customerId=${customerId}`,
-            );
-          } else {
-            this.logger.error(
-              `[createSubscriptionV2] ❌ Could not find existing customer for email=${email}`,
-            );
-            throw new InternalServerErrorException('Failed to create or find customer');
-          }
-        } catch (fetchError) {
-          this.logger.error(
-            `[createSubscriptionV2] ❌ Failed to fetch existing customer`,
-            fetchError,
-          );
-          throw new InternalServerErrorException('Failed to create or find customer');
-        }
-      } else {
-        this.logger.error(
-          `[createSubscriptionV2] ❌ Failed to create/find customer`,
-          error,
-        );
-        throw new InternalServerErrorException('Failed to create or find customer');
-      }
-    }
+    const customer = (await (razorpay.customers.create as (
+      params: RazorpayCreateCustomerParams,
+    ) => Promise<RazorpayCustomer>)({
+      name: email,
+      email,
+      contact,
+      fail_existing: '0',
+      notes,
+    }));
+    const customerId = customer.id;
+    this.logger.log(
+      `[createSubscriptionV2] ✅ Customer ready | customerId=${customerId}`,
+    );
 
     // Calculate start_at
     const nowSeconds = Math.floor(Date.now() / 1000);
