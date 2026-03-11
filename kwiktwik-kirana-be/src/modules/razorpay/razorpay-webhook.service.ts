@@ -524,6 +524,11 @@ export class RazorpayWebhookService {
       case 'order.paid':
         await this.handleOrderPaid(event, requestId, eventTime);
         break;
+      case 'refund.created':
+      case 'refund.processed':
+      case 'refund.failed':
+        await this.handleRefundEvent(event, requestId, eventTime);
+        break;
       case 'payment.downtime.resolved':
         this.logger.log(`[WEBHOOK ${requestId}] 🟢 Payment downtime resolved`);
         break;
@@ -562,7 +567,7 @@ export class RazorpayWebhookService {
   private async getOrCreateOrderFromPayment(
     payment: RazorpayPaymentEntity,
     requestId: string,
-    targetStatus: 'authorized' | 'captured' | 'failed',
+    targetStatus: 'authorized' | 'captured' | 'failed' | 'refunded',
     eventTime: Date,
   ): Promise<boolean> {
     if (!payment.order_id) {
@@ -1276,5 +1281,87 @@ export class RazorpayWebhookService {
         );
       }
     }
+  }
+
+  private async handleRefundEvent(
+    event: RazorpayWebhookPayload,
+    requestId: string,
+    eventTime: Date,
+  ): Promise<void> {
+    const refundEntity = (event.payload as any).refund?.entity;
+    const paymentEntity = event.payload.payment?.entity;
+
+    if (!refundEntity) {
+      this.logger.warn(
+        `[WEBHOOK ${requestId}] ⚠️ ${event.event} missing refund entity`,
+      );
+      return;
+    }
+
+    const paymentId = paymentEntity?.id || refundEntity.payment_id;
+    // We get order_id from the payment entity, as refund entity doesn't contain it directly.
+    const orderId = paymentEntity?.order_id;
+
+    if (!orderId) {
+      this.logger.warn(
+        `[WEBHOOK ${requestId}] ⚠️ ${event.event} missing order_id (from payment entity) — refundId=${refundEntity.id}`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `[WEBHOOK ${requestId}] 💸 ${event.event} refundId=${refundEntity.id} paymentId=${paymentId} orderId=${orderId}`,
+    );
+
+    // If payment data is in the payload, use the getOrCreateOrderFromPayment helper
+    // to sync the status and metadata.
+    if (paymentEntity) {
+      const statusMap: Record<string, 'captured' | 'authorized' | 'refunded' | 'failed'> = {
+        captured: 'captured',
+        authorized: 'authorized',
+        refunded: 'refunded',
+        failed: 'failed',
+      };
+      const targetStatus = statusMap[paymentEntity.status];
+
+      if (targetStatus) {
+        try {
+          await this.getOrCreateOrderFromPayment(
+            paymentEntity,
+            requestId,
+            targetStatus,
+            eventTime,
+          );
+        } catch (syncError) {
+          this.logger.error(
+            `[WEBHOOK ${requestId}] ❌ Failed to sync payment status for paymentId=${paymentId}:`,
+            syncError,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `[WEBHOOK ${requestId}] ⚠️ Unknown payment status '${paymentEntity.status}' for paymentId=${paymentId}`,
+        );
+      }
+    } else {
+      this.logger.warn(
+        `[WEBHOOK ${requestId}] ⚠️ ${event.event}: no payment entity in webhook payload to sync status`,
+      );
+    }
+
+    // Track analytics for the refund event
+    const analyticsEvent =
+      event.event === 'refund.failed'
+        ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
+        : ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+
+    await this.trackOrderAnalytics(requestId, orderId, analyticsEvent, {
+      refund_id: refundEntity.id,
+      payment_id: paymentId,
+      order_id: orderId,
+      amount: (refundEntity.amount || 0) / 100,
+      currency: refundEntity.currency || 'INR',
+      status: refundEntity.status,
+    });
   }
 }
