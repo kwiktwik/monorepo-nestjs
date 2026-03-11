@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  Logger,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -22,7 +30,7 @@ import { VerifyPaymentDto } from './dto/verify-payment.dto';
 export class RazorpayController {
   private readonly logger = new Logger(RazorpayController.name);
 
-  constructor(private readonly razorpayService: RazorpayService) { }
+  constructor(private readonly razorpayService: RazorpayService) {}
 
   @Post('subscriptions/v2')
   @ApiOperation({
@@ -51,9 +59,7 @@ export class RazorpayController {
         `[createSubscriptionV2] Resolved dynamic planId=${planId} | isTrial=${dto.is_trial} userSegment=${dto.user_segment}`,
       );
     } else {
-      this.logger.log(
-        `[createSubscriptionV2] Using provided planId=${planId}`,
-      );
+      this.logger.log(`[createSubscriptionV2] Using provided planId=${planId}`);
     }
 
     return this.razorpayService.createSubscriptionV2(user.userId, appId, {

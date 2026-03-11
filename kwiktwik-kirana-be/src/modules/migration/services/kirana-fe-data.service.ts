@@ -1,6 +1,6 @@
 /**
  * Kirana-FE Data Service
- * 
+ *
  * SAFETY NOTICE: This service ONLY reads data from kirana-fe (old system)
  * - All operations are read-only via HTTP API
  * - NO write, update, or delete operations are performed on kirana-fe
@@ -31,7 +31,7 @@ export class KiranaFeDataService {
   /**
    * Fetch all user data from kirana-fe
    * Calls internal API endpoint to get all tables
-   * 
+   *
    * SAFETY: This is a READ-ONLY operation. No data is modified in kirana-fe.
    */
   async fetchAllUserData(

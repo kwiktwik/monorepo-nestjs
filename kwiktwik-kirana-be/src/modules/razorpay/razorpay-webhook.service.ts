@@ -11,7 +11,11 @@ import { eq, sql } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { RazorpayWebhookPayload, RazorpaySubscriptionEntity, RazorpayPaymentEntity } from './dto/webhook-payload.dto';
+import {
+  RazorpayWebhookPayload,
+  RazorpaySubscriptionEntity,
+  RazorpayPaymentEntity,
+} from './dto/webhook-payload.dto';
 import {
   AnalyticsService,
   EventProperties,
@@ -35,7 +39,7 @@ export class RazorpayWebhookService {
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
     private analyticsService: AnalyticsService,
-  ) { }
+  ) {}
 
   private async getUserInfoForAnalytics(userId: string) {
     // Analytics disabled - kept for future re-enabling
@@ -453,7 +457,9 @@ export class RazorpayWebhookService {
       }
 
       // Event time
-      const eventTime = event.created_at ? new Date(event.created_at * 1000) : new Date();
+      const eventTime = event.created_at
+        ? new Date(event.created_at * 1000)
+        : new Date();
 
       // Handle different webhook events
       await this.handleEvent(event, requestId, appId, eventTime);
@@ -549,11 +555,19 @@ export class RazorpayWebhookService {
       totalCount: subscription.total_count,
       paidCount: subscription.paid_count || 0,
       remainingCount: subscription.remaining_count,
-      startAt: subscription.start_at ? new Date(subscription.start_at * 1000) : null,
+      startAt: subscription.start_at
+        ? new Date(subscription.start_at * 1000)
+        : null,
       endAt: subscription.end_at ? new Date(subscription.end_at * 1000) : null,
-      chargeAt: subscription.charge_at ? new Date(subscription.charge_at * 1000) : null,
-      currentStart: subscription.current_start ? new Date(subscription.current_start * 1000) : null,
-      currentEnd: subscription.current_end ? new Date(subscription.current_end * 1000) : null,
+      chargeAt: subscription.charge_at
+        ? new Date(subscription.charge_at * 1000)
+        : null,
+      currentStart: subscription.current_start
+        ? new Date(subscription.current_start * 1000)
+        : null,
+      currentEnd: subscription.current_end
+        ? new Date(subscription.current_end * 1000)
+        : null,
       metadata: subscription,
       updatedAt: eventTime,
     };
@@ -584,7 +598,7 @@ export class RazorpayWebhookService {
         status: targetStatus,
         razorpayPaymentId: payment.id,
         paymentMetadata: payment as any,
-        ...(payment.token_id ? { tokenId: payment.token_id as string } : {}),
+        ...(payment.token_id ? { tokenId: payment.token_id } : {}),
         updatedAt: eventTime,
       })
       .where(eq(schema.orders.razorpayOrderId, payment.order_id))
@@ -645,7 +659,7 @@ export class RazorpayWebhookService {
           (payment.contact as string) ||
           'unknown',
         amount: payment.amount,
-        currency: (payment.currency as string) || 'INR',
+        currency: payment.currency || 'INR',
         status: targetStatus,
         razorpayPaymentId: payment.id,
         paymentMetadata: payment as any,
@@ -1316,7 +1330,10 @@ export class RazorpayWebhookService {
     // If payment data is in the payload, use the getOrCreateOrderFromPayment helper
     // to sync the status and metadata.
     if (paymentEntity) {
-      const statusMap: Record<string, 'captured' | 'authorized' | 'refunded' | 'failed'> = {
+      const statusMap: Record<
+        string,
+        'captured' | 'authorized' | 'refunded' | 'failed'
+      > = {
         captured: 'captured',
         authorized: 'authorized',
         refunded: 'refunded',

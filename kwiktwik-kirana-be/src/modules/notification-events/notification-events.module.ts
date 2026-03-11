@@ -54,22 +54,22 @@ export class NotificationEventsModule {
       providers.push({
         provide: NotificationQueueService,
         useValue: {
-          async addNotification() {
+          addNotification() {
             throw new ServiceUnavailableException(
               'Notification queue service requires Redis. Please configure REDIS_URL.',
             );
           },
-          async getQueueStats() {
+          getQueueStats() {
             throw new ServiceUnavailableException(
               'Notification queue service requires Redis. Please configure REDIS_URL.',
             );
           },
-          async removeJob() {
+          removeJob() {
             throw new ServiceUnavailableException(
               'Notification queue service requires Redis. Please configure REDIS_URL.',
             );
           },
-          async scheduleCheckoutAbandonedCheck() {
+          scheduleCheckoutAbandonedCheck() {
             throw new ServiceUnavailableException(
               'Notification queue service requires Redis. Please configure REDIS_URL.',
             );

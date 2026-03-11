@@ -185,14 +185,14 @@ export class MockRazorpayService {
       razorpay_subscription_id?: string;
       razorpay_order_id?: string;
     },
-  ) {
+  ): Promise<{ verified: boolean }> {
     this.logger.log(
       `[MOCK Razorpay] verifyPayment payment_id=${dto.razorpay_payment_id}`,
     );
     return { verified: true };
   }
 
-  getDynamicPlanId(_appId: string, _userId: string): string {
+  getDynamicPlanId(): string {
     return 'plan_mock_default';
   }
 
@@ -209,7 +209,7 @@ export class MockRazorpayService {
     this.logger.log(`[MOCK Razorpay] getPlan planId=${planId}`);
     const plan = MOCK_PLANS.find((p) => p.id === planId);
     if (!plan) {
-      throw { error: { description: 'No such plan found' } };
+      throw new Error('No such plan found');
     }
     return plan;
   }

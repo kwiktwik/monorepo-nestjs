@@ -51,7 +51,11 @@ export class IdMapper {
   /**
    * Convert all IDs in a record using mappings
    */
-  mapRecordIds(record: any, tableName: string, idFields: string[] = ['id']): any {
+  mapRecordIds(
+    record: any,
+    tableName: string,
+    idFields: string[] = ['id'],
+  ): any {
     const mapped = { ...record };
 
     // Map primary ID
@@ -81,7 +85,10 @@ export class IdMapper {
 
     // Map subscription ID references
     if (record.subscriptionId || record.subscription_id) {
-      const newSubId = this.getNewId('subscriptions', record.subscriptionId || record.subscription_id);
+      const newSubId = this.getNewId(
+        'subscriptions',
+        record.subscriptionId || record.subscription_id,
+      );
       if (newSubId) {
         if (record.subscriptionId) record.subscriptionId = newSubId;
         if (record.subscription_id) record.subscription_id = newSubId;
@@ -90,7 +97,10 @@ export class IdMapper {
 
     // Map order ID references
     if (record.orderId || record.order_id) {
-      const newOrderId = this.getNewId('orders', record.orderId || record.order_id);
+      const newOrderId = this.getNewId(
+        'orders',
+        record.orderId || record.order_id,
+      );
       if (newOrderId) {
         if (record.orderId) record.orderId = newOrderId;
         if (record.order_id) record.order_id = newOrderId;
@@ -99,7 +109,10 @@ export class IdMapper {
 
     // Map checkout ID references
     if (record.checkoutId || record.checkout_id) {
-      const newCheckoutId = this.getNewId('abandonedCheckouts', record.checkoutId || record.checkout_id);
+      const newCheckoutId = this.getNewId(
+        'abandonedCheckouts',
+        record.checkoutId || record.checkout_id,
+      );
       if (newCheckoutId) {
         if (record.checkoutId) record.checkoutId = newCheckoutId;
         if (record.checkout_id) record.checkout_id = newCheckoutId;
@@ -112,13 +125,13 @@ export class IdMapper {
    */
   getAllMappings(): IdMappingEntry[] {
     const entries: IdMappingEntry[] = [];
-    
+
     for (const [tableName, tableMap] of this.mappings.entries()) {
       for (const [oldId, newId] of tableMap.entries()) {
         entries.push({ tableName, oldId, newId });
       }
     }
-    
+
     return entries;
   }
 
@@ -137,7 +150,7 @@ export class IdMapper {
     for (const tableMap of this.mappings.values()) {
       totalMappings += tableMap.size;
     }
-    
+
     return {
       tables: this.mappings.size,
       totalMappings,

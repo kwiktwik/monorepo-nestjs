@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
 import Razorpay from 'razorpay';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -50,7 +50,7 @@ export class RazorpayService {
     private config: ConfigService,
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   /**
    * Get Razorpay credentials for a specific app
@@ -173,7 +173,7 @@ export class RazorpayService {
 
     if (flow !== 'intent' && flow !== 'collect') {
       this.logger.warn(
-        `[createSubscriptionV2] ❌ Invalid flow value: '${flow}'`,
+        `[createSubscriptionV2] ❌ Invalid flow value: '${String(flow)}'`,
       );
       throw new BadRequestException(
         "flow must be either 'intent' or 'collect'",
@@ -212,15 +212,17 @@ export class RazorpayService {
     this.logger.log(
       `[createSubscriptionV2] Creating/finding Razorpay customer for email=${email}`,
     );
-    const customer = (await (razorpay.customers.create as (
-      params: RazorpayCreateCustomerParams,
-    ) => Promise<RazorpayCustomer>)({
+    const customer = await (
+      razorpay.customers.create as (
+        params: RazorpayCreateCustomerParams,
+      ) => Promise<RazorpayCustomer>
+    )({
       name: email,
       email,
       contact,
       fail_existing: '0',
       notes,
-    }));
+    });
     const customerId = customer.id;
     this.logger.log(
       `[createSubscriptionV2] ✅ Customer ready | customerId=${customerId}`,
@@ -241,7 +243,7 @@ export class RazorpayService {
     this.logger.log(
       `[createSubscriptionV2] Creating Razorpay subscription | plan_id=${plan_id} quantity=${quantity} total_count=${total_count} start_at=${subscriptionStartAt}`,
     );
-    let subscription: { id: string;[key: string]: unknown };
+    let subscription: { id: string; [key: string]: unknown };
     try {
       subscription = (await razorpay.subscriptions.create({
         plan_id,
@@ -250,7 +252,7 @@ export class RazorpayService {
         total_count,
         start_at: subscriptionStartAt,
         notes,
-      })) as unknown as { id: string;[key: string]: unknown };
+      })) as unknown as { id: string; [key: string]: unknown };
       this.logger.log(
         `[createSubscriptionV2] ✅ Razorpay subscription created | razorpaySubscriptionId=${subscription.id}`,
       );
@@ -393,7 +395,6 @@ export class RazorpayService {
         .set({
           status: 'active',
           updatedAt: new Date(),
-
         })
         .where(eq(schema.subscriptions.razorpaySubscriptionId, subscriptionId))
         .returning({ id: schema.subscriptions.id });

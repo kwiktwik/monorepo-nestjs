@@ -27,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     );
   }
 
-  async validate(payload: JwtPayload) {
+  validate(payload: JwtPayload) {
     this.logger.debug(
       `JWT validate: sub=${payload?.sub}, appId=${payload?.appId}`,
     );

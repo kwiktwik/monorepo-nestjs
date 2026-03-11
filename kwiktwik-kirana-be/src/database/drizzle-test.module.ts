@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { Global, Module } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from './drizzle.module';
 import { newDb } from 'pg-mem';
@@ -7,7 +8,7 @@ import * as schema from './schema';
 import * as path from 'path';
 import * as fs from 'fs';
 
-function convertDates(obj: any): any {
+function convertDates(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'string') {
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)) {
@@ -19,18 +20,21 @@ function convertDates(obj: any): any {
     return obj.map(convertDates);
   }
   if (typeof obj === 'object') {
-    const result: any = {};
+    const result: Record<string, unknown> = {};
     for (const key of Object.keys(obj)) {
-      result[key] = convertDates(obj[key]);
+      result[key] = convertDates((obj as Record<string, unknown>)[key]);
     }
     return result;
   }
   return obj;
 }
 
-function normalizeRecord(record: any, tableSchema: any): any {
+function normalizeRecord(
+  record: Record<string, unknown> | null | undefined,
+  tableSchema: Record<string, unknown>,
+): Record<string, unknown> | null | undefined {
   if (record === null || record === undefined) return record;
-  const normalized: any = {};
+  const normalized: Record<string, unknown> = {};
 
   // For Drizzle, we need to map input keys to the property names in the schema.
   // The tableSchema object has properties corresponding to the column names in the DB.
@@ -48,7 +52,7 @@ function normalizeRecord(record: any, tableSchema: any): any {
       // Try snake_case version of the key
       const snakeKey = key.replace(
         /[A-Z]/g,
-        (letter) => `_${letter.toLowerCase()}`,
+        (letter: string) => `_${letter.toLowerCase()}`,
       );
       if (record[snakeKey] !== undefined) {
         normalized[key] = record[snakeKey];
@@ -62,11 +66,14 @@ function normalizeRecord(record: any, tableSchema: any): any {
   return normalized;
 }
 
-async function seedDatabase(db: any) {
+async function seedDatabase(db: unknown): Promise<void> {
   const seedFilePath = path.join(process.cwd(), 'scripts/test-db/seed.json');
   console.log(`Reading seed data from ${seedFilePath}...`);
 
-  const seedData = JSON.parse(fs.readFileSync(seedFilePath, 'utf8'));
+  const seedData = JSON.parse(fs.readFileSync(seedFilePath, 'utf8')) as Record<
+    string,
+    unknown[]
+  >;
 
   const tablesToSeed = [
     { name: 'user', schema: schema.user },
@@ -95,7 +102,12 @@ async function seedDatabase(db: any) {
       for (let i = 0; i < records.length; i += chunkSize) {
         const chunk = records
           .slice(i, i + chunkSize)
-          .map((r) => normalizeRecord(convertDates(r), tableSchema));
+          .map((r) =>
+            normalizeRecord(
+              convertDates(r) as Record<string, unknown>,
+              tableSchema,
+            ),
+          );
 
         try {
           await db.insert(tableSchema).values(chunk).onConflictDoNothing();

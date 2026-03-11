@@ -27,9 +27,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const redisConfig = redisUrl
       ? { url: redisUrl }
       : {
-          host: this.configService.get('REDIS_HOST', 'localhost'),
-          port: this.configService.get('REDIS_PORT', 6379),
-          password: this.configService.get('REDIS_PASSWORD') || undefined,
+          host: this.configService.get<string>('REDIS_HOST', 'localhost'),
+          port: this.configService.get<number>('REDIS_PORT', 6379),
+          password:
+            this.configService.get<string>('REDIS_PASSWORD') || undefined,
         };
 
     // Create clients with error handling
@@ -40,8 +41,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.isEnabled = true;
   }
 
-  private createRedisClient(config: any, name: string): Redis {
-    const client = config.url ? new Redis(config.url) : new Redis(config);
+  private createRedisClient(
+    config: { url?: string; host?: string; port?: number; password?: string },
+    name: string,
+  ): Redis {
+    const client = config.url
+      ? new Redis(config.url)
+      : new Redis({
+          host: config.host,
+          port: config.port,
+          password: config.password,
+        });
 
     client.on('connect', () => {
       console.log(`✅ Redis ${name} connected`);
@@ -191,24 +201,27 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Message queue for offline users
-  async queueMessage(userId: string, message: any): Promise<void> {
+  async queueMessage(
+    userId: string,
+    message: Record<string, unknown>,
+  ): Promise<void> {
     if (!this.client) return;
     const key = `message:queue:${userId}`;
     await this.client.rpush(key, JSON.stringify(message));
   }
 
-  async getQueuedMessages(userId: string): Promise<any[]> {
+  async getQueuedMessages(userId: string): Promise<Record<string, unknown>[]> {
     if (!this.client) return [];
     const key = `message:queue:${userId}`;
     const messages = await this.client.lrange(key, 0, -1);
     await this.client.del(key);
-    return messages.map((m) => JSON.parse(m));
+    return messages.map((m) => JSON.parse(m) as Record<string, unknown>);
   }
 
   // App cache
   async cacheApp(
     apiKey: string,
-    appData: any,
+    appData: Record<string, unknown>,
     ttl: number = 3600,
   ): Promise<void> {
     if (!this.client) return;
@@ -216,11 +229,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.setex(key, ttl, JSON.stringify(appData));
   }
 
-  async getCachedApp(apiKey: string): Promise<any | null> {
+  async getCachedApp(apiKey: string): Promise<Record<string, unknown> | null> {
     if (!this.client) return null;
     const key = `app:${apiKey}`;
     const data = await this.client.get(key);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as Record<string, unknown>) : null;
   }
 
   async invalidateAppCache(apiKey: string): Promise<void> {
@@ -233,7 +246,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async cacheUserSession(
     userId: string,
     sessionId: string,
-    data: any,
+    data: Record<string, unknown>,
     ttl: number = 86400,
   ): Promise<void> {
     if (!this.client) return;
@@ -241,11 +254,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.setex(key, ttl, JSON.stringify(data));
   }
 
-  async getUserSession(userId: string, sessionId: string): Promise<any | null> {
+  async getUserSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<Record<string, unknown> | null> {
     if (!this.client) return null;
     const key = `session:${userId}:${sessionId}`;
     const data = await this.client.get(key);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as Record<string, unknown>) : null;
   }
 
   async deleteUserSession(userId: string, sessionId: string): Promise<void> {

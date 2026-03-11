@@ -53,23 +53,23 @@ export class MessagesModule {
       providers.push({
         provide: ScheduledMessagesService,
         useValue: {
-          async scheduleMessage() {
+          scheduleMessage() {
             throw new BadRequestException(
               'Scheduled messages require Redis. Please configure REDIS_URL.',
             );
           },
-          async getScheduledMessages(conversationId: string, userId: string) {
+          getScheduledMessages() {
             return [];
           },
-          async getUserScheduledMessages(userId: string) {
+          getUserScheduledMessages() {
             return [];
           },
-          async cancelScheduledMessage(messageId: string, userId: string) {
+          cancelScheduledMessage() {
             throw new BadRequestException(
               'Scheduled messages require Redis. Please configure REDIS_URL.',
             );
           },
-          async processScheduledMessage(scheduledMessageId: string) {
+          processScheduledMessage() {
             throw new BadRequestException(
               'Scheduled messages require Redis. Please configure REDIS_URL.',
             );

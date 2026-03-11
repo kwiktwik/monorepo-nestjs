@@ -71,7 +71,10 @@ export function getTableWeight(tableName: string): number {
  * Calculate total weight for progress
  */
 export function getTotalWeight(): number {
-  return getMigrationOrder().reduce((sum, table) => sum + getTableWeight(table), 0);
+  return getMigrationOrder().reduce(
+    (sum, table) => sum + getTableWeight(table),
+    0,
+  );
 }
 
 /**
@@ -80,20 +83,23 @@ export function getTotalWeight(): number {
 export function calculateProgress(
   completedTables: string[],
   currentTable: string | null,
-  currentTableProgress: number
+  currentTableProgress: number,
 ): number {
   const totalWeight = getTotalWeight();
-  
+
   // Weight of completed tables
   const completedWeight = completedTables.reduce(
     (sum, table) => sum + getTableWeight(table),
-    0
+    0,
   );
-  
+
   // Weight of current table in progress
-  const currentWeight = currentTable 
-    ? getTableWeight(currentTable) * currentTableProgress 
+  const currentWeight = currentTable
+    ? getTableWeight(currentTable) * currentTableProgress
     : 0;
-  
-  return Math.min(100, Math.round(((completedWeight + currentWeight) / totalWeight) * 100));
+
+  return Math.min(
+    100,
+    Math.round(((completedWeight + currentWeight) / totalWeight) * 100),
+  );
 }
