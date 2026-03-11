@@ -43,6 +43,13 @@
       "when": 1773080539196,
       "tag": "0005_tired_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773220518130,
+      "tag": "0006_loving_amphibian",
+      "breakpoints": true
     }
   ]
 }

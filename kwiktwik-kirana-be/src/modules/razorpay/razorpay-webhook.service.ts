@@ -535,11 +535,8 @@ export class RazorpayWebhookService {
   }
 
   private getSubscriptionUpdateData(subscription: any, eventTime: Date) {
-    let mappedStatus = subscription.status;
-    if (mappedStatus === 'paused') mappedStatus = 'halted';
-
     return {
-      status: mappedStatus as any,
+      status: subscription.status as any,
       quantity: subscription.quantity,
       totalCount: subscription.total_count,
       paidCount: subscription.paid_count || 0,
