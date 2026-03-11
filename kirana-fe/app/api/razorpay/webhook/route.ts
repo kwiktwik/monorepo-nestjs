@@ -1475,31 +1475,48 @@ export async function POST(request: NextRequest) {
         const orderIdFromIds = ids.orderId;
 
         if (orderIdFromIds && refundEntity) {
+          const paymentId = refundPayment?.id || refundEntity.payment_id;
           console.log(
-            `[WEBHOOK ${requestId}] 💸 ${event.event} refundId=${refundEntity.id} paymentId=${refundPayment?.id || refundEntity.payment_id} orderId=${orderIdFromIds}`,
+            `[WEBHOOK ${requestId}] 💸 ${event.event} refundId=${refundEntity.id} paymentId=${paymentId} orderId=${orderIdFromIds}`,
           );
 
-          // Only mark the order as REFUNDED when the refund is fully processed.
-          // refund.created = refund initiated (do NOT change order status yet)
-          // refund.processed = refund complete → update order to REFUNDED
-          // refund.failed = refund failed → do nothing to order status
-          if (event.event === "refund.processed" && refundPayment) {
-            try {
-              await getOrCreateOrderFromPayment(
-                refundPayment,
-                requestId,
-                ORDER_STATUS.REFUNDED,
-                eventTime,
-              );
-            } catch (error) {
-              console.error(
-                `[WEBHOOK ${requestId}] ❌ Failed to process refund (refundId=${refundEntity.id}):`,
-                error,
+          // Use the payment entity from the webhook payload directly and delegate
+          // to getOrCreateOrderFromPayment — handles update + create-if-missing.
+          if (refundPayment) {
+            const statusMap: Record<string, string> = {
+              captured: ORDER_STATUS.CAPTURED,
+              authorized: ORDER_STATUS.AUTHORIZED,
+              refunded: ORDER_STATUS.REFUNDED,
+              failed: ORDER_STATUS.FAILED,
+            };
+            const targetStatus = statusMap[refundPayment.status];
+
+            if (targetStatus) {
+              try {
+                await getOrCreateOrderFromPayment(
+                  refundPayment,
+                  requestId,
+                  targetStatus,
+                  eventTime,
+                );
+              } catch (syncError) {
+                console.error(
+                  `[WEBHOOK ${requestId}] ❌ Failed to sync payment status for paymentId=${paymentId}:`,
+                  syncError,
+                );
+              }
+            } else {
+              console.warn(
+                `[WEBHOOK ${requestId}] ⚠️  Unknown payment status '${refundPayment.status}' for paymentId=${paymentId}`,
               );
             }
+          } else {
+            console.warn(
+              `[WEBHOOK ${requestId}] ⚠️  ${event.event}: no payment entity in webhook payload to sync status`,
+            );
           }
 
-          // Track refund analytics for all refund events
+          // Track analytics for all refund events
           const analyticsEvent =
             event.event === "refund.failed"
               ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
@@ -1511,7 +1528,7 @@ export async function POST(request: NextRequest) {
             analyticsEvent,
             {
               refund_id: refundEntity.id,
-              payment_id: refundPayment?.id || refundEntity.payment_id,
+              payment_id: paymentId,
               order_id: orderIdFromIds,
               amount: (refundEntity.amount || 0) / 100,
               currency: refundEntity.currency || "INR",
