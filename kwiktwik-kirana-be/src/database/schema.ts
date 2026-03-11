@@ -28,6 +28,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'captured',
   'failed',
   'cancelled',
+  'refunded',
 ]);
 
 export const subscriptionStatusEnum = pgEnum('subscription_status', [
