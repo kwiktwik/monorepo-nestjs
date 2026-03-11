@@ -31,7 +31,9 @@ export class BetterAuthValidator {
    * Calls kirana-fe internal API to validate session
    */
   async validateSession(token: string): Promise<BetterAuthSession> {
-    this.logger.log(`Validating Better-Auth session: ${token.substring(0, 10)}...`);
+    this.logger.log(
+      `Validating Better-Auth session: ${token.substring(0, 10)}...`,
+    );
 
     try {
       const response = await fetch(
@@ -49,7 +51,9 @@ export class BetterAuthValidator {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new UnauthorizedException('Invalid or expired Better-Auth session');
+          throw new UnauthorizedException(
+            'Invalid or expired Better-Auth session',
+          );
         }
         throw new Error(`Session validation failed: ${response.status}`);
       }

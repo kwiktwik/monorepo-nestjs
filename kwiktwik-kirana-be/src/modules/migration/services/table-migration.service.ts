@@ -42,11 +42,11 @@ export class TableMigrationService {
         userId: userId,
         // Keep other fields as-is
       };
-      
+
       await this.db.insert(schema.userMetadata).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     this.logger.log(`Migrated ${migrated.length} metadata records`);
     return migrated;
   }
@@ -70,11 +70,11 @@ export class TableMigrationService {
         userId: userId,
         // Map FK references
       };
-      
+
       await this.db.insert(schema.account).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     this.logger.log(`Migrated ${migrated.length} account records`);
     return migrated;
   }
@@ -97,11 +97,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.pushTokens).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -123,11 +123,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.deviceSessions).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -149,11 +149,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.userImages).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -175,11 +175,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.playStoreRatings).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -201,11 +201,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.subscriptions).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     this.logger.log(`Migrated ${migrated.length} subscription records`);
     return migrated;
   }
@@ -228,11 +228,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.orders).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     this.logger.log(`Migrated ${migrated.length} order records`);
     return migrated;
   }
@@ -255,11 +255,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.abandonedCheckouts).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -282,16 +282,19 @@ export class TableMigrationService {
         userId: userId,
         // Map subscriptionId reference if exists
       };
-      
-      const mappedSubscriptionId = idMapper.getNewId('subscription', record.subscriptionId);
+
+      const mappedSubscriptionId = idMapper.getNewId(
+        'subscription',
+        record.subscriptionId,
+      );
       if (mappedSubscriptionId && mappedRecord.subscriptionId) {
         mappedRecord.subscriptionId = mappedSubscriptionId;
       }
-      
+
       await this.db.insert(schema.subscriptionLogs).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -313,11 +316,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.phonepeOrders).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 
@@ -339,11 +342,11 @@ export class TableMigrationService {
         id: newId,
         userId: userId,
       };
-      
+
       await this.db.insert(schema.phonepeSubscriptions).values(mappedRecord);
       migrated.push(mappedRecord);
     }
-    
+
     return migrated;
   }
 }

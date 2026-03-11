@@ -23,7 +23,7 @@ export class MockPhonePeService {
     private db: NodePgDatabase<typeof schema>,
   ) {}
 
-  getSdkConfig(userId: string, _appId: string) {
+  getSdkConfig(userId: string) {
     this.logger.log(`[MOCK PhonePe] getSdkConfig userId=${userId}`);
     return {
       environment: 'SANDBOX',
@@ -134,11 +134,7 @@ export class MockPhonePeService {
     };
   }
 
-  async checkStatus(
-    _appId: string,
-    merchantOrderId: string,
-    _type: 'standard' | 'mobile' = 'standard',
-  ) {
+  async checkStatus(merchantOrderId: string) {
     this.logger.log(
       `[MOCK PhonePe] checkStatus merchantOrderId=${merchantOrderId}`,
     );
@@ -152,7 +148,7 @@ export class MockPhonePeService {
     };
   }
 
-  async getAuthToken(_appId: string) {
+  async getAuthToken() {
     return {
       access_token: `mock_access_${nanoid(16)}`,
       expires_at: Date.now() + 3600000,

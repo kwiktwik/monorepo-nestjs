@@ -11,7 +11,9 @@ export class HashCalculator {
    */
   static calculateDataHash(data: MigratableUserData): string {
     const normalized = this.normalizeData(data);
-    return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    return createHash('sha256')
+      .update(JSON.stringify(normalized))
+      .digest('hex');
   }
 
   /**
@@ -32,7 +34,9 @@ export class HashCalculator {
     // Normalize each record (remove timestamps, sort keys)
     const normalized = sorted.map((record) => this.normalizeRecord(record));
 
-    return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    return createHash('sha256')
+      .update(JSON.stringify(normalized))
+      .digest('hex');
   }
 
   /**
@@ -48,13 +52,21 @@ export class HashCalculator {
       pushTokens: data.pushTokens.map((r) => this.normalizeRecord(r)),
       deviceSessions: data.deviceSessions.map((r) => this.normalizeRecord(r)),
       userImages: data.userImages.map((r) => this.normalizeRecord(r)),
-      playStoreRatings: data.playStoreRatings.map((r) => this.normalizeRecord(r)),
+      playStoreRatings: data.playStoreRatings.map((r) =>
+        this.normalizeRecord(r),
+      ),
       subscriptions: data.subscriptions.map((r) => this.normalizeRecord(r)),
       orders: data.orders.map((r) => this.normalizeRecord(r)),
-      abandonedCheckouts: data.abandonedCheckouts.map((r) => this.normalizeRecord(r)),
-      subscriptionLogs: data.subscriptionLogs.map((r) => this.normalizeRecord(r)),
+      abandonedCheckouts: data.abandonedCheckouts.map((r) =>
+        this.normalizeRecord(r),
+      ),
+      subscriptionLogs: data.subscriptionLogs.map((r) =>
+        this.normalizeRecord(r),
+      ),
       phonepeOrders: data.phonepeOrders.map((r) => this.normalizeRecord(r)),
-      phonepeSubscriptions: data.phonepeSubscriptions.map((r) => this.normalizeRecord(r)),
+      phonepeSubscriptions: data.phonepeSubscriptions.map((r) =>
+        this.normalizeRecord(r),
+      ),
     };
   }
 
@@ -70,10 +82,10 @@ export class HashCalculator {
     }
 
     const sorted: Record<string, any> = {};
-    
+
     // Sort keys alphabetically
     const keys = Object.keys(record).sort();
-    
+
     for (const key of keys) {
       // Skip internal/timestamp fields that change
       if (this.shouldSkipField(key)) {
@@ -111,7 +123,7 @@ export class HashCalculator {
       'lockedAt',
       'locked_at',
     ];
-    
+
     return skipFields.includes(key);
   }
 

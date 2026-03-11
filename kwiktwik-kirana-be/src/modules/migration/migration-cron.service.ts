@@ -19,7 +19,7 @@ export class MigrationCronService {
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleStaleMigrationCleanup() {
     this.logger.log('Running stale migration cleanup...');
-    
+
     try {
       await this.migrationService.cleanupStaleMigrations();
       this.logger.log('Stale migration cleanup completed');
@@ -35,7 +35,7 @@ export class MigrationCronService {
    * Daily migration stats logging
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async logDailyMigrationStats() {
+  logDailyMigrationStats() {
     this.logger.log('Daily migration stats: TODO - implement stats collection');
     // TODO: Implement daily stats logging
   }

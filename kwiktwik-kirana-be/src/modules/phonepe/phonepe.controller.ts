@@ -151,7 +151,7 @@ export class PhonePeController {
   @ApiOperation({ summary: 'Get PhonePe SDK configuration' })
   @ApiResponse({ status: 200, description: 'SDK config retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getSdkConfig(
+  getSdkConfig(
     @CurrentUser() user: { userId: string },
     @AppId() appId: string,
   ) {

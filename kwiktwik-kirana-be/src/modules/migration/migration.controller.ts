@@ -14,7 +14,10 @@ import {
 import { Observable, interval, map } from 'rxjs';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { MigrationService } from './migration.service';
-import { MigrateSessionDto, MigrationStatusDto } from './dto/migrate-session.dto';
+import {
+  MigrateSessionDto,
+  MigrationStatusDto,
+} from './dto/migrate-session.dto';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { MigrationProgress } from './interfaces/migration.interfaces';
@@ -43,7 +46,9 @@ export class MigrationController {
   ) {
     // Validate app ID
     if (appId !== 'com.kiranaapps.app') {
-      throw new BadRequestException('Migration only supported for com.kiranaapps.app');
+      throw new BadRequestException(
+        'Migration only supported for com.kiranaapps.app',
+      );
     }
 
     // Execute migration
@@ -94,8 +99,10 @@ export class MigrationController {
     @Param() params: MigrationStatusDto,
     @AppId() appId: string,
   ) {
-    const status = await this.migrationService.getMigrationStatus(params.migrationId);
-    
+    const status = await this.migrationService.getMigrationStatus(
+      params.migrationId,
+    );
+
     if (!status) {
       throw new BadRequestException({
         code: 'ERR_NOT_FOUND',
@@ -109,7 +116,7 @@ export class MigrationController {
   /**
    * Server-Sent Events for real-time migration progress
    * GET /v1/migration/progress/:migrationId
-   * 
+   *
    * Usage in frontend:
    * const eventSource = new EventSource('/v1/migration/progress/mig_abc123');
    * eventSource.onmessage = (event) => {

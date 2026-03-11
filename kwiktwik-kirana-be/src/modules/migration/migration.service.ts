@@ -1,6 +1,6 @@
 /**
  * Migration Service
- * 
+ *
  * SAFETY NOTICE: This service handles migration FROM kirana-fe (old system) TO kwiktwik-kirana-be (new system)
  * - Data from kirana-fe is fetched via HTTP API calls (read-only, NEVER modified or deleted)
  * - Data is inserted into kwiktwik-kirana-be tables only
@@ -8,7 +8,13 @@
  * - Original data in kirana-fe is ALWAYS preserved and never at risk
  */
 
-import { Injectable, Logger, BadRequestException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
@@ -66,8 +72,14 @@ export class MigrationService {
     this.config = {
       timeout: this.configService.get('MIGRATION_TIMEOUT_MS', 60000),
       maxRetries: this.configService.get('MIGRATION_MAX_RETRIES', 3),
-      heartbeatInterval: this.configService.get('MIGRATION_HEARTBEAT_INTERVAL_MS', 30000),
-      staleThreshold: this.configService.get('MIGRATION_STALE_THRESHOLD_MS', 300000),
+      heartbeatInterval: this.configService.get(
+        'MIGRATION_HEARTBEAT_INTERVAL_MS',
+        30000,
+      ),
+      staleThreshold: this.configService.get(
+        'MIGRATION_STALE_THRESHOLD_MS',
+        300000,
+      ),
       lockTtl: this.configService.get('MIGRATION_LOCK_TTL_MS', 90000),
       safeMode: this.configService.get('MIGRATION_SAFE_MODE', true),
     };
@@ -85,14 +97,19 @@ export class MigrationService {
     const startTime = Date.now();
     const idMapper = new IdMapper();
     const stateMachine = new MigrationStateMachine(MigrationState.PENDING);
-    
+
     // Variables to track migration state for rollback
     let userId = '';
-    let migratedTables: string[] = [];
+    const migratedTables: string[] = [];
 
     try {
       // Step 1: Create migration log
-      await this.createMigrationLog(migrationId, betterAuthToken, deviceId, deviceInfo);
+      await this.createMigrationLog(
+        migrationId,
+        betterAuthToken,
+        deviceId,
+        deviceInfo,
+      );
 
       // Step 2: Acquire lock (DB-based, no Redis)
       const lockAcquired = await this.acquireLock(migrationId);
@@ -114,11 +131,17 @@ export class MigrationService {
       try {
         // Step 3: Validate Better-Auth session
         stateMachine.transitionTo(MigrationState.VALIDATING_SESSION);
-        await this.updateMigrationState(migrationId, MigrationState.VALIDATING_SESSION);
-        
-        const sessionData = await this.validateBetterAuthSession(betterAuthToken);
+        await this.updateMigrationState(
+          migrationId,
+          MigrationState.VALIDATING_SESSION,
+        );
+
+        const sessionData =
+          await this.validateBetterAuthSession(betterAuthToken);
         if (!sessionData) {
-          throw new UnauthorizedException('Invalid or expired Better-Auth session');
+          throw new UnauthorizedException(
+            'Invalid or expired Better-Auth session',
+          );
         }
 
         userId = sessionData.userId;
@@ -126,22 +149,33 @@ export class MigrationService {
 
         // Step 4: Fetch source data
         stateMachine.transitionTo(MigrationState.FETCHING_SOURCE_DATA);
-        await this.updateMigrationState(migrationId, MigrationState.FETCHING_SOURCE_DATA, { userId, phoneNumber });
+        await this.updateMigrationState(
+          migrationId,
+          MigrationState.FETCHING_SOURCE_DATA,
+          { userId, phoneNumber },
+        );
 
         const sourceData = await this.fetchAllUserData(userId, phoneNumber);
 
         // Step 5: Check for partial data
         stateMachine.transitionTo(MigrationState.CHECKING_PARTIAL_DATA);
-        await this.updateMigrationState(migrationId, MigrationState.CHECKING_PARTIAL_DATA);
+        await this.updateMigrationState(
+          migrationId,
+          MigrationState.CHECKING_PARTIAL_DATA,
+        );
 
         const partialCheck = await this.checkPartialData(userId);
         if (partialCheck.hasPartialData) {
           stateMachine.forceTransition(MigrationState.PARTIAL_DATA_DETECTED);
-          await this.updateMigrationStatus(migrationId, MigrationState.PARTIAL_DATA_DETECTED, {
-            errorCode: MigrationErrorCode.PARTIAL_DATA_DETECTED,
-            errorMessage: `Existing data found in tables: ${partialCheck.tablesWithData.join(', ')}`,
-            tablesFailed: partialCheck.tablesWithData,
-          });
+          await this.updateMigrationStatus(
+            migrationId,
+            MigrationState.PARTIAL_DATA_DETECTED,
+            {
+              errorCode: MigrationErrorCode.PARTIAL_DATA_DETECTED,
+              errorMessage: `Existing data found in tables: ${partialCheck.tablesWithData.join(', ')}`,
+              tablesFailed: partialCheck.tablesWithData,
+            },
+          );
 
           throw new BadRequestException({
             code: MigrationErrorCode.PARTIAL_DATA_DETECTED,
@@ -154,7 +188,10 @@ export class MigrationService {
 
         // Step 6: Calculate source hash
         stateMachine.transitionTo(MigrationState.CALCULATING_HASH);
-        await this.updateMigrationState(migrationId, MigrationState.CALCULATING_HASH);
+        await this.updateMigrationState(
+          migrationId,
+          MigrationState.CALCULATING_HASH,
+        );
 
         const sourceHash = HashCalculator.calculateDataHash(sourceData);
         await this.updateSourceHash(migrationId, sourceHash);
@@ -169,7 +206,9 @@ export class MigrationService {
           // Update state
           const tableState = this.getTableMigrationState(tableName);
           stateMachine.transitionTo(tableState);
-          await this.updateMigrationState(migrationId, tableState, { currentTable: tableName });
+          await this.updateMigrationState(migrationId, tableState, {
+            currentTable: tableName,
+          });
 
           // Emit progress
           this.emitProgress(migrationId, userId, {
@@ -199,7 +238,10 @@ export class MigrationService {
 
         // Step 8: Calculate destination hash
         stateMachine.transitionTo(MigrationState.VERIFYING_HASH);
-        await this.updateMigrationState(migrationId, MigrationState.VERIFYING_HASH);
+        await this.updateMigrationState(
+          migrationId,
+          MigrationState.VERIFYING_HASH,
+        );
 
         const destData = await this.fetchAllUserData(userId, phoneNumber);
         const destHash = HashCalculator.calculateDataHash(destData);
@@ -209,7 +251,8 @@ export class MigrationService {
           stateMachine.forceTransition(MigrationState.FAILED);
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
             errorCode: MigrationErrorCode.HASH_MISMATCH,
-            errorMessage: 'Data verification failed. Source and destination hashes do not match.',
+            errorMessage:
+              'Data verification failed. Source and destination hashes do not match.',
             destinationHash: destHash,
           });
 
@@ -228,11 +271,15 @@ export class MigrationService {
 
         // Success!
         stateMachine.transitionTo(MigrationState.COMPLETED);
-        await this.updateMigrationStatus(migrationId, MigrationState.COMPLETED, {
-          destinationHash: destHash,
-          tablesMigrated: migratedTables,
-          recordsCount: totalRecords,
-        });
+        await this.updateMigrationStatus(
+          migrationId,
+          MigrationState.COMPLETED,
+          {
+            destinationHash: destHash,
+            tablesMigrated: migratedTables,
+            recordsCount: totalRecords,
+          },
+        );
 
         clearTimeout(timeoutId);
         clearInterval(heartbeatInterval);
@@ -248,7 +295,6 @@ export class MigrationService {
           recordsMigrated: totalRecords,
           duration,
         };
-
       } catch (error) {
         clearTimeout(timeoutId);
         clearInterval(heartbeatInterval);
@@ -261,12 +307,15 @@ export class MigrationService {
 
         throw error;
       }
-
     } catch (error) {
       const duration = Date.now() - startTime;
 
       // Log failure
-      await this.logMigrationFailure(migrationId, error, stateMachine.getCurrentState());
+      await this.logMigrationFailure(
+        migrationId,
+        error,
+        stateMachine.getCurrentState(),
+      );
 
       return {
         success: false,
@@ -384,7 +433,10 @@ export class MigrationService {
   /**
    * Update source hash
    */
-  private async updateSourceHash(migrationId: string, hash: string): Promise<void> {
+  private async updateSourceHash(
+    migrationId: string,
+    hash: string,
+  ): Promise<void> {
     await this.db
       .update(schema.migrationLogs)
       .set({ sourceHash: hash })
@@ -414,8 +466,10 @@ export class MigrationService {
 
     if (updates.errorCode) updateData.errorCode = updates.errorCode;
     if (updates.errorMessage) updateData.errorMessage = updates.errorMessage;
-    if (updates.destinationHash) updateData.destinationHash = updates.destinationHash;
-    if (updates.tablesMigrated) updateData.tablesMigrated = updates.tablesMigrated;
+    if (updates.destinationHash)
+      updateData.destinationHash = updates.destinationHash;
+    if (updates.tablesMigrated)
+      updateData.tablesMigrated = updates.tablesMigrated;
     if (updates.tablesFailed) updateData.tablesFailed = updates.tablesFailed;
     if (updates.recordsCount) updateData.recordsCount = updates.recordsCount;
 
@@ -428,7 +482,12 @@ export class MigrationService {
   /**
    * Validate Better-Auth session using the validator service
    */
-  private async validateBetterAuthSession(token: string): Promise<{ userId: string; phoneNumber: string; email: string; name: string }> {
+  private async validateBetterAuthSession(token: string): Promise<{
+    userId: string;
+    phoneNumber: string;
+    email: string;
+    name: string;
+  }> {
     const session = await this.betterAuthValidator.validateSession(token);
     return {
       userId: session.userId,
@@ -441,14 +500,19 @@ export class MigrationService {
   /**
    * Fetch all user data from kirana-fe via HTTP API
    */
-  private async fetchAllUserData(userId: string, phoneNumber: string): Promise<MigratableUserData> {
+  private async fetchAllUserData(
+    userId: string,
+    phoneNumber: string,
+  ): Promise<MigratableUserData> {
     return this.kiranaFeDataService.fetchAllUserData(userId, phoneNumber);
   }
 
   /**
    * Check for partial data
    */
-  private async checkPartialData(userId: string): Promise<PartialDataCheckResult> {
+  private async checkPartialData(
+    userId: string,
+  ): Promise<PartialDataCheckResult> {
     const tablesWithData: string[] = [];
 
     const tables = getMigrationOrder();
@@ -469,7 +533,10 @@ export class MigrationService {
   /**
    * Check if table has data for user
    */
-  private async checkTableHasData(tableName: string, userId: string): Promise<boolean> {
+  private async checkTableHasData(
+    tableName: string,
+    userId: string,
+  ): Promise<boolean> {
     const tableMap: Record<string, any> = {
       user_metadata: schema.userMetadata,
       accounts: schema.account,
@@ -496,10 +563,13 @@ export class MigrationService {
         .select({ count: sql<number>`count(*)::int` })
         .from(table)
         .where(eq(table.userId, userId));
-      
+
       return (result[0]?.count ?? 0) > 0;
     } catch (error) {
-      this.logger.error(`Error checking ${tableName} for user ${userId}:`, error);
+      this.logger.error(
+        `Error checking ${tableName} for user ${userId}:`,
+        error,
+      );
       return false;
     }
   }
@@ -544,7 +614,12 @@ export class MigrationService {
       userId: string,
     ) => Promise<any[]>;
 
-    return method.call(this.tableMigrationService, records, idMapper, userId);
+    return await method.call(
+      this.tableMigrationService,
+      records,
+      idMapper,
+      userId,
+    );
   }
 
   /**
@@ -614,7 +689,11 @@ export class MigrationService {
   /**
    * Emit progress update
    */
-  private emitProgress(migrationId: string, userId: string, progress: MigrationProgress): void {
+  private emitProgress(
+    migrationId: string,
+    userId: string,
+    progress: MigrationProgress,
+  ): void {
     // TODO: Implement SSE or WebSocket emission
     this.logger.log(
       `[Migration ${migrationId}] Progress: ${progress.progress}%, State: ${progress.state}`,
@@ -704,12 +783,15 @@ export class MigrationService {
   /**
    * Rollback migration by deleting all inserted data
    * Ensures atomicity - all or nothing
-   * 
+   *
    * SAFETY: This ONLY deletes data from kwiktwik-kirana-be (new system)
    * It NEVER deletes data from kirana-fe (old system) - that data is read-only
    * When MIGRATION_SAFE_MODE is enabled, rollback is skipped entirely
    */
-  private async rollbackMigration(userId: string, migratedTables: string[]): Promise<void> {
+  private async rollbackMigration(
+    userId: string,
+    migratedTables: string[],
+  ): Promise<void> {
     if (!userId || migratedTables.length === 0) {
       return;
     }
@@ -718,14 +800,16 @@ export class MigrationService {
     if (this.config.safeMode) {
       this.logger.warn(
         `[SAFE MODE] Migration failed for user ${userId}, but rollback is DISABLED. ` +
-        `Data in migrated tables will NOT be deleted. ` +
-        `Tables that would have been rolled back: ${migratedTables.join(', ')}. ` +
-        `Note: Original data in kirana-fe (old system) is NEVER affected.`
+          `Data in migrated tables will NOT be deleted. ` +
+          `Tables that would have been rolled back: ${migratedTables.join(', ')}. ` +
+          `Note: Original data in kirana-fe (old system) is NEVER affected.`,
       );
       return;
     }
 
-    this.logger.warn(`Rolling back migration for user ${userId}, tables: ${migratedTables.join(', ')}`);
+    this.logger.warn(
+      `Rolling back migration for user ${userId}, tables: ${migratedTables.join(', ')}`,
+    );
 
     try {
       // Delete in reverse order to respect foreign key constraints
@@ -738,7 +822,9 @@ export class MigrationService {
         } catch (deleteError) {
           this.logger.error(
             `Failed to rollback table ${tableName}:`,
-            deleteError instanceof Error ? deleteError.message : 'Unknown error',
+            deleteError instanceof Error
+              ? deleteError.message
+              : 'Unknown error',
           );
           // Continue trying to delete other tables even if one fails
         }
@@ -755,11 +841,14 @@ export class MigrationService {
 
   /**
    * Delete data from a specific table for a user
-   * 
+   *
    * SAFETY: This ONLY deletes from kwiktwik-kirana-be tables (schema.*)
    * It NEVER touches kirana-fe (old system) data - those are accessed via HTTP API only
    */
-  private async deleteTableData(tableName: string, userId: string): Promise<void> {
+  private async deleteTableData(
+    tableName: string,
+    userId: string,
+  ): Promise<void> {
     const tableMap: Record<string, any> = {
       user_metadata: schema.userMetadata,
       accounts: schema.account,

@@ -35,7 +35,7 @@ export class RetryUtil {
       }
 
       const delay = delays[attempt - 1] || delays[delays.length - 1] || 10000;
-      
+
       this.logger.warn(
         `Attempt ${attempt} failed, retrying in ${delay}ms...`,
         error instanceof Error ? error.message : 'Unknown error',

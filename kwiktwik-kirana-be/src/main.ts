@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
+import type { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -30,11 +31,13 @@ async function bootstrap() {
 
   // Swagger API documentation
   const port = process.env.PORT || 3002;
-  const nodeEnv = process.env.NODE_ENV || 'development';
-  const isProduction = nodeEnv === 'production';
 
   // Basic Auth Middleware for Swagger
-  const swaggerAuthMiddleware = (req: any, res: any, next: any) => {
+  const swaggerAuthMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     // Prevent Cloudflare from caching the swagger-ui-init.js file
     // which contains the inlined Swagger JSON spec
     res.setHeader(

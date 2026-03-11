@@ -111,7 +111,7 @@ export class UploadService {
         })
         .returning({ id: schema.userImages.id });
       imageId = inserted?.id;
-    } catch (err) {
+    } catch {
       // Non-fatal - client can still upload
     }
 

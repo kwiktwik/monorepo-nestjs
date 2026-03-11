@@ -1,12 +1,7 @@
-import {
-  Module,
-  Global,
-  DynamicModule,
-  Provider,
-  InjectionToken,
-} from '@nestjs/common';
+import { Module, Global, DynamicModule, InjectionToken } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { QueueOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { isMockMode } from '../common/utils/is-mock-mode';
 
@@ -60,10 +55,12 @@ export class QueueModule {
       imports: [
         BullModule.forRootAsync({
           imports: [ConfigModule],
-          useFactory: (config: ConfigService) =>
-            ({
-              connection: createRedisConnection(config),
-            }) as any,
+
+          useFactory: (config: ConfigService): QueueOptions => ({
+            connection: createRedisConnection(
+              config,
+            ) as QueueOptions['connection'],
+          }),
           inject: [ConfigService],
         }),
       ],

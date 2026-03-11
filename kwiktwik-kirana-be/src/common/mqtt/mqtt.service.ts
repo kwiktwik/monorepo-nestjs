@@ -9,7 +9,7 @@ import * as mqtt from 'mqtt';
 
 export interface MqttMessage {
   topic: string;
-  payload: any;
+  payload: unknown;
   timestamp: Date;
 }
 
@@ -23,12 +23,12 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    const brokerUrl = this.configService.get(
+    const brokerUrl = this.configService.get<string>(
       'MQTT_BROKER_URL',
       'mqtt://localhost:1883',
     );
-    const username = this.configService.get('MQTT_USERNAME');
-    const password = this.configService.get('MQTT_PASSWORD');
+    const username = this.configService.get<string>('MQTT_USERNAME');
+    const password = this.configService.get<string>('MQTT_PASSWORD');
 
     this.client = mqtt.connect(brokerUrl, {
       username: username || undefined,
@@ -134,7 +134,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   // Publish a message
   async publish(
     topic: string,
-    payload: any,
+    payload: Record<string, unknown>,
     options: mqtt.IClientPublishOptions = {},
   ): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -164,7 +164,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     appId: string,
     userId: string,
     event: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<void> {
     const topic = `app/${appId}/user/${userId}/${event}`;
     await this.publish(topic, data);
@@ -175,14 +175,18 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     appId: string,
     conversationId: string,
     event: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<void> {
     const topic = `app/${appId}/conversation/${conversationId}/${event}`;
     await this.publish(topic, data);
   }
 
   // Publish to all users in an app
-  async publishToApp(appId: string, event: string, data: any): Promise<void> {
+  async publishToApp(
+    appId: string,
+    event: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
     const topic = `app/${appId}/broadcast/${event}`;
     await this.publish(topic, data);
   }

@@ -4,36 +4,36 @@
 export enum MigrationState {
   // Initial state
   PENDING = 'pending',
-  
+
   // Active states
   VALIDATING_SESSION = 'validating_session',
   FETCHING_SOURCE_DATA = 'fetching_source_data',
   CHECKING_PARTIAL_DATA = 'checking_partial_data',
   CALCULATING_HASH = 'calculating_hash',
-  
+
   // Migration states (Level 1 - No dependencies)
   MIGRATING_METADATA = 'migrating_metadata',
   MIGRATING_ACCOUNTS = 'migrating_accounts',
   MIGRATING_PUSH_TOKENS = 'migrating_push_tokens',
-  
+
   // Migration states (Level 2 - Independent)
   MIGRATING_DEVICE_SESSIONS = 'migrating_device_sessions',
   MIGRATING_USER_IMAGES = 'migrating_user_images',
   MIGRATING_PLAYSTORE_RATINGS = 'migrating_playstore_ratings',
-  
+
   // Migration states (Level 3 - Business data)
   MIGRATING_SUBSCRIPTIONS = 'migrating_subscriptions',
   MIGRATING_ORDERS = 'migrating_orders',
   MIGRATING_ABANDONED_CHECKOUTS = 'migrating_abandoned_checkouts',
-  
+
   // Migration states (Level 4 - Logs/History)
   MIGRATING_SUBSCRIPTION_LOGS = 'migrating_subscription_logs',
   MIGRATING_PHONEPE_ORDERS = 'migrating_phonepe_orders',
   MIGRATING_PHONEPE_SUBSCRIPTIONS = 'migrating_phonepe_subscriptions',
-  
+
   // Verification
   VERIFYING_HASH = 'verifying_hash',
-  
+
   // Final states
   COMPLETED = 'completed',
   FAILED = 'failed',

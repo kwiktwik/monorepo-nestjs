@@ -83,10 +83,10 @@ export class AnalyticsService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.initMixpanel();
+    this.initMixpanel();
   }
 
-  private async initMixpanel(): Promise<void> {
+  private initMixpanel(): void {
     for (const appId of ACTIVE_APPS) {
       const normalizedAppId = this.normalizeAppId(appId);
       const token = this.configService.get<string>(
@@ -376,13 +376,13 @@ export class AnalyticsService implements OnModuleInit {
       .digest('hex');
   }
 
-  private async sendMixpanelEvent(
+  private sendMixpanelEvent(
     eventName: string,
     userData: UserData,
     properties: EventProperties | undefined,
     appId: string,
     deduplicationId?: string,
-  ): Promise<boolean> {
+  ): boolean {
     try {
       const mixpanel = this.mixpanelInstances.get(appId);
 
