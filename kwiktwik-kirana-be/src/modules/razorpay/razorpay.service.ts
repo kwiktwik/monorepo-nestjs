@@ -392,9 +392,8 @@ export class RazorpayService {
         .update(schema.subscriptions)
         .set({
           status: 'active',
-          paidCount: sql`${schema.subscriptions.paidCount} + 1`,
-          remainingCount: sql`${schema.subscriptions.totalCount} - ${schema.subscriptions.paidCount} - 1`,
           updatedAt: new Date(),
+
         })
         .where(eq(schema.subscriptions.razorpaySubscriptionId, subscriptionId))
         .returning({ id: schema.subscriptions.id });

@@ -452,8 +452,11 @@ export class RazorpayWebhookService {
         }
       }
 
+      // Event time
+      const eventTime = event.created_at ? new Date(event.created_at * 1000) : new Date();
+
       // Handle different webhook events
-      await this.handleEvent(event, requestId, appId);
+      await this.handleEvent(event, requestId, appId, eventTime);
 
       const processingTime = Date.now() - startTime;
       this.logger.log(
@@ -478,47 +481,48 @@ export class RazorpayWebhookService {
     event: RazorpayWebhookPayload,
     requestId: string,
     appId: string,
+    eventTime: Date,
   ): Promise<void> {
     switch (event.event) {
       case 'payment.authorized':
-        await this.handlePaymentAuthorized(event, requestId);
+        await this.handlePaymentAuthorized(event, requestId, eventTime);
         break;
       case 'payment.captured':
-        await this.handlePaymentCaptured(event, requestId);
+        await this.handlePaymentCaptured(event, requestId, eventTime);
         break;
       case 'payment.failed':
-        await this.handlePaymentFailed(event, requestId);
+        await this.handlePaymentFailed(event, requestId, eventTime);
         break;
       case 'token.confirmed':
-        await this.handleTokenConfirmed(event, requestId);
+        await this.handleTokenConfirmed(event, requestId, eventTime);
         break;
       case 'subscription.activated':
-        await this.handleSubscriptionActivated(event, requestId);
+        await this.handleSubscriptionActivated(event, requestId, eventTime);
         break;
       case 'subscription.charged':
-        await this.handleSubscriptionCharged(event, requestId);
+        await this.handleSubscriptionCharged(event, requestId, eventTime);
         break;
       case 'subscription.pending':
-        await this.handleSubscriptionPending(event, requestId);
+        await this.handleSubscriptionPending(event, requestId, eventTime);
         break;
       case 'subscription.halted':
       case 'subscription.paused':
-        await this.handleSubscriptionHalted(event, requestId);
+        await this.handleSubscriptionHalted(event, requestId, eventTime);
         break;
       case 'subscription.resumed':
-        await this.handleSubscriptionResumed(event, requestId);
+        await this.handleSubscriptionResumed(event, requestId, eventTime);
         break;
       case 'subscription.cancelled':
-        await this.handleSubscriptionCancelled(event, requestId);
+        await this.handleSubscriptionCancelled(event, requestId, eventTime);
         break;
       case 'subscription.completed':
-        await this.handleSubscriptionCompleted(event, requestId);
+        await this.handleSubscriptionCompleted(event, requestId, eventTime);
         break;
       case 'subscription.authenticated':
-        await this.handleSubscriptionAuthenticated(event, requestId);
+        await this.handleSubscriptionAuthenticated(event, requestId, eventTime);
         break;
       case 'order.paid':
-        await this.handleOrderPaid(event, requestId);
+        await this.handleOrderPaid(event, requestId, eventTime);
         break;
       case 'payment.downtime.resolved':
         this.logger.log(`[WEBHOOK ${requestId}] 🟢 Payment downtime resolved`);
@@ -530,9 +534,30 @@ export class RazorpayWebhookService {
     }
   }
 
+  private getSubscriptionUpdateData(subscription: any, eventTime: Date) {
+    let mappedStatus = subscription.status;
+    if (mappedStatus === 'paused') mappedStatus = 'halted';
+
+    return {
+      status: mappedStatus as any,
+      quantity: subscription.quantity,
+      totalCount: subscription.total_count,
+      paidCount: subscription.paid_count || 0,
+      remainingCount: subscription.remaining_count,
+      startAt: subscription.start_at ? new Date(subscription.start_at * 1000) : null,
+      endAt: subscription.end_at ? new Date(subscription.end_at * 1000) : null,
+      chargeAt: subscription.charge_at ? new Date(subscription.charge_at * 1000) : null,
+      currentStart: subscription.current_start ? new Date(subscription.current_start * 1000) : null,
+      currentEnd: subscription.current_end ? new Date(subscription.current_end * 1000) : null,
+      metadata: subscription as any,
+      updatedAt: eventTime,
+    };
+  }
+
   private async handlePaymentAuthorized(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 💳 Payment authorized`);
     const payment = event.payload.payment?.entity;
@@ -545,7 +570,7 @@ export class RazorpayWebhookService {
             status: 'authorized',
             razorpayPaymentId: payment.id,
             paymentMetadata: payment as any,
-            updatedAt: new Date(),
+            updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, payment.order_id))
           .returning({ id: schema.orders.id });
@@ -584,6 +609,7 @@ export class RazorpayWebhookService {
   private async handlePaymentCaptured(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 💰 Payment captured`);
     const payment = event.payload.payment?.entity;
@@ -596,7 +622,7 @@ export class RazorpayWebhookService {
             status: 'captured',
             razorpayPaymentId: payment.id,
             paymentMetadata: payment as any,
-            updatedAt: new Date(),
+            updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, payment.order_id))
           .returning({ id: schema.orders.id });
@@ -635,6 +661,7 @@ export class RazorpayWebhookService {
   private async handlePaymentFailed(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] ❌ Payment failed`);
     const payment = event.payload.payment?.entity;
@@ -655,7 +682,7 @@ export class RazorpayWebhookService {
             status: 'failed',
             razorpayPaymentId: payment.id,
             paymentMetadata: payment as any,
-            updatedAt: new Date(),
+            updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, payment.order_id))
           .returning({ id: schema.orders.id });
@@ -704,6 +731,7 @@ export class RazorpayWebhookService {
   private async handleTokenConfirmed(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 🎫 Token confirmed`);
     const token = event.payload.token?.entity;
@@ -714,7 +742,7 @@ export class RazorpayWebhookService {
           .update(schema.orders)
           .set({
             tokenId: token.id,
-            updatedAt: new Date(),
+            updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, token.order_id))
           .returning({ id: schema.orders.id });
@@ -750,6 +778,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionActivated(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 🎉 Subscription activated`);
     const subscription = event.payload.subscription?.entity;
@@ -758,11 +787,7 @@ export class RazorpayWebhookService {
       try {
         await this.db
           .update(schema.subscriptions)
-          .set({
-            status: 'active',
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -792,32 +817,16 @@ export class RazorpayWebhookService {
   private async handleSubscriptionCharged(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 💵 Subscription charged`);
     const subscription = event.payload.subscription?.entity;
 
     if (subscription?.id) {
       try {
-        const paidCount = subscription.paid_count || 0;
-        const remainingCount = subscription.remaining_count;
-
         await this.db
           .update(schema.subscriptions)
-          .set({
-            paidCount,
-            remainingCount,
-            chargeAt: subscription.charge_at
-              ? new Date(subscription.charge_at * 1000)
-              : null,
-            currentStart: subscription.current_start
-              ? new Date(subscription.current_start * 1000)
-              : null,
-            currentEnd: subscription.current_end
-              ? new Date(subscription.current_end * 1000)
-              : null,
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -835,8 +844,8 @@ export class RazorpayWebhookService {
           ANALYTICS_EVENTS.SUBSCRIPTION_CHARGED,
           {
             subscription_id: subscription.id,
-            paid_count: paidCount,
-            remaining_count: remainingCount,
+            paid_count: subscription.paid_count || 0,
+            remaining_count: subscription.remaining_count,
             amount: paymentAmount,
             currency: event.payload?.payment?.entity?.currency || 'INR',
           },
@@ -853,6 +862,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionPending(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] ⏳ Subscription pending`);
     const subscription = event.payload.subscription?.entity;
@@ -861,11 +871,7 @@ export class RazorpayWebhookService {
       try {
         await this.db
           .update(schema.subscriptions)
-          .set({
-            status: 'pending',
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -894,6 +900,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionHalted(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] ⏸️ Subscription halted/paused`);
     const subscription = event.payload.subscription?.entity;
@@ -902,11 +909,7 @@ export class RazorpayWebhookService {
       try {
         await this.db
           .update(schema.subscriptions)
-          .set({
-            status: 'halted',
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -939,6 +942,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionResumed(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] ▶️ Subscription resumed`);
     const subscription = event.payload.subscription?.entity;
@@ -947,11 +951,7 @@ export class RazorpayWebhookService {
       try {
         await this.db
           .update(schema.subscriptions)
-          .set({
-            status: 'active',
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -980,6 +980,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionCancelled(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 🚫 Subscription cancelled`);
     const subscription = event.payload.subscription?.entity;
@@ -998,7 +999,7 @@ export class RazorpayWebhookService {
           )
           .limit(1);
 
-        const now = new Date();
+        const now = eventTime;
         const subStart =
           subRecord[0]?.startAt ?? subRecord[0]?.createdAt ?? now;
         const gracePeriodEnd = new Date(
@@ -1009,11 +1010,10 @@ export class RazorpayWebhookService {
         await this.db
           .update(schema.subscriptions)
           .set({
+            ...this.getSubscriptionUpdateData(subscription, eventTime),
             status: 'cancelled',
             endAt: effectiveEndAt,
             fourHourEventSent: true,
-            metadata: subscription as any,
-            updatedAt: now,
           })
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
@@ -1043,6 +1043,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionCompleted(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 🏁 Subscription completed`);
     const subscription = event.payload.subscription?.entity;
@@ -1052,12 +1053,10 @@ export class RazorpayWebhookService {
         await this.db
           .update(schema.subscriptions)
           .set({
-            status: 'completed',
+            ...this.getSubscriptionUpdateData(subscription, eventTime),
             endAt: subscription.ended_at
               ? new Date(subscription.ended_at * 1000)
-              : new Date(),
-            metadata: subscription as any,
-            updatedAt: new Date(),
+              : eventTime,
           })
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
@@ -1087,6 +1086,7 @@ export class RazorpayWebhookService {
   private async handleSubscriptionAuthenticated(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 🔐 Subscription authenticated`);
     const subscription = event.payload.subscription?.entity;
@@ -1111,22 +1111,7 @@ export class RazorpayWebhookService {
 
         await this.db
           .update(schema.subscriptions)
-          .set({
-            status: 'authenticated',
-            startAt: subscription.start_at
-              ? new Date(subscription.start_at * 1000)
-              : null,
-            endAt: subscription.end_at
-              ? new Date(subscription.end_at * 1000)
-              : null,
-            chargeAt: subscription.charge_at
-              ? new Date(subscription.charge_at * 1000)
-              : null,
-            totalCount: subscription.total_count,
-            remainingCount: subscription.remaining_count,
-            metadata: subscription as any,
-            updatedAt: new Date(),
-          })
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
           .where(
             eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
           );
@@ -1155,6 +1140,7 @@ export class RazorpayWebhookService {
   private async handleOrderPaid(
     event: RazorpayWebhookPayload,
     requestId: string,
+    eventTime: Date,
   ): Promise<void> {
     this.logger.log(`[WEBHOOK ${requestId}] 💰 Order paid`);
     const order = event.payload.order?.entity;
@@ -1186,7 +1172,7 @@ export class RazorpayWebhookService {
           .update(schema.orders)
           .set({
             status: 'captured',
-            updatedAt: new Date(),
+            updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, order.id))
           .returning({ id: schema.orders.id });

@@ -1,5 +1,8 @@
 export interface RazorpayWebhookPayload {
+  entity: string;
+  account_id: string;
   event: string;
+  contains: string[];
   payload: {
     payment?: {
       entity: RazorpayPaymentEntity;
@@ -14,6 +17,7 @@ export interface RazorpayWebhookPayload {
       entity: RazorpayTokenEntity;
     };
   };
+  created_at: number;
 }
 
 export interface RazorpayPaymentEntity {
