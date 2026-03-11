@@ -11,7 +11,7 @@ import { eq, sql } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { RazorpayWebhookPayload, RazorpaySubscriptionEntity } from './dto/webhook-payload.dto';
+import { RazorpayWebhookPayload, RazorpaySubscriptionEntity, RazorpayPaymentEntity } from './dto/webhook-payload.dto';
 import {
   AnalyticsService,
   EventProperties,
@@ -554,6 +554,113 @@ export class RazorpayWebhookService {
     };
   }
 
+  /**
+   * Try to update an existing order by razorpayOrderId.
+   * If not found, create a new order by resolving the user via payment.email.
+   * Returns true if the order was upserted successfully.
+   */
+  private async getOrCreateOrderFromPayment(
+    payment: RazorpayPaymentEntity,
+    requestId: string,
+    targetStatus: 'authorized' | 'captured' | 'failed',
+    eventTime: Date,
+  ): Promise<boolean> {
+    if (!payment.order_id) {
+      this.logger.warn(
+        `[WEBHOOK ${requestId}] ⚠️ Payment ${payment.id} has no order_id — skipping`,
+      );
+      return false;
+    }
+
+    // Try to update existing order
+    const updated = await this.db
+      .update(schema.orders)
+      .set({
+        status: targetStatus,
+        razorpayPaymentId: payment.id,
+        paymentMetadata: payment as any,
+        ...(payment.token_id ? { tokenId: payment.token_id as string } : {}),
+        updatedAt: eventTime,
+      })
+      .where(eq(schema.orders.razorpayOrderId, payment.order_id))
+      .returning({ id: schema.orders.id });
+
+    if (updated.length > 0) {
+      this.logger.log(
+        `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to ${targetStatus}`,
+      );
+      return true;
+    }
+
+    // Order not in DB — try to create it
+    this.logger.log(
+      `[WEBHOOK ${requestId}] ℹ️ Order ${payment.order_id} not found — attempting to create from payment data`,
+    );
+
+    let userIdToUse: string | null = null;
+    let appIdToUse = 'alertpay-default';
+
+    if (payment.email) {
+      const result = await this.db
+        .select({
+          userId: schema.user.id,
+          appId: schema.subscriptions.appId,
+        })
+        .from(schema.user)
+        .leftJoin(
+          schema.subscriptions,
+          eq(schema.subscriptions.userId, schema.user.id),
+        )
+        .where(eq(schema.user.email, payment.email))
+        .limit(1);
+
+      if (result.length > 0) {
+        userIdToUse = result[0].userId;
+        appIdToUse = result[0].appId ?? 'alertpay-default';
+      }
+    }
+
+    if (!userIdToUse) {
+      this.logger.warn(
+        `[WEBHOOK ${requestId}] ⚠️ Cannot create order ${payment.order_id}: user not found for ${payment.email || payment.contact}`,
+      );
+      return false;
+    }
+
+    const newOrderId = randomBytes(4).toString('hex');
+    try {
+      await this.db.insert(schema.orders).values({
+        id: newOrderId,
+        razorpayOrderId: payment.order_id,
+        userId: userIdToUse,
+        appId: appIdToUse,
+        customerId:
+          payment.customer_id ||
+          payment.email ||
+          (payment.contact as string) ||
+          'unknown',
+        amount: payment.amount,
+        currency: (payment.currency as string) || 'INR',
+        status: targetStatus,
+        razorpayPaymentId: payment.id,
+        paymentMetadata: payment as any,
+        tokenId: (payment.token_id as string) || null,
+        createdAt: eventTime,
+        updatedAt: eventTime,
+      });
+      this.logger.log(
+        `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} created with status ${targetStatus}`,
+      );
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `[WEBHOOK ${requestId}] ❌ Failed to create order ${payment.order_id}:`,
+        err,
+      );
+      return false;
+    }
+  }
+
   private async handlePaymentAuthorized(
     event: RazorpayWebhookPayload,
     requestId: string,
@@ -564,26 +671,14 @@ export class RazorpayWebhookService {
 
     if (payment?.order_id && payment?.id) {
       try {
-        const result = await this.db
-          .update(schema.orders)
-          .set({
-            status: 'authorized',
-            razorpayPaymentId: payment.id,
-            paymentMetadata: payment as any,
-            updatedAt: eventTime,
-          })
-          .where(eq(schema.orders.razorpayOrderId, payment.order_id))
-          .returning({ id: schema.orders.id });
+        const created = await this.getOrCreateOrderFromPayment(
+          payment,
+          requestId,
+          'authorized',
+          eventTime,
+        );
 
-        if (result.length === 0) {
-          this.logger.error(
-            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment authorized`,
-          );
-        } else {
-          this.logger.log(
-            `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to AUTHORIZED`,
-          );
-
+        if (created) {
           await this.trackOrderAnalytics(
             requestId,
             payment.order_id,
@@ -599,7 +694,7 @@ export class RazorpayWebhookService {
         }
       } catch (error) {
         this.logger.error(
-          `[WEBHOOK ${requestId}] ❌ Failed to update order to authorized:`,
+          `[WEBHOOK ${requestId}] ❌ Failed to handle payment authorized:`,
           error,
         );
       }
@@ -616,26 +711,14 @@ export class RazorpayWebhookService {
 
     if (payment?.order_id && payment?.id) {
       try {
-        const result = await this.db
-          .update(schema.orders)
-          .set({
-            status: 'captured',
-            razorpayPaymentId: payment.id,
-            paymentMetadata: payment as any,
-            updatedAt: eventTime,
-          })
-          .where(eq(schema.orders.razorpayOrderId, payment.order_id))
-          .returning({ id: schema.orders.id });
+        const created = await this.getOrCreateOrderFromPayment(
+          payment,
+          requestId,
+          'captured',
+          eventTime,
+        );
 
-        if (result.length === 0) {
-          this.logger.error(
-            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment captured`,
-          );
-        } else {
-          this.logger.log(
-            `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to CAPTURED`,
-          );
-
+        if (created) {
           await this.trackOrderAnalytics(
             requestId,
             payment.order_id,
@@ -651,7 +734,7 @@ export class RazorpayWebhookService {
         }
       } catch (error) {
         this.logger.error(
-          `[WEBHOOK ${requestId}] ❌ Failed to update order to captured:`,
+          `[WEBHOOK ${requestId}] ❌ Failed to handle payment captured:`,
           error,
         );
       }
@@ -701,8 +784,8 @@ export class RazorpayWebhookService {
               order_id: payment.order_id,
               amount: payment.amount / 100,
               currency: payment.currency || 'INR',
-              error_code: payment.error_code,
-              error_description: payment.error_description,
+              error_code: payment.error_code ?? undefined,
+              error_description: payment.error_description ?? undefined,
             },
           );
         } else {
