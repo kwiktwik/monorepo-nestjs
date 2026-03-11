@@ -6,7 +6,7 @@ import {
 import { DrizzleModule } from './database/drizzle.module';
 import { DrizzleTestModule } from './database/drizzle-test.module';
 import { AuthModule } from './modules/auth/auth.module';
-
+import { MigrationModule } from './modules/migration/migration.module';
 import { ConfigModule } from './modules/config/config.module';
 import { UserModule } from './modules/user/user.module';
 import { UploadModule } from './modules/upload/upload.module';
@@ -37,7 +37,7 @@ const dbModule =
     dbModule,
     DbDebugModule,
     AuthModule,
-
+    MigrationModule,
     ConfigModule,
     UserModule,
     UploadModule,
@@ -61,4 +61,4 @@ const dbModule =
   ],
   controllers: [HealthController],
 })
-export class AppModule { }
+export class AppModule {}
