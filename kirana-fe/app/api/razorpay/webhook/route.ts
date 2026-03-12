@@ -1517,10 +1517,19 @@ export async function POST(request: NextRequest) {
           }
 
           // Track analytics for all refund events
-          const analyticsEvent =
-            event.event === "refund.failed"
-              ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
-              : ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+          let analyticsEvent: string;
+          switch (event.event) {
+            case "refund.created":
+              analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUND_CREATED;
+              break;
+            case "refund.failed":
+              analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED;
+              break;
+            case "refund.processed":
+            default:
+              analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+              break;
+          }
 
           await trackOrderAnalytics(
             requestId,
