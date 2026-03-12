@@ -1,0 +1,26 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`UploadService getChatMediaPresignedUrl should generate presigned URL for chat media 1`] = `
+Object {
+  "expiresAt": "2024-01-01T01:00:00.000Z",
+  "expiresIn": 3600,
+  "key": "com.test.app/user-123/chat/videos/conv-123/1704067200000_chat-video.mp4",
+  "publicUrl": "https://cdn.example.com/test-project/com.test.app/user-123/chat/videos/conv-123/1704067200000_chat-video.mp4",
+  "success": true,
+  "uploadUrl": "https://presigned-url.example.com",
+}
+`;
+
+exports[`UploadService getPresignedUrl should generate presigned URL successfully 1`] = `
+Object {
+  "expiresAt": "2024-01-01T01:00:00.000Z",
+  "expiresIn": 3600,
+  "imageId": 123,
+  "key": "com.test.app/user-123/user-images/1704067200000_test-image.jpg",
+  "publicUrl": "https://cdn.example.com/test-project/com.test.app/user-123/user-images/1704067200000_test-image.jpg",
+  "success": true,
+  "uploadUrl": "https://presigned-url.example.com",
+}
+`;
+
+exports[`UploadService getPresignedUrl should sanitize filename with special characters 1`] = `"com.test.app/user-123/user-images/1704067200000_test_file_______.jpg"`;

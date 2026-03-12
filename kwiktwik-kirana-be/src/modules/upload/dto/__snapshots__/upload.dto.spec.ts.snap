@@ -1,0 +1,71 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Upload DTOs - Snapshot Tests PresignedUrlDto should fail validation for expiresIn above maximum 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "max": "expiresIn must not be greater than 604800",
+    },
+    "property": "expiresIn",
+    "target": PresignedUrlDto {
+      "contentType": "image/jpeg",
+      "expiresIn": 604801,
+      "fileName": "test.jpg",
+    },
+    "value": 604801,
+  },
+]
+`;
+
+exports[`Upload DTOs - Snapshot Tests PresignedUrlDto should fail validation for expiresIn below minimum 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "min": "expiresIn must not be less than 1",
+    },
+    "property": "expiresIn",
+    "target": PresignedUrlDto {
+      "contentType": "image/jpeg",
+      "expiresIn": 0,
+      "fileName": "test.jpg",
+    },
+    "value": 0,
+  },
+]
+`;
+
+exports[`Upload DTOs - Snapshot Tests PresignedUrlDto should fail validation when fileName is missing 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isString": "fileName must be a string",
+    },
+    "property": "fileName",
+    "target": PresignedUrlDto {
+      "contentType": "image/jpeg",
+      "expiresIn": 3600,
+      "fileName": undefined,
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Upload DTOs - Snapshot Tests PresignedUrlDto should match snapshot for minimal data (fileName only) 1`] = `
+PresignedUrlDto {
+  "contentType": "image/jpeg",
+  "expiresIn": 3600,
+  "fileName": "document.pdf",
+}
+`;
+
+exports[`Upload DTOs - Snapshot Tests PresignedUrlDto should match snapshot for valid complete data 1`] = `
+PresignedUrlDto {
+  "contentType": "image/jpeg",
+  "expiresIn": 3600,
+  "fileName": "profile-image.jpg",
+}
+`;

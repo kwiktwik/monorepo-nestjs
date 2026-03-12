@@ -38,32 +38,41 @@ describe('RazorpayWebhookController', () => {
       mockWebhookService.processWebhook.mockResolvedValue({ received: true });
 
       const response = await request(app.getHttpServer())
-        .post('/razorpay/webhook?appId=com.test.app')
+        .post('/razorpay/webhook')
         .set('x-razorpay-signature', 'valid-signature')
         .set('x-razorpay-event-id', 'test-event-123')
-        .send({ event: 'payment.authorized' });
+        .send({ event: 'payment.authorized', account_id: 'acc_test_123' });
 
       expect(response.status).toBe(201);
       expect(response.body.received).toBe(true);
     });
 
-    it('should handle missing appId', async () => {
+    it('should handle missing account_id', async () => {
       const response = await request(app.getHttpServer())
         .post('/razorpay/webhook')
         .set('x-razorpay-signature', 'signature')
         .set('x-razorpay-event-id', 'test-event-123')
-        .send({});
+        .send({ event: 'payment.authorized' });
 
       expect(response.status).toBe(400);
     });
 
     it('should handle missing signature', async () => {
       const response = await request(app.getHttpServer())
-        .post('/razorpay/webhook?appId=com.test.app')
+        .post('/razorpay/webhook')
         .set('x-razorpay-event-id', 'test-event-123')
-        .send({ event: 'payment.authorized' });
+        .send({ event: 'payment.authorized', account_id: 'acc_test_123' });
 
       expect(response.status).toBe(401);
+    });
+
+    it('should handle missing event ID', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/razorpay/webhook')
+        .set('x-razorpay-signature', 'valid-signature')
+        .send({ event: 'payment.authorized', account_id: 'acc_test_123' });
+
+      expect(response.status).toBe(400);
     });
 
     it('should handle invalid signature', async () => {
@@ -72,10 +81,10 @@ describe('RazorpayWebhookController', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/razorpay/webhook?appId=com.test.app')
+        .post('/razorpay/webhook')
         .set('x-razorpay-signature', 'invalid-signature')
         .set('x-razorpay-event-id', 'test-event-123')
-        .send({ event: 'payment.authorized' });
+        .send({ event: 'payment.authorized', account_id: 'acc_test_123' });
 
       expect(response.status).toBe(400);
     });

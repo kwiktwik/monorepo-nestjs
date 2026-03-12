@@ -1,0 +1,353 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Auth DTOs - Snapshot Tests GoogleSigninDto should fail validation for empty idToken 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "idToken should not be empty",
+    },
+    "property": "idToken",
+    "target": GoogleSigninDto {
+      "idToken": "",
+    },
+    "value": "",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests GoogleSigninDto should match snapshot for valid data 1`] = `
+GoogleSigninDto {
+  "idToken": "google.id.token.jwt",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginGoogleDto should fail validation for missing idToken 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "idToken should not be empty",
+      "isString": "idToken must be a string",
+    },
+    "property": "idToken",
+    "target": LoginGoogleDto {
+      "idToken": undefined,
+      "phoneNumber": "+919876543210",
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginGoogleDto should match snapshot for valid data 1`] = `
+LoginGoogleDto {
+  "idToken": "google.id.token.jwt",
+  "phoneNumber": "+919876543210",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginOtpDto should fail validation for invalid OTP code 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "matches": "OTP must be exactly 6 digits",
+    },
+    "property": "code",
+    "target": LoginOtpDto {
+      "code": "12",
+      "phoneNumber": "+919876543210",
+    },
+    "value": "12",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginOtpDto should fail validation for missing phone 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "phoneNumber should not be empty",
+      "isString": "phoneNumber must be a string",
+      "matches": "Phone number must be in E.164 format (e.g., +919876543210)",
+    },
+    "property": "phoneNumber",
+    "target": LoginOtpDto {
+      "code": "123456",
+      "phoneNumber": undefined,
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginOtpDto should match snapshot for valid data 1`] = `
+LoginOtpDto {
+  "code": "123456",
+  "phoneNumber": "+919876543210",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginTruecallerDto should fail validation for missing fields 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "code should not be empty",
+      "isString": "code must be a string",
+    },
+    "property": "code",
+    "target": LoginTruecallerDto {
+      "client_id": undefined,
+      "code": undefined,
+      "code_verifier": undefined,
+      "phoneNumber": "+919876543210",
+    },
+    "value": undefined,
+  },
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "code_verifier should not be empty",
+      "isString": "code_verifier must be a string",
+    },
+    "property": "code_verifier",
+    "target": LoginTruecallerDto {
+      "client_id": undefined,
+      "code": undefined,
+      "code_verifier": undefined,
+      "phoneNumber": "+919876543210",
+    },
+    "value": undefined,
+  },
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "client_id should not be empty",
+      "isString": "client_id must be a string",
+    },
+    "property": "client_id",
+    "target": LoginTruecallerDto {
+      "client_id": undefined,
+      "code": undefined,
+      "code_verifier": undefined,
+      "phoneNumber": "+919876543210",
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests LoginTruecallerDto should match snapshot for valid data 1`] = `
+LoginTruecallerDto {
+  "client_id": "client_123",
+  "code": "auth_code_123",
+  "code_verifier": "verifier_123",
+  "phoneNumber": "+919876543210",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests SendOtpDto should fail validation for empty phone 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "phoneNumber should not be empty",
+      "matches": "Phone number must be in E.164 format (e.g., +919876543210)",
+    },
+    "property": "phoneNumber",
+    "target": SendOtpDto {
+      "appHash": undefined,
+      "phoneNumber": "",
+    },
+    "value": "",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests SendOtpDto should fail validation for invalid phone format 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "matches": "Phone number must be in E.164 format (e.g., +919876543210)",
+    },
+    "property": "phoneNumber",
+    "target": SendOtpDto {
+      "appHash": undefined,
+      "phoneNumber": "9876543210",
+    },
+    "value": "9876543210",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests SendOtpDto should fail validation for missing phone 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "phoneNumber should not be empty",
+      "isString": "phoneNumber must be a string",
+      "matches": "Phone number must be in E.164 format (e.g., +919876543210)",
+    },
+    "property": "phoneNumber",
+    "target": SendOtpDto {
+      "appHash": undefined,
+      "phoneNumber": undefined,
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests SendOtpDto should match snapshot for valid data with appHash 1`] = `
+SendOtpDto {
+  "appHash": "abc123",
+  "phoneNumber": "+919876543210",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests SendOtpDto should match snapshot for valid data without appHash 1`] = `
+SendOtpDto {
+  "appHash": undefined,
+  "phoneNumber": "+15551234567",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests TruecallerSigninDto should fail validation for missing fields 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "code_verifier should not be empty",
+      "isString": "code_verifier must be a string",
+    },
+    "property": "code_verifier",
+    "target": TruecallerSigninDto {
+      "client_id": undefined,
+      "code": "auth_code_123",
+      "code_verifier": undefined,
+      "grant_type": undefined,
+    },
+    "value": undefined,
+  },
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "client_id should not be empty",
+      "isString": "client_id must be a string",
+    },
+    "property": "client_id",
+    "target": TruecallerSigninDto {
+      "client_id": undefined,
+      "code": "auth_code_123",
+      "code_verifier": undefined,
+      "grant_type": undefined,
+    },
+    "value": undefined,
+  },
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "grant_type should not be empty",
+      "isString": "grant_type must be a string",
+    },
+    "property": "grant_type",
+    "target": TruecallerSigninDto {
+      "client_id": undefined,
+      "code": "auth_code_123",
+      "code_verifier": undefined,
+      "grant_type": undefined,
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests TruecallerSigninDto should match snapshot for valid data 1`] = `
+TruecallerSigninDto {
+  "client_id": "client_123",
+  "code": "auth_code_123",
+  "code_verifier": "verifier_123",
+  "grant_type": "authorization_code",
+}
+`;
+
+exports[`Auth DTOs - Snapshot Tests VerifyOtpDto should fail validation for missing fields 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isNotEmpty": "phoneNumber should not be empty",
+      "isString": "phoneNumber must be a string",
+      "matches": "Phone number must be in E.164 format (e.g., +919876543210)",
+    },
+    "property": "phoneNumber",
+    "target": VerifyOtpDto {
+      "code": undefined,
+      "phoneNumber": undefined,
+    },
+    "value": undefined,
+  },
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isLength": "OTP code must be exactly 6 digits",
+      "isNotEmpty": "code should not be empty",
+      "isString": "code must be a string",
+      "matches": "OTP code must be 6 digits",
+    },
+    "property": "code",
+    "target": VerifyOtpDto {
+      "code": undefined,
+      "phoneNumber": undefined,
+    },
+    "value": undefined,
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests VerifyOtpDto should fail validation for non-numeric code 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "matches": "OTP code must be 6 digits",
+    },
+    "property": "code",
+    "target": VerifyOtpDto {
+      "code": "abc123",
+      "phoneNumber": "+919876543210",
+    },
+    "value": "abc123",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests VerifyOtpDto should fail validation for short OTP code 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isLength": "OTP code must be exactly 6 digits",
+      "matches": "OTP code must be 6 digits",
+    },
+    "property": "code",
+    "target": VerifyOtpDto {
+      "code": "123",
+      "phoneNumber": "+919876543210",
+    },
+    "value": "123",
+  },
+]
+`;
+
+exports[`Auth DTOs - Snapshot Tests VerifyOtpDto should match snapshot for valid data 1`] = `
+VerifyOtpDto {
+  "code": "123456",
+  "phoneNumber": "+919876543210",
+}
+`;

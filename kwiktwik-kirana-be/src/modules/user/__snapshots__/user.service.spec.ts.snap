@@ -1,0 +1,45 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`UserService deleteUser should soft delete user successfully 1`] = `
+Object {
+  "message": "User account marked as deleted successfully",
+  "success": true,
+}
+`;
+
+exports[`UserService getUserImages should return user images successfully 1`] = `
+Array [
+  Object {
+    "createdAt": 2024-01-01T00:00:00.000Z,
+    "id": 1,
+    "imageUrl": "https://example.com/image.jpg",
+    "removedBgImageUrl": "",
+  },
+]
+`;
+
+exports[`UserService getUserProfile should return user profile successfully 1`] = `
+Object {
+  "accountType": "google",
+  "appId": "com.test.app",
+  "createdAt": 2024-01-01T00:00:00.000Z,
+  "email": "test@example.com",
+  "emailVerified": true,
+  "id": "user-123",
+  "images": Array [],
+  "isPlayStoreReviewSubmitted": true,
+  "isPremium": true,
+  "name": "Test User",
+  "phoneNumber": "+919876543210",
+  "phoneNumberVerified": true,
+  "updatedAt": 2024-01-01T00:00:00.000Z,
+  "upiVpa": "test@upi",
+}
+`;
+
+exports[`UserService permanentlyDeleteUser should permanently delete user and all data 1`] = `
+Object {
+  "message": "User and all associated data permanently deleted",
+  "success": true,
+}
+`;

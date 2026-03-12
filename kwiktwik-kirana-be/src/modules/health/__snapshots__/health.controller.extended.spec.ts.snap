@@ -1,0 +1,10 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`HealthController - Extended GET /health should return health status matching snapshot 1`] = `
+Object {
+  "service": "kwiktwik-kirana-be",
+  "status": "ok",
+  "timestamp": Any<String>,
+  "version": "1.0.0",
+}
+`;
