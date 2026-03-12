@@ -97,6 +97,87 @@ describe('RazorpayWebhookService', () => {
       process.env = originalEnv;
     });
 
+    it('should identify which registered apps are missing webhook secrets', () => {
+      const originalEnv = { ...process.env };
+      const registeredAppIds = getRegisteredAppIds();
+
+      // Clear all webhook secrets
+      registeredAppIds.forEach((appId) => {
+        const envVar = getWebhookSecretEnvVar(appId);
+        if (envVar) {
+          delete process.env[envVar];
+        }
+      });
+
+      // Get the secrets and check which apps are missing
+      const secrets = (service as any).getAllWebhookSecrets();
+      const configuredAppIds = secrets.map((s: any) => s.appId);
+      const missingApps = registeredAppIds.filter(
+        (appId) => !configuredAppIds.includes(appId),
+      );
+
+      // Log which apps are missing for debugging
+      if (missingApps.length > 0) {
+        console.log('Missing webhook secrets for apps:');
+        missingApps.forEach((appId) => {
+          const envVar = getWebhookSecretEnvVar(appId);
+          console.log(`  - ${appId} (env: ${envVar})`);
+        });
+      }
+
+      // Test that we can identify missing apps
+      expect(missingApps.length).toBe(registeredAppIds.length);
+      expect(configuredAppIds).toEqual([]);
+
+      // Restore environment
+      Object.assign(process.env, originalEnv);
+    });
+
+    it('should identify partially configured webhook secrets', () => {
+      const originalEnv = { ...process.env };
+      const registeredAppIds = getRegisteredAppIds();
+
+      // Clear all webhook secrets first
+      registeredAppIds.forEach((appId) => {
+        const envVar = getWebhookSecretEnvVar(appId);
+        if (envVar) {
+          delete process.env[envVar];
+        }
+      });
+
+      // Configure only the first app
+      const firstApp = registeredAppIds[0];
+      const firstAppEnvVar = getWebhookSecretEnvVar(firstApp);
+      if (firstAppEnvVar) {
+        process.env[firstAppEnvVar] = 'configured-secret';
+      }
+
+      // Get the secrets and check which apps are missing
+      const secrets = (service as any).getAllWebhookSecrets();
+      const configuredAppIds = secrets.map((s: any) => s.appId);
+      const missingApps = registeredAppIds.filter(
+        (appId) => !configuredAppIds.includes(appId),
+      );
+
+      // Log configuration status
+      console.log('Webhook secret configuration status:');
+      registeredAppIds.forEach((appId) => {
+        const envVar = getWebhookSecretEnvVar(appId);
+        const isConfigured = configuredAppIds.includes(appId);
+        console.log(`  ${isConfigured ? '✅' : '❌'} ${appId}`);
+        if (!isConfigured) {
+          console.log(`     Missing: ${envVar}`);
+        }
+      });
+
+      // Verify partial configuration
+      expect(configuredAppIds).toContain(firstApp);
+      expect(missingApps.length).toBe(registeredAppIds.length - 1);
+
+      // Restore environment
+      Object.assign(process.env, originalEnv);
+    });
+
     it('should only return secrets for registered apps', () => {
       const originalEnv = { ...process.env };
       process.env = {

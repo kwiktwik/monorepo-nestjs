@@ -220,8 +220,26 @@ export class RazorpayWebhookService {
     }
 
     if (secrets.length === 0) {
+      const missingApps = registeredAppIds
+        .map((appId) => {
+          const envVar = getWebhookSecretEnvVar(appId);
+          return `  - ${appId} (set ${envVar})`;
+        })
+        .join('\n');
       this.logger.error(
-        `[WEBHOOK] No webhook secrets configured. Please set environment variables for registered apps: ${registeredAppIds.join(', ')}`,
+        `[WEBHOOK] No webhook secrets configured. Missing for:\n${missingApps}`,
+      );
+    } else if (secrets.length < registeredAppIds.length) {
+      const configuredAppIds = secrets.map((s) => s.appId);
+      const missingApps = registeredAppIds
+        .filter((appId) => !configuredAppIds.includes(appId))
+        .map((appId) => {
+          const envVar = getWebhookSecretEnvVar(appId);
+          return `  - ${appId} (set ${envVar})`;
+        })
+        .join('\n');
+      this.logger.warn(
+        `[WEBHOOK] Partially configured. Missing secrets for:\n${missingApps}`,
       );
     }
 
