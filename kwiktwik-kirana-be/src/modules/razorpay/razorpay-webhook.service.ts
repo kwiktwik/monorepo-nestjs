@@ -271,11 +271,19 @@ export class RazorpayWebhookService {
     signature: string,
   ): { appId: string; secret: string } | null {
     const allSecrets = this.getAllWebhookSecrets();
+    const triedApps: string[] = [];
 
     for (const { appId, secret } of allSecrets) {
+      triedApps.push(appId);
       if (this.verifySignature(body, signature, secret)) {
         return { appId, secret };
       }
+    }
+
+    if (triedApps.length > 0) {
+      this.logger.warn(
+        `[WEBHOOK] Signature verification failed. Tried ${triedApps.length} app(s): ${triedApps.join(', ')}`,
+      );
     }
 
     return null;
