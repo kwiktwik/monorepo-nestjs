@@ -3,7 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from './drizzle.module';
 import { newDb } from 'pg-mem';
 import { applyIntegrationsToPool } from 'drizzle-pgmem';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -66,7 +66,7 @@ function normalizeRecord(
   return normalized;
 }
 
-async function seedDatabase(db: unknown): Promise<void> {
+async function seedDatabase(db: NodePgDatabase<typeof schema>): Promise<void> {
   const seedFilePath = path.join(process.cwd(), 'scripts/test-db/seed.json');
   console.log(`Reading seed data from ${seedFilePath}...`);
 
@@ -107,10 +107,11 @@ async function seedDatabase(db: unknown): Promise<void> {
               convertDates(r) as Record<string, unknown>,
               tableSchema,
             ),
-          );
+          )
+          .filter((r): r is Record<string, unknown> => r !== null && r !== undefined);
 
         try {
-          await db.insert(tableSchema).values(chunk).onConflictDoNothing();
+          await db.insert(tableSchema).values(chunk as any).onConflictDoNothing();
           inserted += chunk.length;
         } catch (err: any) {
           console.warn(`Error inserting chunk in ${name}:`, err.message || err);
