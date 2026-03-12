@@ -111,6 +111,11 @@ export class RazorpayWebhookService {
         .limit(1);
 
       if (orderInfo.length > 0 && orderInfo[0].userId) {
+        // GUARD: Don't trigger analytics events for legacy Kirana app
+        if (orderInfo[0].appId === 'com.kiranaapps.app') {
+          return;
+        }
+
         const userInfo = await this.getUserInfoForAnalytics(
           orderInfo[0].userId,
         );
@@ -155,6 +160,11 @@ export class RazorpayWebhookService {
         .limit(1);
 
       if (subInfo.length > 0 && subInfo[0].userId) {
+        // GUARD: Don't trigger analytics events for legacy Kirana app
+        if (subInfo[0].appId === 'com.kiranaapps.app') {
+          return;
+        }
+
         const userInfo = await this.getUserInfoForAnalytics(subInfo[0].userId);
         if (userInfo) {
           await this.analyticsService.sendEvent({
