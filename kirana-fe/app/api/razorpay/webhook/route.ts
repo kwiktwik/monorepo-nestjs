@@ -147,17 +147,22 @@ async function trackOrderAnalytics(
       .where(eq(orders.razorpayOrderId, orderId))
       .limit(1);
 
-    let userInfo: UserData = {};
-    let appId: string | undefined = undefined;
+    // GUARD: Only process analytics if order exists in local DB
+    if (orderInfo.length === 0) {
+      console.log(
+        `[WEBHOOK ${requestId}] ℹ️ Order ${orderId} not found in local DB, skipping analytics`,
+      );
+      return;
+    }
 
-    if (orderInfo.length > 0) {
-      appId = orderInfo[0].appId ?? undefined;
-      if (orderInfo[0].userId) {
-        userInfo = { userId: orderInfo[0].userId };
-        const dbUser = await getUserInfoForAnalytics(orderInfo[0].userId);
-        if (dbUser) {
-          userInfo = dbUser;
-        }
+    let userInfo: UserData = {};
+    let appId: string | undefined = orderInfo[0].appId ?? undefined;
+
+    if (orderInfo[0].userId) {
+      userInfo = { userId: orderInfo[0].userId };
+      const dbUser = await getUserInfoForAnalytics(orderInfo[0].userId);
+      if (dbUser) {
+        userInfo = dbUser;
       }
     }
 
@@ -269,17 +274,22 @@ async function trackSubscriptionAnalytics(
       .where(eq(subscriptions.razorpaySubscriptionId, subscriptionId))
       .limit(1);
 
-    let userInfo: UserData = {};
-    let appId: string | undefined = undefined;
+    // GUARD: Only process analytics if subscription exists in local DB
+    if (subInfo.length === 0) {
+      console.log(
+        `[WEBHOOK ${requestId}] ℹ️ Subscription ${subscriptionId} not found in local DB, skipping analytics`,
+      );
+      return;
+    }
 
-    if (subInfo.length > 0) {
-      appId = subInfo[0].appId ?? undefined;
-      if (subInfo[0].userId) {
-        userInfo = { userId: subInfo[0].userId };
-        const dbUser = await getUserInfoForAnalytics(subInfo[0].userId);
-        if (dbUser) {
-          userInfo = dbUser;
-        }
+    let userInfo: UserData = {};
+    let appId: string | undefined = subInfo[0].appId ?? undefined;
+
+    if (subInfo[0].userId) {
+      userInfo = { userId: subInfo[0].userId };
+      const dbUser = await getUserInfoForAnalytics(subInfo[0].userId);
+      if (dbUser) {
+        userInfo = dbUser;
       }
     }
 

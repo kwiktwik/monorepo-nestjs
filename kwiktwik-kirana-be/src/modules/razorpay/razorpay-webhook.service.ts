@@ -110,12 +110,15 @@ export class RazorpayWebhookService {
         .where(eq(schema.orders.razorpayOrderId, orderId))
         .limit(1);
 
-      if (orderInfo.length > 0 && orderInfo[0].userId) {
-        // GUARD: Don't trigger analytics events for legacy Kirana app
-        if (orderInfo[0].appId === 'com.kiranaapps.app') {
-          return;
-        }
+      // GUARD: Only process analytics if order exists in local DB
+      if (orderInfo.length === 0) {
+        this.logger.log(
+          `[WEBHOOK ${requestId}] ℹ️ Order ${orderId} not found in local DB, skipping analytics`,
+        );
+        return;
+      }
 
+      if (orderInfo[0].userId) {
         const userInfo = await this.getUserInfoForAnalytics(
           orderInfo[0].userId,
         );
@@ -159,12 +162,15 @@ export class RazorpayWebhookService {
         .where(eq(schema.subscriptions.razorpaySubscriptionId, subscriptionId))
         .limit(1);
 
-      if (subInfo.length > 0 && subInfo[0].userId) {
-        // GUARD: Don't trigger analytics events for legacy Kirana app
-        if (subInfo[0].appId === 'com.kiranaapps.app') {
-          return;
-        }
+      // GUARD: Only process analytics if subscription exists in local DB
+      if (subInfo.length === 0) {
+        this.logger.log(
+          `[WEBHOOK ${requestId}] ℹ️ Subscription ${subscriptionId} not found in local DB, skipping analytics`,
+        );
+        return;
+      }
 
+      if (subInfo[0].userId) {
         const userInfo = await this.getUserInfoForAnalytics(subInfo[0].userId);
         if (userInfo) {
           await this.analyticsService.sendEvent({
