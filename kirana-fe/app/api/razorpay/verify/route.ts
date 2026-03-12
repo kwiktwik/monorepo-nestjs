@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
             .update(subscriptions)
             .set({
               status: "active",
+              razorpayPaymentId: razorpay_payment_id,
               updatedAt: new Date(),
             })
             .where(eq(subscriptions.razorpaySubscriptionId, razorpay_subscription_id));

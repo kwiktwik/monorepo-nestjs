@@ -394,6 +394,7 @@ export class RazorpayService {
         .update(schema.subscriptions)
         .set({
           status: 'active',
+          razorpayPaymentId: razorpay_payment_id,
           updatedAt: new Date(),
         })
         .where(eq(schema.subscriptions.razorpaySubscriptionId, subscriptionId))
