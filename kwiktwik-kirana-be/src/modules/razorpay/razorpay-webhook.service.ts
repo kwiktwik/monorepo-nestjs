@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomBytes } from 'crypto';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -65,7 +65,9 @@ export class RazorpayWebhookService {
           name: schema.user.name,
         })
         .from(schema.user)
-        .where(eq(schema.user.id, userId))
+        .where(
+          and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)),
+        )
         .limit(1);
 
       if (userInfo.length > 0) {
@@ -653,7 +655,12 @@ export class RazorpayWebhookService {
           schema.subscriptions,
           eq(schema.subscriptions.userId, schema.user.id),
         )
-        .where(eq(schema.user.email, payment.email))
+        .where(
+          and(
+            eq(schema.user.email, payment.email),
+            eq(schema.user.isDeleted, false),
+          ),
+        )
         .limit(1);
 
       if (result.length > 0) {

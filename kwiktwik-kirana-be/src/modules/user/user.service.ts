@@ -30,11 +30,11 @@ export class UserService {
    * Get user profile with premium status
    */
   async getUserProfile(userId: string, appId: string) {
-    // Fetch user data first (need to verify user exists)
+    // Fetch user data first (need to verify user exists and is not deleted)
     const userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.id, userId))
+      .where(and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)))
       .limit(1);
 
     if (userRecord.length === 0) {
@@ -221,7 +221,7 @@ export class UserService {
     const existingUser = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.id, userId))
+      .where(and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)))
       .limit(1);
 
     if (existingUser.length === 0) {
@@ -236,7 +236,12 @@ export class UserService {
       const phoneCheck = await this.db
         .select()
         .from(schema.user)
-        .where(eq(schema.user.phoneNumber, updateData.phoneNumber))
+        .where(
+          and(
+            eq(schema.user.phoneNumber, updateData.phoneNumber),
+            eq(schema.user.isDeleted, false),
+          ),
+        )
         .limit(1);
 
       if (phoneCheck.length > 0 && phoneCheck[0].id !== userId) {
@@ -329,10 +334,53 @@ export class UserService {
   }
 
   /**
-   * Delete user and all associated data
+   * Soft delete user - marks user as deleted but preserves data
    */
   async deleteUser(userId: string) {
     // Check if user exists
+    const userRecord = await this.db
+      .select()
+      .from(schema.user)
+      .where(and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)))
+      .limit(1);
+
+    if (userRecord.length === 0) {
+      throw new NotFoundException('User not found');
+    }
+
+    const deletedAt = new Date();
+
+    // Soft delete: Mark user as deleted instead of removing data
+    await this.db
+      .update(schema.user)
+      .set({
+        isDeleted: true,
+        deletedAt: deletedAt,
+        email: `deleted_${userId}_${deletedAt.getTime()}@deleted.local`, // Anonymize email
+        phoneNumber: null, // Remove phone number
+        name: 'Deleted User', // Anonymize name
+        image: null, // Remove profile image
+        updatedAt: deletedAt,
+      })
+      .where(eq(schema.user.id, userId));
+
+    // Delete active sessions to log user out
+    await this.db
+      .delete(schema.session)
+      .where(eq(schema.session.userId, userId));
+
+    return {
+      success: true,
+      message: 'User account marked as deleted successfully',
+    };
+  }
+
+  /**
+   * Permanently delete user and all associated data (GDPR compliance)
+   * Use with caution - this is irreversible
+   */
+  async permanentlyDeleteUser(userId: string) {
+    // Check if user exists (including soft-deleted)
     const userRecord = await this.db
       .select()
       .from(schema.user)
@@ -343,43 +391,35 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // Delete all related data (cascade will handle most, but being explicit)
-    // Note: Some tables use cascade delete in the schema, but we'll be explicit
-
-    // Delete user metadata
+    // Delete all related data
     await this.db
       .delete(schema.userMetadata)
       .where(eq(schema.userMetadata.userId, userId));
 
-    // Delete orders
     await this.db.delete(schema.orders).where(eq(schema.orders.userId, userId));
 
-    // Delete subscriptions
     await this.db
       .delete(schema.subscriptions)
       .where(eq(schema.subscriptions.userId, userId));
 
-    // Delete play store ratings
     await this.db
       .delete(schema.playStoreRatings)
       .where(eq(schema.playStoreRatings.userId, userId));
 
-    // Delete accounts
     await this.db
       .delete(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    // Delete sessions
     await this.db
       .delete(schema.session)
       .where(eq(schema.session.userId, userId));
 
-    // Finally, delete the user
+    // Finally, delete the user permanently
     await this.db.delete(schema.user).where(eq(schema.user.id, userId));
 
     return {
       success: true,
-      message: 'User and all associated data deleted successfully',
+      message: 'User and all associated data permanently deleted',
     };
   }
 }

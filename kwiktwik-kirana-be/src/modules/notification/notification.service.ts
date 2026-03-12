@@ -435,7 +435,12 @@ export class NotificationService {
         phoneNumber: schema.user.phoneNumber,
       })
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, phoneNumber))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, phoneNumber),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     return user.length > 0 ? user[0] : null;

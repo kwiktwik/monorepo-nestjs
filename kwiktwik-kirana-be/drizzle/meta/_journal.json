@@ -57,6 +57,13 @@
       "when": 1773221203664,
       "tag": "0007_friendly_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773290334118,
+      "tag": "0008_spotty_gladiator",
+      "breakpoints": true
     }
   ]
 }

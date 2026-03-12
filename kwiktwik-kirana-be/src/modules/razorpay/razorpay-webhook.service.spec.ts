@@ -3,7 +3,10 @@ import { RazorpayWebhookService } from './razorpay-webhook.service';
 import { ConfigService } from '@nestjs/config';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
-import { getRegisteredAppIds, getWebhookSecretEnvVar } from '../../common/config/apps.config';
+import {
+  getRegisteredAppIds,
+  getWebhookSecretEnvVar,
+} from '../../common/config/apps.config';
 
 describe('RazorpayWebhookService', () => {
   let service: RazorpayWebhookService;

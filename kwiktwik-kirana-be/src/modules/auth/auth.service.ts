@@ -103,11 +103,16 @@ export class AuthService {
     // Fallback: Check local database (shared with kirana-fe)
     this.logger.log(`[checkKiranaFeUser] Checking via local DB: ${normalized}`);
 
-    // Find user by phone number
+    // Find user by phone number (excluding deleted users)
     const userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     if (userRecord.length === 0) {
@@ -596,7 +601,12 @@ export class AuthService {
     let userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     let userId: string;
@@ -680,7 +690,12 @@ export class AuthService {
     let userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     let userId: string;
@@ -706,7 +721,9 @@ export class AuthService {
       userRecord = await this.db
         .select()
         .from(schema.user)
-        .where(eq(schema.user.id, userId))
+        .where(
+          and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)),
+        )
         .limit(1);
     } else {
       userId = userRecord[0].id;
@@ -926,11 +943,16 @@ export class AuthService {
       address: userInfoData.address,
     };
 
-    // Step 4: Find or create user
+    // Step 4: Find or create user (excluding deleted users)
     let userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     let userId: string;
@@ -1252,11 +1274,16 @@ export class AuthService {
         : userInfoData.given_name || userInfoData.family_name) ||
       `User ${phoneNumber?.slice(-4) || 'Unknown'}`;
 
-    // Find or create user
+    // Find or create user (excluding deleted users)
     let userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     let userId: string;
@@ -1430,11 +1457,13 @@ export class AuthService {
 
       const { email, name, picture } = payload;
 
-      // Find or create user
+      // Find or create user by email (excluding deleted users)
       let userRecord = await this.db
         .select()
         .from(schema.user)
-        .where(eq(schema.user.email, email))
+        .where(
+          and(eq(schema.user.email, email), eq(schema.user.isDeleted, false)),
+        )
         .limit(1);
 
       let userId: string;

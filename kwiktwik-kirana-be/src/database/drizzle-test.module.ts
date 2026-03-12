@@ -108,10 +108,15 @@ async function seedDatabase(db: NodePgDatabase<typeof schema>): Promise<void> {
               tableSchema,
             ),
           )
-          .filter((r): r is Record<string, unknown> => r !== null && r !== undefined);
+          .filter(
+            (r): r is Record<string, unknown> => r !== null && r !== undefined,
+          );
 
         try {
-          await db.insert(tableSchema).values(chunk as any).onConflictDoNothing();
+          await db
+            .insert(tableSchema)
+            .values(chunk as any)
+            .onConflictDoNothing();
           inserted += chunk.length;
         } catch (err: any) {
           console.warn(`Error inserting chunk in ${name}:`, err.message || err);
