@@ -116,15 +116,6 @@ describe('RazorpayWebhookService', () => {
         (appId) => !configuredAppIds.includes(appId),
       );
 
-      // Log which apps are missing for debugging
-      if (missingApps.length > 0) {
-        console.log('Missing webhook secrets for apps:');
-        missingApps.forEach((appId) => {
-          const envVar = getWebhookSecretEnvVar(appId);
-          console.log(`  - ${appId} (env: ${envVar})`);
-        });
-      }
-
       // Test that we can identify missing apps
       expect(missingApps.length).toBe(registeredAppIds.length);
       expect(configuredAppIds).toEqual([]);
@@ -158,17 +149,6 @@ describe('RazorpayWebhookService', () => {
       const missingApps = registeredAppIds.filter(
         (appId) => !configuredAppIds.includes(appId),
       );
-
-      // Log configuration status
-      console.log('Webhook secret configuration status:');
-      registeredAppIds.forEach((appId) => {
-        const envVar = getWebhookSecretEnvVar(appId);
-        const isConfigured = configuredAppIds.includes(appId);
-        console.log(`  ${isConfigured ? '✅' : '❌'} ${appId}`);
-        if (!isConfigured) {
-          console.log(`     Missing: ${envVar}`);
-        }
-      });
 
       // Verify partial configuration
       expect(configuredAppIds).toContain(firstApp);
