@@ -1,8 +1,9 @@
-image: node:22-alpine
+image: node:24-slim
 
 variables:
   PNPM_HOME: "/root/.local/share/pnpm"
   PATH: "$PNPM_HOME:$PATH"
+  GIT_STRATEGY: clone
 
 stages:
   - install
@@ -10,8 +11,9 @@ stages:
   - test
   - build
 
-# Install pnpm
-.install_pnpm: &install_pnpm
+# Install dependencies
+.install_deps: &install_deps
+  - apt-get update && apt-get install -y git
   - npm install -g pnpm
 
 # Cache configuration
@@ -26,7 +28,7 @@ cache:
 install-backend:
   stage: install
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kwiktwik-kirana-be
     - pnpm install --frozen-lockfile
   artifacts:
@@ -41,7 +43,7 @@ install-backend:
 install-frontend:
   stage: install
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kirana-fe
     - pnpm install --frozen-lockfile
   artifacts:
@@ -58,7 +60,7 @@ lint-backend:
   needs:
     - install-backend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kwiktwik-kirana-be
     - pnpm lint
   rules:
@@ -72,7 +74,7 @@ lint-frontend:
   needs:
     - install-frontend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kirana-fe
     - pnpm lint
   rules:
@@ -86,7 +88,7 @@ test-backend:
   needs:
     - install-backend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kwiktwik-kirana-be
     - pnpm test
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
@@ -110,7 +112,7 @@ test-frontend:
   needs:
     - install-frontend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kirana-fe
     - pnpm test
   artifacts:
@@ -129,7 +131,7 @@ build-backend:
     - lint-backend
     - test-backend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kwiktwik-kirana-be
     - pnpm build
   artifacts:
@@ -148,7 +150,7 @@ build-frontend:
     - lint-frontend
     - test-frontend
   script:
-    - *install_pnpm
+    - *install_deps
     - cd kirana-fe
     - pnpm build
   artifacts:
