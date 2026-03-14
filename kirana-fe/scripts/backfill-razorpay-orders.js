@@ -412,7 +412,11 @@ async function syncSingleOrder(pgClient, razorpay, rzpOrderId, appId, existingOr
     const orderId = generateId(10);
     const amount = typeof rzpOrder.amount === 'number' ? rzpOrder.amount : parseInt(String(rzpOrder.amount));
     const currency = rzpOrder.currency || 'INR';
-    const notes = rzpOrder.notes ? JSON.stringify(rzpOrder.notes) : null;
+    // Handle notes - convert to JSON string only if it has content
+    let notes = null;
+    if (rzpOrder.notes && Object.keys(rzpOrder.notes).length > 0) {
+      notes = JSON.stringify(rzpOrder.notes);
+    }
     const createdAt = new Date(rzpOrder.created_at * 1000);
 
     await pgClient.query(
