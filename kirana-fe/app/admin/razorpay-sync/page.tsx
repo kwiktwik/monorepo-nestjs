@@ -24,10 +24,7 @@ import {
 const REGISTERED_APPS = [
   { id: "com.kiranaapps.app", name: "Kirana Apps", packageName: "com.kiranaapps.app" },
   { id: "com.paymentalert.app", name: "AlertPay", packageName: "com.paymentalert.app" },
-  { id: "alertpay-android", name: "AlertPay Android", packageName: "com.paymentalert.app" },
-  { id: "alertpay-web", name: "AlertPay Web", packageName: "com.paymentalert.app" },
   { id: "com.sharestatus.app", name: "ShareStatus", packageName: "com.sharestatus.app" },
-  { id: "alertpay-default", name: "AlertPay Default", packageName: "com.paymentalert.app" },
 ];
 
 // Get yesterday's date as default
@@ -54,7 +51,7 @@ export default function RazorpayBulkSyncPage() {
   // Date state (default: yesterday)
   const [fromDate, setFromDate] = useState<Date>(getYesterday());
   const [toDate, setToDate] = useState<Date>(getEndOfYesterday());
-  const [selectedAppId, setSelectedAppId] = useState("alertpay-default");
+  const [selectedAppId, setSelectedAppId] = useState("com.kiranaapps.app");
 
   // Progress state
   const [isFetching, setIsFetching] = useState(false);
