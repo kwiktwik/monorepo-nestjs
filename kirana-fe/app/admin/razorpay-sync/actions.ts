@@ -3,7 +3,7 @@
 import { razorpay } from "@/lib/razorpay";
 import { db } from "@/db";
 import { orders, user } from "@/db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAdmin } from "@/lib/better-auth/auth-utils";
 import { ORDER_STATUS } from "@/lib/constants/order-status";
 import { generateOrderId } from "@/lib/utils";
@@ -71,23 +71,39 @@ function normalizePhoneNumber(value: string | null | undefined): string | null {
 }
 
 /**
- * Validate date range (max 1 day)
+ * Validate date range (max 31 days / 1 month)
  */
 function validateDateRange(fromDate: Date, toDate: Date): void {
   const diffMs = toDate.getTime() - fromDate.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
-  
-  if (diffHours > 24) {
-    throw new Error("Date range must be 1 day or less");
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (diffDays > 31) {
+    throw new Error("Date range must be 31 days or less");
   }
-  
+
   if (fromDate > toDate) {
     throw new Error("From date must be before to date");
   }
 }
 
 /**
+ * Convert local date to UTC timestamp for Razorpay API
+ * Ensures consistent behavior across timezones
+ */
+function dateToUTCTimestamp(date: Date): number {
+  // Treat the date as UTC midnight to avoid timezone issues
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  
+  // Create UTC date at midnight
+  const utcDate = new Date(Date.UTC(year, month, day));
+  return Math.floor(utcDate.getTime() / 1000);
+}
+
+/**
  * Fetch all orders from Razorpay for a date range (auto-pagination)
+ * Uses UTC timestamps to ensure consistent results across timezones
  */
 export async function fetchOrdersByDateRange(
   fromDate: Date,
@@ -97,8 +113,9 @@ export async function fetchOrdersByDateRange(
   await requireAdmin();
   validateDateRange(fromDate, toDate);
 
-  const fromTimestamp = Math.floor(fromDate.getTime() / 1000);
-  const toTimestamp = Math.floor(toDate.getTime() / 1000);
+  // Convert to UTC timestamps for Razorpay API
+  const fromTimestamp = dateToUTCTimestamp(fromDate);
+  const toTimestamp = dateToUTCTimestamp(toDate) + 86399; // End of day (23:59:59)
 
   const allOrders: RazorpayOrder[] = [];
   let skip = 0;
@@ -112,7 +129,7 @@ export async function fetchOrdersByDateRange(
       to: toTimestamp,
     });
 
-    const orders = response.items || [];
+    const orders = (response.items || []) as RazorpayOrder[];
     allOrders.push(...orders);
 
     if (orders.length < count) {
@@ -146,12 +163,9 @@ export async function compareOrders(
   // Get all razorpay order IDs
   const razorpayOrderIds = razorpayOrders.map((o) => o.id);
 
-  // Query DB for existing orders
+  // Query DB for existing orders in bulk
   const existingOrders = await db.query.orders.findMany({
-    where: and(
-      eq(orders.appId, appId),
-      // Use IN clause for better performance
-    ),
+    where: inArray(orders.razorpayOrderId, razorpayOrderIds),
     columns: {
       razorpayOrderId: true,
     },
@@ -185,20 +199,78 @@ export async function compareOrders(
   };
 }
 
+// Simple user type for lookups
+type UserLookup = {
+  id: string;
+  email: string | null;
+  phoneNumber: string | null;
+};
+
 /**
- * Process a single order sync
+ * Fetch all necessary data upfront to minimize DB queries
  */
-async function syncSingleOrder(
-  rzpOrderId: string,
+async function preloadSyncData(
+  orderIds: string[],
   appId: string
+): Promise<{
+  existingOrderIds: Set<string>;
+  usersByEmail: Map<string, UserLookup>;
+  usersByPhone: Map<string, UserLookup>;
+}> {
+  // Fetch all existing orders in one query
+  const existingOrders = await db.query.orders.findMany({
+    where: inArray(orders.razorpayOrderId, orderIds),
+    columns: {
+      razorpayOrderId: true,
+    },
+  });
+  const existingOrderIds = new Set(
+    existingOrders
+      .map((o) => o.razorpayOrderId)
+      .filter((id): id is string => id !== null)
+  );
+
+  // Fetch all users in one query (we'll filter in memory)
+  // This is more efficient than querying per order
+  const allUsers = await db.query.user.findMany({
+    columns: {
+      id: true,
+      email: true,
+      phoneNumber: true,
+    },
+  });
+
+  // Create lookup maps
+  const usersByEmail = new Map<string, UserLookup>();
+  const usersByPhone = new Map<string, UserLookup>();
+
+  for (const u of allUsers) {
+    if (u.email) {
+      usersByEmail.set(u.email.toLowerCase(), u);
+    }
+    if (u.phoneNumber) {
+      usersByPhone.set(u.phoneNumber, u);
+      // Also store without + for matching
+      usersByPhone.set(u.phoneNumber.replace(/\+/g, ""), u);
+    }
+  }
+
+  return { existingOrderIds, usersByEmail, usersByPhone };
+}
+
+/**
+ * Process a single order sync using preloaded data
+ */
+async function syncSingleOrderWithData(
+  rzpOrderId: string,
+  appId: string,
+  existingOrderIds: Set<string>,
+  usersByEmail: Map<string, UserLookup>,
+  usersByPhone: Map<string, UserLookup>
 ): Promise<SyncResult> {
   try {
-    // Check if order already exists in DB (prevent duplicates)
-    const existingOrder = await db.query.orders.findFirst({
-      where: eq(orders.razorpayOrderId, rzpOrderId),
-    });
-
-    if (existingOrder) {
+    // Check if order already exists (fast in-memory check)
+    if (existingOrderIds.has(rzpOrderId)) {
       return {
         razorpayOrderId: rzpOrderId,
         status: "skipped",
@@ -221,26 +293,22 @@ async function syncSingleOrder(
     let paymentStatus: string | null = null;
 
     if (firstPayment) {
-      // Primary source: payment data
-      email = firstPayment.email || null;
-      contact = firstPayment.contact || null;
+      email = firstPayment.email ? String(firstPayment.email) : null;
+      contact = firstPayment.contact ? String(firstPayment.contact) : null;
       customerId = firstPayment.customer_id || null;
       paymentId = firstPayment.id;
       paymentStatus = firstPayment.status;
     }
 
-    // Fallback 1: Try to get from order notes
+    // Fallback: Try to get from order notes
     if ((!email && !contact) && rzpOrder.notes) {
       const notes = rzpOrder.notes as Record<string, any>;
-      email = notes.email || notes.customer_email || null;
-      contact = notes.phone || notes.contact || notes.customer_phone || null;
+      email = notes.email ? String(notes.email) : notes.customer_email ? String(notes.customer_email) : null;
+      contact = notes.phone ? String(notes.phone) : notes.contact ? String(notes.contact) : notes.customer_phone ? String(notes.customer_phone) : null;
     }
 
-    // Fallback 2: Try to get from customer_id in order
-    if (!customerId && rzpOrder.customer_id) {
-      customerId = rzpOrder.customer_id;
-      // If we have customer_id but no email/contact, we could fetch customer details
-      // But that would require another API call - skipping for now
+    if (!customerId && (rzpOrder as any).customer_id) {
+      customerId = (rzpOrder as any).customer_id;
     }
 
     // If still no user identifiers, skip this order
@@ -252,33 +320,27 @@ async function syncSingleOrder(
       };
     }
 
-    // Normalize phone numbers for matching
-    const normalizedEmailPhone = normalizePhoneNumber(email);
-    const normalizedContactPhone = normalizePhoneNumber(contact);
-
-    // Find user in our DB - try multiple strategies
+    // Find user using preloaded maps (fast in-memory lookup)
     let dbUser = null;
 
     // Strategy 1: Match by exact email
     if (email) {
-      dbUser = await db.query.user.findFirst({
-        where: eq(user.email, String(email)),
-      });
+      dbUser = usersByEmail.get(email.toLowerCase()) || null;
     }
 
     // Strategy 2: Match by exact contact/phone
     if (!dbUser && contact) {
-      dbUser = await db.query.user.findFirst({
-        where: eq(user.phoneNumber, String(contact)),
-      });
+      dbUser = usersByPhone.get(contact) || null;
     }
 
     // Strategy 3: Match by normalized phone
-    if (!dbUser && (normalizedEmailPhone || normalizedContactPhone)) {
-      const phoneToMatch = normalizedEmailPhone || normalizedContactPhone;
-      dbUser = await db.query.user.findFirst({
-        where: eq(user.phoneNumber, phoneToMatch!),
-      });
+    if (!dbUser) {
+      const normalizedPhone = normalizePhoneNumber(email) || normalizePhoneNumber(contact);
+      if (normalizedPhone) {
+        dbUser = usersByPhone.get(normalizedPhone) || 
+                 usersByPhone.get(normalizedPhone.replace(/\+/g, "")) || 
+                 null;
+      }
     }
 
     // If user not found, skip this order
@@ -318,6 +380,9 @@ async function syncSingleOrder(
       updatedAt: new Date(),
     });
 
+    // Add to existing set to prevent duplicates in same batch
+    existingOrderIds.add(rzpOrderId);
+
     const syncMessage = firstPayment 
       ? "Order successfully synced" 
       : "Order synced (no payment yet)";
@@ -340,8 +405,7 @@ async function syncSingleOrder(
 
 /**
  * Sync selected orders from Razorpay to local DB
- * Processes orders in parallel batches for better performance
- * Skips orders where user is not found
+ * Optimized with bulk data loading and larger batch size
  */
 export async function syncSelectedOrders(
   orderIds: string[],
@@ -349,15 +413,19 @@ export async function syncSelectedOrders(
 ): Promise<SyncResult[]> {
   await requireAdmin();
 
-  // Process orders in parallel batches of 10
-  // This prevents overwhelming the API while still being fast
-  const BATCH_SIZE = 10;
+  // Preload all necessary data in 2 DB queries instead of N queries
+  const { existingOrderIds, usersByEmail, usersByPhone } = await preloadSyncData(orderIds, appId);
+
+  // Process orders in larger parallel batches (100 at a time)
+  const BATCH_SIZE = 100;
   const results: SyncResult[] = [];
 
   for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
     const batch = orderIds.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map((orderId) => syncSingleOrder(orderId, appId))
+      batch.map((orderId) => 
+        syncSingleOrderWithData(orderId, appId, existingOrderIds, usersByEmail, usersByPhone)
+      )
     );
     results.push(...batchResults);
   }

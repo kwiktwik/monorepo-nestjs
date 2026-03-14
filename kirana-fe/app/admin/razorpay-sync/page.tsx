@@ -78,10 +78,10 @@ export default function RazorpayBulkSyncPage() {
     setSelectedOrders(new Set());
 
     try {
-      // Validate 1-day range
-      const diffHours = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60);
-      if (diffHours > 24) {
-        throw new Error("Date range must be 1 day or less");
+      // Validate date range (max 31 days)
+      const diffDays = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays > 31) {
+        throw new Error("Date range must be 31 days or less");
       }
 
       // Step 1: Fetch orders from Razorpay
@@ -134,55 +134,37 @@ export default function RazorpayBulkSyncPage() {
     setError(null);
 
     const orderIds = Array.from(selectedOrders);
-    const BATCH_SIZE = 5; // Process 5 orders at a time for better progress visibility
-    const allResults: SyncResult[] = [];
 
     try {
-      for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
-        const batch = orderIds.slice(i, i + BATCH_SIZE);
-        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-        const totalBatches = Math.ceil(orderIds.length / BATCH_SIZE);
+      // Show initial progress
+      setProgress({
+        current: 0,
+        total: orderIds.length,
+        status: "syncing",
+        message: `Syncing ${orderIds.length} orders...`,
+      });
 
-        setProgress({
-          current: i,
-          total: orderIds.length,
-          status: "syncing",
-          message: `Syncing batch ${batchNum}/${totalBatches} (${i + 1}-${Math.min(i + BATCH_SIZE, orderIds.length)} of ${orderIds.length})...`,
-        });
+      // Process all orders at once - backend is optimized for 100+ orders
+      const results = await syncSelectedOrders(orderIds, selectedAppId);
 
-        // Process this batch
-        const batchResults = await syncSelectedOrders(batch, selectedAppId);
-        allResults.push(...batchResults);
-
-        // Update results in real-time
-        setSyncResults([...allResults]);
-
-        // Remove successfully synced orders from selection
-        const successfulIds = new Set(
-          batchResults.filter((r) => r.status === "success").map((r) => r.razorpayOrderId)
-        );
-        setSelectedOrders((prev) => {
-          const next = new Set(prev);
-          successfulIds.forEach((id) => next.delete(id));
-          return next;
-        });
-
-        // Small delay to show progress
-        if (i + BATCH_SIZE < orderIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-
-      // Final progress update
-      const successCount = allResults.filter((r) => r.status === "success").length;
-      const skippedCount = allResults.filter((r) => r.status === "skipped").length;
-      const errorCount = allResults.filter((r) => r.status === "error").length;
-
+      // Update progress to completed
       setProgress({
         current: orderIds.length,
         total: orderIds.length,
         status: "completed",
-        message: `Sync completed: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors`,
+        message: `Sync completed: ${results.filter((r) => r.status === "success").length} success, ${results.filter((r) => r.status === "skipped").length} skipped`,
+      });
+
+      setSyncResults(results);
+
+      // Remove successfully synced orders from selection
+      const successfulIds = new Set(
+        results.filter((r) => r.status === "success").map((r) => r.razorpayOrderId)
+      );
+      setSelectedOrders((prev) => {
+        const next = new Set(prev);
+        successfulIds.forEach((id) => next.delete(id));
+        return next;
       });
     } catch (err: any) {
       setError(err.message || "Failed to sync orders");
@@ -257,7 +239,7 @@ export default function RazorpayBulkSyncPage() {
           Razorpay Bulk Sync
         </h2>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Fetch orders from Razorpay by date range, compare with local DB, and sync missing orders.
+          Fetch orders from Razorpay by date range (up to 31 days), compare with local DB, and sync missing orders.
         </p>
       </div>
 
@@ -292,6 +274,9 @@ export default function RazorpayBulkSyncPage() {
                 disabled={isFetching}
                 className="w-full bg-zinc-50 border border-zinc-200 text-zinc-900 text-sm rounded-lg focus:ring-zinc-500 focus:border-zinc-500 block p-2.5 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white"
               />
+              <p className="mt-1 text-xs text-zinc-500">
+                Max range: 31 days
+              </p>
             </div>
 
             {/* App Selector */}
