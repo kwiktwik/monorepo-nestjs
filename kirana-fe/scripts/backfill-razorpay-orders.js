@@ -5,13 +5,13 @@
  * Uses raw SQL queries instead of TypeScript schema for compatibility.
  * 
  * Usage:
- *   node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --app alertpay-default
- *   node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --app alertpay-default --dry-run
+ *   node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31
+ *   node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --dry-run
  * 
  * Options:
  *   --from       Start date (YYYY-MM-DD)
  *   --to         End date (YYYY-MM-DD)
- *   --app        App ID to sync orders for (default: alertpay-default)
+ *   --app        App ID to sync orders for (default: com.kiranaapps.app)
  *   --dry-run    Only show what would be synced, don't actually sync
  *   --batch-size Number of orders per batch (default: 20)
  *   --help       Show this help message
@@ -42,7 +42,7 @@ function parseArgs() {
   const options = {
     from: null,
     to: null,
-    app: 'alertpay-default',
+    app: 'com.kiranaapps.app',
     dryRun: false,
     batchSize: CONFIG.BATCH_SIZE,
   };
@@ -109,13 +109,13 @@ Fetch orders from Razorpay by date range and sync to database.
 Handles rate limits (429 errors) with exponential backoff.
 
 Usage:
-  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --app alertpay-default
-  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --app alertpay-default --dry-run
+  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31
+  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --dry-run
 
 Options:
   --from         Start date (YYYY-MM-DD) [required]
   --to           End date (YYYY-MM-DD) [required]
-  --app          App ID to sync orders for (default: alertpay-default)
+  --app          App ID to sync orders for (default: com.kiranaapps.app)
   --dry-run      Only show what would be synced, don't actually sync
   --batch-size   Number of orders per batch (default: 20)
   --help         Show this help message
@@ -126,9 +126,11 @@ Environment Variables:
   RAZORPAY_KEY_SECRET  Razorpay API secret (required)
 
 Examples:
-  # Sync January 2024 orders
-  DATABASE_URL="postgres://..." RAZORPAY_KEY_ID="rzp_..." RAZORPAY_KEY_SECRET="..." \\
-    node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31
+  # Sync January 2024 orders for Kirana Apps
+  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31
+
+  # Sync orders for a different app
+  node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --app alertpay-default
 
   # Dry run to see what would be synced
   node scripts/backfill-razorpay-orders.js --from 2024-01-01 --to 2024-01-31 --dry-run
@@ -203,13 +205,13 @@ function normalizePhoneNumber(value) {
   return null;
 }
 
-// Convert date to UTC timestamp
+// Convert date to UTC timestamp (in seconds for Razorpay API)
 function dateToUTCTimestamp(date) {
   const year = date.getFullYear();
   const month = date.getMonth();
   const day = date.getDate();
   const utcDate = new Date(Date.UTC(year, month, day));
-  return Math.floor(utcDate.getTime() / 1000);
+  return Math.floor(utcDate.getTime() / 1000); // Return seconds (Unix timestamp)
 }
 
 // Debug: Convert timestamp back to readable date
@@ -222,41 +224,35 @@ async function fetchOrdersFromRazorpay(razorpay, fromDate, toDate) {
   console.log(`\n📥 Fetching orders from Razorpay...`);
   console.log(`   Date range: ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`);
   
+  // Note: Razorpay API expects timestamps in SECONDS (Unix format)
   const fromTimestamp = dateToUTCTimestamp(fromDate);
-  const toTimestamp = dateToUTCTimestamp(toDate) + 86399; // End of day
+  const toTimestamp = dateToUTCTimestamp(toDate) + 86399; // End of day in seconds (23:59:59)
   
   console.log(`   Looking for orders between: ${timestampToDate(fromTimestamp)} and ${timestampToDate(toTimestamp)}`);
   
   const allOrders = [];
   let skip = 0;
   const count = 100;
-  let hasMoreOrders = true;
 
-  while (hasMoreOrders) {
+  while (true) {
     try {
+      // Use from/to parameters to let Razorpay filter server-side
       const response = await withRetry(() => 
-        razorpay.orders.all({ count, skip })
+        razorpay.orders.all({ 
+          count, 
+          skip,
+          from: fromTimestamp,
+          to: toTimestamp
+        })
       );
 
       const orders = response.items || [];
+      allOrders.push(...orders);
       
-      // Filter orders by date range
-      const filteredOrders = orders.filter(order => {
-        const orderTimestamp = order.created_at;
-        return orderTimestamp >= fromTimestamp && orderTimestamp <= toTimestamp;
-      });
-      
-      allOrders.push(...filteredOrders);
-      
-      process.stdout.write(`\r   Fetched ${allOrders.length} orders in range... (total scanned: ${skip + orders.length})`);
+      process.stdout.write(`\r   Fetched ${allOrders.length} orders...`);
 
-      // Check if we should stop fetching
-      // Stop if: 1) Less than count orders returned, or 2) All orders are before the fromDate
       if (orders.length < count) {
-        hasMoreOrders = false;
-      } else if (orders.length > 0 && orders[orders.length - 1].created_at < fromTimestamp) {
-        // Last order in batch is before our start date, no need to fetch more
-        hasMoreOrders = false;
+        break;
       }
 
       skip += count;
