@@ -29,15 +29,64 @@ export default function SyncOrdersPage() {
 
     try {
       const text = await file.text();
-      const lines = text.split(/\r?\n/);
-      
-      // Extract Order IDs (handle potential header and empty lines)
-      const orderIds = lines
-        .map((line) => line.trim().split(",")[0].trim())
-        .filter((id) => id.startsWith("order_"));
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length === 0) {
+        throw new Error("CSV file is empty.");
+      }
+
+      // Normalize header for matching (lowercase, collapse spaces to underscore)
+      const normalizeHeader = (h: string) =>
+        h.toLowerCase().trim().replace(/\s+/g, "_").replace(/["']/g, "");
+      const orderIdHeaderNames = [
+        "razorpay_order_id",
+        "razorpayorderid",
+        "order_id",
+        "orderid",
+        "razorpay_orderid",
+      ];
+
+      const firstRowCells = lines[0].split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+      const firstRowNormalized = firstRowCells.map(normalizeHeader);
+      const isFirstRowHeader = firstRowNormalized.some((h) =>
+        orderIdHeaderNames.some((name) => h === name || h.includes("razorpay") && h.includes("order"))
+      );
+
+      let orderIdColumnIndex: number;
+      if (isFirstRowHeader) {
+        const idx = firstRowNormalized.findIndex((h) =>
+          orderIdHeaderNames.some((name) => h === name || (h.includes("razorpay") && h.includes("order")))
+        );
+        orderIdColumnIndex = idx >= 0 ? idx : 0;
+      } else {
+        orderIdColumnIndex = -1; // use "search in first 3 columns" below
+      }
+
+      const dataStart = isFirstRowHeader ? 1 : 0;
+      const orderIds: string[] = [];
+
+      for (let i = dataStart; i < lines.length; i++) {
+        const cells = lines[i].split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+        let value: string | null = null;
+        if (orderIdColumnIndex >= 0 && orderIdColumnIndex < cells.length) {
+          value = cells[orderIdColumnIndex];
+        }
+        if (!value || !value.startsWith("order_")) {
+          // No header column or not found: check first three columns
+          for (let col = 0; col < Math.min(3, cells.length); col++) {
+            const v = cells[col];
+            if (v && v.startsWith("order_")) {
+              value = v;
+              break;
+            }
+          }
+        }
+        if (value && value.startsWith("order_")) {
+          orderIds.push(value);
+        }
+      }
 
       if (orderIds.length === 0) {
-        throw new Error("No valid Razorpay Order IDs found in CSV.");
+        throw new Error("No valid Razorpay Order IDs found in CSV. Expect a column named 'razorpay_order_id' (or 'order_id') or order IDs (order_...) in the first three columns.");
       }
 
       const syncResult = await syncOrdersAction(orderIds, targetAppId);
@@ -49,8 +98,6 @@ export default function SyncOrdersPage() {
     }
   };
 
-
-  console.log(results)
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -98,7 +145,7 @@ export default function SyncOrdersPage() {
               {isUploading ? "Processing sync..." : "Upload CSV file"}
             </h3>
             <p className="text-xs text-zinc-500 mb-4 text-center">
-              CSV should have Razorpay Order IDs in the first column.
+              CSV can have a header (e.g. &quot;razorpay_order_id&quot; or &quot;order_id&quot;) or list order IDs in the first, second, or third column.
             </p>
             
             <label className="relative cursor-pointer">
