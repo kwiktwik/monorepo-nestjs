@@ -50,6 +50,69 @@ export interface SyncResult {
   razorpayOrderId: string;
   status: "success" | "skipped" | "error";
   message: string;
+  retryCount?: number;
+}
+
+// Simple user type for lookups
+type UserLookup = {
+  id: string;
+  email: string | null;
+  phoneNumber: string | null;
+};
+
+/**
+ * Sleep for specified milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if error is a rate limit error (429)
+ */
+function isRateLimitError(error: any): boolean {
+  return error?.statusCode === 429 || 
+         error?.error?.code === 'BAD_REQUEST_ERROR' ||
+         error?.message?.includes('Too many requests');
+}
+
+/**
+ * Retry wrapper with exponential backoff for Razorpay API calls
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Only retry on rate limit errors
+      if (!isRateLimitError(error)) {
+        throw error;
+      }
+      
+      // Don't retry on last attempt
+      if (attempt === maxRetries) {
+        break;
+      }
+      
+      // Exponential backoff with jitter
+      const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000);
+      const jitter = Math.random() * 500;
+      const totalDelay = delay + jitter;
+      
+      console.log(`Rate limit hit, retrying attempt ${attempt}/${maxRetries} after ${Math.round(totalDelay)}ms...`);
+      await sleep(totalDelay);
+    }
+  }
+  
+  throw lastError;
 }
 
 /**
@@ -199,13 +262,6 @@ export async function compareOrders(
   };
 }
 
-// Simple user type for lookups
-type UserLookup = {
-  id: string;
-  email: string | null;
-  phoneNumber: string | null;
-};
-
 /**
  * Fetch all necessary data upfront to minimize DB queries
  */
@@ -259,7 +315,7 @@ async function preloadSyncData(
 }
 
 /**
- * Process a single order sync using preloaded data
+ * Process a single order sync using preloaded data with retry logic
  */
 async function syncSingleOrderWithData(
   rzpOrderId: string,
@@ -278,11 +334,11 @@ async function syncSingleOrderWithData(
       };
     }
 
-    // Fetch order details from Razorpay
-    const rzpOrder = await razorpay.orders.fetch(rzpOrderId);
+    // Fetch order details from Razorpay with retry
+    const rzpOrder = await withRetry(() => razorpay.orders.fetch(rzpOrderId));
 
-    // Fetch payments for this order to get user details
-    const payments = await razorpay.orders.fetchPayments(rzpOrderId);
+    // Fetch payments for this order with retry
+    const payments = await withRetry(() => razorpay.orders.fetchPayments(rzpOrderId));
     const firstPayment = payments.items?.[0];
 
     // Try to get user info from multiple sources
@@ -395,6 +451,16 @@ async function syncSingleOrderWithData(
 
   } catch (error: any) {
     console.error(`Error syncing order ${rzpOrderId}:`, error);
+    
+    // Check if it's a rate limit error after all retries
+    if (isRateLimitError(error)) {
+      return {
+        razorpayOrderId: rzpOrderId,
+        status: "error",
+        message: "Rate limit exceeded - too many requests. Please wait a moment and try again.",
+      };
+    }
+    
     return {
       razorpayOrderId: rzpOrderId,
       status: "error",
@@ -405,7 +471,7 @@ async function syncSingleOrderWithData(
 
 /**
  * Sync selected orders from Razorpay to local DB
- * Optimized with bulk data loading and larger batch size
+ * Optimized with bulk data loading, smaller batches with delays, and retry logic
  */
 export async function syncSelectedOrders(
   orderIds: string[],
@@ -416,18 +482,31 @@ export async function syncSelectedOrders(
   // Preload all necessary data in 2 DB queries instead of N queries
   const { existingOrderIds, usersByEmail, usersByPhone } = await preloadSyncData(orderIds, appId);
 
-  // Process orders in larger parallel batches (100 at a time)
-  const BATCH_SIZE = 100;
+  // Process orders in smaller batches (20 at a time) with delays to avoid rate limits
+  const BATCH_SIZE = 20;
+  const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds between batches
   const results: SyncResult[] = [];
 
   for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
     const batch = orderIds.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(orderIds.length / BATCH_SIZE);
+    
+    console.log(`Processing batch ${batchNum}/${totalBatches} (${batch.length} orders)...`);
+    
+    // Process batch
     const batchResults = await Promise.all(
       batch.map((orderId) => 
         syncSingleOrderWithData(orderId, appId, existingOrderIds, usersByEmail, usersByPhone)
       )
     );
     results.push(...batchResults);
+
+    // Add delay between batches to avoid rate limiting (except for last batch)
+    if (i + BATCH_SIZE < orderIds.length) {
+      console.log(`Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+      await sleep(DELAY_BETWEEN_BATCHES);
+    }
   }
 
   return results;
