@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import * as Mixpanel from 'mixpanel';
 import { DeviceSessionService } from '../device-session/device-session.service';
+import { enrichMixpanelProperties, MixpanelEnrichmentProps } from './mixpanel-helpers';
 
 export interface UserData {
   email?: string;
@@ -12,6 +13,9 @@ export interface UserData {
   userId?: string;
   ip?: string;
   userAgent?: string;
+  referrer?: string;
+  query?: Record<string, string | string[] | undefined>;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 export interface EventProperties {
@@ -398,6 +402,19 @@ export class AnalyticsService implements OnModuleInit {
       };
 
       if (deduplicationId) eventProps.$insert_id = deduplicationId;
+
+      // Add Mixpanel enrichment properties (browser, device, os, ip, referrer, utm)
+      const enrichment = enrichMixpanelProperties({
+        userAgent: userData.userAgent,
+        referrer: userData.referrer,
+        ip: userData.ip,
+        query: userData.query,
+        headers: userData.headers,
+      });
+
+      Object.entries(enrichment).forEach(([key, value]) => {
+        if (value !== undefined) eventProps[key] = value;
+      });
 
       Object.entries(properties || {}).forEach(([key, value]) => {
         if (value !== undefined) eventProps[key] = value;

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { deviceSessions } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { enrichMixpanelProperties, MixpanelEnrichmentProps } from "@/lib/analytics/mixpanel-helpers";
 
 const FACEBOOK_ACCESS_TOKEN = process.env.VED_FACEBOOK_CONVERSION_AP_TOKEN || "";
 const FACEBOOK_PIXEL_ID = process.env.FACEBOOK_PIXEL_ID || "";
@@ -39,6 +40,8 @@ export interface UserData {
   userId?: string;
   ip?: string;
   userAgent?: string;
+  referrer?: string;
+  query?: Record<string, string | string[] | undefined>;
 }
 
 export interface EventProperties {
@@ -322,19 +325,28 @@ export async function sendFacebookConversionEvent(
 /**
  * Send event to Mixpanel
  * Completely isolated error handling - this function will NEVER throw
- * 
+ *
  * Following Mixpanel server-side best practices:
  * - Requires distinct_id (user identifier)
  * - Supports user properties via $set
  * - Includes IP address for geolocation
  * - Includes event properties
+ * - Includes User-Agent parsing (browser, device, OS)
+ * - Includes UTM parameters for attribution
+ * - Includes referrer information
  */
 export async function sendMixpanelEvent(
   eventName: string,
   distinctId: string,
   properties?: EventProperties,
   userProperties?: EventProperties,
-  insertId?: string
+  insertId?: string,
+  enrichmentOptions?: {
+    userAgent?: string;
+    referrer?: string;
+    ip?: string;
+    query?: Record<string, string | string[] | undefined>;
+  }
 ): Promise<boolean> {
   try {
     if (!mixpanel) {
@@ -353,6 +365,22 @@ export async function sendMixpanelEvent(
 
     if (insertId) {
       eventProperties.$insert_id = insertId;
+    }
+
+    // Add Mixpanel enrichment properties (browser, device, os, ip, referrer, utm)
+    if (enrichmentOptions) {
+      const enrichment = enrichMixpanelProperties({
+        userAgent: enrichmentOptions.userAgent,
+        referrer: enrichmentOptions.referrer,
+        ip: enrichmentOptions.ip,
+        query: enrichmentOptions.query,
+      });
+
+      for (const [key, value] of Object.entries(enrichment)) {
+        if (value !== undefined) {
+          eventProperties[key] = value;
+        }
+      }
     }
 
     if (properties) {
@@ -498,7 +526,7 @@ export async function sendAnalyticsEvent(
   deduplicationId?: string
 ): Promise<boolean> {
   try {
-    // Automatically populate IP and User Agent from request headers if missing
+    // Automatically populate IP, User Agent, and Referrer from request headers if missing
     try {
       const headersList = await headers();
       if (!userData.ip) {
@@ -508,6 +536,9 @@ export async function sendAnalyticsEvent(
       }
       if (!userData.userAgent) {
         userData.userAgent = headersList.get("user-agent") || undefined;
+      }
+      if (!userData.referrer) {
+        userData.referrer = headersList.get("referer") || undefined;
       }
     } catch (headerError) {
       // Ignore errors if headers() is not available (e.g. non-request context)
@@ -551,7 +582,13 @@ export async function sendAnalyticsEvent(
       distinctId,
       eventProperties,
       mixpanelUserProperties,
-      deduplicationId // Pass as $insert_id
+      deduplicationId, // Pass as $insert_id
+      {
+        userAgent: userData.userAgent,
+        referrer: userData.referrer,
+        ip: userData.ip,
+        query: userData.query,
+      }
     );
 
     // Return true if Mixpanel succeeded (primary concern)

@@ -71,6 +71,7 @@
     "razorpay": "^2.9.6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "ua-parser-js": "^2.0.9",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -86,6 +87,7 @@
     "@types/node": "^22.10.7",
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
+    "@types/ua-parser-js": "^0.7.39",
     "dotenv": "^16.4.5",
     "drizzle-kit": "^0.31.9",
     "drizzle-pgmem": "^0.6.2",

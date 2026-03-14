@@ -8,7 +8,7 @@ export interface AnalyticsEvent {
     params?: Record<string, string | number | boolean>;
 }
 
-import { sendMixpanelEvent } from "@/lib/events/server";
+import { sendMixpanelEvent, type UserData } from "@/lib/events/server";
 
 export class AnalyticsService {
     /**
@@ -25,12 +25,22 @@ export class AnalyticsService {
     /**
      * Log event to console (can be extended to Firebase, Singular, CleverTap)
      */
-    static async logEvent(eventName: string, params?: Record<string, string | number | boolean>, userId?: string): Promise<void> {
+    static async logEvent(
+        eventName: string,
+        params?: Record<string, string | number | boolean>,
+        userId?: string,
+        enrichmentContext?: {
+            userAgent?: string;
+            referrer?: string;
+            ip?: string;
+            query?: Record<string, string | string[] | undefined>;
+        }
+    ): Promise<void> {
         await this.safeExecute(async () => {
             // Send to Mixpanel using the server-side utility
             // Use a default distinct_id if not provided
             const distinctId = userId || "anonymous";
-            await sendMixpanelEvent(eventName, distinctId, params);
+            await sendMixpanelEvent(eventName, distinctId, params, undefined, undefined, enrichmentContext);
         }, `logEvent:${eventName}`);
     }
 
