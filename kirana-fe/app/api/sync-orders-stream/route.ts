@@ -5,6 +5,7 @@ import { orders } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { ORDER_STATUS } from "@/lib/constants/order-status";
 import { generateOrderId } from "@/lib/utils";
+import { requireAdmin } from "@/lib/better-auth/auth-utils";
 
 // Types
 interface SyncResult {
@@ -270,6 +271,9 @@ async function syncSingleOrderWithData(
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    await requireAdmin();
+
     const { orderIds, appId } = await request.json();
     
     if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
