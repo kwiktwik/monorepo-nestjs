@@ -125,46 +125,73 @@ export default function RazorpayBulkSyncPage() {
     }
   }, [fromDate, toDate, selectedAppId]);
 
-  // Handle sync selected orders
+  // Handle sync selected orders with progress updates
   const handleSyncSelected = useCallback(async () => {
     if (selectedOrders.size === 0) return;
 
     setIsFetching(true);
-    setSyncResults(null);
+    setSyncResults([]);
+    setError(null);
+
+    const orderIds = Array.from(selectedOrders);
+    const BATCH_SIZE = 5; // Process 5 orders at a time for better progress visibility
+    const allResults: SyncResult[] = [];
 
     try {
-      const orderIds = Array.from(selectedOrders);
+      for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
+        const batch = orderIds.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(orderIds.length / BATCH_SIZE);
 
-      setProgress({
-        current: 0,
-        total: orderIds.length,
-        status: "syncing",
-        message: `Syncing ${orderIds.length} orders...`,
-      });
+        setProgress({
+          current: i,
+          total: orderIds.length,
+          status: "syncing",
+          message: `Syncing batch ${batchNum}/${totalBatches} (${i + 1}-${Math.min(i + BATCH_SIZE, orderIds.length)} of ${orderIds.length})...`,
+        });
 
-      const results = await syncSelectedOrders(orderIds, selectedAppId);
+        // Process this batch
+        const batchResults = await syncSelectedOrders(batch, selectedAppId);
+        allResults.push(...batchResults);
 
-      // Update progress for each result
+        // Update results in real-time
+        setSyncResults([...allResults]);
+
+        // Remove successfully synced orders from selection
+        const successfulIds = new Set(
+          batchResults.filter((r) => r.status === "success").map((r) => r.razorpayOrderId)
+        );
+        setSelectedOrders((prev) => {
+          const next = new Set(prev);
+          successfulIds.forEach((id) => next.delete(id));
+          return next;
+        });
+
+        // Small delay to show progress
+        if (i + BATCH_SIZE < orderIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      // Final progress update
+      const successCount = allResults.filter((r) => r.status === "success").length;
+      const skippedCount = allResults.filter((r) => r.status === "skipped").length;
+      const errorCount = allResults.filter((r) => r.status === "error").length;
+
       setProgress({
         current: orderIds.length,
         total: orderIds.length,
         status: "completed",
-        message: `Sync completed: ${results.filter((r) => r.status === "success").length} success, ${results.filter((r) => r.status === "skipped").length} skipped`,
-      });
-
-      setSyncResults(results);
-
-      // Remove successfully synced orders from selection
-      const successfulIds = new Set(
-        results.filter((r) => r.status === "success").map((r) => r.razorpayOrderId)
-      );
-      setSelectedOrders((prev) => {
-        const next = new Set(prev);
-        successfulIds.forEach((id) => next.delete(id));
-        return next;
+        message: `Sync completed: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors`,
       });
     } catch (err: any) {
       setError(err.message || "Failed to sync orders");
+      setProgress({
+        current: 0,
+        total: 0,
+        status: "error",
+        message: err.message || "Sync failed",
+      });
     } finally {
       setIsFetching(false);
     }
@@ -480,10 +507,10 @@ export default function RazorpayBulkSyncPage() {
               </table>
             </div>
 
-            {/* Sync Button */}
+            {/* Sync Button & Progress */}
             {selectedOrders.size > 0 && (
               <div className="border-t border-zinc-200 p-4 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">
                     {selectedOrders.size} order(s) selected
                   </span>
@@ -504,6 +531,26 @@ export default function RazorpayBulkSyncPage() {
                     Sync Selected Orders
                   </button>
                 </div>
+
+                {/* Sync Progress Bar */}
+                {isFetching && progress.status === "syncing" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>{progress.message}</span>
+                    </div>
+                    <div className="w-full bg-zinc-200 rounded-full h-2 dark:bg-zinc-700">
+                      <div
+                        className="bg-green-600 h-2 rounded-full transition-all duration-300 dark:bg-green-500"
+                        style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500">
+                      <span>Progress: {progress.current} / {progress.total} orders</span>
+                      <span>{Math.round((progress.current / progress.total) * 100)}%</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
