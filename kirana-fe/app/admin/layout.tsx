@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/better-auth/auth";
 import Link from "next/link";
-import { LayoutDashboard, Users, UserCircle, Bell, RefreshCcw, Search } from "lucide-react";
+import { LayoutDashboard, Users, UserCircle, Bell, RefreshCcw, Search, Database } from "lucide-react";
 import { isAllowedAdmin } from "@/lib/better-auth/auth-utils";
 
 import { AdminBackendProvider } from "./components/AdminBackendContext";
@@ -66,6 +66,15 @@ export default async function AdminLayout({
                 >
                   <RefreshCcw className="h-4 w-4" />
                   Sync Orders
+                </Link>
+              ) : null}
+              {isFullAdmin ? (
+                <Link
+                  href="/admin/razorpay-sync"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+                >
+                  <Database className="h-4 w-4" />
+                  Bulk Sync
                 </Link>
               ) : null}
               {isFullAdmin ? (
