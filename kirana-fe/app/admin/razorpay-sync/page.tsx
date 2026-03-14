@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, use, Suspense } from "react";
+import React, { useState, useCallback, use, useEffect, Suspense } from "react";
 import {
   fetchOrdersByDateRange,
   compareOrders,
-  syncSelectedOrdersStream,
   MissingOrder,
   CompareResult,
   SyncResult,
@@ -22,90 +21,117 @@ import {
   Layout,
 } from "lucide-react";
 
-// Helper to create a thenable from stream for use() hook
-function createStreamThenable<T>(stream: ReadableStream<T>): {
-  thenable: Promise<T>;
-  next: () => Promise<T> | null;
-} {
-  const reader = stream.getReader();
-  let currentPromise: Promise<T> | null = null;
-
-  const readNext = (): Promise<T> => {
-    return reader.read().then(({ done, value }) => {
-      if (done) {
-        throw new Error("Stream complete");
-      }
-      return value;
-    });
-  };
-
-  return {
-    thenable: readNext(),
-    next: () => {
-      currentPromise = readNext();
-      return currentPromise;
-    },
-  };
-}
-
-// Component that displays streaming progress
+// Component that displays streaming progress using EventSource
 function StreamingSyncProgress({
-  streamPromise,
+  orderIds,
+  appId,
   onComplete,
 }: {
-  streamPromise: Promise<ReadableStream<SyncProgressUpdate>>;
+  orderIds: string[];
+  appId: string;
   onComplete: (results: SyncResult[]) => void;
 }) {
-  const stream = use(streamPromise);
-  const [thenable, setThenable] = useState(() => createStreamThenable(stream));
-  const [accumulatedResults, setAccumulatedResults] = useState<SyncResult[]>([]);
+  const [currentUpdate, setCurrentUpdate] = useState<SyncProgressUpdate | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  try {
-    const update = use(thenable.thenable);
-
-    // Update accumulated results
-    if (update.accumulatedResults.length > accumulatedResults.length) {
-      setAccumulatedResults(update.accumulatedResults);
-    }
-
-    // Check if complete
-    if (update.isComplete && !isComplete) {
-      setIsComplete(true);
-      onComplete(update.accumulatedResults);
-    }
-
-    // Request next chunk if not complete
-    if (!update.isComplete) {
-      const next = thenable.next();
-      if (next) {
-        setThenable({ thenable: next, next: thenable.next });
+  useEffect(() => {
+    const abortController = new AbortController();
+    
+    async function startStream() {
+      try {
+        const response = await fetch('/api/sync-orders-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds, appId }),
+          signal: abortController.signal,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to start sync');
+        }
+        
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+        
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Process complete SSE events from buffer
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep incomplete data in buffer
+          
+          for (const line of lines) {
+            const dataMatch = line.match(/^data: (.+)$/m);
+            if (dataMatch) {
+              try {
+                const update: SyncProgressUpdate = JSON.parse(dataMatch[1]);
+                setCurrentUpdate(update);
+                
+                if (update.isComplete) {
+                  onComplete(update.accumulatedResults);
+                  setIsComplete(true);
+                  return;
+                }
+              } catch (e) {
+                console.error('Failed to parse SSE data:', e);
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          setError(err instanceof Error ? err.message : 'Stream error');
+        }
       }
     }
+    
+    startStream();
+    
+    return () => {
+      abortController.abort();
+    };
+  }, [orderIds, appId, onComplete]);
 
+  if (error) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-zinc-400">
+          <AlertCircle className="h-4 w-4" />
+          <span>Error: {error}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUpdate && !isComplete) {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>{update.message}</span>
+          <span>Starting sync...</span>
         </div>
         <div className="w-full bg-zinc-200 rounded-full h-2 dark:bg-zinc-700">
-          <div
-            className="bg-green-600 h-2 rounded-full transition-all duration-300 dark:bg-green-500"
-            style={{ width: `${(update.current / update.total) * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-zinc-500">
-          <span>Progress: {update.current} / {update.total} orders</span>
-          <span>{Math.round((update.current / update.total) * 100)}%</span>
+          <div className="bg-green-600 h-2 rounded-full w-0 dark:bg-green-500" />
         </div>
       </div>
     );
-  } catch {
-    // Stream complete
+  }
+
+  if (isComplete) {
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-zinc-400">
           <CheckCircle2 className="h-4 w-4" />
           <span>Sync completed!</span>
         </div>
@@ -115,6 +141,27 @@ function StreamingSyncProgress({
       </div>
     );
   }
+
+  const update = currentUpdate!;
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>{update.message}</span>
+      </div>
+      <div className="w-full bg-zinc-200 rounded-full h-2 dark:bg-zinc-700">
+        <div
+          className="bg-green-600 h-2 rounded-full transition-all duration-300 dark:bg-green-500"
+          style={{ width: `${(update.current / update.total) * 100}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-xs text-zinc-500">
+        <span>Progress: {update.current} / {update.total} orders</span>
+        <span>{Math.round((update.current / update.total) * 100)}%</span>
+      </div>
+    </div>
+  );
 }
 
 const REGISTERED_APPS = [
@@ -222,27 +269,22 @@ export default function RazorpayBulkSyncPage() {
   }, [fromDate, toDate, selectedAppId]);
 
   // Handle sync selected orders with streaming progress
-  const [streamPromise, setStreamPromise] = useState<Promise<ReadableStream<SyncProgressUpdate>> | null>(null);
-  
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const handleSyncSelected = useCallback(() => {
     if (selectedOrders.size === 0) return;
 
     setIsFetching(true);
     setSyncResults([]);
     setError(null);
-    
-    const orderIds = Array.from(selectedOrders);
-    
-    // Start the stream
-    const promise = syncSelectedOrdersStream(orderIds, selectedAppId);
-    setStreamPromise(promise);
-  }, [selectedOrders, selectedAppId]);
-  
+    setIsSyncing(true);
+  }, [selectedOrders]);
+
   const handleStreamComplete = useCallback((results: SyncResult[]) => {
     setIsFetching(false);
-    setStreamPromise(null);
+    setIsSyncing(false);
     setSyncResults(results);
-    
+
     // Update progress to completed
     setProgress({
       current: results.length,
@@ -601,23 +643,12 @@ export default function RazorpayBulkSyncPage() {
                 </div>
 
                 {/* Sync Progress Bar with Streaming */}
-                {streamPromise && (
-                  <Suspense fallback={
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Starting sync...</span>
-                      </div>
-                      <div className="w-full bg-zinc-200 rounded-full h-2 dark:bg-zinc-700">
-                        <div className="bg-green-600 h-2 rounded-full w-0 dark:bg-green-500" />
-                      </div>
-                    </div>
-                  }>
-                    <StreamingSyncProgress 
-                      streamPromise={streamPromise} 
-                      onComplete={handleStreamComplete}
-                    />
-                  </Suspense>
+                {isSyncing && (
+                  <StreamingSyncProgress
+                    orderIds={Array.from(selectedOrders)}
+                    appId={selectedAppId}
+                    onComplete={handleStreamComplete}
+                  />
                 )}
               </div>
             )}
