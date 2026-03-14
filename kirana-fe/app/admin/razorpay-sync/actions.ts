@@ -53,6 +53,17 @@ export interface SyncResult {
   retryCount?: number;
 }
 
+export interface SyncProgressUpdate {
+  current: number;
+  total: number;
+  batchNum: number;
+  totalBatches: number;
+  batchResults: SyncResult[];
+  accumulatedResults: SyncResult[];
+  isComplete: boolean;
+  message: string;
+}
+
 // Simple user type for lookups
 type UserLookup = {
   id: string;
@@ -472,6 +483,7 @@ async function syncSingleOrderWithData(
 /**
  * Sync selected orders from Razorpay to local DB
  * Optimized with bulk data loading, smaller batches with delays, and retry logic
+ * Returns a Promise for backward compatibility
  */
 export async function syncSelectedOrders(
   orderIds: string[],
@@ -510,4 +522,81 @@ export async function syncSelectedOrders(
   }
 
   return results;
+}
+
+/**
+ * Stream sync progress using ReadableStream
+ * Returns a stream that emits progress updates after each batch
+ */
+export async function syncSelectedOrdersStream(
+  orderIds: string[],
+  appId: string
+): Promise<ReadableStream<SyncProgressUpdate>> {
+  await requireAdmin();
+
+  // Preload all necessary data
+  const { existingOrderIds, usersByEmail, usersByPhone } = await preloadSyncData(orderIds, appId);
+
+  const BATCH_SIZE = 20;
+  const DELAY_BETWEEN_BATCHES = 2000;
+  const totalBatches = Math.ceil(orderIds.length / BATCH_SIZE);
+
+  return new ReadableStream({
+    async start(controller) {
+      const accumulatedResults: SyncResult[] = [];
+
+      try {
+        for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
+          const batch = orderIds.slice(i, i + BATCH_SIZE);
+          const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+          const current = Math.min(i + batch.length, orderIds.length);
+          
+          console.log(`Processing batch ${batchNum}/${totalBatches} (${batch.length} orders)...`);
+          
+          // Process batch
+          const batchResults = await Promise.all(
+            batch.map((orderId) => 
+              syncSingleOrderWithData(orderId, appId, existingOrderIds, usersByEmail, usersByPhone)
+            )
+          );
+          
+          accumulatedResults.push(...batchResults);
+
+          // Enqueue progress update
+          controller.enqueue({
+            current,
+            total: orderIds.length,
+            batchNum,
+            totalBatches,
+            batchResults,
+            accumulatedResults: [...accumulatedResults],
+            isComplete: false,
+            message: `Processing batch ${batchNum}/${totalBatches} (${batch.length} orders)...`,
+          });
+
+          // Delay between batches
+          if (i + BATCH_SIZE < orderIds.length) {
+            console.log(`Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+            await sleep(DELAY_BETWEEN_BATCHES);
+          }
+        }
+
+        // Final completion update
+        controller.enqueue({
+          current: orderIds.length,
+          total: orderIds.length,
+          batchNum: totalBatches,
+          totalBatches,
+          batchResults: [],
+          accumulatedResults,
+          isComplete: true,
+          message: `Sync completed: ${accumulatedResults.filter((r) => r.status === "success").length} success, ${accumulatedResults.filter((r) => r.status === "skipped").length} skipped`,
+        });
+        
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    }
+  });
 }

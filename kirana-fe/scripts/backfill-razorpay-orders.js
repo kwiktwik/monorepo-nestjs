@@ -22,6 +22,9 @@
  *   RAZORPAY_KEY_SECRET  Razorpay API secret (required)
  */
 
+// Load environment variables from .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 const { Client } = require('pg');
 const Razorpay = require('razorpay');
 
@@ -209,6 +212,11 @@ function dateToUTCTimestamp(date) {
   return Math.floor(utcDate.getTime() / 1000);
 }
 
+// Debug: Convert timestamp back to readable date
+function timestampToDate(timestamp) {
+  return new Date(timestamp * 1000).toISOString();
+}
+
 // Fetch all orders from Razorpay for date range
 async function fetchOrdersFromRazorpay(razorpay, fromDate, toDate) {
   console.log(`\n📥 Fetching orders from Razorpay...`);
@@ -217,23 +225,38 @@ async function fetchOrdersFromRazorpay(razorpay, fromDate, toDate) {
   const fromTimestamp = dateToUTCTimestamp(fromDate);
   const toTimestamp = dateToUTCTimestamp(toDate) + 86399; // End of day
   
+  console.log(`   Looking for orders between: ${timestampToDate(fromTimestamp)} and ${timestampToDate(toTimestamp)}`);
+  
   const allOrders = [];
   let skip = 0;
   const count = 100;
+  let hasMoreOrders = true;
 
-  while (true) {
+  while (hasMoreOrders) {
     try {
       const response = await withRetry(() => 
-        razorpay.orders.all({ count, skip, from: fromTimestamp, to: toTimestamp })
+        razorpay.orders.all({ count, skip })
       );
 
       const orders = response.items || [];
-      allOrders.push(...orders);
       
-      process.stdout.write(`\r   Fetched ${allOrders.length} orders...`);
+      // Filter orders by date range
+      const filteredOrders = orders.filter(order => {
+        const orderTimestamp = order.created_at;
+        return orderTimestamp >= fromTimestamp && orderTimestamp <= toTimestamp;
+      });
+      
+      allOrders.push(...filteredOrders);
+      
+      process.stdout.write(`\r   Fetched ${allOrders.length} orders in range... (total scanned: ${skip + orders.length})`);
 
+      // Check if we should stop fetching
+      // Stop if: 1) Less than count orders returned, or 2) All orders are before the fromDate
       if (orders.length < count) {
-        break;
+        hasMoreOrders = false;
+      } else if (orders.length > 0 && orders[orders.length - 1].created_at < fromTimestamp) {
+        // Last order in batch is before our start date, no need to fetch more
+        hasMoreOrders = false;
       }
 
       skip += count;
@@ -243,7 +266,7 @@ async function fetchOrdersFromRazorpay(razorpay, fromDate, toDate) {
     }
   }
 
-  console.log(`\n   ✅ Found ${allOrders.length} orders in Razorpay`);
+  console.log(`\n   ✅ Found ${allOrders.length} orders in date range`);
   return allOrders;
 }
 
