@@ -120,6 +120,21 @@ async function bootstrap() {
     },
   });
 
+  // Mock Data Swagger Instance
+  if (process.env.USE_MOCK_DB === 'true' || process.env.NODE_ENV !== 'production') {
+    const mockConfig = new DocumentBuilder()
+      .setTitle('KwikTwik Kirana Mock API')
+      .setDescription('API documentation for testing with mock data and rules engine')
+      .setVersion('1.0-mock')
+      .addServer(baseUrl, 'Mock environment')
+      .addApiKey({ type: 'apiKey', name: 'X-App-ID', in: 'header' }, 'X-App-ID')
+      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+      .build();
+    const mockDocument = SwaggerModule.createDocument(app, mockConfig);
+    SwaggerModule.setup('mock-docs', app, mockDocument);
+    logger.log(`📖 Mock Swagger docs: http://localhost:${port}/mock-docs`);
+  }
+
   // Enable CORS
   app.enableCors({
     origin: true,

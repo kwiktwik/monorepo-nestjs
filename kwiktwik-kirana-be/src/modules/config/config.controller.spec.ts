@@ -1,4 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
+jest.mock('json-rules-engine', () => ({
+  Engine: jest.fn().mockImplementation(() => ({
+    addRule: jest.fn(),
+    run: jest.fn(),
+  })),
+  Rule: jest.fn(),
+}));
 import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { INestApplication, NotFoundException } from '@nestjs/common';
@@ -12,6 +19,7 @@ describe('ConfigController', () => {
 
   const mockConfigService = {
     getConfig: jest.fn(),
+    getConfigSimple: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -46,10 +54,40 @@ describe('ConfigController', () => {
         appName: 'Test App',
         features: { subscription: { enabled: true } },
       };
-      mockConfigService.getConfig.mockReturnValue(mockConfig);
+      mockConfigService.getConfigSimple.mockReturnValue(mockConfig);
 
       const response = await request(app.getHttpServer())
         .get('/config/v2')
+        .set('X-App-ID', 'com.test.app');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.config).toEqual(mockConfig);
+    });
+
+    it('should handle config not found', async () => {
+      mockConfigService.getConfigSimple.mockImplementation(() => {
+        throw new NotFoundException('Configuration not found for app ID');
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/config/v2')
+        .set('X-App-ID', 'com.unknown.app');
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('GET /config/v3', () => {
+    it('should return app configuration', async () => {
+      const mockConfig = {
+        appName: 'Test App',
+        features: { subscription: { enabled: true } },
+      };
+      mockConfigService.getConfig.mockReturnValue(mockConfig);
+
+      const response = await request(app.getHttpServer())
+        .get('/config/v3')
         .set('X-App-ID', 'com.test.app');
 
       expect(response.status).toBe(200);
@@ -63,7 +101,7 @@ describe('ConfigController', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .get('/config/v2')
+        .get('/config/v3')
         .set('X-App-ID', 'com.unknown.app');
 
       expect(response.status).toBe(404);

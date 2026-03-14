@@ -6,6 +6,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 export interface JwtPayload {
   sub: string; // userId
   appId: string;
+  userType?: string;
+  deeplink?: string;
   iat: number;
   exp: number;
 }
@@ -29,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   validate(payload: JwtPayload) {
     this.logger.debug(
-      `JWT validate: sub=${payload?.sub}, appId=${payload?.appId}`,
+      `JWT validate: sub=${payload?.sub}, appId=${payload?.appId}, userType=${payload?.userType}, deeplink=${payload?.deeplink}`,
     );
     if (!payload?.sub || !payload?.appId) {
       this.logger.warn(`Invalid token payload: ${JSON.stringify(payload)}`);
@@ -39,6 +41,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       appId: payload.appId,
+      userType: payload.userType,
+      deeplink: payload.deeplink,
     };
   }
 }
