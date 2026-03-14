@@ -1,0 +1,162 @@
+image: node:22-alpine
+
+variables:
+  PNPM_HOME: "/root/.local/share/pnpm"
+  PATH: "$PNPM_HOME:$PATH"
+
+stages:
+  - install
+  - lint
+  - test
+  - build
+
+# Install pnpm
+.install_pnpm: &install_pnpm
+  - npm install -g pnpm
+
+# Cache configuration
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - kwiktwik-kirana-be/node_modules/
+    - kirana-fe/node_modules/
+    - .pnpm-store/
+
+# Install dependencies for backend
+install-backend:
+  stage: install
+  script:
+    - *install_pnpm
+    - cd kwiktwik-kirana-be
+    - pnpm install --frozen-lockfile
+  artifacts:
+    paths:
+      - kwiktwik-kirana-be/node_modules/
+    expire_in: 1 hour
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Install dependencies for frontend
+install-frontend:
+  stage: install
+  script:
+    - *install_pnpm
+    - cd kirana-fe
+    - pnpm install --frozen-lockfile
+  artifacts:
+    paths:
+      - kirana-fe/node_modules/
+    expire_in: 1 hour
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Lint backend
+lint-backend:
+  stage: lint
+  needs:
+    - install-backend
+  script:
+    - *install_pnpm
+    - cd kwiktwik-kirana-be
+    - pnpm lint
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Lint frontend  
+lint-frontend:
+  stage: lint
+  needs:
+    - install-frontend
+  script:
+    - *install_pnpm
+    - cd kirana-fe
+    - pnpm lint
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Test backend
+test-backend:
+  stage: test
+  needs:
+    - install-backend
+  script:
+    - *install_pnpm
+    - cd kwiktwik-kirana-be
+    - pnpm test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: kwiktwik-kirana-be/coverage/cobertura-coverage.xml
+      junit: kwiktwik-kirana-be/junit.xml
+    paths:
+      - kwiktwik-kirana-be/coverage/
+    expire_in: 1 week
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Test frontend
+test-frontend:
+  stage: test
+  needs:
+    - install-frontend
+  script:
+    - *install_pnpm
+    - cd kirana-fe
+    - pnpm test
+  artifacts:
+    reports:
+      junit: kirana-fe/junit.xml
+    expire_in: 1 week
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Build backend
+build-backend:
+  stage: build
+  needs:
+    - lint-backend
+    - test-backend
+  script:
+    - *install_pnpm
+    - cd kwiktwik-kirana-be
+    - pnpm build
+  artifacts:
+    paths:
+      - kwiktwik-kirana-be/dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Build frontend
+build-frontend:
+  stage: build
+  needs:
+    - lint-frontend
+    - test-frontend
+  script:
+    - *install_pnpm
+    - cd kirana-fe
+    - pnpm build
+  artifacts:
+    paths:
+      - kirana-fe/dist/
+      - kirana-fe/.next/
+    expire_in: 1 week
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
