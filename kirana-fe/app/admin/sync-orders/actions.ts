@@ -3,10 +3,34 @@
 import { razorpay } from "@/lib/razorpay";
 import { db } from "@/db";
 import { orders, user } from "@/db/schema";
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/better-auth/auth-utils";
 import { ORDER_STATUS } from "@/lib/constants/order-status";
 import { generateOrderId } from "@/lib/utils";
+
+/**
+ * Extract phone number from email or contact and normalize to E.164 format
+ * e.g., "919405760574@kiranaapps.local" -> "+919405760574"
+ * e.g., "919405760574" -> "+919405760574"
+ */
+function normalizePhoneNumber(value: string | null | undefined): string | null {
+    if (!value) return null;
+    
+    // Extract digits from the value (removes @domain if present)
+    const digits = value.replace(/\D/g, '');
+    
+    // If it looks like an Indian phone number (10 digits with 91 prefix or 12 digits)
+    if (digits.length === 12 && digits.startsWith('91')) {
+        return `+${digits}`;
+    }
+    
+    // If it's 10 digits, assume India and add +91
+    if (digits.length === 10) {
+        return `+91${digits}`;
+    }
+    
+    return null;
+}
 
 export interface SyncResult {
     razorpayOrderId: string;
@@ -73,19 +97,65 @@ export async function syncOrdersAction(razorpayOrderIds: string[], targetAppId: 
                 continue;
             }
 
-            // Find user in our DB
-            const dbUser = await db.query.user.findFirst({
-                where: or(
-                    email ? eq(user.email, String(email)) : undefined,
-                    contact ? eq(user.phoneNumber, String(contact)) : undefined
-                ),
-            });
+            // Normalize phone numbers for matching
+            const normalizedEmailPhone = normalizePhoneNumber(email);
+            const normalizedContactPhone = normalizePhoneNumber(contact);
+
+            // Find user in our DB - try multiple strategies
+            let dbUser = null;
+
+            // Strategy 1: Match by exact email
+            if (email) {
+                dbUser = await db.query.user.findFirst({
+                    where: eq(user.email, String(email)),
+                });
+            }
+
+            // Strategy 2: Match by exact contact/phone
+            if (!dbUser && contact) {
+                dbUser = await db.query.user.findFirst({
+                    where: eq(user.phoneNumber, String(contact)),
+                });
+            }
+
+            // Strategy 3: Match by normalized phone (extracted from email like 919405760574@kiranaapps.local)
+            // This handles the case where DB has +919405760574 but Razorpay has 919405760574@domain
+            if (!dbUser && (normalizedEmailPhone || normalizedContactPhone)) {
+                const phoneToMatch = normalizedEmailPhone || normalizedContactPhone;
+                dbUser = await db.query.user.findFirst({
+                    where: eq(user.phoneNumber, phoneToMatch!),
+                });
+            }
+
+            // Strategy 4: Try matching without the + prefix (in case DB has inconsistent data)
+            if (!dbUser && (normalizedEmailPhone || normalizedContactPhone)) {
+                const phoneWithoutPlus = (normalizedEmailPhone || normalizedContactPhone)!.replace('+', '');
+                dbUser = await db.query.user.findFirst({
+                    where: sql`REPLACE(${user.phoneNumber}, '+', '') = ${phoneWithoutPlus}`,
+                });
+            }
 
             if (!dbUser) {
+                // Diagnostic: Search for similar phone numbers to help debug
+                const searchPattern = normalizedEmailPhone || normalizedContactPhone;
+                let diagnosticInfo = '';
+                
+                if (searchPattern) {
+                    // Try to find any user with a similar phone number
+                    const similarUsers = await db.query.user.findMany({
+                        where: sql`${user.phoneNumber} LIKE ${'%' + searchPattern.replace('+', '').slice(-8) + '%'}`,
+                        limit: 3,
+                    });
+                    
+                    if (similarUsers.length > 0) {
+                        diagnosticInfo = ` | Similar numbers found: ${similarUsers.map(u => `${u.phoneNumber} (ID: ${u.id})`).join(', ')}`;
+                    }
+                }
+                
                 results.push({
                     razorpayOrderId: rzpOrderId,
                     status: "error",
-                    message: `User not found for ${email || contact}`,
+                    message: `User not found for ${email || contact} (normalized: ${normalizedEmailPhone || normalizedContactPhone || 'N/A'})${diagnosticInfo}`,
                 });
                 continue;
             }
