@@ -288,6 +288,13 @@
       "when": 1773163181342,
       "tag": "0040_crazy_dazzler",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1773566432555,
+      "tag": "0041_talented_mother_askani",
+      "breakpoints": true
     }
   ]
 }

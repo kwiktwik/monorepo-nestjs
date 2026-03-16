@@ -3,6 +3,7 @@ import ffmpegStatic from "ffmpeg-static";
 import axios from "axios";
 import { createWriteStream, createReadStream, promises as fs } from "fs";
 import { join, dirname } from "path";
+import "@/lib/utils/env"; // Standardize CI environment variables first
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { VIDEO_CONFIG, R2_CONFIG } from "./constants/video-config";
@@ -76,8 +77,16 @@ function setupFFmpegPath() {
 try {
   setupFFmpegPath();
 } catch (error) {
-  console.error("Failed to setup FFmpeg:", error);
-  process.exit(1);  // Fail fast at startup
+  // Only skip for CI/CD pipelines
+  // CI is a common environment variable in GitLab CI, GitHub Actions, etc.
+  const isPipeline = process.env.CI === 'true';
+  
+  if (isPipeline) {
+    console.warn("FFmpeg not found in CI pipeline. Skipping FFmpeg initialization.");
+  } else {
+    console.error("Failed to setup FFmpeg:", error);
+    process.exit(1);  // Fail fast at startup in dev/runtime environments
+  }
 }
 
 // Initialize R2 client (compatible with S3 API)

@@ -57,5 +57,31 @@ module.exports = {
         CRON_SECRET: "Xv8UHlz740SH", // Pass through from system env
       },
     },
+    {
+      name: "segment-no-trial-cron",
+      cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
+      script: "scripts/segment-no-trial-cron.js",
+      cron_restart: "0 */4 * * *", // Run every 4 hours (at minute 0)
+      autorestart: false,
+      watch: false,
+      env_production: {
+        PORT: 3000,
+        BASE_URL: "https://api.kiranaapps.com",
+        CRON_SECRET: "Xv8UHlz740SH",
+      },
+    },
+    {
+      name: "segment-trial-ended-cron",
+      cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
+      script: "scripts/segment-trial-ended-cron.js",
+      cron_restart: "0 */6 * * *", // Run every 6 hours (at minute 0)
+      autorestart: false,
+      watch: false,
+      env_production: {
+        PORT: 3000,
+        BASE_URL: "https://api.kiranaapps.com",
+        CRON_SECRET: "Xv8UHlz740SH",
+      },
+    },
   ],
 };

@@ -10,6 +10,7 @@ import {
   jsonb,
   pgEnum,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const transactionTypeEnum = pgEnum("transaction_type", [
@@ -691,5 +692,68 @@ export const abandonedCheckouts = pgTable(
     abandonedCheckoutsTimeIdx: index("abandoned_checkouts_time_idx").on(table.checkoutStartedAt),
     abandonedCheckoutsExpiryIdx: index("abandoned_checkouts_expiry_idx").on(table.offerExpiresAt),
     abandonedCheckoutsNextNotifIdx: index("abandoned_checkouts_next_notif_idx").on(table.nextNotificationScheduledAt),
+  })
+);
+
+/* =========================
+   NOTIFICATION RATE LIMITS
+   Tracks notification rate limits per user per day (max 4/day)
+========================= */
+export const notificationRateLimits = pgTable(
+  "notification_rate_limits",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    appId: text("app_id").notNull(),
+    date: text("date").notNull(), // YYYY-MM-DD format
+    count: integer("count").notNull().default(0),
+    lastNotificationAt: timestamp("last_notification_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    notificationRateLimitsUserIdIdx: index("notification_rate_limits_userId_idx").on(table.userId),
+    notificationRateLimitsAppIdIdx: index("notification_rate_limits_appId_idx").on(table.appId),
+    notificationRateLimitsDateIdx: index("notification_rate_limits_date_idx").on(table.date),
+    notificationRateLimitsUserDateIdx: index("notification_rate_limits_user_date_idx").on(table.userId, table.date),
+    notificationRateLimitsUnique: uniqueIndex("notification_rate_limits_user_app_date_unique").on(table.userId, table.appId, table.date),
+  })
+);
+
+/* =========================
+   CRON NOTIFICATION LOGS
+   Tracks notification sends from cron jobs for analytics
+   Backend-only tracking: success/failure, count, timestamps
+========================= */
+export const cronNotificationLogs = pgTable(
+  "cron_notification_logs",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    appId: text("app_id").notNull(),
+    segment: text("segment").notNull(), // "no_trial", "trial_abandoned"
+    notificationType: text("notification_type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    
+    // Backend tracking only
+    status: text("status").notNull(), // "sent", "failed"
+    sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+    errorMessage: text("error_message"), // Only populated if status = "failed"
+    fcmMessageId: text("fcm_message_id"), // FCM message ID if successful
+    
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    cronNotificationLogsUserIdIdx: index("cron_notification_logs_userId_idx").on(table.userId),
+    cronNotificationLogsAppIdIdx: index("cron_notification_logs_appId_idx").on(table.appId),
+    cronNotificationLogsSegmentIdx: index("cron_notification_logs_segment_idx").on(table.segment),
+    cronNotificationLogsStatusIdx: index("cron_notification_logs_status_idx").on(table.status),
+    cronNotificationLogsSentAtIdx: index("cron_notification_logs_sent_at_idx").on(table.sentAt),
+    cronNotificationLogsUserSegmentDateIdx: index("cron_notification_logs_user_segment_date_idx").on(table.userId, table.segment, table.sentAt),
   })
 );
