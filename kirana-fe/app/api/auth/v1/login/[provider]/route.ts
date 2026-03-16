@@ -239,7 +239,7 @@ async function loginWithOtp(
       let existingUser = await findUserByPhone(phoneNumber);
 
       if (!existingUser) {
-        const tempEmail = `${cleanPhone}@alertpay.local`;
+        const tempEmail = `${cleanPhone}@kiranaapps.local`;
         existingUser = await findUserByEmail(tempEmail);
       }
 
@@ -257,7 +257,7 @@ async function loginWithOtp(
         await updateUserMetadata(currentUser.id, appId);
       } else {
         // Create new user
-        const tempEmail = `${cleanPhone}@alertpay.local`;
+        const tempEmail = `${cleanPhone}@kiranaapps.local`;
         const tempName = `User ${cleanPhone.slice(-4)}`;
 
         currentUser = await createUserWithApp(
