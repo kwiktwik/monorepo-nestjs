@@ -454,7 +454,12 @@ export class PhonePeService {
           await this.db
             .update(schema.orders)
             .set({
-              status: orderStatus as any,
+              status: orderStatus as
+                | 'PENDING'
+                | 'PROCESSING'
+                | 'COMPLETED'
+                | 'FAILED'
+                | 'CANCELLED',
               updatedAt: new Date(),
             })
             .where(
@@ -669,7 +674,16 @@ export class PhonePeService {
         );
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        success: boolean;
+        code: string;
+        message: string;
+        data: {
+          orderToken: string;
+          expiresAt: string;
+          checkoutType: string;
+        };
+      };
       this.logger.log(`[PhonePe] Order token created: ${merchantOrderId}`);
 
       return {
@@ -742,7 +756,7 @@ export class PhonePeService {
       this.logger.error('[PhonePe] DB insert error:', error);
     }
 
-    const orderTokenResponse = await this.createOrderToken(userId, appId, {
+    const orderTokenResponse = (await this.createOrderToken(userId, appId, {
       merchantOrderId,
       amount: initialAmountPaise,
       redirectUrl,

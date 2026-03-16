@@ -1,6 +1,9 @@
 import { nanoid } from 'nanoid';
 import { IdMappingEntry } from '../interfaces/migration.interfaces';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RecordData = Record<string, any>;
+
 /**
  * ID Mapper for Migration
  * Maps old IDs from kirana-fe to new IDs in kwiktwik-kirana-be
@@ -52,16 +55,17 @@ export class IdMapper {
    * Convert all IDs in a record using mappings
    */
   mapRecordIds(
-    record: any,
+    record: RecordData,
     tableName: string,
     idFields: string[] = ['id'],
-  ): any {
+  ): RecordData {
     const mapped = { ...record };
 
     // Map primary ID
     for (const field of idFields) {
-      if (record[field]) {
-        const newId = this.getNewId(tableName, record[field]);
+      const fieldValue = record[field];
+      if (fieldValue && typeof fieldValue === 'string') {
+        const newId = this.getNewId(tableName, fieldValue);
         if (newId) {
           mapped[field] = newId;
         }
@@ -69,7 +73,7 @@ export class IdMapper {
     }
 
     // Map foreign keys based on table
-    this.mapForeignKeys(mapped, tableName);
+    this.mapForeignKeys(mapped);
 
     return mapped;
   }
@@ -77,45 +81,49 @@ export class IdMapper {
   /**
    * Map foreign key references
    */
-  private mapForeignKeys(record: any, tableName: string): void {
+  private mapForeignKeys(record: RecordData): void {
     // User ID is always the same (not mapped)
-    if (record.userId || record.user_id) {
-      // Keep userId as-is, it's the same user
-    }
+    // Keep userId as-is, it's the same user
 
     // Map subscription ID references
-    if (record.subscriptionId || record.subscription_id) {
-      const newSubId = this.getNewId(
-        'subscriptions',
-        record.subscriptionId || record.subscription_id,
-      );
-      if (newSubId) {
-        if (record.subscriptionId) record.subscriptionId = newSubId;
-        if (record.subscription_id) record.subscription_id = newSubId;
+    const subscriptionId = record.subscriptionId as string | undefined;
+    const subscription_id = record.subscription_id as string | undefined;
+    if (subscriptionId || subscription_id) {
+      const oldId = subscriptionId || subscription_id;
+      if (oldId && typeof oldId === 'string') {
+        const newSubId = this.getNewId('subscriptions', oldId);
+        if (newSubId) {
+          if (record.subscriptionId) record.subscriptionId = newSubId;
+          if (record.subscription_id) record.subscription_id = newSubId;
+        }
       }
     }
 
     // Map order ID references
-    if (record.orderId || record.order_id) {
-      const newOrderId = this.getNewId(
-        'orders',
-        record.orderId || record.order_id,
-      );
-      if (newOrderId) {
-        if (record.orderId) record.orderId = newOrderId;
-        if (record.order_id) record.order_id = newOrderId;
+    const orderId = record.orderId as string | undefined;
+    const order_id = record.order_id as string | undefined;
+    if (orderId || order_id) {
+      const oldId = orderId || order_id;
+      if (oldId && typeof oldId === 'string') {
+        const newOrderId = this.getNewId('orders', oldId);
+        if (newOrderId) {
+          if (record.orderId) record.orderId = newOrderId;
+          if (record.order_id) record.order_id = newOrderId;
+        }
       }
     }
 
     // Map checkout ID references
-    if (record.checkoutId || record.checkout_id) {
-      const newCheckoutId = this.getNewId(
-        'abandonedCheckouts',
-        record.checkoutId || record.checkout_id,
-      );
-      if (newCheckoutId) {
-        if (record.checkoutId) record.checkoutId = newCheckoutId;
-        if (record.checkout_id) record.checkout_id = newCheckoutId;
+    const checkoutId = record.checkoutId as string | undefined;
+    const checkout_id = record.checkout_id as string | undefined;
+    if (checkoutId || checkout_id) {
+      const oldId = checkoutId || checkout_id;
+      if (oldId && typeof oldId === 'string') {
+        const newCheckoutId = this.getNewId('abandonedCheckouts', oldId);
+        if (newCheckoutId) {
+          if (record.checkoutId) record.checkoutId = newCheckoutId;
+          if (record.checkout_id) record.checkout_id = newCheckoutId;
+        }
       }
     }
   }
