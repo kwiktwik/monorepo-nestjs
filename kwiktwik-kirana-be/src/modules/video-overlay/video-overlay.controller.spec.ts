@@ -11,9 +11,27 @@ import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
+interface AuthenticatedRequest {
+  user: { userId: string; appId: string };
+}
+
+interface HealthResponse {
+  status: string;
+  service: string;
+  maxVideoSize?: number;
+  maxOverlays?: number;
+}
+
+interface ProcessResponse {
+  success: boolean;
+  videoUrl?: string;
+  processingTime?: number;
+  error?: string;
+}
+
 class MockUserGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     req.user = { userId: 'test-user-id', appId: 'com.test.app' };
     return true;
   }
@@ -21,7 +39,6 @@ class MockUserGuard implements CanActivate {
 
 describe('VideoOverlayController', () => {
   let app: INestApplication;
-  let videoOverlayService: jest.Mocked<VideoOverlayService>;
 
   const mockVideoOverlayService = {
     getHealth: jest.fn(),
@@ -45,7 +62,6 @@ describe('VideoOverlayController', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    videoOverlayService = moduleFixture.get(VideoOverlayService);
     await app.init();
   });
 
@@ -64,9 +80,10 @@ describe('VideoOverlayController', () => {
       };
       mockVideoOverlayService.getHealth.mockReturnValue(mockHealth);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/video/overlay')
         .set('X-App-ID', 'com.test.app');
+      const response = { status: res.status, body: res.body as HealthResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('ok');
@@ -83,13 +100,17 @@ describe('VideoOverlayController', () => {
       };
       mockVideoOverlayService.processByContentId.mockResolvedValue(mockResult);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/video/overlay/by-content-id')
         .set('X-App-ID', 'com.test.app')
         .send({
           contentId: 1,
           imageUrl: 'https://example.com/image.png',
         });
+      const response = {
+        status: res.status,
+        body: res.body as ProcessResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -104,13 +125,17 @@ describe('VideoOverlayController', () => {
       };
       mockVideoOverlayService.processByContentId.mockResolvedValue(mockResult);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/video/overlay/by-content-id')
         .set('X-App-ID', 'com.test.app')
         .send({
           contentId: 1,
           imageUrl: 'https://example.com/image.png',
         });
+      const response = {
+        status: res.status,
+        body: res.body as ProcessResponse,
+      };
 
       expect(response.status).toBe(500);
     });
@@ -122,10 +147,14 @@ describe('VideoOverlayController', () => {
         ),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/video/overlay/by-content-id')
         .set('X-App-ID', 'com.test.app')
         .send({});
+      const response = {
+        status: res.status,
+        body: res.body as ProcessResponse,
+      };
 
       expect(response.status).toBe(400);
     });

@@ -3,9 +3,11 @@ import { UserService } from './user.service';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
+type MockDb = Record<string, jest.Mock>;
+
 describe('UserService', () => {
   let service: UserService;
-  let mockDb: any;
+  let mockDb: MockDb;
 
   const mockUser = {
     id: 'user-123',
@@ -53,33 +55,17 @@ describe('UserService', () => {
 
   beforeEach(async () => {
     // Create a comprehensive mock that properly chains all drizzle methods
-    const mockChain = {
-      select: jest.fn(function () {
-        return this;
-      }),
-      from: jest.fn(function () {
-        return this;
-      }),
-      where: jest.fn(function () {
-        return this;
-      }),
+    const mockChain: MockDb = {
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       limit: jest.fn().mockResolvedValue([]),
       orderBy: jest.fn().mockResolvedValue([]),
-      update: jest.fn(function () {
-        return this;
-      }),
-      set: jest.fn(function () {
-        return this;
-      }),
-      delete: jest.fn(function () {
-        return this;
-      }),
-      insert: jest.fn(function () {
-        return this;
-      }),
-      values: jest.fn(function () {
-        return this;
-      }),
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
       returning: jest.fn().mockResolvedValue([{ id: 1 }]),
     };
 
@@ -380,8 +366,8 @@ describe('UserService', () => {
             '',
             '   ',
             'https://valid.com/image.jpg',
-            null as any,
-            undefined as any,
+            null as unknown as string,
+            undefined as unknown as string,
           ],
         },
       );
@@ -416,11 +402,11 @@ describe('UserService', () => {
       // Verify update was called
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockDb.set).toHaveBeenCalled();
-      const setCall = mockDb.set.mock.calls[0];
-      expect(setCall[0].isDeleted).toBe(true);
-      expect(setCall[0].email).toContain('deleted_');
-      expect(setCall[0].phoneNumber).toBeNull();
-      expect(setCall[0].name).toBe('Deleted User');
+      const setCall = (mockDb.set.mock.calls as unknown[][])[0];
+      expect((setCall[0] as { isDeleted: boolean }).isDeleted).toBe(true);
+      expect((setCall[0] as { email: string }).email).toContain('deleted_');
+      expect((setCall[0] as { phoneNumber: null }).phoneNumber).toBeNull();
+      expect((setCall[0] as { name: string }).name).toBe('Deleted User');
     });
   });
 

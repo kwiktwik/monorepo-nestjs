@@ -11,9 +11,19 @@ import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
+interface AuthenticatedRequest {
+  user: { userId: string; appId: string };
+}
+
+interface UserResponse {
+  success: boolean;
+  data?: unknown;
+  message?: string;
+}
+
 class MockUserGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     req.user = { userId: 'test-user-id', appId: 'com.test.app' };
     return true;
   }
@@ -21,7 +31,6 @@ class MockUserGuard implements CanActivate {
 
 describe('UserController', () => {
   let app: INestApplication;
-  let userService: jest.Mocked<UserService>;
 
   const mockUserService = {
     getUserProfile: jest.fn(),
@@ -48,7 +57,6 @@ describe('UserController', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    userService = moduleFixture.get(UserService);
     await app.init();
   });
 
@@ -68,9 +76,10 @@ describe('UserController', () => {
       };
       mockUserService.getUserProfile.mockResolvedValue(mockUser);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/user/v1')
         .set('X-App-ID', 'com.test.app');
+      const response = { status: res.status, body: res.body as UserResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -82,11 +91,11 @@ describe('UserController', () => {
         new NotFoundException('User not found'),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/user/v1')
         .set('X-App-ID', 'com.test.app');
 
-      expect(response.status).toBe(404);
+      expect(res.status).toBe(404);
     });
   });
 
@@ -98,9 +107,10 @@ describe('UserController', () => {
       ];
       mockUserService.getUserImages.mockResolvedValue(mockImages);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/user/image/v1')
         .set('X-App-ID', 'com.test.app');
+      const response = { status: res.status, body: res.body as UserResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -112,10 +122,11 @@ describe('UserController', () => {
     it('should delete user image', async () => {
       mockUserService.deleteUserImage.mockResolvedValue(undefined);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .delete('/user/image/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ imageId: 1 });
+      const response = { status: res.status, body: res.body as UserResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -126,12 +137,12 @@ describe('UserController', () => {
         new NotFoundException('Image not found'),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .delete('/user/image/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ imageId: 999 });
 
-      expect(response.status).toBe(404);
+      expect(res.status).toBe(404);
     });
   });
 
@@ -144,14 +155,17 @@ describe('UserController', () => {
       };
       mockUserService.updateUserProfile.mockResolvedValue(updatedUser);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/user/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ name: 'Updated Name' });
+      const response = { status: res.status, body: res.body as UserResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.name).toBe('Updated Name');
+      expect((response.body.data as { name: string }).name).toBe(
+        'Updated Name',
+      );
     });
   });
 
@@ -162,9 +176,10 @@ describe('UserController', () => {
         message: 'User deleted',
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .delete('/user/v1')
         .set('X-App-ID', 'com.test.app');
+      const response = { status: res.status, body: res.body as UserResponse };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -175,11 +190,11 @@ describe('UserController', () => {
         new NotFoundException('User not found'),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .delete('/user/v1')
         .set('X-App-ID', 'com.test.app');
 
-      expect(response.status).toBe(404);
+      expect(res.status).toBe(404);
     });
   });
 });
