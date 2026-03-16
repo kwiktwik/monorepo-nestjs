@@ -711,6 +711,91 @@ export const APP_CONFIGS = {
         'https://play.google.com/store/apps/details?id=com.kiranaapps.app',
     },
   },
+  'com.sharestatus.app': {
+    ...baseConfig,
+    app: {
+      ...baseConfig.app,
+      name: 'ShareStatus',
+      id: 'com.sharestatus.app',
+    },
+    features: {
+      ...baseConfig.features,
+      subscription: { plan_id: 'plan_S3FaBrk7sjPQEU' } as SubscriptionConfig,
+    },
+    videos: {
+      en: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/English%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/English%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      hi: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Hindi%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Hindi%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      bn: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Bengali%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Bengali%20Trial%20Video.mp4',
+      },
+      mr: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Marathi%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Marathi%20Trial%20Video.mp4',
+      },
+      te: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Telgu%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Telgu%20Trial%20Video.mp4',
+      },
+      ta: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Tamil%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Tamil%20Trial%20Video.mp4',
+      },
+      gu: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Gujrati%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Gujrati%20Trial%20Video.mp4',
+      },
+      ur: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Punjabi%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Punjabi%20Trial%20Video.mp4',
+      },
+      kn: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Kannada%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Kannada%20Trial%20Video.mp4',
+      },
+      or: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/English%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/English%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      ml: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Malyalam%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Malyalam%20Trial%20Video.mp4',
+      },
+    },
+    appUpdate: {
+      ...baseConfig.appUpdate,
+      updateUrl:
+        'https://play.google.com/store/apps/details?id=com.sharestatus.app',
+    },
+  },
 };
 
 export type AppConfigData = (typeof APP_CONFIGS)[keyof typeof APP_CONFIGS];
