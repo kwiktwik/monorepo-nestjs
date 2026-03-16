@@ -278,7 +278,7 @@ export async function GET(req: NextRequest) {
  * 
  * Body Parameters:
  * - name*: User's name (required, 1-255 characters)
- * - phoneNumber*: User's phone number (required, E.164 format)
+ * - phoneNumber: User's phone number (optional, E.164 format)
  * - email: User's email (optional, must be valid email format)
  * - upiVpa: UPI Virtual Payment Address (optional, format: user@bank)
  * - audioLanguage: Audio language preference (optional, AlertPay apps only)
@@ -351,25 +351,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!phoneNumber) {
-      console.log(`[POST /api/user/v1] Validation failed: Phone number is required`);
-      return NextResponse.json(
-        { error: "Phone number is required" },
-        { status: 400 }
-      );
-    }
-
-    // Validate phone number format (E.164 format)
-    const phoneRegex = /^\+[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      console.log(`[POST /api/user/v1] Validation failed: Invalid phone number format: ${phoneNumber}`);
-      return NextResponse.json(
-        {
-          error:
-            "Invalid phone number format. Please use E.164 format (e.g., +919876543210)",
-        },
-        { status: 400 }
-      );
+    // Validate phone number format if provided (E.164 format)
+    if (phoneNumber) {
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        console.log(`[POST /api/user/v1] Validation failed: Invalid phone number format: ${phoneNumber}`);
+        return NextResponse.json(
+          {
+            error:
+              "Invalid phone number format. Please use E.164 format (e.g., +919876543210)",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate email format if provided
