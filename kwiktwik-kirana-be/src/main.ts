@@ -4,9 +4,14 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
 import type { Request, Response, NextFunction } from 'express';
+import { validateAppConfigSyncOrThrow } from './common/config/config-validator';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+
+  // Validate app config synchronization before starting server
+  // This ensures all registered apps have corresponding config entries
+  validateAppConfigSyncOrThrow();
   const app = await NestFactory.create(AppModule, {
     // Disable default body parsing - we'll configure manually
     bodyParser: false,
@@ -121,14 +126,22 @@ async function bootstrap() {
   });
 
   // Mock Data Swagger Instance
-  if (process.env.USE_MOCK_DB === 'true' || process.env.NODE_ENV !== 'production') {
+  if (
+    process.env.USE_MOCK_DB === 'true' ||
+    process.env.NODE_ENV !== 'production'
+  ) {
     const mockConfig = new DocumentBuilder()
       .setTitle('KwikTwik Kirana Mock API')
-      .setDescription('API documentation for testing with mock data and rules engine')
+      .setDescription(
+        'API documentation for testing with mock data and rules engine',
+      )
       .setVersion('1.0-mock')
       .addServer('/', 'Mock environment')
       .addApiKey({ type: 'apiKey', name: 'X-App-ID', in: 'header' }, 'X-App-ID')
-      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'JWT',
+      )
       .build();
     const mockDocument = SwaggerModule.createDocument(app, mockConfig);
     SwaggerModule.setup('mock-docs', app, mockDocument);
