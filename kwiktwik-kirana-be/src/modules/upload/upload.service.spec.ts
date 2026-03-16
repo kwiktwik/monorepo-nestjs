@@ -16,7 +16,6 @@ interface MockConfigService {
   get: jest.Mock<string | undefined, [string]>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockDb = Record<string, jest.Mock>;
 
 // DTO for chat media presigned URL

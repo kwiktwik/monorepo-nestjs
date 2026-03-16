@@ -98,7 +98,7 @@ export class NotificationController {
     body: {
       action?: string;
       id?: number;
-      payload?: Record<string, any>;
+      payload?: Record<string, unknown>;
       userId?: string;
     },
   ) {

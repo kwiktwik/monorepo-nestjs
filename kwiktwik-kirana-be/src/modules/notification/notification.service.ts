@@ -326,7 +326,10 @@ export class NotificationService {
     return nameMap[packageName] || packageName.split('.').pop() || packageName;
   }
 
-  async createTestNotification(userId: string, payload?: Record<string, any>) {
+  async createTestNotification(
+    userId: string,
+    payload?: Record<string, unknown>,
+  ) {
     const newEntry = await this.db
       .insert(schema.tempTestNotifications)
       .values({
@@ -449,7 +452,7 @@ export class NotificationService {
   async sendTestNotificationByPhone(
     phoneNumber: string,
     appId?: string,
-    payload?: Record<string, any>,
+    payload?: Record<string, unknown>,
   ) {
     const user = await this.findUserByPhone(phoneNumber);
     if (!user) {
@@ -475,11 +478,18 @@ export class NotificationService {
             }
           }
 
+          const title =
+            payload && typeof payload.title === 'string'
+              ? payload.title
+              : 'Notification';
+          const body =
+            payload && typeof payload.body === 'string' ? payload.body : '';
+
           const response = await admin.messaging().sendEachForMulticast({
             tokens,
             notification: {
-              title: payload?.title || 'Notification',
-              body: payload?.body || '',
+              title,
+              body,
             },
             data: fcmData,
             android: {

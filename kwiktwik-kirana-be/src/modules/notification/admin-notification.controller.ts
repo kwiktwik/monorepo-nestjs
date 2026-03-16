@@ -17,7 +17,7 @@ export class AdminNotificationController {
     body: {
       phoneNumber: string;
       appId?: string;
-      payload?: Record<string, any>;
+      payload?: Record<string, unknown>;
     },
   ) {
     return this.notificationService.sendTestNotificationByPhone(

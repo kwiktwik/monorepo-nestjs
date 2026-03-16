@@ -23,7 +23,7 @@ export interface CreateNotificationDto {
   ttsAnnounced?: boolean;
   team_notification_sent?: boolean;
   teamNotificationSent?: boolean;
-  processing_metadata?: Record<string, any>;
+  processing_metadata?: Record<string, unknown>;
   notification_log_id?: number;
   userId?: string;
 }
