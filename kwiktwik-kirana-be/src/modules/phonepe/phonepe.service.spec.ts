@@ -4,7 +4,6 @@ import { PhonePeService } from './phonepe.service';
 import { InternalServerErrorException } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockDb = Record<string, jest.Mock>;
 
 interface PhonePeCredentials {

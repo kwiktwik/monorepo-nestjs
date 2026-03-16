@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomBytes } from 'crypto';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -421,7 +421,7 @@ export class RazorpayWebhookService {
         eventType,
         appId,
       });
-    } catch (error) {
+    } catch {
       // If it's a unique constraint violation, the event was already processed
       // This is fine, just log it
       this.logger.warn(
@@ -468,7 +468,7 @@ export class RazorpayWebhookService {
 
       const appId = matchedApp.appId;
 
-      const event: RazorpayWebhookPayload = JSON.parse(body);
+      const event = JSON.parse(body) as RazorpayWebhookPayload;
       const ids = this.extractWebhookIds(event);
       this.logger.log(
         `[WEBHOOK ${requestId}] 🔔 Received ${event.event} ${this.formatWebhookIds(ids)} | App: ${appId} | Account: ${accountId || 'N/A'} | EventID: ${eventId}`,
@@ -507,13 +507,13 @@ export class RazorpayWebhookService {
           }
 
           await this.db.insert(schema.subscriptionLogs).values({
-            userId: userIdToLog as any,
+            userId: userIdToLog,
             appId: appIdToLog,
             subscriptionId: ids.subscriptionId,
             provider: 'razorpay',
             action: event.event,
             status: statusToLog,
-            metadata: event as any,
+            metadata: event as unknown as Record<string, unknown>,
           });
         } catch (logErr) {
           this.logger.error(
@@ -664,7 +664,7 @@ export class RazorpayWebhookService {
       .set({
         status: targetStatus,
         razorpayPaymentId: payment.id,
-        paymentMetadata: payment as any,
+        paymentMetadata: payment as Record<string, unknown>,
         ...(payment.token_id ? { tokenId: payment.token_id } : {}),
         updatedAt: eventTime,
       })
@@ -734,8 +734,8 @@ export class RazorpayWebhookService {
         currency: payment.currency || 'INR',
         status: targetStatus,
         razorpayPaymentId: payment.id,
-        paymentMetadata: payment as any,
-        tokenId: (payment.token_id as string) || null,
+        paymentMetadata: payment as Record<string, unknown>,
+        tokenId: payment.token_id || null,
         createdAt: eventTime,
         updatedAt: eventTime,
       });
@@ -855,7 +855,7 @@ export class RazorpayWebhookService {
           .set({
             status: 'failed',
             razorpayPaymentId: payment.id,
-            paymentMetadata: payment as any,
+            paymentMetadata: payment as unknown as Record<string, unknown>,
             updatedAt: eventTime,
           })
           .where(eq(schema.orders.razorpayOrderId, payment.order_id))
@@ -1374,7 +1374,7 @@ export class RazorpayWebhookService {
     requestId: string,
     eventTime: Date,
   ): Promise<void> {
-    const refundEntity = (event.payload as any).refund?.entity;
+    const refundEntity = event.payload.refund?.entity;
     const paymentEntity = event.payload.payment?.entity;
 
     if (!refundEntity) {
@@ -1423,8 +1423,7 @@ export class RazorpayWebhookService {
           );
         } catch (syncError) {
           this.logger.error(
-            `[WEBHOOK ${requestId}] ❌ Failed to sync payment status for paymentId=${paymentId}:`,
-            syncError,
+            `[WEBHOOK ${requestId}] ❌ Failed to sync payment status for paymentId=${paymentId}:\n${syncError}`,
           );
         }
       } else {

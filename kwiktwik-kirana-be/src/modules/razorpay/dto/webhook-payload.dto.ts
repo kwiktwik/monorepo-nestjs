@@ -1,3 +1,14 @@
+export interface RazorpayRefundEntity {
+  id: string;
+  entity: string;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  order_id?: string;
+  [key: string]: unknown;
+}
+
 export interface RazorpayWebhookPayload {
   entity: string;
   account_id: string;
@@ -15,6 +26,9 @@ export interface RazorpayWebhookPayload {
     };
     token?: {
       entity: RazorpayTokenEntity;
+    };
+    refund?: {
+      entity: RazorpayRefundEntity;
     };
   };
   created_at: number;
