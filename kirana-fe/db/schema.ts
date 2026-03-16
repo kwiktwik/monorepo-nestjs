@@ -641,6 +641,7 @@ export const deviceSessions = pgTable(
     deviceModel: text("device_model"), // e.g., "SM-G991B"
     osVersion: text("os_version"), // e.g., "13"
     appVersion: text("app_version"), // e.g., "1.0.0"
+    buildNumber: text("build_number"), // e.g., "123"
     platform: text("platform"), // "android" or "ios"
     manufacturer: text("manufacturer"), // e.g., "samsung"
     brand: text("brand"), // e.g., "samsung"

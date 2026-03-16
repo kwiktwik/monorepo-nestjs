@@ -12,6 +12,7 @@ interface DeviceSessionData {
   deviceModel?: string;
   osVersion?: string;
   appVersion?: string;
+  buildNumber?: string;
   platform?: string;
   manufacturer?: string;
   brand?: string;
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
         deviceModel: deviceSessions.deviceModel,
         osVersion: deviceSessions.osVersion,
         appVersion: deviceSessions.appVersion,
+        buildNumber: deviceSessions.buildNumber,
       })
       .from(deviceSessions)
       .where(eq(deviceSessions.userId, session.user.id))
@@ -70,7 +72,8 @@ export async function POST(request: NextRequest) {
       lastSession.length === 0 ||
       lastSession[0].deviceModel !== body.deviceModel ||
       lastSession[0].osVersion !== body.osVersion ||
-      lastSession[0].appVersion !== body.appVersion;
+      lastSession[0].appVersion !== body.appVersion ||
+      lastSession[0].buildNumber !== body.buildNumber;
 
     if (!hasChanged) {
       // No change - use 200 (304 is not allowed when constructing Response)
@@ -87,6 +90,7 @@ export async function POST(request: NextRequest) {
       deviceModel: body.deviceModel || null,
       osVersion: body.osVersion || null,
       appVersion: body.appVersion || null,
+      buildNumber: body.buildNumber || null,
       platform: body.platform || null,
       manufacturer: body.manufacturer || null,
       brand: body.brand || null,
