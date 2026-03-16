@@ -76,6 +76,15 @@ const APP_FEATURES: Record<string, typeof JAMUN_FEATURES> = {
   // Specific App IDs for Sharekaro family
   "com.sharestatus.app": JAMUN_FEATURES,
   "com.sharekaro.kirana": JAMUN_FEATURES,
+  // Kirana apps family
+  "com.kiranaapps.app": {
+    needsPremiumStatus: true,
+    needsUpiVpa: true,
+    needsAudioLanguage: true,
+    needsOrders: true,
+    needsSubscriptions: true,
+    needsNotifications: true,
+  },
   // Default fallback
   default: {
     needsPremiumStatus: false,
