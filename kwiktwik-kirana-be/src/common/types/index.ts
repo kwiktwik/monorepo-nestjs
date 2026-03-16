@@ -17,3 +17,6 @@ export * from './cache.types';
 
 // Test types (fixtures, mocks)
 export * from './test.types';
+
+// Razorpay types (webhooks, API responses)
+export * from './razorpay.types';
