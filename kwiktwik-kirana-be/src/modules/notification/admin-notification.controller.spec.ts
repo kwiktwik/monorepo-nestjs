@@ -4,9 +4,22 @@ import request from 'supertest';
 import { AdminNotificationController } from './admin-notification.controller';
 import { NotificationService } from './notification.service';
 
+interface SendTestResponse {
+  success: boolean;
+  user?: {
+    id: string;
+    name: string;
+    phoneNumber: string;
+  };
+  notification?: {
+    success: boolean;
+    id: number;
+  };
+  error?: string;
+}
+
 describe('AdminNotificationController', () => {
   let app: INestApplication;
-  let notificationService: jest.Mocked<NotificationService>;
 
   const mockNotificationService = {
     findUserByPhone: jest.fn(),
@@ -26,7 +39,6 @@ describe('AdminNotificationController', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    notificationService = moduleFixture.get(NotificationService);
     await app.init();
   });
 
@@ -50,12 +62,16 @@ describe('AdminNotificationController', () => {
         notification: mockNotification,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/admin/notifications/send-test')
         .send({
           phoneNumber: '+919876543210',
           payload: { message: 'Test notification', amount: 100 },
         });
+      const response = {
+        status: res.status,
+        body: res.body as SendTestResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -75,11 +91,15 @@ describe('AdminNotificationController', () => {
         error: 'User not found',
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/admin/notifications/send-test')
         .send({
           phoneNumber: '+919999999999',
         });
+      const response = {
+        status: res.status,
+        body: res.body as SendTestResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(false);
@@ -99,11 +119,15 @@ describe('AdminNotificationController', () => {
         notification: { success: true, id: 2 },
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/admin/notifications/send-test')
         .send({
           phoneNumber: '+919876543210',
         });
+      const response = {
+        status: res.status,
+        body: res.body as SendTestResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -118,11 +142,15 @@ describe('AdminNotificationController', () => {
         error: 'User not found',
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/admin/notifications/send-test')
         .send({
           phoneNumber: '',
         });
+      const response = {
+        status: res.status,
+        body: res.body as SendTestResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(false);
@@ -146,12 +174,16 @@ describe('AdminNotificationController', () => {
         notification: { success: true, id: 3 },
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/admin/notifications/send-test')
         .send({
           phoneNumber: '+919876543210',
           payload: complexPayload,
         });
+      const response = {
+        status: res.status,
+        body: res.body as SendTestResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);

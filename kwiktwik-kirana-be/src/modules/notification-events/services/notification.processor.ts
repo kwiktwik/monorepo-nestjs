@@ -82,7 +82,9 @@ export class NotificationProcessor extends WorkerHost {
 
     try {
       // Special handling for checkout-abandoned events
-      if (data.eventType === NotificationJobType.CHECKOUT_ABANDONED) {
+      if (
+        data.eventType === (NotificationJobType.CHECKOUT_ABANDONED as string)
+      ) {
         await this.handleCheckoutAbandoned(job);
         return;
       }
@@ -237,7 +239,7 @@ export class NotificationProcessor extends WorkerHost {
   private async updateEventStatus(
     eventId: string,
     status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
-    detail?: string,
+    _detail?: string,
   ): Promise<void> {
     try {
       const updateData: Record<string, unknown> = {
