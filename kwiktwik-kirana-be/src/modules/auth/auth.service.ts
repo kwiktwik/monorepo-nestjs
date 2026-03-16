@@ -855,6 +855,11 @@ export class AuthService {
         };
       }
   > {
+    // Log incoming parameters
+    this.logger.log(
+      `[Truecaller Signin] Called with params - code length: ${code?.length}, codeVerifier length: ${codeVerifier?.length}, clientId: ${clientId}, appId: ${appId}, authProvider: ${authProvider}, inputPhoneNumber: ${inputPhoneNumber}`,
+    );
+
     // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
     if (isMockMode()) {
       this.logger.log(
@@ -915,6 +920,10 @@ export class AuthService {
     const { access_token, expires_in } = tokenData;
 
     if (!access_token) {
+      this.logger.error(
+        `[Truecaller Token] No access_token in response. Full token data:`,
+        JSON.stringify(tokenData, null, 2),
+      );
       throw new UnauthorizedException(
         'No access token received from Truecaller',
       );

@@ -294,6 +294,9 @@ export class AuthV1Controller {
         `[Unified Login] Error for provider ${provider}:`,
         error instanceof Error ? error.message : 'Unknown error',
       );
+      this.logger.error(
+        `[Unified Login] Error details - Stack: ${error instanceof Error ? error.stack : 'N/A'}`,
+      );
 
       if (
         error instanceof UnauthorizedException ||
@@ -364,6 +367,15 @@ export class AuthV1Controller {
     appId: string,
   ): Promise<UnifiedLoginResponse> {
     this.logger.log(`[Truecaller Login] DTO received: ${JSON.stringify(dto)}`);
+    this.logger.log(
+      `[Truecaller Login] Request details - appId: ${appId}, phoneNumber: ${dto.phoneNumber}, code length: ${dto.code?.length}, code_verifier length: ${dto.code_verifier?.length}, client_id: ${dto.client_id}`,
+    );
+    this.logger.log(
+      `[Truecaller Login] Code preview: ${dto.code?.substring(0, 30)}...`,
+    );
+    this.logger.log(
+      `[Truecaller Login] Code verifier preview: ${dto.code_verifier?.substring(0, 30)}...`,
+    );
 
     // Proceed with Truecaller OAuth - kirana-fe check will be done inside service after getting phone from Truecaller
     const result = await this.authService.truecallerSignin(
