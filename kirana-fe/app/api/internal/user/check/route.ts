@@ -57,10 +57,23 @@ export async function POST(req: NextRequest) {
       normalizedPhone = `+${phoneNumber}`;
     }
 
-    // Check if user exists
-    const user = await findUserByPhone(normalizedPhone);
+    // Try to find user with normalized format (with +)
+    console.log(
+      `[Internal API] Checking user with normalized phone: ${normalizedPhone}`,
+    );
+    let user = await findUserByPhone(normalizedPhone);
+
+    // If not found, try without + prefix (old DB format)
+    if (!user && normalizedPhone.startsWith("+")) {
+      const phoneWithoutPlus = normalizedPhone.substring(1);
+      console.log(
+        `[Internal API] User not found, trying without +: ${phoneWithoutPlus}`,
+      );
+      user = await findUserByPhone(phoneWithoutPlus);
+    }
 
     if (user) {
+      console.log(`[Internal API] User found: ${user.id}`);
       return NextResponse.json({
         exists: true,
         userId: user.id,
@@ -71,6 +84,7 @@ export async function POST(req: NextRequest) {
     }
 
     // User not found
+    console.log(`[Internal API] User not found for: ${normalizedPhone}`);
     return NextResponse.json({
       exists: false,
       phoneNumber: normalizedPhone,

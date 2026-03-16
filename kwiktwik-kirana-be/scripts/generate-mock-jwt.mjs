@@ -57,7 +57,7 @@ const outputJson = args.includes('--json');
 // Generate user ID
 const userId = nanoid();
 const cleanPhone = phoneNumber.replace(/\D/g, '');
-const email = `${cleanPhone}@alertpay.local`;
+const email = `${cleanPhone}@kiranaapps.local`;
 
 // Generate JWT
 const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-this';
