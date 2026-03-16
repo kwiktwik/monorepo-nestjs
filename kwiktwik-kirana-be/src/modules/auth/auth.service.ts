@@ -865,6 +865,15 @@ export class AuthService {
 
     // Step 1: Exchange authorization code for access token
     this.logger.log(`[Truecaller Token] App ID: ${appId}`);
+    this.logger.log(
+      `[Truecaller Token] Request params - client_id: ${clientId}, code length: ${code?.length}, code_verifier length: ${codeVerifier?.length}`,
+    );
+    this.logger.log(
+      `[Truecaller Token] Code preview: ${code?.substring(0, 20)}...`,
+    );
+    this.logger.log(
+      `[Truecaller Token] Code verifier preview: ${codeVerifier?.substring(0, 20)}...`,
+    );
 
     const tokenResponse = await fetch(
       'https://oauth-account-noneu.truecaller.com/v1/token',
@@ -886,9 +895,11 @@ export class AuthService {
 
     if (!tokenResponse.ok) {
       this.logger.error(
-        '[Truecaller Token] Exchange failed:',
-        tokenResponse.status,
-        tokenData,
+        `[Truecaller Token] Exchange failed - Status: ${tokenResponse.status}, StatusText: ${tokenResponse.statusText}`,
+      );
+      this.logger.error(
+        `[Truecaller Token] Error response:`,
+        JSON.stringify(tokenData, null, 2),
       );
       throw new UnauthorizedException(
         tokenData.error_description ||
@@ -896,6 +907,10 @@ export class AuthService {
           `Truecaller token exchange failed (${tokenResponse.status})`,
       );
     }
+
+    this.logger.log(
+      `[Truecaller Token] Exchange successful - access_token received: ${!!tokenData.access_token}, expires_in: ${tokenData.expires_in}`,
+    );
 
     const { access_token, expires_in } = tokenData;
 
@@ -906,6 +921,13 @@ export class AuthService {
     }
 
     // Step 2: Fetch user profile via OIDC userinfo endpoint
+    this.logger.log(
+      `[Truecaller UserInfo] Fetching profile with access_token length: ${access_token?.length}`,
+    );
+    this.logger.log(
+      `[Truecaller UserInfo] Access token preview: ${access_token?.substring(0, 30)}...`,
+    );
+
     const userInfoResponse = await fetch(
       'https://oauth-account-noneu.truecaller.com/v1/userinfo',
       {
@@ -918,9 +940,11 @@ export class AuthService {
 
     if (!userInfoResponse.ok) {
       this.logger.error(
-        '[Truecaller UserInfo] Fetch failed:',
-        userInfoResponse.status,
-        userInfoData,
+        `[Truecaller UserInfo] Fetch failed - Status: ${userInfoResponse.status}, StatusText: ${userInfoResponse.statusText}`,
+      );
+      this.logger.error(
+        `[Truecaller UserInfo] Error response:`,
+        JSON.stringify(userInfoData, null, 2),
       );
       throw new UnauthorizedException(
         userInfoData.error_description ||
@@ -933,6 +957,9 @@ export class AuthService {
       sub: userInfoData.sub,
       phone_number: userInfoData.phone_number,
       given_name: userInfoData.given_name,
+      family_name: userInfoData.family_name,
+      email: userInfoData.email,
+      phone_number_verified: userInfoData.phone_number_verified,
     });
 
     // Step 3: Extract user profile fields (matching OIDC claims)
