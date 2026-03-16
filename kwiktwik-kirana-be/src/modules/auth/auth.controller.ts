@@ -144,13 +144,32 @@ export class AuthController {
       appId,
     );
 
+    // Check if user exists in legacy system
+    if ('error' in result && result.error === 'USE_ALTERNATE_BACKEND') {
+      return {
+        success: true,
+        message: result.message,
+        error: result.error,
+        alternateBackend: result.alternateBackend,
+        alternateEndpoints: result.alternateEndpoints,
+        appId,
+      };
+    }
+
+    // TypeScript now knows this is the success case
+    const successResult = result as {
+      token: string;
+      user: AuthUserResponse;
+      userProfile: any;
+    };
+
     // Match the Next.js Truecaller endpoint response shape
     return {
       success: true,
-      token: result.token,
+      token: successResult.token,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      user: result?.user ?? 'User not found',
-      user_profile: result.userProfile,
+      user: successResult?.user ?? 'User not found',
+      user_profile: successResult.userProfile,
       appId,
     };
   }

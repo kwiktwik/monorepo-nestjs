@@ -812,22 +812,36 @@ export class AuthService {
     clientId: string,
     appId: string,
     authProvider?: string,
-  ): Promise<{
-    token: string;
-    user: AuthUserResponse;
-    userProfile: {
-      sub?: string;
-      given_name?: string;
-      family_name?: string;
-      phone_number?: string;
-      email?: string;
-      picture?: string;
-      gender?: string;
-      phone_number_country_code?: string;
-      phone_number_verified?: boolean;
-      address?: Record<string, unknown>;
-    };
-  }> {
+    inputPhoneNumber?: string,
+  ): Promise<
+    | {
+        token: string;
+        user: AuthUserResponse;
+        userProfile: {
+          sub?: string;
+          given_name?: string;
+          family_name?: string;
+          phone_number?: string;
+          email?: string;
+          picture?: string;
+          gender?: string;
+          phone_number_country_code?: string;
+          phone_number_verified?: boolean;
+          address?: Record<string, unknown>;
+        };
+      }
+    | {
+        error: 'USE_ALTERNATE_BACKEND';
+        message: string;
+        alternateBackend: string;
+        alternateEndpoints: {
+          sendOtp: string;
+          verifyOtp: string;
+          truecaller: string;
+          google: string;
+        };
+      }
+  > {
     // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
     if (isMockMode()) {
       this.logger.log(
@@ -928,6 +942,29 @@ export class AuthService {
     }
 
     const normalized = normalizePhoneNumber(phoneNumber);
+
+    // Check for kirana-fe user detection using the phone from Truecaller or input phone
+    const phoneToCheck = inputPhoneNumber
+      ? normalizePhoneNumber(inputPhoneNumber)
+      : normalized;
+    const isKiranaFeUser = await this.checkKiranaFeUser(phoneToCheck);
+
+    if (isKiranaFeUser) {
+      this.logger.log(
+        `[Truecaller Signin] Kirana-FE user detected: ${phoneToCheck}`,
+      );
+      return {
+        error: 'USE_ALTERNATE_BACKEND',
+        message: 'User already registered on legacy system',
+        alternateBackend: 'https://api.kiranaapps.com',
+        alternateEndpoints: {
+          sendOtp: '/api/phone-number/send-otp',
+          verifyOtp: '/api/phone-number/verify',
+          truecaller: '/api/auth/truecaller/token',
+          google: '/api/auth/google-signin',
+        },
+      };
+    }
 
     // Build userProfile object similar to Next.js implementation
     const userProfile = {

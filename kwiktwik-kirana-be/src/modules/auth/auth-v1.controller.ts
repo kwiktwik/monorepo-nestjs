@@ -260,6 +260,9 @@ export class AuthV1Controller {
     @AppId() appId: string,
   ): Promise<UnifiedLoginResponse> {
     this.logger.log(`[Unified Login] Provider: ${provider}, App: ${appId}`);
+    this.logger.log(
+      `[Unified Login] Request body: ${JSON.stringify(credentials)}`,
+    );
 
     // Validate provider
     if (!['otp', 'truecaller', 'google'].includes(provider)) {
@@ -360,36 +363,48 @@ export class AuthV1Controller {
     dto: LoginTruecallerDto,
     appId: string,
   ): Promise<UnifiedLoginResponse> {
-    // Normalize phone number for consistent detection
-    const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
+    this.logger.log(`[Truecaller Login] DTO received: ${JSON.stringify(dto)}`);
 
-    // Check for kirana-fe user detection first
-    const isKiranaFeUser =
-      await this.authService.checkKiranaFeUser(normalizedPhone);
-
-    if (isKiranaFeUser) {
-      this.logger.log(
-        `[Truecaller Login] Kirana-FE user detected: ${normalizedPhone}`,
-      );
-      return this.createAlternateBackendResponse();
-    }
-
-    // Proceed with Truecaller OAuth
+    // Proceed with Truecaller OAuth - kirana-fe check will be done inside service after getting phone from Truecaller
     const result = await this.authService.truecallerSignin(
       dto.code,
       dto.code_verifier,
       dto.client_id,
       appId,
       'truecaller',
+      dto.phoneNumber, // Pass optional phone number for kirana-fe check
     );
 
-    this.logger.log(`[Truecaller Login] Success for user: ${result.user.id}`);
+    // Check if result is an alternate backend response
+    if ('error' in result && result.error === 'USE_ALTERNATE_BACKEND') {
+      this.logger.log(
+        `[Truecaller Login] Kirana-FE user detected, returning alternate backend response`,
+      );
+      return {
+        success: true,
+        message: result.message,
+        error: result.error,
+        alternateBackend: result.alternateBackend,
+        alternateEndpoints: result.alternateEndpoints,
+      };
+    }
+
+    // Type guard: result is now the success type
+    const successResult = result as {
+      token: string;
+      user: AuthUserResponse & { image?: string };
+      userProfile: Record<string, unknown>;
+    };
+
+    this.logger.log(
+      `[Truecaller Login] Success for user: ${successResult.user.id}`,
+    );
 
     return {
       success: true,
-      token: result.token,
-      user: result.user,
-      userProfile: result.userProfile,
+      token: successResult.token,
+      user: successResult.user,
+      userProfile: successResult.userProfile,
       authProvider: 'truecaller',
     };
   }

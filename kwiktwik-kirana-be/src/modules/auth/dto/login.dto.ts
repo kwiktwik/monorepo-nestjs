@@ -9,7 +9,7 @@ export class LoginBaseDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+[1-9]\d{1,14}$/, {
+  @Matches(/^[+][1-9]\d{1,14}$/, {
     message: 'Phone number must be in E.164 format (e.g., +919876543210)',
   })
   phoneNumber: string;
@@ -28,7 +28,20 @@ export class LoginOtpDto extends LoginBaseDto {
   code: string;
 }
 
-export class LoginTruecallerDto extends LoginBaseDto {
+export class LoginTruecallerDto {
+  @ApiProperty({
+    example: '+919876543210',
+    description:
+      'Phone number in E.164 format (optional for Truecaller, will be fetched from Truecaller profile)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @Matches(/^[+][1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format (e.g., +919876543210)',
+  })
+  phoneNumber?: string;
+
   @ApiProperty({
     example: 'authorization_code_from_truecaller',
     description: 'Truecaller authorization code',
