@@ -5,6 +5,24 @@ import {
   AppConfigData,
 } from '../../modules/config/config.data';
 import { Logger, InternalServerErrorException } from '@nestjs/common';
+import { validateAppConfig, validateAllAppConfigs } from './config.schemas';
+
+const logger = new Logger('ConfigValidator');
+
+/**
+ * Validation result for config synchronization check
+ */
+export interface ConfigValidationResult {
+  valid: boolean;
+  missingConfigs: string[];
+  registeredApps: string[];
+  configuredApps: string[];
+  schemaValidation?: {
+    valid: boolean;
+    validApps: string[];
+    invalidApps: { appId: string; errors: string[] }[];
+  };
+}
 
 /**
  * Custom error class for config sync issues
@@ -21,18 +39,6 @@ export class ConfigSyncError extends InternalServerErrorException {
   }
 }
 
-const logger = new Logger('ConfigValidator');
-
-/**
- * Validation result for config synchronization check
- */
-export interface ConfigValidationResult {
-  valid: boolean;
-  missingConfigs: string[];
-  registeredApps: string[];
-  configuredApps: string[];
-}
-
 /**
  * Validates that all registered apps have corresponding config entries
  * This ensures the guard and service layers stay in sync
@@ -45,11 +51,17 @@ export function validateAppConfigSync(): ConfigValidationResult {
     (appId) => !APP_CONFIGS[appId as keyof typeof APP_CONFIGS],
   );
 
+  // Also validate schema for all configured apps
+  const schemaValidation = validateAllAppConfigs(
+    APP_CONFIGS as Record<string, unknown>,
+  );
+
   return {
-    valid: missingConfigs.length === 0,
+    valid: missingConfigs.length === 0 && schemaValidation.valid,
     missingConfigs,
     registeredApps: registeredAppIds,
     configuredApps: configuredAppIds,
+    schemaValidation,
   };
 }
 
@@ -61,9 +73,28 @@ export function validateAppConfigSyncOrThrow(): void {
   const result = validateAppConfigSync();
 
   if (!result.valid) {
+    const errors: string[] = [];
+
+    if (result.missingConfigs.length > 0) {
+      errors.push(
+        'Missing config entries for registered apps:',
+        ...result.missingConfigs.map((id) => `  - ${id}`),
+      );
+    }
+
+    if (result.schemaValidation && !result.schemaValidation.valid) {
+      errors.push('', 'Schema validation errors:');
+      for (const invalid of result.schemaValidation.invalidApps) {
+        errors.push(`  - ${invalid.appId}:`);
+        for (const err of invalid.errors) {
+          errors.push(`      ${err}`);
+        }
+      }
+    }
+
     const errorMessage = [
-      'Configuration Error: The following registered apps are missing config entries in APP_CONFIGS:',
-      ...result.missingConfigs.map((id) => `  - ${id}`),
+      'Configuration Error: App configuration validation failed',
+      ...errors,
       '',
       'To fix this, add config entries for these apps in:',
       '  src/modules/config/config.data.ts',
@@ -98,6 +129,16 @@ export function getSafeConfigForAppId(appId: string): AppConfigData | null {
   // If registered but no config, this is a server misconfiguration
   if (!config) {
     throw new ConfigSyncError(appId);
+  }
+
+  // Validate schema at runtime using Zod
+  const validation = validateAppConfig(config, appId);
+  if (!validation.success) {
+    logger.warn(
+      `Schema validation warnings for ${appId}: ${validation.errors.join(', ')}`,
+    );
+    // Don't throw for schema warnings, just log them
+    // This allows partial configs during development
   }
 
   return config;

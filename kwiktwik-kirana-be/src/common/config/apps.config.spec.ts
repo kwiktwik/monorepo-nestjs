@@ -57,10 +57,13 @@ describe('apps.config', () => {
 
       for (const appId of registeredAppIds) {
         const envVar = getWebhookSecretEnvVar(appId);
-        // All env vars should start with RAZORPAY_WEBHOOK_SECRET_
-        expect(envVar).toMatch(/^RAZORPAY_WEBHOOK_SECRET_/);
-        // All env vars should be uppercase
-        expect(envVar).toBe(envVar.toUpperCase());
+        expect(envVar).not.toBeNull();
+        if (envVar) {
+          // All env vars should start with RAZORPAY_WEBHOOK_SECRET_
+          expect(envVar).toMatch(/^RAZORPAY_WEBHOOK_SECRET_/);
+          // All env vars should be uppercase
+          expect(envVar).toBe(envVar.toUpperCase());
+        }
       }
     });
   });
