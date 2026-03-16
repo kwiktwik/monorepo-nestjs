@@ -10,9 +10,38 @@ import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
+interface AuthenticatedRequest {
+  user: { userId: string; appId: string };
+}
+
+interface NotificationListResponse {
+  data: Array<{ id: number; title: string; content: string }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface CreateNotificationResponse {
+  data: Array<{ id: number; status: string }>;
+  processed: number;
+}
+
+interface TestNotificationResponse {
+  found?: boolean;
+  success?: boolean;
+  id?: number;
+}
+
+interface PushTokenResponse {
+  success: boolean;
+}
+
 class MockUserGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     req.user = { userId: 'test-user-id', appId: 'com.test.app' };
     return true;
   }
@@ -20,7 +49,6 @@ class MockUserGuard implements CanActivate {
 
 describe('NotificationController', () => {
   let app: INestApplication;
-  let notificationService: jest.Mocked<NotificationService>;
 
   const mockNotificationService = {
     findAll: jest.fn(),
@@ -49,7 +77,6 @@ describe('NotificationController', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    notificationService = moduleFixture.get(NotificationService);
     await app.init();
   });
 
@@ -60,15 +87,19 @@ describe('NotificationController', () => {
 
   describe('GET /notifications/v1', () => {
     it('should return notifications list', async () => {
-      const mockNotifications = {
+      const mockNotifications: NotificationListResponse = {
         data: [{ id: 1, title: 'Test Notification', content: 'Test content' }],
         pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
       };
       mockNotificationService.findAll.mockResolvedValue(mockNotifications);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/notifications/v1')
         .set('X-App-ID', 'com.test.app');
+      const response = {
+        status: res.status,
+        body: res.body as NotificationListResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.data).toEqual(mockNotifications.data);
@@ -80,11 +111,11 @@ describe('NotificationController', () => {
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/notifications/v1?page=2&limit=20&startDate=2024-01-01')
         .set('X-App-ID', 'com.test.app');
 
-      expect(response.status).toBe(200);
+      expect(res.status).toBe(200);
       expect(mockNotificationService.findAll).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -98,13 +129,13 @@ describe('NotificationController', () => {
 
   describe('POST /notifications/v1', () => {
     it('should create notification', async () => {
-      const mockResult = {
+      const mockResult: CreateNotificationResponse = {
         data: [{ id: 1, status: 'success' }],
         processed: 1,
       };
       mockNotificationService.create.mockResolvedValue(mockResult);
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/notifications/v1')
         .set('X-App-ID', 'com.test.app')
         .send({
@@ -112,6 +143,10 @@ describe('NotificationController', () => {
           title: 'Test',
           content: 'Test content',
         });
+      const response = {
+        status: res.status,
+        body: res.body as CreateNotificationResponse,
+      };
 
       expect(response.status).toBe(201);
       expect(response.body.data).toBeDefined();
@@ -124,9 +159,13 @@ describe('NotificationController', () => {
         found: false,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/notifications/test')
         .set('X-App-ID', 'com.test.app');
+      const response = {
+        status: res.status,
+        body: res.body as TestNotificationResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.found).toBe(false);
@@ -140,10 +179,14 @@ describe('NotificationController', () => {
         id: 1,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/notifications/test')
         .set('X-App-ID', 'com.test.app')
         .send({ action: 'create' });
+      const response = {
+        status: res.status,
+        body: res.body as TestNotificationResponse,
+      };
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
@@ -154,22 +197,26 @@ describe('NotificationController', () => {
         success: true,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/notifications/test')
         .set('X-App-ID', 'com.test.app')
         .send({ action: 'ack', id: 1 });
+      const response = {
+        status: res.status,
+        body: res.body as TestNotificationResponse,
+      };
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
     });
 
     it('should throw error for invalid action', async () => {
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/notifications/test')
         .set('X-App-ID', 'com.test.app')
         .send({ action: 'invalid' });
 
-      expect(response.status).toBe(400);
+      expect(res.status).toBe(400);
     });
   });
 
@@ -179,13 +226,17 @@ describe('NotificationController', () => {
         success: true,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/notifications/register')
         .set('X-App-ID', 'com.test.app')
         .send({
           token: 'fcm-token-123',
           appId: 'com.test.app',
         });
+      const response = {
+        status: res.status,
+        body: res.body as PushTokenResponse,
+      };
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
@@ -198,13 +249,17 @@ describe('NotificationController', () => {
         success: true,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .delete('/notifications/register')
         .set('X-App-ID', 'com.test.app')
         .send({
           token: 'fcm-token-123',
           appId: 'com.test.app',
         });
+      const response = {
+        status: res.status,
+        body: res.body as PushTokenResponse,
+      };
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);

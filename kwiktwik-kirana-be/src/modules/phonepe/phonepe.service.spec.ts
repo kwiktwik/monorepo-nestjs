@@ -4,15 +4,27 @@ import { PhonePeService } from './phonepe.service';
 import { InternalServerErrorException } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockDb = Record<string, jest.Mock>;
+
+interface PhonePeCredentials {
+  clientId: string;
+  clientSecret: string;
+  merchantId: string;
+  saltKey: string;
+  saltIndex: number;
+  clientVersion: number;
+  env: string;
+}
+
 describe('PhonePeService', () => {
   let service: PhonePeService;
-  let configService: ConfigService;
 
   const mockConfigService = {
     get: jest.fn(),
   };
 
-  const mockDb = {
+  const mockDb: MockDb = {
     insert: jest.fn().mockReturnThis(),
     values: jest.fn().mockReturnThis(),
     returning: jest.fn().mockResolvedValue([{ id: 'test-order-id' }]),
@@ -34,7 +46,6 @@ describe('PhonePeService', () => {
     }).compile();
 
     service = module.get<PhonePeService>(PhonePeService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -43,33 +54,37 @@ describe('PhonePeService', () => {
 
   describe('normalizeAppId', () => {
     it('should normalize app ID by replacing dots with underscores and uppercasing', () => {
-      expect((service as any).normalizeAppId('com.sharestatus.app')).toBe(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const svc = service as any;
+      expect(svc.normalizeAppId('com.sharestatus.app')).toBe(
         'COM_SHARESTATUS_APP',
       );
-      expect((service as any).normalizeAppId('com.kwiktwik.kirana')).toBe(
+      expect(svc.normalizeAppId('com.kwiktwik.kirana')).toBe(
         'COM_KWIKTWIK_KIRANA',
       );
-      expect((service as any).normalizeAppId('my.app')).toBe('MY_APP');
+      expect(svc.normalizeAppId('my.app')).toBe('MY_APP');
     });
   });
 
   describe('getCredentials', () => {
     it('should throw error when appId is not provided', () => {
-      expect(() => (service as any).getCredentials('')).toThrow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const svc = service as any;
+      expect(() => svc.getCredentials('')).toThrow(
         InternalServerErrorException,
       );
-      expect(() => (service as any).getCredentials('')).toThrow(
-        'App ID is required',
-      );
+      expect(() => svc.getCredentials('')).toThrow('App ID is required');
     });
 
     it('should throw error when credentials are not found for app', () => {
       mockConfigService.get.mockReturnValue(undefined);
 
-      expect(() => (service as any).getCredentials('com.test.app')).toThrow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const svc = service as any;
+      expect(() => svc.getCredentials('com.test.app')).toThrow(
         InternalServerErrorException,
       );
-      expect(() => (service as any).getCredentials('com.test.app')).toThrow(
+      expect(() => svc.getCredentials('com.test.app')).toThrow(
         'PhonePe credentials not found for app: com.test.app',
       );
     });
@@ -88,7 +103,10 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
-      const credentials = (service as any).getCredentials('com.test.app');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const credentials = (service as any).getCredentials(
+        'com.test.app',
+      ) as PhonePeCredentials;
 
       expect(credentials.clientId).toBe('prod-client-id');
       expect(credentials.clientSecret).toBe('prod-client-secret');
@@ -109,7 +127,10 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
-      const credentials = (service as any).getCredentials('com.test.app');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const credentials = (service as any).getCredentials(
+        'com.test.app',
+      ) as PhonePeCredentials;
 
       expect(credentials.env).toBe('SANDBOX');
       expect(credentials.merchantId).toBe('PGTESTPAYUAT');
@@ -126,7 +147,10 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
-      const credentials = (service as any).getCredentials('com.test.app');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const credentials = (service as any).getCredentials(
+        'com.test.app',
+      ) as PhonePeCredentials;
 
       expect(credentials.clientVersion).toBe(3);
     });
@@ -140,7 +164,10 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
-      const credentials = (service as any).getCredentials('com.test.app');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const credentials = (service as any).getCredentials(
+        'com.test.app',
+      ) as PhonePeCredentials;
 
       expect(credentials.env).toBe('SANDBOX');
     });
@@ -148,10 +175,12 @@ describe('PhonePeService', () => {
 
   describe('rupeesToPaise', () => {
     it('should convert rupees to paise correctly', () => {
-      expect((service as any).rupeesToPaise(100)).toBe(10000);
-      expect((service as any).rupeesToPaise(1.5)).toBe(150);
-      expect((service as any).rupeesToPaise(0.99)).toBe(99);
-      expect((service as any).rupeesToPaise(1000)).toBe(100000);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const svc = service as any;
+      expect(svc.rupeesToPaise(100)).toBe(10000);
+      expect(svc.rupeesToPaise(1.5)).toBe(150);
+      expect(svc.rupeesToPaise(0.99)).toBe(99);
+      expect(svc.rupeesToPaise(1000)).toBe(100000);
     });
   });
 
@@ -186,6 +215,7 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       jest.spyOn(service as any, 'getPhonePeClient').mockReturnValue({
         client: {},
         credentials: {
@@ -216,8 +246,10 @@ describe('PhonePeService', () => {
         return creds[key];
       });
 
-      const key1 = (service as any).getCacheKey('com.app1');
-      const key2 = (service as any).getCacheKey('com.app2');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const svc = service as any;
+      const key1 = svc.getCacheKey('com.app1') as string;
+      const key2 = svc.getCacheKey('com.app2') as string;
 
       expect(key1).toBe('com.app1_SANDBOX');
       expect(key2).toBe('com.app2_PRODUCTION');
