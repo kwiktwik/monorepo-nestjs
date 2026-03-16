@@ -49,7 +49,7 @@ function isValidProvider(provider: string): provider is LoginProvider {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ provider: string }> }
+  { params }: { params: Promise<{ provider: string }> },
 ) {
   const requestId = nanoid(8);
   const startTime = Date.now();
@@ -73,7 +73,7 @@ export async function POST(
         success: false,
         error: `Invalid provider: ${provider}. Must be one of: ${VALID_PROVIDERS.join(", ")}`,
       } as UnifiedLoginResponse,
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -86,8 +86,8 @@ export async function POST(
       provider === "otp"
         ? "otpLogin"
         : provider === "truecaller"
-        ? "truecallerLogin"
-        : "googleLogin"
+          ? "truecallerLogin"
+          : "googleLogin",
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AppValidationError") {
@@ -100,7 +100,7 @@ export async function POST(
           : 401;
       return NextResponse.json(
         { success: false, error: error.message } as UnifiedLoginResponse,
-        { status: validStatus }
+        { status: validStatus },
       );
     }
     throw error;
@@ -119,21 +119,21 @@ export async function POST(
         response = await loginWithOtp(
           body as LoginOtpRequest,
           appId,
-          requestId
+          requestId,
         );
         break;
       case "truecaller":
         response = await loginWithTruecaller(
           body as LoginTruecallerRequest,
           appId,
-          requestId
+          requestId,
         );
         break;
       case "google":
         response = await loginWithGoogle(
           body as LoginGoogleRequest,
           appId,
-          requestId
+          requestId,
         );
         break;
     }
@@ -170,7 +170,7 @@ export async function POST(
             success: false,
             error: error.message || "Invalid credentials",
           } as UnifiedLoginResponse,
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -183,7 +183,7 @@ export async function POST(
             ? error.message
             : "Internal server error during login",
       } as UnifiedLoginResponse,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -194,7 +194,7 @@ export async function POST(
 async function loginWithOtp(
   dto: LoginOtpRequest,
   appId: string,
-  requestId: string
+  requestId: string,
 ): Promise<UnifiedLoginResponse> {
   const { phoneNumber, code } = dto;
 
@@ -210,7 +210,7 @@ async function loginWithOtp(
   const phoneRegex = /^\+[1-9]\d{1,14}$/;
   if (!phoneRegex.test(phoneNumber)) {
     throw new Error(
-      "Invalid phone number format. Please use E.164 format (e.g., +919876543210)"
+      "Invalid phone number format. Please use E.164 format (e.g., +919876543210)",
     );
   }
 
@@ -228,7 +228,7 @@ async function loginWithOtp(
 
   if (isTestNumber && isTestOTP) {
     console.log(
-      `[${requestId}] [OTP Login] Test mode - bypassing verification`
+      `[${requestId}] [OTP Login] Test mode - bypassing verification`,
     );
 
     // Check if user already exists for this app
@@ -268,7 +268,7 @@ async function loginWithOtp(
             phoneNumber: phoneNumber,
             phoneNumberVerified: true,
           },
-          appId
+          appId,
         );
       }
     } else {
@@ -334,7 +334,7 @@ async function loginWithOtp(
   } catch (error) {
     console.error(`[${requestId}] [OTP Login] Better Auth error:`, error);
     throw new Error(
-      error instanceof Error ? error.message : "Invalid or expired OTP"
+      error instanceof Error ? error.message : "Invalid or expired OTP",
     );
   }
 }
@@ -345,23 +345,23 @@ async function loginWithOtp(
 async function loginWithTruecaller(
   dto: LoginTruecallerRequest,
   appId: string,
-  requestId: string
+  requestId: string,
 ): Promise<UnifiedLoginResponse> {
   const { phoneNumber, code, code_verifier, client_id } = dto;
 
-  // Validate required fields
-  if (!phoneNumber || !code || !code_verifier || !client_id) {
-    throw new Error(
-      "Missing required fields: phoneNumber, code, code_verifier, client_id"
-    );
+  // Validate required fields (phoneNumber is optional for Truecaller)
+  if (!code || !code_verifier || !client_id) {
+    throw new Error("Missing required fields: code, code_verifier, client_id");
   }
 
-  // Validate phone number format
-  const phoneRegex = /^\+[1-9]\d{1,14}$/;
-  if (!phoneRegex.test(phoneNumber)) {
-    throw new Error(
-      "Invalid phone number format. Please use E.164 format (e.g., +919876543210)"
-    );
+  // Validate phone number format if provided
+  if (phoneNumber) {
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      throw new Error(
+        "Invalid phone number format. Please use E.164 format (e.g., +919876543210)",
+      );
+    }
   }
 
   // Call existing Truecaller token endpoint logic
@@ -378,6 +378,7 @@ async function loginWithTruecaller(
       client_id,
       code,
       code_verifier,
+      ...(phoneNumber && { phoneNumber }), // Include phoneNumber only if provided
     }),
   });
 
@@ -399,7 +400,7 @@ async function loginWithTruecaller(
       id: data.user.id,
       name: data.user.name,
       email: data.user.email,
-      phoneNumber: data.user.phoneNumber || phoneNumber,
+      phoneNumber: data.user.phoneNumber,
       phoneNumberVerified: data.user.phoneNumberVerified || true,
       image: data.user.image,
     },
@@ -415,7 +416,7 @@ async function loginWithTruecaller(
 async function loginWithGoogle(
   dto: LoginGoogleRequest,
   appId: string,
-  requestId: string
+  requestId: string,
 ): Promise<UnifiedLoginResponse> {
   const { phoneNumber, idToken } = dto;
 
@@ -428,7 +429,7 @@ async function loginWithGoogle(
   const phoneRegex = /^\+[1-9]\d{1,14}$/;
   if (!phoneRegex.test(phoneNumber)) {
     throw new Error(
-      "Invalid phone number format. Please use E.164 format (e.g., +919876543210)"
+      "Invalid phone number format. Please use E.164 format (e.g., +919876543210)",
     );
   }
 

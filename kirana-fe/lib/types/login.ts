@@ -36,8 +36,11 @@ export interface LoginOtpRequest extends LoginBaseRequest {
 /**
  * Truecaller Login Request
  * Used for OAuth login with Truecaller
+ * Note: phoneNumber is optional as it will be fetched from Truecaller profile
  */
-export interface LoginTruecallerRequest extends LoginBaseRequest {
+export interface LoginTruecallerRequest {
+  /** Phone number in E.164 format (optional, will be fetched from Truecaller) */
+  phoneNumber?: string;
   /** Truecaller authorization code */
   code: string;
   /** PKCE code verifier */
