@@ -231,31 +231,9 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // Check if phone number is being changed and if it's already taken
-    if (
-      updateData.phoneNumber &&
-      updateData.phoneNumber !== existingUser[0].phoneNumber
-    ) {
-      const phoneCheck = await this.db
-        .select()
-        .from(schema.user)
-        .where(
-          and(
-            eq(schema.user.phoneNumber, updateData.phoneNumber),
-            eq(schema.user.isDeleted, false),
-          ),
-        )
-        .limit(1);
-
-      if (phoneCheck.length > 0 && phoneCheck[0].id !== userId) {
-        throw new BadRequestException('Phone number is already in use');
-      }
-    }
-
     // Update user table
     const userUpdateData: Partial<typeof schema.user.$inferInsert> = {
       name: updateData.name,
-      phoneNumber: updateData.phoneNumber,
       updatedAt: new Date(),
     };
 

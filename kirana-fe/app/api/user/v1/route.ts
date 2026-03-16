@@ -423,7 +423,7 @@ export async function POST(req: NextRequest) {
     const [existingUser] = await db
       .select()
       .from(user)
-      .where(and(eq(user.id, userId), eq(user.isDeleted, false)))
+      .where(eq(user.id, userId))
       .limit(1);
 
     if (!existingUser) {
@@ -434,16 +434,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if phone number is being changed and if it's already taken
-    if (phoneNumber !== existingUser.phoneNumber) {
+    if (phoneNumber && phoneNumber !== existingUser.phoneNumber) {
       const [phoneCheck] = await db
         .select()
         .from(user)
-        .where(
-          and(
-            eq(user.phoneNumber, phoneNumber),
-            eq(user.isDeleted, false)
-          )
-        )
+        .where(eq(user.phoneNumber, phoneNumber))
         .limit(1);
 
       if (phoneCheck && phoneCheck.id !== userId) {
@@ -458,14 +453,17 @@ export async function POST(req: NextRequest) {
     console.log(`[POST /api/user/v1] Updating user table for userId: ${userId}`);
     const updateData: {
       name: string;
-      phoneNumber: string;
+      phoneNumber?: string;
       email?: string;
       updatedAt: Date;
     } = {
       name,
-      phoneNumber,
       updatedAt: new Date(),
     };
+
+    if (phoneNumber) {
+      updateData.phoneNumber = phoneNumber;
+    }
 
     if (email) {
       updateData.email = email;

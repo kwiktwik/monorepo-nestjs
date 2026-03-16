@@ -23,17 +23,6 @@ export class UpdateUserDto {
   @MaxLength(255, { message: 'Name must be at most 255 characters' })
   name: string;
 
-  @ApiProperty({
-    example: '+919876543210',
-    description: 'Phone number in E.164 format (e.g., +919876543210)',
-  })
-  @IsString()
-  @IsNotEmpty({ message: 'Phone number is required' })
-  @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Phone number must be in E.164 format (e.g., +919876543210)',
-  })
-  phoneNumber: string;
-
   @ApiPropertyOptional({
     example: 'john@example.com',
     description: 'User email address',
