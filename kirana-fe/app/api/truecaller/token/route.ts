@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
 
       // Create or find user in database with app context
       let dbUser;
-      const userEmail = userProfile.email || `${userProfile.phone_number?.replace(/\D/g, "")}@alertpay.local`;
+      const userEmail = userProfile.email || `${userProfile.phone_number?.replace(/\D/g, "")}@kiranaapps.local`;
       const userName = userProfile.given_name && userProfile.family_name
         ? `${userProfile.given_name} ${userProfile.family_name}`
         : userProfile.given_name || userProfile.family_name || `User ${userProfile.phone_number?.slice(-4) || "Unknown"}`;
