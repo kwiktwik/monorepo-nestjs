@@ -6,20 +6,22 @@ export class CreateDeviceSessionDto {
   @IsString()
   appId: string;
 
-  @ApiProperty({ description: 'Device model', required: false })
-  @IsOptional()
+  @ApiProperty({ description: 'Device model' })
   @IsString()
-  deviceModel?: string;
+  deviceModel: string;
 
   @ApiProperty({ description: 'OS version', required: false })
   @IsOptional()
   @IsString()
   osVersion?: string;
 
-  @ApiProperty({ description: 'App version', required: false })
-  @IsOptional()
+  @ApiProperty({ description: 'App version' })
   @IsString()
-  appVersion?: string;
+  appVersion: string;
+
+  @ApiProperty({ description: 'Build number' })
+  @IsString()
+  buildNumber: string;
 
   @ApiProperty({ description: 'Platform (android/ios)', required: false })
   @IsOptional()

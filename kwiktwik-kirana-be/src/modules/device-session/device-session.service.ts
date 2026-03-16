@@ -29,6 +29,7 @@ export class DeviceSessionService {
           deviceModel: deviceSessions.deviceModel,
           osVersion: deviceSessions.osVersion,
           appVersion: deviceSessions.appVersion,
+          buildNumber: deviceSessions.buildNumber,
         })
         .from(deviceSessions)
         .where(eq(deviceSessions.userId, userId))
@@ -40,7 +41,8 @@ export class DeviceSessionService {
         lastSession.length === 0 ||
         lastSession[0].deviceModel !== dto.deviceModel ||
         lastSession[0].osVersion !== dto.osVersion ||
-        lastSession[0].appVersion !== dto.appVersion;
+        lastSession[0].appVersion !== dto.appVersion ||
+        lastSession[0].buildNumber !== dto.buildNumber;
 
       if (!hasChanged) {
         return { created: false, message: 'No change detected' };
@@ -53,6 +55,7 @@ export class DeviceSessionService {
         deviceModel: dto.deviceModel || null,
         osVersion: dto.osVersion || null,
         appVersion: dto.appVersion || null,
+        buildNumber: dto.buildNumber || null,
         platform: dto.platform || null,
         manufacturer: dto.manufacturer || null,
         brand: dto.brand || null,

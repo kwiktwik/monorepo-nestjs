@@ -719,9 +719,10 @@ export const deviceSessions = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     appId: text('app_id').notNull(),
-    deviceModel: text('device_model'),
+    deviceModel: text('device_model').notNull(),
     osVersion: text('os_version'),
-    appVersion: text('app_version'),
+    appVersion: text('app_version').notNull(),
+    buildNumber: text('build_number').notNull(),
     platform: text('platform'),
     manufacturer: text('manufacturer'),
     brand: text('brand'),
