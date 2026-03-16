@@ -73,9 +73,38 @@ export class UserController {
 
   @Post('v1')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update user profile' })
-  @ApiResponse({ status: 200, description: 'User updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiOperation({
+    summary: 'Update user profile',
+    description: 'Updates user profile information including name, phone, email, UPI VPA, and profile images. Performs phone number uniqueness validation and syncs images to user_images table.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'User updated successfully',
+        data: {
+          id: 'user-id',
+          name: 'John Doe',
+          phoneNumber: '+919876543210',
+          email: 'john@example.com',
+          accountType: 'credentials',
+          emailVerified: true,
+          phoneNumberVerified: true,
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+          appId: 'alertpay-default',
+          isPremium: false,
+          upiVpa: 'user@paytm',
+          images: [],
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid input data or phone number already in use' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async updateUser(
     @CurrentUser() user: AuthUser,
     @AppId() appId: string,

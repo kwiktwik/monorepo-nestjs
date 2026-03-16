@@ -44,6 +44,7 @@ interface UserResponseData {
   audioLanguage?: string;
   isPremium?: boolean;
   isPlayStoreReviewSubmitted?: boolean;
+  images?: string[];
 }
 
 /* =========================
@@ -276,11 +277,12 @@ export async function GET(req: NextRequest) {
  * Update current user's profile information with app-specific fields
  * 
  * Body Parameters:
- * - name*: User's name (required)
- * - phoneNumber*: User's phone number (required)
- * - email: User's email (optional)
- * - upiVpa: UPI Virtual Payment Address (optional, AlertPay apps only)
+ * - name*: User's name (required, 1-255 characters)
+ * - phoneNumber*: User's phone number (required, E.164 format)
+ * - email: User's email (optional, must be valid email format)
+ * - upiVpa: UPI Virtual Payment Address (optional, format: user@bank)
  * - audioLanguage: Audio language preference (optional, AlertPay apps only)
+ * - images: Profile image URLs (optional, array of strings, replaces all existing images)
  * 
  * Headers:
  * - X-App-ID: App identifier (required for multi-app support)
@@ -289,8 +291,9 @@ export async function GET(req: NextRequest) {
  * 
  * Response:
  * - 200: User updated successfully
- * - 400: Invalid input data or unsupported field for app
+ * - 400: Invalid input data, unsupported field for app, or phone number already in use
  * - 401: Unauthorized - no valid session or invalid app ID
+ * - 404: User not found
  * - 500: Internal server error
  */
 export async function POST(req: NextRequest) {
@@ -330,12 +333,20 @@ export async function POST(req: NextRequest) {
       email,
       upiVpa,
       audioLanguage,
+      images,
     } = body;
 
     // Validate required fields
     if (!name) {
       return NextResponse.json(
         { error: "Name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof name !== 'string' || name.length < 1 || name.length > 255) {
+      return NextResponse.json(
+        { error: "Name must be between 1 and 255 characters" },
         { status: 400 }
       );
     }
@@ -396,7 +407,58 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validate images if provided
+    if (images !== undefined) {
+      if (!Array.isArray(images)) {
+        return NextResponse.json(
+          { error: "Images must be an array" },
+          { status: 400 }
+        );
+      }
+      if (!images.every((img: unknown) => typeof img === 'string')) {
+        return NextResponse.json(
+          { error: "Each image must be a string URL" },
+          { status: 400 }
+        );
+      }
+    }
+
     console.log(`[POST /api/user/v1] All validations passed`);
+
+    // Check if user exists and get current data
+    const [existingUser] = await db
+      .select()
+      .from(user)
+      .where(and(eq(user.id, userId), eq(user.isDeleted, false)))
+      .limit(1);
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if phone number is being changed and if it's already taken
+    if (phoneNumber !== existingUser.phoneNumber) {
+      const [phoneCheck] = await db
+        .select()
+        .from(user)
+        .where(
+          and(
+            eq(user.phoneNumber, phoneNumber),
+            eq(user.isDeleted, false)
+          )
+        )
+        .limit(1);
+
+      if (phoneCheck && phoneCheck.id !== userId) {
+        return NextResponse.json(
+          { error: "Phone number is already in use" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Update user table (always)
     console.log(`[POST /api/user/v1] Updating user table for userId: ${userId}`);
@@ -417,6 +479,36 @@ export async function POST(req: NextRequest) {
 
     await db.update(user).set(updateData).where(eq(user.id, userId));
     console.log(`[POST /api/user/v1] User table updated successfully`);
+
+    // Sync images to user_images when provided (replaces all existing images)
+    if (images !== undefined && images.length > 0) {
+      console.log(`[POST /api/user/v1] Syncing images for userId: ${userId}`);
+      const equivalentAppIds = getEquivalentAppIds(appId);
+      
+      // Delete existing images for this app group
+      await db
+        .delete(userImages)
+        .where(
+          and(
+            eq(userImages.userId, userId),
+            inArray(userImages.appId, equivalentAppIds)
+          )
+        );
+
+      // Batch insert all valid images at once
+      const validImages = images
+        .filter((imageUrl: string): imageUrl is string => Boolean(imageUrl?.trim()))
+        .map((imageUrl: string) => ({
+          userId,
+          appId,
+          imageUrl: imageUrl.trim(),
+        }));
+
+      if (validImages.length > 0) {
+        await db.insert(userImages).values(validImages);
+        console.log(`[POST /api/user/v1] Images synced successfully: ${validImages.length} images`);
+      }
+    }
 
     // Update or create user metadata if upiVpa or app-specific fields provided
     // Treat alertpay-default and alertpay-android as the same app
@@ -490,6 +582,29 @@ export async function POST(req: NextRequest) {
 
     const accountType = accounts.length > 0 ? accounts[0].providerId : null;
 
+    // Compute premium status (active subscription for this app)
+    const equivalentAppIdsForPremium = getEquivalentAppIds(appId);
+    const now = new Date();
+    const activeSubscriptions = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.userId, userId),
+          inArray(subscriptions.appId, equivalentAppIdsForPremium),
+          or(
+            eq(subscriptions.status, ORDER_STATUS.ACTIVE),
+            and(
+              eq(subscriptions.status, ORDER_STATUS.CANCELLED),
+              isNotNull(subscriptions.endAt),
+              gt(subscriptions.endAt, now)
+            )
+          )
+        )
+      )
+      .limit(1);
+    const isPremium = activeSubscriptions.length > 0;
+
     // Build response with app-specific data
     const responseData: UserResponseData = {
       id: updatedUser.id,
@@ -502,6 +617,7 @@ export async function POST(req: NextRequest) {
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
       appId: appId,
+      isPremium,
     };
 
     // Fetch user metadata to include in response (treat alertpay-default and alertpay-android as same)
@@ -523,11 +639,39 @@ export async function POST(req: NextRequest) {
       responseData.audioLanguage = userMetaRecord?.audioLanguage || "en-US";
     }
 
+    // Check if user has submitted a Play Store review for this app
+    const [submittedReview] = await db
+      .select({ id: playStoreRatings.id })
+      .from(playStoreRatings)
+      .where(
+        and(
+          eq(playStoreRatings.userId, userId),
+          inArray(playStoreRatings.appId, equivalentAppIdsForResponse),
+          isNotNull(playStoreRatings.submittedToPlayStoreAt)
+        )
+      )
+      .limit(1);
+    responseData.isPlayStoreReviewSubmitted = !!submittedReview;
+
+    // Fetch user images
+    const userImagesList = await db
+      .select({ imageUrl: userImages.imageUrl })
+      .from(userImages)
+      .where(
+        and(
+          eq(userImages.userId, userId),
+          inArray(userImages.appId, equivalentAppIdsForResponse)
+        )
+      );
+
     return NextResponse.json(
       {
         success: true,
         message: "User updated successfully",
-        data: responseData,
+        data: {
+          ...responseData,
+          images: userImagesList.map((img) => img.imageUrl),
+        },
       },
       { status: 200 }
     );

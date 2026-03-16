@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -6,49 +6,61 @@ import {
   IsOptional,
   Matches,
   IsArray,
+  ArrayNotEmpty,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 
 export class UpdateUserDto {
-  @ApiProperty({ example: 'John Doe' })
+  @ApiProperty({
+    example: 'John Doe',
+    description: 'User full name',
+    minLength: 1,
+    maxLength: 255,
+  })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Name is required' })
+  @MinLength(1, { message: 'Name must be at least 1 character' })
+  @MaxLength(255, { message: 'Name must be at most 255 characters' })
   name: string;
 
   @ApiProperty({
     example: '+919876543210',
-    description: 'Phone in E.164 format',
+    description: 'Phone number in E.164 format (e.g., +919876543210)',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Phone number is required' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: 'Phone number must be in E.164 format (e.g., +919876543210)',
   })
   phoneNumber: string;
 
-  @ApiProperty({ example: 'john@example.com', required: false })
-  @IsEmail()
+  @ApiPropertyOptional({
+    example: 'john@example.com',
+    description: 'User email address',
+  })
+  @IsEmail({}, { message: 'Invalid email format' })
   @IsOptional()
   email?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'user@paytm',
-    required: false,
-    description: 'UPI VPA (user@bank)',
+    description: 'UPI Virtual Payment Address (VPA) in format user@bank',
   })
   @IsString()
   @IsOptional()
   @Matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, {
-    message: 'Invalid UPI VPA format. Expected format: user@bank',
+    message: 'Invalid UPI VPA format. Expected format: user@bank (e.g., user@paytm)',
   })
   upiVpa?: string;
 
-  @ApiProperty({
-    required: false,
-    description: 'Profile image URLs. Syncs with user_images table.',
+  @ApiPropertyOptional({
+    description: 'Profile image URLs. Replaces all existing images for the user.',
     type: [String],
+    example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
   })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @IsArray({ message: 'Images must be an array' })
+  @IsString({ each: true, message: 'Each image must be a string URL' })
   images?: string[];
 }
