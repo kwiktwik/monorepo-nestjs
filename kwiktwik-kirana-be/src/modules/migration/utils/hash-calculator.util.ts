@@ -1,6 +1,9 @@
 import { createHash } from 'crypto';
 import { MigratableUserData } from '../interfaces/migration.interfaces';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RecordData = Record<string, any>;
+
 /**
  * Calculate hash for migration data verification
  * Ensures data integrity after migration
@@ -19,15 +22,15 @@ export class HashCalculator {
   /**
    * Calculate hash for a specific table
    */
-  static calculateTableHash(records: any[]): string {
+  static calculateTableHash(records: RecordData[]): string {
     if (!records || records.length === 0) {
       return createHash('sha256').update('empty').digest('hex');
     }
 
     // Sort records by ID for consistency
     const sorted = [...records].sort((a, b) => {
-      const aId = a.id || JSON.stringify(a);
-      const bId = b.id || JSON.stringify(b);
+      const aId = a['id'] ?? JSON.stringify(a);
+      const bId = b['id'] ?? JSON.stringify(b);
       return String(aId).localeCompare(String(bId));
     });
 
@@ -76,12 +79,12 @@ export class HashCalculator {
    * - Remove timestamps that change
    * - Convert dates to ISO strings
    */
-  private static normalizeRecord(record: any): object {
+  private static normalizeRecord(record: RecordData): RecordData {
     if (!record || typeof record !== 'object') {
       return record;
     }
 
-    const sorted: Record<string, any> = {};
+    const sorted: RecordData = {};
 
     // Sort keys alphabetically
     const keys = Object.keys(record).sort();
@@ -92,14 +95,14 @@ export class HashCalculator {
         continue;
       }
 
-      let value = record[key];
+      let value: unknown = record[key];
 
       // Normalize dates to ISO string
       if (value instanceof Date) {
         value = value.toISOString();
       } else if (typeof value === 'object' && value !== null) {
         // Recursively normalize nested objects
-        value = this.normalizeRecord(value);
+        value = this.normalizeRecord(value as RecordData);
       }
 
       sorted[key] = value;

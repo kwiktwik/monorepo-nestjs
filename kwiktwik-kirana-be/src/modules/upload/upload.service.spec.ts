@@ -6,16 +6,31 @@ import {
   InternalServerErrorException,
   BadRequestException,
 } from '@nestjs/common';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PresignedUrlDto } from './dto/presigned-url.dto';
 
 jest.mock('@aws-sdk/client-s3');
 jest.mock('@aws-sdk/s3-request-presigner');
 
+interface MockConfigService {
+  get: jest.Mock<string | undefined, [string]>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockDb = Record<string, jest.Mock>;
+
+// DTO for chat media presigned URL
+interface ChatMediaPresignedUrlDto {
+  fileName: string;
+  contentType: string;
+  expiresIn?: number;
+  conversationId?: string;
+}
+
 describe('UploadService', () => {
   let service: UploadService;
-  let mockConfigService: any;
-  let mockDb: any;
+  let mockConfigService: MockConfigService;
+  let mockDb: MockDb;
   let mockDate: number;
 
   beforeEach(async () => {
@@ -75,7 +90,7 @@ describe('UploadService', () => {
   });
 
   describe('getPresignedUrl', () => {
-    const mockDto = {
+    const mockDto: PresignedUrlDto = {
       fileName: 'test-image.jpg',
       contentType: 'image/jpeg',
       expiresIn: 3600,
@@ -122,7 +137,7 @@ describe('UploadService', () => {
     });
 
     it('should throw BadRequestException for invalid content type', async () => {
-      const invalidDto = {
+      const invalidDto: PresignedUrlDto = {
         fileName: 'test.txt',
         contentType: 'text/plain',
         expiresIn: 3600,
@@ -136,7 +151,7 @@ describe('UploadService', () => {
     it('should sanitize filename with special characters', async () => {
       mockDb.returning.mockResolvedValueOnce([{ id: 1 }]);
 
-      const dtoWithSpecialChars = {
+      const dtoWithSpecialChars: PresignedUrlDto = {
         fileName: 'test file@#$%^&*.jpg',
         contentType: 'image/jpeg',
       };
@@ -169,14 +184,14 @@ describe('UploadService', () => {
     it('should use default content type when not provided', async () => {
       mockDb.returning.mockResolvedValueOnce([{ id: 1 }]);
 
-      const dtoWithoutContentType = {
+      const dtoWithoutContentType: PresignedUrlDto = {
         fileName: 'test.jpg',
       };
 
       const result = await service.getPresignedUrl(
         'user-123',
         'com.test.app',
-        dtoWithoutContentType as any,
+        dtoWithoutContentType,
       );
 
       expect(result.success).toBe(true);
@@ -185,7 +200,7 @@ describe('UploadService', () => {
     it('should use default expiresIn when not provided', async () => {
       mockDb.returning.mockResolvedValueOnce([{ id: 1 }]);
 
-      const dtoWithoutExpires = {
+      const dtoWithoutExpires: PresignedUrlDto = {
         fileName: 'test.jpg',
         contentType: 'image/jpeg',
       };
@@ -226,7 +241,7 @@ describe('UploadService', () => {
   });
 
   describe('getChatMediaPresignedUrl', () => {
-    const mockDto = {
+    const mockDto: ChatMediaPresignedUrlDto = {
       fileName: 'chat-video.mp4',
       contentType: 'video/mp4',
       expiresIn: 3600,
@@ -275,7 +290,7 @@ describe('UploadService', () => {
     });
 
     it('should throw BadRequestException for invalid content type', async () => {
-      const invalidDto = {
+      const invalidDto: ChatMediaPresignedUrlDto = {
         fileName: 'test.exe',
         contentType: 'application/x-msdownload',
       };
@@ -312,7 +327,7 @@ describe('UploadService', () => {
     });
 
     it('should handle chat media without conversationId', async () => {
-      const dtoWithoutConv = {
+      const dtoWithoutConv: ChatMediaPresignedUrlDto = {
         fileName: 'test.jpg',
         contentType: 'image/jpeg',
       };
@@ -328,7 +343,7 @@ describe('UploadService', () => {
     });
 
     it('should sanitize filename in chat media', async () => {
-      const dtoWithSpecialChars = {
+      const dtoWithSpecialChars: ChatMediaPresignedUrlDto = {
         fileName: 'my file name@#$%.jpg',
         contentType: 'image/jpeg',
       };

@@ -239,6 +239,7 @@ export class NotificationProcessor extends WorkerHost {
   private async updateEventStatus(
     eventId: string,
     status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _detail?: string,
   ): Promise<void> {
     try {

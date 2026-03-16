@@ -63,7 +63,7 @@ export class IdMapper {
 
     // Map primary ID
     for (const field of idFields) {
-      const fieldValue = record[field];
+      const fieldValue = record[field] as unknown;
       if (fieldValue && typeof fieldValue === 'string') {
         const newId = this.getNewId(tableName, fieldValue);
         if (newId) {
