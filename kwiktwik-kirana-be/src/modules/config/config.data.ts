@@ -86,12 +86,12 @@ export type PlanType = keyof typeof PAYWALL_PLANS;
 // ============================================================================
 
 export const USER_TYPES = {
-  NEW: 'new',                    // Brand new user, never subscribed
-  ACTIVE: 'active',              // Currently active subscription
-  EXPIRED: 'expired',            // Subscription expired
-  ABANDONED: 'abandoned',        // Started checkout but didn't complete
+  NEW: 'new', // Brand new user, never subscribed
+  ACTIVE: 'active', // Currently active subscription
+  EXPIRED: 'expired', // Subscription expired
+  ABANDONED: 'abandoned', // Started checkout but didn't complete
   TRIAL_EXPIRED: 'trial_expired', // Trial period ended
-  CHURNED: 'churned',            // Previously subscribed, now cancelled
+  CHURNED: 'churned', // Previously subscribed, now cancelled
 } as const;
 
 export type UserType = (typeof USER_TYPES)[keyof typeof USER_TYPES];
@@ -109,7 +109,8 @@ export const DEEPLINK_CAMPAIGNS = {
   SEASONAL: 'seasonal',
 } as const;
 
-export type DeeplinkCampaign = (typeof DEEPLINK_CAMPAIGNS)[keyof typeof DEEPLINK_CAMPAIGNS];
+export type DeeplinkCampaign =
+  (typeof DEEPLINK_CAMPAIGNS)[keyof typeof DEEPLINK_CAMPAIGNS];
 
 // ============================================================================
 // JSON RULES ENGINE - PAYWALL RULES
@@ -121,7 +122,11 @@ export const PAYWALL_RULES = [
     name: 'marketing_campaign_50_percent',
     conditions: {
       all: [
-        { fact: 'deeplink', operator: 'equal', value: DEEPLINK_CAMPAIGNS.MARKETING_50_PERCENT },
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.MARKETING_50_PERCENT,
+        },
       ],
     },
     event: {
@@ -140,7 +145,11 @@ export const PAYWALL_RULES = [
     name: 'referral_campaign',
     conditions: {
       all: [
-        { fact: 'deeplink', operator: 'equal', value: DEEPLINK_CAMPAIGNS.REFERRAL },
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.REFERRAL,
+        },
       ],
     },
     event: {
@@ -160,7 +169,11 @@ export const PAYWALL_RULES = [
     conditions: {
       all: [
         { fact: 'userType', operator: 'equal', value: USER_TYPES.CHURNED },
-        { fact: 'deeplink', operator: 'equal', value: DEEPLINK_CAMPAIGNS.RETARGETING },
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.RETARGETING,
+        },
       ],
     },
     event: {
@@ -179,7 +192,11 @@ export const PAYWALL_RULES = [
     name: 'seasonal_campaign',
     conditions: {
       all: [
-        { fact: 'deeplink', operator: 'equal', value: DEEPLINK_CAMPAIGNS.SEASONAL },
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.SEASONAL,
+        },
       ],
     },
     event: {
@@ -198,8 +215,16 @@ export const PAYWALL_RULES = [
     name: 'marketing_trial',
     conditions: {
       all: [
-        { fact: 'deeplink', operator: 'equal', value: DEEPLINK_CAMPAIGNS.MARKETING_TRIAL },
-        { fact: 'userType', operator: 'in', value: [USER_TYPES.NEW, USER_TYPES.TRIAL_EXPIRED] },
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.MARKETING_TRIAL,
+        },
+        {
+          fact: 'userType',
+          operator: 'in',
+          value: [USER_TYPES.NEW, USER_TYPES.TRIAL_EXPIRED],
+        },
       ],
     },
     event: {
@@ -237,7 +262,11 @@ export const PAYWALL_RULES = [
     name: 'trial_expired',
     conditions: {
       all: [
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.TRIAL_EXPIRED },
+        {
+          fact: 'userType',
+          operator: 'equal',
+          value: USER_TYPES.TRIAL_EXPIRED,
+        },
       ],
     },
     event: {
@@ -255,9 +284,7 @@ export const PAYWALL_RULES = [
   {
     name: 'churned_user',
     conditions: {
-      all: [
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.CHURNED },
-      ],
+      all: [{ fact: 'userType', operator: 'equal', value: USER_TYPES.CHURNED }],
     },
     event: {
       type: 'churned_user',
@@ -274,9 +301,7 @@ export const PAYWALL_RULES = [
   {
     name: 'new_user',
     conditions: {
-      all: [
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.NEW },
-      ],
+      all: [{ fact: 'userType', operator: 'equal', value: USER_TYPES.NEW }],
     },
     event: {
       type: 'new_user',
@@ -293,9 +318,7 @@ export const PAYWALL_RULES = [
   {
     name: 'expired_subscription',
     conditions: {
-      all: [
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.EXPIRED },
-      ],
+      all: [{ fact: 'userType', operator: 'equal', value: USER_TYPES.EXPIRED }],
     },
     event: {
       type: 'expired_subscription',
@@ -312,9 +335,7 @@ export const PAYWALL_RULES = [
   {
     name: 'active_user',
     conditions: {
-      all: [
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.ACTIVE },
-      ],
+      all: [{ fact: 'userType', operator: 'equal', value: USER_TYPES.ACTIVE }],
     },
     event: {
       type: 'active_user',
@@ -336,7 +357,11 @@ export const PAYWALL_RULES = [
         { fact: 'userType', operator: 'equal', value: USER_TYPES.ACTIVE },
         { fact: 'userType', operator: 'equal', value: USER_TYPES.EXPIRED },
         { fact: 'userType', operator: 'equal', value: USER_TYPES.ABANDONED },
-        { fact: 'userType', operator: 'equal', value: USER_TYPES.TRIAL_EXPIRED },
+        {
+          fact: 'userType',
+          operator: 'equal',
+          value: USER_TYPES.TRIAL_EXPIRED,
+        },
         { fact: 'userType', operator: 'equal', value: USER_TYPES.CHURNED },
       ],
     },
@@ -599,6 +624,91 @@ export const APP_CONFIGS = {
       ...baseConfig.appUpdate,
       updateUrl:
         'https://play.google.com/store/apps/details?id=com.sharekaro.kirana',
+    },
+  },
+  'com.kiranaapps.app': {
+    ...baseConfig,
+    app: {
+      ...baseConfig.app,
+      name: 'Kirana Apps',
+      id: 'com.kiranaapps.app',
+    },
+    features: {
+      ...baseConfig.features,
+      subscription: { plan_id: 'plan_S3FaBrk7sjPQEU' } as SubscriptionConfig,
+    },
+    videos: {
+      en: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/English%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/English%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      hi: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Hindi%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Hindi%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      bn: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Bengali%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Bengali%20Trial%20Video.mp4',
+      },
+      mr: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Marathi%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Marathi%20Trial%20Video.mp4',
+      },
+      te: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Telgu%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Telgu%20Trial%20Video.mp4',
+      },
+      ta: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Tamil%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Tamil%20Trial%20Video.mp4',
+      },
+      gu: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Gujrati%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Gujrati%20Trial%20Video.mp4',
+      },
+      ur: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Punjabi%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Punjabi%20Trial%20Video.mp4',
+      },
+      kn: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Kannada%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Kannada%20Trial%20Video.mp4',
+      },
+      or: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/English%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/English%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      ml: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Malyalam%20Fallback%20screen.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Malyalam%20Trial%20Video.mp4',
+      },
+    },
+    appUpdate: {
+      ...baseConfig.appUpdate,
+      updateUrl:
+        'https://play.google.com/store/apps/details?id=com.kiranaapps.app',
     },
   },
 };
