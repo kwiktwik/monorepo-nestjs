@@ -6,7 +6,6 @@ import {
   IsOptional,
   Matches,
   IsArray,
-  ArrayNotEmpty,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -50,17 +49,30 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   @Matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, {
-    message: 'Invalid UPI VPA format. Expected format: user@bank (e.g., user@paytm)',
+    message:
+      'Invalid UPI VPA format. Expected format: user@bank (e.g., user@paytm)',
   })
   upiVpa?: string;
 
   @ApiPropertyOptional({
-    description: 'Profile image URLs. Replaces all existing images for the user.',
+    description:
+      'Profile image URLs. Replaces all existing images for the user.',
     type: [String],
-    example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
   })
   @IsOptional()
   @IsArray({ message: 'Images must be an array' })
   @IsString({ each: true, message: 'Each image must be a string URL' })
   images?: string[];
+
+  @ApiPropertyOptional({
+    example: 'en-US',
+    description: 'Audio language preference (e.g., "en-US", "hi-IN")',
+  })
+  @IsString()
+  @IsOptional()
+  audioLanguage?: string;
 }

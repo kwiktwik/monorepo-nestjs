@@ -49,6 +49,7 @@ Array [
     },
     "property": "name",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": undefined,
       "images": undefined,
       "name": "",
@@ -69,6 +70,7 @@ Array [
     },
     "property": "upiVpa",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": undefined,
       "images": undefined,
       "name": "Test User",
@@ -89,6 +91,7 @@ Array [
     },
     "property": "email",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": "invalid-email",
       "images": undefined,
       "name": "Test User",
@@ -109,6 +112,7 @@ Array [
     },
     "property": "phoneNumber",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": undefined,
       "images": undefined,
       "name": "Test User",
@@ -132,6 +136,7 @@ Array [
     },
     "property": "name",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": undefined,
       "images": undefined,
       "name": undefined,
@@ -149,6 +154,7 @@ Array [
     },
     "property": "phoneNumber",
     "target": UpdateUserDto {
+      "audioLanguage": undefined,
       "email": undefined,
       "images": undefined,
       "name": undefined,
@@ -162,6 +168,7 @@ Array [
 
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot for minimal valid data 1`] = `
 UpdateUserDto {
+  "audioLanguage": undefined,
   "email": undefined,
   "images": undefined,
   "name": "Jane Doe",
@@ -172,6 +179,7 @@ UpdateUserDto {
 
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot for valid complete data 1`] = `
 UpdateUserDto {
+  "audioLanguage": undefined,
   "email": "john@example.com",
   "images": Array [
     "https://example.com/image1.jpg",
@@ -185,6 +193,7 @@ UpdateUserDto {
 
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot with empty images array 1`] = `
 UpdateUserDto {
+  "audioLanguage": undefined,
   "email": undefined,
   "images": Array [],
   "name": "Test User",

@@ -126,6 +126,8 @@ export class UserService {
     const accountType = accounts.length > 0 ? accounts[0].providerId : null;
     const isPremium = activeSubscriptions.length > 0;
     const upiVpa = userMeta.length > 0 ? userMeta[0].upiVpa : null;
+    const audioLanguage =
+      userMeta.length > 0 ? userMeta[0].audioLanguage : null;
 
     const images = userImagesList.map((img) => ({
       id: img.id,
@@ -145,6 +147,7 @@ export class UserService {
       appId,
       isPremium,
       upiVpa,
+      audioLanguage,
       isPlayStoreReviewSubmitted: playStoreReview.length > 0,
       images,
     };
@@ -291,8 +294,11 @@ export class UserService {
       }
     }
 
-    // Update or create user metadata if upiVpa provided
-    if (updateData.upiVpa !== undefined) {
+    // Update or create user metadata if upiVpa or audioLanguage provided
+    if (
+      updateData.upiVpa !== undefined ||
+      updateData.audioLanguage !== undefined
+    ) {
       const equivalentAppIds = this.getEquivalentAppIds(appId);
       const existingMeta = await this.db
         .select()
@@ -305,13 +311,22 @@ export class UserService {
         )
         .limit(1);
 
+      const metadataUpdate: Partial<typeof schema.userMetadata.$inferInsert> = {
+        updatedAt: new Date(),
+      };
+
+      if (updateData.upiVpa !== undefined) {
+        metadataUpdate.upiVpa = updateData.upiVpa || null;
+      }
+
+      if (updateData.audioLanguage !== undefined) {
+        metadataUpdate.audioLanguage = updateData.audioLanguage || null;
+      }
+
       if (existingMeta.length > 0) {
         await this.db
           .update(schema.userMetadata)
-          .set({
-            upiVpa: updateData.upiVpa || null,
-            updatedAt: new Date(),
-          })
+          .set(metadataUpdate)
           .where(
             and(
               eq(schema.userMetadata.userId, userId),
@@ -323,6 +338,7 @@ export class UserService {
           userId,
           appId,
           upiVpa: updateData.upiVpa || null,
+          audioLanguage: updateData.audioLanguage || null,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
