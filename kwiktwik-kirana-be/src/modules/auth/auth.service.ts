@@ -947,7 +947,13 @@ export class AuthService {
     const phoneToCheck = inputPhoneNumber
       ? normalizePhoneNumber(inputPhoneNumber)
       : normalized;
+    this.logger.log(
+      `[Truecaller Signin] Checking kirana-fe for phone: ${phoneToCheck} (from Truecaller: ${normalized}, input: ${inputPhoneNumber})`,
+    );
     const isKiranaFeUser = await this.checkKiranaFeUser(phoneToCheck);
+    this.logger.log(
+      `[Truecaller Signin] Kirana-fe check result: ${isKiranaFeUser}`,
+    );
 
     if (isKiranaFeUser) {
       this.logger.log(

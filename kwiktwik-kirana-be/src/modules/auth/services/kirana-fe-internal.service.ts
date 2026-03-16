@@ -31,8 +31,12 @@ export class KiranaFeInternalService {
   async checkUserExists(phoneNumber: string): Promise<boolean> {
     try {
       this.logger.log(`[KiranaFe Check] Checking user: ${phoneNumber}`);
-      this.logger.log(`[KiranaFe Check] API URL: ${this.kiranaFeBaseUrl}/api/internal/user/check`);
-      this.logger.log(`[KiranaFe Check] API Key configured: ${this.internalApiKey ? 'Yes' : 'No'}`);
+      this.logger.log(
+        `[KiranaFe Check] API URL: ${this.kiranaFeBaseUrl}/api/internal/user/check`,
+      );
+      this.logger.log(
+        `[KiranaFe Check] API Key configured: ${this.internalApiKey ? 'Yes' : 'No'}`,
+      );
 
       const response = await fetch(
         `${this.kiranaFeBaseUrl}/api/internal/user/check`,
@@ -52,34 +56,11 @@ export class KiranaFeInternalService {
       if (!response.ok) {
         if (response.status === 404) {
           // User not found
-          this.logger.log(`[KiranaFe Check] User ${phoneNumber} not found (404)`);
+          this.logger.log(
+            `[KiranaFe Check] User ${phoneNumber} not found (404)`,
+          );
           return false;
         }
-        if (response.status === 401) {
-          this.logger.error(
-            '[KiranaFe Check] Unauthorized - invalid internal API key',
-          );
-          throw new Error('Kirana-fe internal API authentication failed');
-        }
-        throw new Error(`Kirana-fe API error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as KiranaFeCheckResponse;
-      this.logger.log(
-        `[KiranaFe Check] User ${phoneNumber} exists: ${data.exists}`,
-      );
-
-      return data.exists;
-    } catch (error) {
-      this.logger.error(
-        `[KiranaFe Check] Error checking user ${phoneNumber}:",
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-      // Fail-safe: assume user doesn't exist if API call fails
-      // This allows new users to sign up even if kirana-fe is down
-      return false;
-    }
-  }
         if (response.status === 401) {
           this.logger.error(
             '[KiranaFe Check] Unauthorized - invalid internal API key',
