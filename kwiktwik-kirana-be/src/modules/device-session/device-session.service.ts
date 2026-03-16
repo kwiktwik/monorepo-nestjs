@@ -52,10 +52,10 @@ export class DeviceSessionService {
       await this.db.insert(deviceSessions).values({
         userId,
         appId: dto.appId,
-        deviceModel: dto.deviceModel || null,
+        deviceModel: dto.deviceModel,
         osVersion: dto.osVersion || null,
-        appVersion: dto.appVersion || null,
-        buildNumber: dto.buildNumber || null,
+        appVersion: dto.appVersion,
+        buildNumber: dto.buildNumber,
         platform: dto.platform || null,
         manufacturer: dto.manufacturer || null,
         brand: dto.brand || null,
