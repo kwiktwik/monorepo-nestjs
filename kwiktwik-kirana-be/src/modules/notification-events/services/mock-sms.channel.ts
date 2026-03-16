@@ -11,7 +11,7 @@ export class MockSmsChannel implements NotificationChannel {
   private readonly logger = new Logger(MockSmsChannel.name);
   readonly type = NotificationChannelType.Sms;
 
-  async send(event: EventEnvelope): Promise<NotificationChannelResult> {
+  send(event: EventEnvelope): Promise<NotificationChannelResult> {
     const payloadPreview = JSON.stringify(event.payload).slice(0, 100);
 
     this.logger.log(
@@ -20,11 +20,11 @@ export class MockSmsChannel implements NotificationChannel {
     this.logger.debug(`   Payload: ${payloadPreview}`);
     this.logger.log(`✅ [MOCK SMS] Delivered successfully to ${event.userId}`);
 
-    return {
+    return Promise.resolve({
       channel: NotificationChannelType.Sms,
       delivered: true,
       detail: 'Mock SMS sent',
       deliveredAt: new Date(),
-    };
+    });
   }
 }

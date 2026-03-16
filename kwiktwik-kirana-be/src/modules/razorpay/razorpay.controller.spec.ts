@@ -16,9 +16,24 @@ jest.mock('./razorpay.service', () => ({
 
 import { RazorpayService } from './razorpay.service';
 
+interface AuthenticatedRequest {
+  user: { userId: string; appId: string };
+}
+
+interface SubscriptionResponse {
+  subscription?: { id: string };
+  razorpaySubscription?: { key: string };
+  subscriptionId?: string;
+  message?: string;
+}
+
+interface VerifyResponse {
+  verified: boolean;
+}
+
 class MockUserGuard {
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     req.user = { userId: 'test-user-id', appId: 'com.test.app' };
     return true;
   }
@@ -67,7 +82,7 @@ describe('RazorpayController', () => {
         message: 'Subscription created',
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/razorpay/subscriptions/v2')
         .set('X-App-ID', 'com.test.app')
         .send({
@@ -79,6 +94,10 @@ describe('RazorpayController', () => {
             contact: '9876543210',
           },
         });
+      const response = {
+        status: res.status,
+        body: res.body as SubscriptionResponse,
+      };
 
       expect(response.status).toBe(201);
       expect(response.body.subscription).toBeDefined();
@@ -89,14 +108,14 @@ describe('RazorpayController', () => {
         new BadRequestException('email and contact are required'),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/razorpay/subscriptions/v2')
         .set('X-App-ID', 'com.test.app')
         .send({
           notes: {},
         });
 
-      expect(response.status).toBe(400);
+      expect(res.status).toBe(400);
     });
   });
 
@@ -106,7 +125,7 @@ describe('RazorpayController', () => {
         verified: true,
       });
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/razorpay/verify')
         .set('X-App-ID', 'com.test.app')
         .send({
@@ -114,6 +133,7 @@ describe('RazorpayController', () => {
           razorpay_signature: 'valid_signature',
           razorpay_subscription_id: 'sub_123',
         });
+      const response = { status: res.status, body: res.body as VerifyResponse };
 
       expect(response.status).toBe(201);
       expect(response.body.verified).toBe(true);
@@ -126,7 +146,7 @@ describe('RazorpayController', () => {
         ),
       );
 
-      const response = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/razorpay/verify')
         .set('X-App-ID', 'com.test.app')
         .send({
@@ -134,7 +154,7 @@ describe('RazorpayController', () => {
           razorpay_signature: 'signature',
         });
 
-      expect(response.status).toBe(400);
+      expect(res.status).toBe(400);
     });
   });
 });

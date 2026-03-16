@@ -6,7 +6,6 @@ import {
   Post,
   UseGuards,
   Get,
-  Query,
 } from '@nestjs/common';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import {
@@ -15,7 +14,6 @@ import {
   ApiOperation,
   ApiTags,
   ApiBody,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';

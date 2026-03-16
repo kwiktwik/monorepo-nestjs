@@ -20,9 +20,9 @@ export class NotificationEventsModule {
   static forRoot(config: ConfigService): DynamicModule {
     const redisAvailable = isRedisAvailable(config);
 
-    const imports: any[] = [];
-    const controllers: any[] = [];
-    const providers: any[] = [
+    const imports: DynamicModule['imports'] = [];
+    const controllers: DynamicModule['controllers'] = [];
+    const providers: DynamicModule['providers'] = [
       NotificationEventsService,
       InMemoryEventBus,
       MockInAppChannel,

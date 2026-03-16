@@ -12,7 +12,7 @@ import {
 } from '../types/notification-event.types';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, sql, and, inArray } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import * as schema from '../../../database/schema';
 import { isMockMode } from '../../../common/utils/is-mock-mode';
 
