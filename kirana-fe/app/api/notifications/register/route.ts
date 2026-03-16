@@ -69,10 +69,15 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { token, appId } = await req.json();
+        const { token } = await req.json();
+        const appId = req.headers.get("X-App-ID");
 
-        if (!token || !appId) {
-            return NextResponse.json({ error: "Token and App ID are required" }, { status: 400 });
+        if (!token) {
+            return NextResponse.json({ error: "Token is required" }, { status: 400 });
+        }
+
+        if (!appId) {
+            return NextResponse.json({ error: "X-App-ID header is required" }, { status: 400 });
         }
 
         const userId = session.user.id;
