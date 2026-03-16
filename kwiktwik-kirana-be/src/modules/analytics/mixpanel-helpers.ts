@@ -17,7 +17,9 @@ export interface MixpanelEnrichmentProps {
 /**
  * Parse User-Agent string to extract browser, device, and OS info
  */
-export function parseUserAgent(userAgent: string | undefined): Pick<MixpanelEnrichmentProps, '$browser' | '$device' | '$os'> {
+export function parseUserAgent(
+  userAgent: string | undefined,
+): Pick<MixpanelEnrichmentProps, '$browser' | '$device' | '$os'> {
   if (!userAgent) {
     return {};
   }
@@ -43,10 +45,24 @@ export function parseUserAgent(userAgent: string | undefined): Pick<MixpanelEnri
  * Extract UTM parameters from query parameters
  */
 export function extractUtmParams(
-  query: Record<string, string | string[] | undefined> | URLSearchParams
-): Pick<MixpanelEnrichmentProps, 'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'> {
-  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
-  const result: Partial<Pick<MixpanelEnrichmentProps, 'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'>> = {};
+  query: Record<string, string | string[] | undefined> | URLSearchParams,
+): Pick<
+  MixpanelEnrichmentProps,
+  'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'
+> {
+  const utmKeys = [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+  ] as const;
+  const result: Partial<
+    Pick<
+      MixpanelEnrichmentProps,
+      'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'
+    >
+  > = {};
 
   try {
     if (query instanceof URLSearchParams) {
@@ -74,7 +90,9 @@ export function extractUtmParams(
 /**
  * Extract referrer information from headers
  */
-export function extractReferrer(referrer: string | undefined): Pick<MixpanelEnrichmentProps, '$referrer' | '$referring_domain'> {
+export function extractReferrer(
+  referrer: string | undefined,
+): Pick<MixpanelEnrichmentProps, '$referrer' | '$referring_domain'> {
   if (!referrer) {
     return {};
   }
@@ -97,7 +115,7 @@ export function extractReferrer(referrer: string | undefined): Pick<MixpanelEnri
  * Get client IP address from request headers
  */
 export function getClientIp(
-  headers: Record<string, string | string[] | undefined> | Headers
+  headers: Record<string, string | string[] | undefined> | Headers,
 ): string | undefined {
   try {
     let forwardedFor: string | null = null;
@@ -108,7 +126,8 @@ export function getClientIp(
       realIp = headers.get('x-real-ip') ?? null;
     } else {
       const forwarded = headers['x-forwarded-for'];
-      forwardedFor = (Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? null;
+      forwardedFor =
+        (Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? null;
       const real = headers['x-real-ip'];
       realIp = (Array.isArray(real) ? real[0] : real) ?? null;
     }

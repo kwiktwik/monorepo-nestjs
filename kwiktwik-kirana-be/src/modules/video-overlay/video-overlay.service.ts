@@ -131,8 +131,10 @@ export class VideoOverlayService {
 
   private setCachedVideo(key: string, url: string): void {
     if (this.processedVideoCache.size >= VideoOverlayService.MAX_CACHE_SIZE) {
-      const oldest = this.processedVideoCache.keys().next().value;
-      if (oldest) this.processedVideoCache.delete(oldest);
+      const oldestKey = this.processedVideoCache.keys().next();
+      if (!oldestKey.done && oldestKey.value) {
+        this.processedVideoCache.delete(oldestKey.value);
+      }
     }
     this.processedVideoCache.set(key, { url, timestamp: Date.now() });
   }
@@ -426,8 +428,8 @@ export class VideoOverlayService {
       ]);
       let out = '';
       let err = '';
-      ffprobe.stdout?.on('data', (d) => (out += d.toString()));
-      ffprobe.stderr?.on('data', (d) => (err += d.toString()));
+      ffprobe.stdout?.on('data', (d: Buffer) => (out += d.toString()));
+      ffprobe.stderr?.on('data', (d: Buffer) => (err += d.toString()));
       ffprobe.on('close', (code) => {
         if (code !== 0) {
           reject(
@@ -463,7 +465,7 @@ export class VideoOverlayService {
         reject(new ServiceUnavailableException('FFmpeg timeout'));
       }, PROCESSING_TIMEOUT_MS);
       let stderr = '';
-      proc.stderr?.on('data', (d) => (stderr += d.toString()));
+      proc.stderr?.on('data', (d: Buffer) => (stderr += d.toString()));
       proc.on('close', (code) => {
         clearTimeout(timeout);
         if (code === 0) resolve();

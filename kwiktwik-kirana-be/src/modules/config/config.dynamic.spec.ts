@@ -43,7 +43,9 @@ describe('ConfigService', () => {
     });
 
     it('should throw NotFoundException for unknown app', () => {
-      expect(() => service.getConfigSimple('unknown.app')).toThrow(NotFoundException);
+      expect(() => service.getConfigSimple('unknown.app')).toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -64,8 +66,12 @@ describe('ConfigService', () => {
 
       const config = await service.getConfig(appId, context);
 
-      expect(config.features.subscription.plan_id).toBe(PAYWALL_PLANS.MARKETING_CAMPAIGN.plan_id);
-      expect(config.ui.paywall.heading).toBe(PAYWALL_PLANS.MARKETING_CAMPAIGN.heading);
+      expect(config.features.subscription.plan_id).toBe(
+        PAYWALL_PLANS.MARKETING_CAMPAIGN.plan_id,
+      );
+      expect(config.ui.paywall.heading).toBe(
+        PAYWALL_PLANS.MARKETING_CAMPAIGN.heading,
+      );
       expect(config._paywallMeta.ruleName).toBe('marketing_rule');
     });
   });
@@ -74,20 +80,26 @@ describe('ConfigService', () => {
     it('should return NEW_USER_WELCOME for new users', () => {
       const user = { userType: USER_TYPES.NEW };
       const config = service.getConfigLegacy(appId, user);
-      expect(config.features.subscription.plan_id).toBe(PAYWALL_PLANS.NEW_USER_WELCOME.plan_id);
+      expect(config.features.subscription.plan_id).toBe(
+        PAYWALL_PLANS.NEW_USER_WELCOME.plan_id,
+      );
     });
 
     it('should return ABANDONED_CHECKOUT for abandoned users', () => {
       const user = { userType: USER_TYPES.ABANDONED };
       const config = service.getConfigLegacy(appId, user);
-      expect(config.features.subscription.plan_id).toBe(PAYWALL_PLANS.ABANDONED_CHECKOUT.plan_id);
+      expect(config.features.subscription.plan_id).toBe(
+        PAYWALL_PLANS.ABANDONED_CHECKOUT.plan_id,
+      );
     });
 
     it('should return standard plan for active users', () => {
       const user = { userType: USER_TYPES.ACTIVE };
       const config = service.getConfigLegacy(appId, user);
       // getLegacyPlan defaults to STANDARD for ACTIVE
-      expect(config.features.subscription.plan_id).toBe(PAYWALL_PLANS.STANDARD.plan_id);
+      expect(config.features.subscription.plan_id).toBe(
+        PAYWALL_PLANS.STANDARD.plan_id,
+      );
     });
   });
 });

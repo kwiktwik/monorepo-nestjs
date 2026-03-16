@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import * as Mixpanel from 'mixpanel';
 import { DeviceSessionService } from '../device-session/device-session.service';
-import { enrichMixpanelProperties, MixpanelEnrichmentProps } from './mixpanel-helpers';
+import {
+  enrichMixpanelProperties,
+  MixpanelEnrichmentProps,
+} from './mixpanel-helpers';
 
 export interface UserData {
   email?: string;

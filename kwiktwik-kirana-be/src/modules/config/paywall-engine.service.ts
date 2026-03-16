@@ -84,9 +84,7 @@ export class PaywallEngineService {
     const reason = matchedEvent?.params?.reason;
     const ruleName = matchedEvent?.type || 'unknown';
 
-    this.logger.log(
-      `Matched rule: ${ruleName}, Plan: ${plan?.plan_id}`,
-    );
+    this.logger.log(`Matched rule: ${ruleName}, Plan: ${plan?.plan_id}`);
 
     return {
       plan,
