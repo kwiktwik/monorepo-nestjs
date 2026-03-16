@@ -126,7 +126,7 @@ async function bootstrap() {
       .setTitle('KwikTwik Kirana Mock API')
       .setDescription('API documentation for testing with mock data and rules engine')
       .setVersion('1.0-mock')
-      .addServer(baseUrl, 'Mock environment')
+      .addServer('/', 'Mock environment')
       .addApiKey({ type: 'apiKey', name: 'X-App-ID', in: 'header' }, 'X-App-ID')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
       .build();
