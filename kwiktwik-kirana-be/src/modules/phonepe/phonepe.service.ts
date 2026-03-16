@@ -454,9 +454,13 @@ export class PhonePeService {
           await this.db
             .update(schema.orders)
             .set({
-              status: orderStatus as Parameters<
-                (typeof schema.orders)['$inferInsert']
-              >[0]['status'],
+              status: orderStatus as
+                | 'created'
+                | 'authorized'
+                | 'captured'
+                | 'failed'
+                | 'cancelled'
+                | 'refunded',
               updatedAt: new Date(),
             })
             .where(

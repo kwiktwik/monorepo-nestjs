@@ -43,7 +43,10 @@ export class RazorpayWebhookController {
     let accountId: string | null = null;
     let eventType = 'unknown';
     try {
-      const parsed = JSON.parse(rawBodyString);
+      const parsed = JSON.parse(rawBodyString) as {
+        event?: string;
+        account_id?: string;
+      };
       eventType = parsed.event || 'unknown';
       accountId = parsed.account_id || null;
     } catch {
