@@ -83,13 +83,26 @@ export class AuthService {
    */
   async checkKiranaFeUser(phoneNumber: string): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
+    // Also get digits-only format for kirana-fe (old DB stores without +)
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
 
     // Try HTTP API call to kirana-fe first (most accurate)
     try {
       this.logger.log(
-        `[checkKiranaFeUser] Checking via HTTP API: ${normalized}`,
+        `[checkKiranaFeUser] Checking via HTTP API: ${normalized} and ${digitsOnly}`,
       );
-      const exists = await this.kiranaFeService.checkUserExists(normalized);
+
+      // Try with normalized format first (+918496866494)
+      let exists = await this.kiranaFeService.checkUserExists(normalized);
+
+      // If not found, try with digits-only format (918496866494)
+      if (!exists) {
+        this.logger.log(
+          `[checkKiranaFeUser] Trying digits-only format: ${digitsOnly}`,
+        );
+        exists = await this.kiranaFeService.checkUserExists(digitsOnly);
+      }
+
       this.logger.log(`[checkKiranaFeUser] HTTP API result: ${exists}`);
       return exists;
     } catch (error) {
