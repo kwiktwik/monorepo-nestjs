@@ -242,7 +242,6 @@ describe('UserService', () => {
     it('should update user profile successfully', async () => {
       mockDb.limit
         .mockResolvedValueOnce([mockUser])
-        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([mockUserMetadata]);
 
       // Mock getUserProfile call at the end
