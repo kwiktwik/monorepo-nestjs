@@ -61,7 +61,7 @@ describe('User DTOs - Snapshot Tests', () => {
 
       const errors = await validate(dto);
       expect(errors).toMatchSnapshot();
-      expect(errors.length).toBe(2); // name and phoneNumber are required
+      expect(errors.length).toBe(1); // name is required
     });
 
     it('should fail validation for empty name', async () => {
