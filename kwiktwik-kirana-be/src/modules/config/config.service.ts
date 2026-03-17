@@ -20,6 +20,7 @@ export interface PaywallContext {
   appId: string;
   userType: UserType;
   deeplink: DeeplinkCampaign;
+  language?: string;
 }
 
 @Injectable()
@@ -88,12 +89,23 @@ export class ConfigService {
         `App: ${appId}, User: ${context.userType}, Deeplink: ${context.deeplink} -> Plan: ${paywallResult.plan.plan_id} (${paywallResult.ruleName})`,
       );
 
+      // Get translations for the requested language
+      const { PAYWALL_TRANSLATIONS } = require('./config.data');
+      const language = context.language || 'en';
+      const translations =
+        PAYWALL_TRANSLATIONS[language] || PAYWALL_TRANSLATIONS.en;
+
       // Update the config with the selected plan
       dynamicConfig.features.subscription.plan_id = paywallResult.plan.plan_id;
       dynamicConfig.ui.paywall.pricing = paywallResult.plan.pricing;
-      dynamicConfig.ui.paywall.heading = paywallResult.plan.heading;
-      dynamicConfig.ui.paywall.description = paywallResult.plan.description;
-      dynamicConfig.ui.paywall.buttonText = paywallResult.plan.buttonText;
+
+      // Use localized strings
+      dynamicConfig.ui.paywall.heading = translations.heading;
+      dynamicConfig.ui.paywall.description = translations.description;
+      dynamicConfig.ui.paywall.buttonText = translations.buttonText;
+
+      // Include video description if needed by the frontend
+      dynamicConfig.ui.paywall.videoDescription = translations.videoDescription;
 
       // Add metadata about why this plan was selected
       dynamicConfig._paywallMeta = {
@@ -163,11 +175,22 @@ export class ConfigService {
       // In production, this should use the async paywall engine
       const selectedPlan = this.getLegacyPlan(userType, deeplink);
 
+      // Mapping legacy user properties to new context
+      const language = user?.language || 'en';
+      const { PAYWALL_TRANSLATIONS } = require('./config.data');
+      const translations =
+        PAYWALL_TRANSLATIONS[language] || PAYWALL_TRANSLATIONS.en;
+
       dynamicConfig.features.subscription.plan_id = selectedPlan.plan_id;
       dynamicConfig.ui.paywall.pricing = selectedPlan.pricing;
-      dynamicConfig.ui.paywall.heading = selectedPlan.heading;
-      dynamicConfig.ui.paywall.description = selectedPlan.description;
-      dynamicConfig.ui.paywall.buttonText = selectedPlan.buttonText;
+
+      // Use localized strings
+      dynamicConfig.ui.paywall.heading = translations.heading;
+      dynamicConfig.ui.paywall.description = translations.description;
+      dynamicConfig.ui.paywall.buttonText = translations.buttonText;
+
+      // Include video description
+      dynamicConfig.ui.paywall.videoDescription = translations.videoDescription;
 
       return dynamicConfig;
     } catch (error) {
