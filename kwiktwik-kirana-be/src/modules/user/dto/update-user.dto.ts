@@ -64,4 +64,16 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   audioLanguage?: string;
+
+  @ApiPropertyOptional({
+    example: '+919876543210',
+    description: 'User phone number in E.164 format',
+  })
+  @IsString()
+  @IsOptional()
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message:
+      'Phone number must be in E.164 format (e.g., +919876543210)',
+  })
+  phoneNumber?: string;
 }
