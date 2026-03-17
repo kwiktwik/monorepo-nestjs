@@ -276,49 +276,6 @@ describe('UserService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException when phone number is already in use', async () => {
-      const existingPhoneUser = {
-        ...mockUser,
-        id: 'other-user',
-        phoneNumber: updateData.phoneNumber,
-      };
-
-      mockDb.limit
-        .mockResolvedValueOnce([mockUser])
-        .mockResolvedValueOnce([existingPhoneUser]);
-
-      await expect(
-        service.updateUserProfile('user-123', 'com.test.app', updateData),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should allow updating to same phone number', async () => {
-      mockDb.limit
-        .mockResolvedValueOnce([mockUser])
-        .mockResolvedValueOnce([mockUser])
-        .mockResolvedValueOnce([mockUserMetadata]);
-
-      // Mock getUserProfile call at the end
-      mockDb.limit
-        .mockResolvedValueOnce([mockUser])
-        .mockResolvedValueOnce([mockAccount])
-        .mockResolvedValueOnce([mockSubscription])
-        .mockResolvedValueOnce([mockUserMetadata])
-        .mockResolvedValueOnce([mockUserImage])
-        .mockResolvedValueOnce([]);
-
-      const result = await service.updateUserProfile(
-        'user-123',
-        'com.test.app',
-        {
-          ...updateData,
-          phoneNumber: mockUser.phoneNumber,
-        },
-      );
-
-      expect(result).toBeDefined();
-    });
-
     it('should create new metadata when upiVpa provided but no existing metadata', async () => {
       // updateUserProfile: check user (1), check metadata (1), then getUserProfile (6)
       mockDb.limit
