@@ -88,10 +88,14 @@ export async function GET(req: NextRequest) {
       deeplink = user.deeplink as DeeplinkCampaign;
     }
 
+    // Resolve language from query param
+    const language = searchParams.get("language") || searchParams.get("lang") || "en";
+
     const context = {
       appId,
       userType,
       deeplink,
+      language,
     };
 
     const config = getDynamicConfig(appId, context);

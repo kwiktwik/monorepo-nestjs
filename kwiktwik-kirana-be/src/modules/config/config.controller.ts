@@ -53,16 +53,25 @@ export class ConfigController {
     required: false,
     description: 'Deeplink campaign source',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'App config returned with dynamic paywall',
+  @ApiQuery({
+    name: 'language',
+    required: false,
+    description: 'Language for localized content (en, hi, etc)',
   })
+  @ApiQuery({
+    name: 'lang',
+    required: false,
+    description: 'Language for localized content (fallback)',
+  })
+  @ApiResponse({ status: 200, description: 'App config returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getConfigV3(
     @AppId() appId: string,
     @CurrentUser() user: any,
     @Query('userType') userType?: UserType,
     @Query('deeplink') deeplink?: DeeplinkCampaign,
+    @Query('language') language?: string,
+    @Query('lang') lang?: string,
   ) {
     // Determine user type from query or user object
     const resolvedUserType: UserType =
@@ -76,6 +85,7 @@ export class ConfigController {
       appId,
       userType: resolvedUserType,
       deeplink: resolvedDeeplink,
+      language: language || lang || user?.language || 'en',
     };
 
     const config = await this.configService.getConfig(appId, context);

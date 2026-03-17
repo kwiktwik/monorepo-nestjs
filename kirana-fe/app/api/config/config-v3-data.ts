@@ -12,78 +12,85 @@ const SUBSCRIPTION_AMOUNT_INR = 199;
 
 export const PAYWALL_PLANS = {
   STANDARD: {
-    plan_id: "plan_standard_199",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹199",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Standard Plan",
-    description: "Get all premium features",
-    buttonText: "Subscribe Now",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 1,
   },
   NEW_USER_WELCOME: {
-    plan_id: "plan_new_user_welcome_99",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹99",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Welcome Offer!",
-    description: "Special 50% off for your first month",
-    buttonText: "Claim Offer",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 2,
   },
   ABANDONED_CHECKOUT: {
-    plan_id: "plan_abandoned_checkout_49",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹49",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Wait! We have a special gift",
-    description: "Get started for just ₹49 today",
-    buttonText: "Don't Miss Out",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 3,
   },
   MARKETING_CAMPAIGN: {
-    plan_id: "plan_marketing_campaign_79",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹79",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Exclusive Campaign Offer!",
-    description: "Limited time offer just for you",
-    buttonText: "Grab Now",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 4,
   },
   LOYAL_USER: {
-    plan_id: "plan_loyal_user_149",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹149",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Loyalty Reward",
-    description: "Thank you for being with us!",
-    buttonText: "Claim Reward",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 5,
   },
   TRIAL_EXPIRED: {
-    plan_id: "plan_trial_expired_59",
+    plan_id: "plan_S3FaBrk7sjPQEU",
     pricing: {
-      initialAmount: "₹59",
+      initialAmount: "₹5",
       recurringAmount: "₹199",
       period: "month",
     },
-    heading: "Continue Your Journey",
-    description: "Special price to welcome you back",
-    buttonText: "Continue Now",
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
     priority: 6,
   },
 } as const;
+
 
 export type PlanType = keyof typeof PAYWALL_PLANS;
 
@@ -126,6 +133,7 @@ export interface PaywallContext {
   appId: string;
   userType: UserType;
   deeplink: DeeplinkCampaign;
+  language?: string;
 }
 
 export interface PaywallResult {
@@ -192,14 +200,14 @@ export function determinePlan(context: PaywallContext): PaywallResult {
     };
   }
 
-  // Rule 6: Abandoned Checkout Users
-  if (userType === USER_TYPES.ABANDONED) {
-    return {
-      plan: PAYWALL_PLANS.ABANDONED_CHECKOUT,
-      reason: "User has abandoned checkout",
-      ruleName: "abandoned_checkout",
-    };
-  }
+  // Rule 6: Abandoned Checkout Users (DISABLED for now)
+  // if (userType === USER_TYPES.ABANDONED) {
+  //   return {
+  //     plan: PAYWALL_PLANS.ABANDONED_CHECKOUT,
+  //     reason: "User has abandoned checkout",
+  //     ruleName: "abandoned_checkout",
+  //   };
+  // }
 
   // Rule 7: Trial Expired Users
   if (userType === USER_TYPES.TRIAL_EXPIRED) {
@@ -255,6 +263,88 @@ export function determinePlan(context: PaywallContext): PaywallResult {
 }
 
 // ============================================================================
+// TRANSLATIONS
+// ============================================================================
+
+export const PAYWALL_TRANSLATIONS: Record<
+  string,
+  {
+    heading: string;
+    description: string;
+    buttonText: string;
+    videoDescription: string;
+  }
+> = {
+  en: {
+    heading: "Never miss a payment",
+    description: "Start your free trial for <s>₹199</s>",
+    buttonText: "Start free trial",
+    videoDescription: "Autopay ₹199 every month, cancel anytime",
+  },
+  hi: {
+    heading: "कभी भुगतान न चूकें",
+    description: "अपना निःशुल्क परीक्षण <s>₹199</s> में शुरू करें",
+    buttonText: "निःशुल्क परीक्षण शुरू करें",
+    videoDescription: "हर महीने ₹199 का ऑटोपे करें, कभी भी रद्द करें",
+  },
+  bn: {
+    heading: "কখনও পেমেন্ট মিস করবেন না",
+    description: "আপনার বিনামূল্যে ট্রায়াল <s>₹199</s> টাকায় শুরু করুন",
+    buttonText: "বিনামূল্যে ট্রায়াল শুরু করুন",
+    videoDescription: "প্রতি মাসে ₹199 অটো-পে করুন, যেকোনো সময় বাতিল করুন",
+  },
+  mr: {
+    heading: "कधीही पेमेंट चुकवू नका",
+    description: "तुमची <s>₹199</s> मध्ये मोफत चाचणी सुरू करा",
+    buttonText: "मोफत चाचणी सुरू करा",
+    videoDescription: "दरमहा ₹199 ऑटोपे करा, कधीही रद्द करा",
+  },
+  te: {
+    heading: "ఎప్పుడూ చెల్లింపును మిస్ చేయవద్దు",
+    description: "మీ ఉచిత ట్రయల్ <s>₹199</s>కి ప్రారంభించండి",
+    buttonText: "ఉచిత ట్రయల్ ప్రారంభించండి",
+    videoDescription: "ప్రతి నెలా ₹199 ఆటోపే చేయండి, ఎప్పుడైనా రద్దు చేయండి",
+  },
+  ta: {
+    heading: "ஒருபோதும் பணம் செலுத்த தவறாதீர்கள்",
+    description: "உங்கள் இலவச சோதனையை <s>₹199</s>க்கு தொடங்குங்கள்",
+    buttonText: "இலவச சோதனையைத் தொடங்குங்கள்",
+    videoDescription:
+      "ஒவ்வொரு மாதமும் ₹199 தானியங்கு செலுத்துங்கள், எப்போது வேண்டுமானாலும் ரத்து செய்யுங்கள்",
+  },
+  gu: {
+    heading: "ક્યારેય ચુકવણી ચૂકશો નહીં",
+    description: "તમારી મફત અજમાયશ <s>₹199</s> માં શરૂ કરો",
+    buttonText: "મફત અજમાયશ શરૂ કરો",
+    videoDescription: "દર મહિને ₹199 સ્વતઃ ચુકવો, ગમે ત્યારે રદ કરો",
+  },
+  ur: {
+    heading: "کبھی ادائیگی سے محروم نہ ہوں",
+    description: "اپنی مفت آزمائش <s>₹199</s> میں شروع کریں",
+    buttonText: "مفت آزمائش شروع کریں",
+    videoDescription: "ہر ماہ ₹199 کا آٹو پے کریں، کسی بھی وقت منسوخ کریں",
+  },
+  kn: {
+    heading: "ಯಾವುದೇ ಪಾವತಿಯನ್ನು ತಪ್ಪಿಸಿಕೊಳ್ಳಬೇಡಿ",
+    description: "ನಿಮ್ಮ ಉಚಿತ ಪ್ರಯೋಗವನ್ನು <s>₹199</s> ಕ್ಕ್ಕೆ ಪ್ರಾರಂಭಿಸಿ",
+    buttonText: "ಉಚಿತ ಪ್ರಯೋಗವನ್ನು ಪ್ರಾರಂಭಿಸಿ",
+    videoDescription: "ಪ್ರತಿ ತಿಂಗಳು ₹199 ಸ್ವಯಂ ಪಾವತಿಸಿ, ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ರದ್ದುಗೊಳಿಸಿ",
+  },
+  or: {
+    heading: "କୌଣସି ପେମେଣ୍ଟ୍ ହରାନ୍ତୁ ନାହିଁ",
+    description: "ଆପଣଙ୍କ ମାଗଣା ପରୀକ୍ଷଣ <s>₹199</s> ରେ ଆରମ୍ଭ କରନ୍ତୁ",
+    buttonText: "ମାଗଣା ପରୀକ୍ଷଣ ଆରମ୍ଭ କରନ୍ତୁ",
+    videoDescription: "ପ୍ରତି ମାସରେ ₹199 ଅଟୋପେ କରନ୍ତୁ, ଯେକୌଣସି ସମୟରେ ବାତିଲ୍ କରନ୍ତୁ",
+  },
+  ml: {
+    heading: "ഒരൊറ്റ പേയ്‌മെന്റും നഷ്‌ടപ്പെടുത്തരുത്",
+    description: "നിങ്ങളുടെ സൗജന്യ ട്രയൽ <s>₹199</s>-ന് ആരംഭിക്കുക",
+    buttonText: "സൗജന്യ ട്രയൽ ആരംഭിക്കുക",
+    videoDescription: "എല്ലാ മാസവും ₹199 ഓട്ടോപേ ചെയ്യുക, എപ്പോൾ വേണമെങ്കിലും റദ്ദാക്കുക",
+  },
+};
+
+// ============================================================================
 // BASE CONFIGURATION
 // ============================================================================
 
@@ -299,7 +389,7 @@ const baseConfig = {
         period: "month",
       },
       heading: "Never miss a payment",
-      description: "Trusted by businesses across India",
+      description: "Start your free trial for <s>₹199</s>",
       videoUrl: "https://cnd.storyowl.app/assets/alertpay/alertpay.mp4",
       buttonText: "Buy Now",
     },
@@ -667,14 +757,16 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
   },
 };
 
-export function getConfigForAppId(appId: string): Record<string, unknown> | null {
+export function getConfigForAppId(
+  appId: string,
+): Record<string, unknown> | null {
   const config = APP_CONFIGS[appId];
   return config ?? null;
 }
 
 export function getDynamicConfig(
   appId: string,
-  context: PaywallContext
+  context: PaywallContext,
 ): Record<string, unknown> | null {
   const config = getConfigForAppId(appId);
   if (!config) return null;
@@ -685,12 +777,22 @@ export function getDynamicConfig(
   // Determine the appropriate plan based on context
   const paywallResult = determinePlan(context);
 
+  // Get translations for the requested language
+  const language = context.language || "en";
+  const translations =
+    PAYWALL_TRANSLATIONS[language] || PAYWALL_TRANSLATIONS.en;
+
   // Update the config with the selected plan
   dynamicConfig.features.subscription.plan_id = paywallResult.plan.plan_id;
   dynamicConfig.ui.paywall.pricing = paywallResult.plan.pricing;
-  dynamicConfig.ui.paywall.heading = paywallResult.plan.heading;
-  dynamicConfig.ui.paywall.description = paywallResult.plan.description;
-  dynamicConfig.ui.paywall.buttonText = paywallResult.plan.buttonText;
+
+  // Use localized strings
+  dynamicConfig.ui.paywall.heading = translations.heading;
+  dynamicConfig.ui.paywall.description = translations.description;
+  dynamicConfig.ui.paywall.buttonText = translations.buttonText;
+
+  // Include video description if needed by the frontend
+  dynamicConfig.ui.paywall.videoDescription = translations.videoDescription;
 
   // Add metadata about why this plan was selected
   dynamicConfig._paywallMeta = {
