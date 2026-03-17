@@ -99,6 +99,7 @@ export class UserService {
         .select({
           id: schema.userImages.id,
           imageUrl: schema.userImages.imageUrl,
+          removedBgImageUrl: schema.userImages.removedBgImageUrl,
         })
         .from(schema.userImages)
         .where(
