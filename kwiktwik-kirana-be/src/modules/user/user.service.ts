@@ -132,6 +132,7 @@ export class UserService {
     const images = userImagesList.map((img) => ({
       id: img.id,
       imageUrl: img.imageUrl,
+      removedBgImageUrl: img.removedBgImageUrl ?? '',
     }));
 
     return {
