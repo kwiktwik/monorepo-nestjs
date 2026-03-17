@@ -810,6 +810,76 @@ export const APP_CONFIGS = {
   },
 };
 
+export const PAYWALL_TRANSLATIONS = {
+  en: {
+    heading: 'Never miss a payment',
+    description: 'Start your free trial for <s>₹199</s>',
+    buttonText: 'Start free trial',
+    videoDescription: 'Autopay ₹199 every month, cancel anytime',
+  },
+  hi: {
+    heading: 'भुगतान कभी मिस न करें',
+    description: '<s>₹199</s> के लिए अपना निःशुल्क ट्रायल शुरू करें',
+    buttonText: 'निःशुल्क ट्रायल शुरू करें',
+    videoDescription: 'हर महीने ₹199 का ऑटोपे, कभी भी रद्द करें',
+  },
+  bn: {
+    heading: 'কোনো পেমেন্ট মিস করবেন না',
+    description: '<s>₹199</s> এর জন্য আপনার ফ্রি ট্রায়াল শুরু করুন',
+    buttonText: 'ফ্রি ট্রায়াল শুরু করুন',
+    videoDescription: 'প্রতি মাসে ₹199 অটোপে, যেকোনো সময় বাতিল করুন',
+  },
+  mr: {
+    heading: 'पेमेंट कधीच मिस करू नका',
+    description: '<s>₹199</s> साठी तुमचा विनामूल्य ट्रायल सुरू करा',
+    buttonText: 'विनामूल्य ट्रायल सुरू करा',
+    videoDescription: 'दरमहा ₹199 ऑटोपे, कधीही रद्द करा',
+  },
+  te: {
+    heading: 'ఎప్పుడూ పేమెంట్ మిస్ చేయకండి',
+    description: '<s>₹199</s> కి మీ ఉచిత ట్రయల్ ప్రారంభించండి',
+    buttonText: 'ఉచిత ట్రయల్ ప్రారంభించండి',
+    videoDescription: 'ప్రతి నెల ₹199 ఆటోపే, ఎప్పుడైనా రద్దు చేయండి',
+  },
+  ta: {
+    heading: 'பணம் செலுத்துவதை ஒருபோதும் தவறவிடாதீர்கள்',
+    description: '<s>₹199</s> க்கு உங்கள் இலவச சோதனையைத் தொடங்கவும்',
+    buttonText: 'இலவச சோதனையைத் தொடங்கவும்',
+    videoDescription: 'மாதம் ₹199 ஆட்டோபே, எந்நேரத்திலும் ரத்து செய்யவும்',
+  },
+  gu: {
+    heading: 'ક્યારેય પેમેંટ મિસ ન કરો',
+    description: '<s>₹199</s> માટે તમારો મફત ટ્રાયલ શરૂ કરો',
+    buttonText: 'મફત ટ્રાયલ શરૂ કરો',
+    videoDescription: 'દર મહિને ₹199 ઓટોપે, ક્યારેય પણ રદ કરો',
+  },
+  ur: {
+    heading: 'کبھی بھی ادائیگی مس نہ کریں',
+    description: '<s>₹199</s> کے لیے اپنا مفت ٹرائل شروع کریں',
+    buttonText: 'مفت ٹرائل شروع کریں',
+    videoDescription: 'ہر مہینے ₹199 آٹوپے، کبھی بھی منسوخ کریں',
+  },
+  kn: {
+    heading: 'ಯಾವಾಗಲೂ ಪಾವತಿ ಮಿಸ್ ಮಾಡಬೇಡಿ',
+    description: '<s>₹199</s> ಗಾಗಿ ನಿಮ್ಮ ಉಚಿತ ಟ್ರಯಲ್ ಅನ್ನು ಪ್ರಾರಂಭಿಸಿ',
+    buttonText: 'ಉಚಿತ ಟ್ರಯಲ್ ಪ್ರಾರಂಭಿಸಿ',
+    videoDescription: 'ಪ್ರತಿ ತಿಂಗಳು ₹199 ಆಟೋಪೇ, ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ರದ್ದು ಮಾಡಿ',
+  },
+  or: {
+    heading: 'କେବେବି ପେମେଣ୍ଟ ମିସ୍ କରନ୍ତୁ ନାହିଁ',
+    description: '<s>₹199</s> ପାଇଁ ଆପଣଙ୍କର ମାଗଣା ଟ୍ରାଏଲ୍ ଆରମ୍ଭ କରନ୍ତୁ',
+    buttonText: 'ମାଗଣା ଟ୍ରାଏଲ୍ ଆରମ୍ଭ କରନ୍ତୁ',
+    videoDescription: 'ପ୍ରତି ମାସରେ ₹199 ଅଟୋପେ, ଯେକୌଣସି ସମୟରେ ବାତିଲ୍ କରନ୍ତୁ',
+  },
+  ml: {
+    heading: 'ഒരിക്കലും പേയ്‌മെന്റ് മിസ്സ് ചെയ്യരുത്',
+    description: '<s>₹199</s> ന് നിങ്ങളുടെ സൗജന്യ ട്രയൽ ആരംഭിക്കുക',
+    buttonText: 'സൗജന്യ ട്രയൽ ആരംഭിക്കുക',
+    videoDescription:
+      'എല്ലാ മാസവും ₹199 ഓട്ടോപേ, എപ്പോൾ വേണമെങ്കിലും റദ്ദാക്കുക',
+  },
+};
+
 export type AppConfigData = (typeof APP_CONFIGS)[keyof typeof APP_CONFIGS];
 
 export function getConfigForAppId(appId: string): AppConfigData | null {
