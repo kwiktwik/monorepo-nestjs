@@ -7,7 +7,7 @@ import {
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, inArray, or, gt, isNotNull, desc } from 'drizzle-orm';
+import { eq, and, inArray, or, gt, isNotNull, desc, sql } from 'drizzle-orm';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()

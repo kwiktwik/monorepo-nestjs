@@ -132,38 +132,22 @@ export class BackgroundRemovalService {
         const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${fullKey}`;
         this.logger.log(`[Background Removal] Public URL: ${publicUrl}`);
 
-        // First verify the image exists
-        const existingImage = await this.db
-          .select({ id: schema.userImages.id })
-          .from(schema.userImages)
-          .where(eq(schema.userImages.id, imageId))
-          .limit(1);
-
-        this.logger.log(
-          `[Background Removal] Checking image ${imageId}, found: ${JSON.stringify(existingImage)}`,
-        );
-
-        if (existingImage.length === 0) {
-          this.logger.warn(
-            `[Background Removal] Image ${imageId} not found in database`,
-          );
-          continue;
-        }
-
+        // Update by imageUrl instead of imageId
+        // This ensures the update works even if the row was recreated during edit
         const result = await this.db
           .update(schema.userImages)
           .set({ removedBgImageUrl: publicUrl })
-          .where(eq(schema.userImages.id, imageId))
+          .where(eq(schema.userImages.imageUrl, imageUrl))
           .returning({ id: schema.userImages.id });
 
         if (result.length > 0) {
           this.logger.log(
-            `[Background Removal] ✅ Database updated for image_id=${imageId}`,
+            `[Background Removal] ✅ Database updated for image_url=${imageUrl}`,
           );
           return;
         }
         this.logger.warn(
-          `[Background Removal] ⚠️ No row updated for image_id=${imageId} (row may have been deleted)`,
+          `[Background Removal] ⚠️ No row updated for image_url=${imageUrl} (row may have been deleted)`,
         );
       } catch (err) {
         this.logger.error(

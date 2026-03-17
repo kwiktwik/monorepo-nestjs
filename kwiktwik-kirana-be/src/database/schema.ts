@@ -4,6 +4,7 @@ import {
   boolean,
   timestamp,
   index,
+  uniqueIndex,
   serial,
   integer,
   varchar,
