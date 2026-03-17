@@ -140,6 +140,7 @@ Array [
       "email": undefined,
       "images": undefined,
       "name": undefined,
+      "phoneNumber": undefined,
       "upiVpa": undefined,
     },
     "value": undefined,
