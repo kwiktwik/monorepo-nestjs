@@ -862,9 +862,12 @@ export async function DELETE(req: NextRequest) {
     await db.delete(teamNotifications).where(eq(teamNotifications.userId, userId));
     console.log(`[DELETE /api/user/v1] Deleted team notifications for userId: ${userId}`);
 
-    // 7. Delete orders (AlertPay specific)
-    await db.delete(orders).where(eq(orders.userId, userId));
-    console.log(`[DELETE /api/user/v1] Deleted orders for userId: ${userId}`);
+    // 7. Preserve order data: reassign to system user BEFORE deleting (prevents cascade delete)
+    const SYSTEM_DELETED_USER = 'system_deleted_user';
+    await db.update(orders)
+      .set({ userId: SYSTEM_DELETED_USER })
+      .where(eq(orders.userId, userId));
+    console.log(`[DELETE /api/user/v1] Reassigned orders to system user for userId: ${userId}`);
 
     // 8. Delete phonepe orders (this acts on orderId relation - wait, schema says phonepe_orders references orders.id CASCADE, so deleting orders handles it. But let's be safe if we want explicit clearing or if cascade fails)
     // Actually, phonepeOrders references orders.id with CASCADE. So deleting 'orders' is sufficient for PhonePe orders linked to those orders.
