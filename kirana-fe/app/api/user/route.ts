@@ -600,8 +600,11 @@ export async function DELETE(req: NextRequest) {
     // Delete notifications
     await db.delete(notifications).where(eq(notifications.userId, userId));
 
-    // Delete orders
-    await db.delete(orders).where(eq(orders.userId, userId));
+    // Preserve order data: reassign to system user BEFORE deleting (prevents cascade delete)
+    const SYSTEM_DELETED_USER = 'system_deleted_user';
+    await db.update(orders)
+      .set({ userId: SYSTEM_DELETED_USER })
+      .where(eq(orders.userId, userId));
 
     // Delete subscriptions
     await db.delete(subscriptions).where(eq(subscriptions.userId, userId));
