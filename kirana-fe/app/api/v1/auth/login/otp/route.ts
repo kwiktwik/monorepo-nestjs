@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/better-auth/auth";
 import { db } from "@/db";
 import { user } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
     findUserByPhoneAndApp,
@@ -109,10 +109,30 @@ export async function POST(req: NextRequest) {
         }
 
         // Better Auth verification
-        const result = await auth.api.verifyPhoneNumber({
-            body: { phoneNumber, code, disableSession: false },
-            headers: req.headers,
-        });
+        let result;
+        try {
+            result = await auth.api.verifyPhoneNumber({
+                body: { phoneNumber, code, disableSession: false },
+                headers: req.headers,
+            });
+        } catch (error: any) {
+            // Check for duplicate email constraint error
+            const isDuplicateEmailError = 
+                (error?.code === "23505" && error?.constraint === "user_email_unique") ||
+                (error?.message?.includes("duplicate key value violates unique constraint") && 
+                 error?.message?.includes("user_email_unique"));
+
+            if (isDuplicateEmailError) {
+                console.error(`[${requestId}] [OTP Login Compat] Duplicate email error for phone ${phoneNumber}`);
+                return NextResponse.json({
+                    success: false,
+                    error: "Account already exists with this phone number. Please contact admin to resolve this issue.",
+                } as UnifiedLoginResponse, { status: 409 });
+            }
+
+            // Re-throw other errors to be handled by outer catch
+            throw error;
+        }
 
         if (!result.token) throw new Error("Token missing in verification response");
 

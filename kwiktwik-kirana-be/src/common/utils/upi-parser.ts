@@ -3,6 +3,37 @@
  * Parses payment notifications from UPI apps and extracts amount and sender.
  */
 
+/**
+ * Converts emoji digits (e.g., 3️⃣5️⃣) to regular digits (e.g., 35)
+ * Handles keycap emoji digits: 0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣
+ */
+function normalizeEmojiDigits(text: string): string {
+  if (!text) return text;
+
+  // Map of emoji digits to regular digits
+  // These use combining enclosing keycap (U+20E3) with variation selector-16 (U+FE0F)
+  const emojiDigitMap: { [key: string]: string } = {
+    '0️⃣': '0',
+    '1️⃣': '1',
+    '2️⃣': '2',
+    '3️⃣': '3',
+    '4️⃣': '4',
+    '5️⃣': '5',
+    '6️⃣': '6',
+    '7️⃣': '7',
+    '8️⃣': '8',
+    '9️⃣': '9',
+  };
+
+  let result = text;
+  for (const [emojiDigit, regularDigit] of Object.entries(emojiDigitMap)) {
+    // Use global replace to handle all occurrences
+    result = result.replace(new RegExp(emojiDigit, 'g'), regularDigit);
+  }
+
+  return result;
+}
+
 export interface UPIParserResult {
   amount: number;
   from: string;
@@ -72,7 +103,10 @@ export function isUpiPaymentNotification(
     'money',
   ];
 
-  const combinedText = `${title} ${text} ${bigText}`.toLowerCase();
+  // Normalize emoji digits before checking keywords
+  const combinedText = normalizeEmojiDigits(
+    `${title} ${text} ${bigText}`,
+  ).toLowerCase();
   const hasKeywords = keywords.some((keyword) =>
     combinedText.includes(keyword),
   );
@@ -330,8 +364,9 @@ export function parseUPINotification(
   title: string,
   content: string,
 ): UPIParserResult {
-  const normalizedTitle = (title ?? '').trim();
-  const normalizedContent = (content ?? '').trim();
+  // Normalize emoji digits to regular digits before parsing
+  const normalizedTitle = normalizeEmojiDigits((title ?? '').trim());
+  const normalizedContent = normalizeEmojiDigits((content ?? '').trim());
 
   const templateResult = tryTemplateMatch(normalizedTitle, normalizedContent);
   if (templateResult) return templateResult;

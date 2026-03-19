@@ -254,5 +254,61 @@ describe('UPI Parser', () => {
         expect(result.from).toContain('ABC');
       });
     });
+
+    describe('Emoji digit handling', () => {
+      it('should parse notification with emoji digits in amount', () => {
+        const result = parseUPINotification(
+          'com.phonepe.app',
+          "You've received Rs.3️⃣5️⃣ from HITESH SO DINESH KUMAR",
+          '',
+        );
+        expect(result.amount).toBe(35);
+        expect(result.from).toBe('HITESH SO DINESH');
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should parse notification with multiple emoji digits', () => {
+        const result = parseUPINotification(
+          'com.phonepe.app',
+          '₹1️⃣5️⃣0️⃣0️⃣ received from John Doe',
+          '',
+        );
+        expect(result.amount).toBe(1500);
+        expect(result.from).toBe('John');
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should parse Google Pay notification with emoji digits', () => {
+        const result = parseUPINotification(
+          'com.google.android.apps.nbu.paisa.user',
+          'You received ₹5️⃣0️⃣0️⃣.00 from Jane',
+          '',
+        );
+        expect(result.amount).toBe(500);
+        expect(result.from).toBe('Jane');
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should detect payment keywords with emoji digits', () => {
+        expect(
+          isUpiPaymentNotification(
+            'com.phonepe.app',
+            "You've received Rs.3️⃣5️⃣ from HITESH",
+            '',
+            '',
+          ),
+        ).toBe(true);
+      });
+
+      it('should handle mixed emoji and regular digits', () => {
+        const result = parseUPINotification(
+          'com.phonepe.app',
+          '₹1️⃣00 received from Test User',
+          '',
+        );
+        expect(result.amount).toBe(100);
+        expect(result.isValid).toBe(true);
+      });
+    });
   });
 });
