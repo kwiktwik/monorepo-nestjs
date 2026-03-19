@@ -10,6 +10,76 @@ export interface UPIParserResult {
   rawText: string;
 }
 
+/**
+ * UPI App Package Names (mirrors kirana-fe lib/utils/notification-utils.ts)
+ */
+export const UPI_APP_PACKAGES = [
+  'com.phonepe.app',
+  'com.google.android.apps.nbu.paisa.user',
+  'net.one97.paytm',
+  'com.paytm.business',
+  'com.phonepe.app.business',
+  'com.google.android.apps.nbu.paisa.merchant',
+  'com.bharatpe.app',
+  'com.razorpay.pos',
+  'in.amazon.mShop.android.shopping',
+  'in.org.npci.upiapp',
+  'com.sbi.lotza02',
+  'com.sbi.upi',
+  'com.icicibank.imobile2',
+  'com.axis.mobile',
+  'com.snapwork.hdfc',
+  'com.csam.icici.bank.imobile',
+  'com.hdfc.bank.payzapp',
+  'com.mobikwik_new',
+  'com.freecharge.android',
+  'com.myairtelapp',
+  'com.grabpenny',
+] as const;
+
+/**
+ * Check if package is a UPI app
+ */
+export function isUpiApp(packageName: string): boolean {
+  const pkg = packageName.toLowerCase();
+  return UPI_APP_PACKAGES.some((upiPkg) => pkg.includes(upiPkg.toLowerCase()));
+}
+
+/**
+ * Check if notification is a UPI payment notification
+ * Validates both package name AND payment keywords
+ */
+export function isUpiPaymentNotification(
+  packageName: string,
+  title: string,
+  text: string,
+  bigText: string,
+): boolean {
+  const isUpi = isUpiApp(packageName);
+
+  const keywords = [
+    'paid',
+    'received',
+    'credited',
+    'debited',
+    'upi',
+    'payment',
+    'transaction',
+    '₹',
+    'rs',
+    'rupees',
+    'sent',
+    'money',
+  ];
+
+  const combinedText = `${title} ${text} ${bigText}`.toLowerCase();
+  const hasKeywords = keywords.some((keyword) =>
+    combinedText.includes(keyword),
+  );
+
+  return isUpi && hasKeywords;
+}
+
 const UPI_TEMPLATES: Array<{
   pattern: RegExp;
   extractAmount: (m: RegExpMatchArray) => number;

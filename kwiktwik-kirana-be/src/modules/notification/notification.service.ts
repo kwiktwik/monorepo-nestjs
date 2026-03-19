@@ -8,7 +8,10 @@ import {
   RegisterPushTokenDto,
   DeletePushTokenDto,
 } from './dto/register-push-token.dto';
-import { parseUPINotification } from '../../common/utils/upi-parser';
+import {
+  isUpiPaymentNotification,
+  parseUPINotification,
+} from '../../common/utils/upi-parser';
 import * as admin from 'firebase-admin';
 
 const logger = new Logger('NotificationService');
@@ -174,13 +177,16 @@ export class NotificationService {
     let paymentTransactionType: 'RECEIVED' | 'SENT' | 'UNKNOWN' =
       (providedTransactionType as 'RECEIVED' | 'SENT' | 'UNKNOWN') || 'UNKNOWN';
 
+    // Only parse as UPI if it's from a UPI app AND contains payment keywords
     if (!paymentAmount && !providedHasTransaction) {
       const combinedText = bigText ? `${content} ${bigText}` : content;
-      const parsed = parseUPINotification(packageName, title, combinedText);
-      if (parsed?.isValid && parsed.amount > 0) {
-        paymentAmount = String(parsed.amount);
-        paymentPayerName = parsed.from ?? null;
-        paymentTransactionType = 'RECEIVED';
+      if (isUpiPaymentNotification(packageName, title, content, bigText)) {
+        const parsed = parseUPINotification(packageName, title, combinedText);
+        if (parsed?.isValid && parsed.amount > 0) {
+          paymentAmount = String(parsed.amount);
+          paymentPayerName = parsed.from ?? null;
+          paymentTransactionType = 'RECEIVED';
+        }
       }
     }
 
