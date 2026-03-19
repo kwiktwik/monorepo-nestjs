@@ -685,7 +685,7 @@ export const webhookLogs = pgTable(
       onDelete: 'cascade',
     }),
     appId: text('app_id').notNull().default('alertpay-default'),
-    entityType: text('entity_type'),
+    entityType: text('entity_type').notNull(),
     entityId: text('entity_id'),
     subscriptionId: text('subscription_id'),
     orderId: text('order_id'),
