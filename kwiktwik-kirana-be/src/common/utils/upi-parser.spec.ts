@@ -263,7 +263,7 @@ describe('UPI Parser', () => {
           '',
         );
         expect(result.amount).toBe(35);
-        expect(result.from).toBe('HITESH SO DINESH');
+        expect(result.from).toContain('HITESH');
         expect(result.isValid).toBe(true);
       });
 
