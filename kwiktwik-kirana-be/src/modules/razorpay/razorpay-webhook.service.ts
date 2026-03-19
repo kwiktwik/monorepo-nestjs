@@ -1246,10 +1246,9 @@ export class RazorpayWebhookService {
           .limit(1);
 
         const now = eventTime;
-        const subStart =
-          subRecord[0]?.startAt ?? subRecord[0]?.createdAt ?? now;
+        const subCreated = subRecord[0]?.createdAt ?? now;
         const gracePeriodEnd = new Date(
-          subStart.getTime() + 24 * 60 * 60 * 1000,
+          subCreated.getTime() + 24 * 60 * 60 * 1000,
         );
         const effectiveEndAt = gracePeriodEnd > now ? gracePeriodEnd : now;
 
