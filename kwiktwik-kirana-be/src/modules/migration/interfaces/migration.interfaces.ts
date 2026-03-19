@@ -27,7 +27,7 @@ export enum MigrationState {
   MIGRATING_ABANDONED_CHECKOUTS = 'migrating_abandoned_checkouts',
 
   // Migration states (Level 4 - Logs/History)
-  MIGRATING_SUBSCRIPTION_LOGS = 'migrating_subscription_logs',
+  // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
   MIGRATING_PHONEPE_ORDERS = 'migrating_phonepe_orders',
   MIGRATING_PHONEPE_SUBSCRIPTIONS = 'migrating_phonepe_subscriptions',
 
@@ -89,7 +89,7 @@ export interface MigratableUserData {
   subscriptions: any[];
   orders: any[];
   abandonedCheckouts: any[];
-  subscriptionLogs: any[];
+  webhookLogs: any[];
   phonepeOrders: any[];
   phonepeSubscriptions: any[];
 }

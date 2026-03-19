@@ -264,41 +264,6 @@ export class TableMigrationService {
   }
 
   /**
-   * Migrate subscription logs
-   */
-  async migrateSubscriptionLogs(
-    records: any[],
-    idMapper: IdMapper,
-    userId: string,
-  ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
-
-    const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('subscriptionLog', record.id);
-      const mappedRecord = {
-        ...record,
-        id: newId,
-        userId: userId,
-        // Map subscriptionId reference if exists
-      };
-
-      const mappedSubscriptionId = idMapper.getNewId(
-        'subscription',
-        record.subscriptionId,
-      );
-      if (mappedSubscriptionId && mappedRecord.subscriptionId) {
-        mappedRecord.subscriptionId = mappedSubscriptionId;
-      }
-
-      await this.db.insert(schema.subscriptionLogs).values(mappedRecord);
-      migrated.push(mappedRecord);
-    }
-
-    return migrated;
-  }
-
-  /**
    * Migrate PhonePe orders
    */
   async migratePhonepeOrders(

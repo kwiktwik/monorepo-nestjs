@@ -72,7 +72,7 @@ export class KiranaFeDataService {
         subscriptions: data.subscriptions || [],
         orders: data.orders || [],
         abandonedCheckouts: data.abandonedCheckouts || [],
-        subscriptionLogs: data.subscriptionLogs || [],
+        webhookLogs: [], // Not migrated - old subscription_logs are not compatible with new schema
         phonepeOrders: data.phonepeOrders || [],
         phonepeSubscriptions: data.phonepeSubscriptions || [],
       };

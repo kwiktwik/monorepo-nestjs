@@ -84,7 +84,7 @@ async function seedDatabase(db: NodePgDatabase<typeof schema>): Promise<void> {
     { name: 'play_store_ratings', schema: schema.playStoreRatings },
     { name: 'notification_logs', schema: schema.notificationLogs },
     { name: 'enhanced_notifications', schema: schema.enhancedNotifications },
-    { name: 'subscription_logs', schema: schema.subscriptionLogs },
+    { name: 'webhook_logs', schema: schema.webhookLogs },
     { name: 'subscriptions', schema: schema.subscriptions },
     { name: 'orders', schema: schema.orders },
     { name: 'team_notifications', schema: schema.teamNotifications },

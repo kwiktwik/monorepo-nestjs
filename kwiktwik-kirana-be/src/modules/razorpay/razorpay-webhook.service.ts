@@ -191,6 +191,57 @@ export class RazorpayWebhookService {
   }
 
   /**
+   * Extract entity type from event name (e.g., "subscription.activated" -> "subscription")
+   */
+  private getEntityTypeFromEvent(eventName: string): string {
+    const parts = eventName.split('.');
+    return parts[0] || 'unknown';
+  }
+
+  /**
+   * Extract entity ID from event based on entity type
+   */
+  private getEntityIdFromEvent(
+    event: RazorpayWebhookPayload,
+    entityType: string,
+  ): string | null {
+    const payload = event.payload;
+    if (!payload) return null;
+
+    switch (entityType) {
+      case 'subscription':
+        return payload.subscription?.entity?.id || null;
+      case 'order':
+        return payload.order?.entity?.id || null;
+      case 'payment':
+        return payload.payment?.entity?.id || null;
+      case 'refund':
+        return payload.refund?.entity?.id || null;
+      case 'token':
+        return payload.token?.entity?.id || null;
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Extract status from event payload
+   */
+  private getStatusFromEvent(event: RazorpayWebhookPayload): string | null {
+    const payload = event.payload;
+    if (!payload) return null;
+
+    // Check all possible entity types for status
+    const status =
+      payload.subscription?.entity?.status ||
+      payload.order?.entity?.status ||
+      payload.payment?.entity?.status ||
+      payload.refund?.entity?.status;
+
+    return typeof status === 'string' ? status : null;
+  }
+
+  /**
    * Get all configured webhook secrets with their app IDs
    * Uses registered apps from constants to ensure only valid apps are processed
    * Returns array of { appId, secret } objects
@@ -477,16 +528,17 @@ export class RazorpayWebhookService {
       // Mark event as processed BEFORE handling to prevent race conditions
       await this.markEventAsProcessed(eventId, event.event, appId);
 
-      // Generic Subscription Webhook Logging
-      if (ids.subscriptionId) {
-        try {
-          // We log every webhook that contains a subscription ID, so we have a full history
-          const statusToLog =
-            event.payload?.subscription?.entity?.status || null;
+      // Generic Webhook Logging - captures ALL webhook events
+      try {
+        // Determine entity type and extract relevant IDs
+        const entityType = this.getEntityTypeFromEvent(event.event);
+        const entityId = this.getEntityIdFromEvent(event, entityType);
 
-          let userIdToLog: string | null = null;
-          let appIdToLog = appId;
+        // Try to find user/app from the entity
+        let userIdToLog: string | null = null;
+        let appIdToLog = appId;
 
+        if (ids.subscriptionId) {
           const sub = await this.db
             .select({
               userId: schema.subscriptions.userId,
@@ -505,22 +557,42 @@ export class RazorpayWebhookService {
             userIdToLog = sub[0].userId;
             appIdToLog = sub[0].appId;
           }
+        } else if (ids.orderId) {
+          const order = await this.db
+            .select({
+              userId: schema.orders.userId,
+              appId: schema.orders.appId,
+            })
+            .from(schema.orders)
+            .where(eq(schema.orders.razorpayOrderId, ids.orderId))
+            .limit(1);
 
-          await this.db.insert(schema.subscriptionLogs).values({
-            userId: userIdToLog,
-            appId: appIdToLog,
-            subscriptionId: ids.subscriptionId,
-            provider: 'razorpay',
-            action: event.event,
-            status: statusToLog,
-            metadata: event as unknown as Record<string, unknown>,
-          });
-        } catch (logErr) {
-          this.logger.error(
-            `[WEBHOOK ${requestId}] ⚠️ Failed to insert generic subscription log:`,
-            logErr,
-          );
+          if (order.length > 0) {
+            userIdToLog = order[0].userId;
+            appIdToLog = order[0].appId;
+          }
         }
+
+        // Extract status from the event payload
+        const statusToLog = this.getStatusFromEvent(event);
+
+        await this.db.insert(schema.webhookLogs).values({
+          userId: userIdToLog,
+          appId: appIdToLog,
+          entityType,
+          entityId,
+          subscriptionId: ids.subscriptionId || null,
+          orderId: ids.orderId || null,
+          provider: 'razorpay',
+          action: event.event,
+          status: statusToLog,
+          metadata: event as unknown as Record<string, unknown>,
+        });
+      } catch (logErr) {
+        this.logger.error(
+          `[WEBHOOK ${requestId}] ⚠️ Failed to insert webhook log:`,
+          logErr,
+        );
       }
 
       // Event time

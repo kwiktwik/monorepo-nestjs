@@ -677,15 +677,18 @@ export const phonepeSubscriptions = pgTable(
   }),
 ).enableRLS();
 
-export const subscriptionLogs = pgTable(
-  'subscription_logs',
+export const webhookLogs = pgTable(
+  'webhook_logs',
   {
     id: serial('id').primaryKey(),
     userId: text('user_id').references(() => user.id, {
       onDelete: 'cascade',
     }),
     appId: text('app_id').notNull().default('alertpay-default'),
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
     subscriptionId: text('subscription_id'),
+    orderId: text('order_id'),
     provider: paymentProviderEnum('provider'),
     action: text('action').notNull(),
     status: text('status'),
@@ -696,18 +699,19 @@ export const subscriptionLogs = pgTable(
       .notNull(),
   },
   (table) => ({
-    subscriptionLogsUserIdIdx: index('subscription_logs_userId_idx').on(
-      table.userId,
+    webhookLogsUserIdIdx: index('webhook_logs_userId_idx').on(table.userId),
+    webhookLogsAppIdIdx: index('webhook_logs_appId_idx').on(table.appId),
+    webhookLogsEntityTypeIdx: index('webhook_logs_entity_type_idx').on(
+      table.entityType,
     ),
-    subscriptionLogsAppIdIdx: index('subscription_logs_appId_idx').on(
-      table.appId,
+    webhookLogsEntityIdIdx: index('webhook_logs_entity_id_idx').on(
+      table.entityId,
     ),
-    subscriptionLogsSubIdIdx: index('subscription_logs_sub_id_idx').on(
+    webhookLogsSubIdIdx: index('webhook_logs_sub_id_idx').on(
       table.subscriptionId,
     ),
-    subscriptionLogsActionIdx: index('subscription_logs_action_idx').on(
-      table.action,
-    ),
+    webhookLogsOrderIdIdx: index('webhook_logs_order_id_idx').on(table.orderId),
+    webhookLogsActionIdx: index('webhook_logs_action_idx').on(table.action),
   }),
 ).enableRLS();
 

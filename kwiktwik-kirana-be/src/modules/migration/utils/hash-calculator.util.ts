@@ -63,9 +63,7 @@ export class HashCalculator {
       abandonedCheckouts: data.abandonedCheckouts.map((r) =>
         this.normalizeRecord(r),
       ),
-      subscriptionLogs: data.subscriptionLogs.map((r) =>
-        this.normalizeRecord(r),
-      ),
+      // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
       phonepeOrders: data.phonepeOrders.map((r) => this.normalizeRecord(r)),
       phonepeSubscriptions: data.phonepeSubscriptions.map((r) =>
         this.normalizeRecord(r),

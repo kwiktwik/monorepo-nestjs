@@ -547,7 +547,7 @@ export class MigrationService {
       subscriptions: schema.subscriptions,
       orders: schema.orders,
       abandonedCheckouts: schema.abandonedCheckouts,
-      subscriptionLogs: schema.subscriptionLogs,
+      // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
       phonepeOrders: schema.phonepeOrders,
       phonepeSubscriptions: schema.phonepeSubscriptions,
     };
@@ -598,7 +598,7 @@ export class MigrationService {
       subscriptions: 'migrateSubscriptions',
       orders: 'migrateOrders',
       abandonedCheckouts: 'migrateAbandonedCheckouts',
-      subscriptionLogs: 'migrateSubscriptionLogs',
+      // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
       phonepeOrders: 'migratePhonepeOrders',
       phonepeSubscriptions: 'migratePhonepeSubscriptions',
     };
@@ -636,7 +636,7 @@ export class MigrationService {
       data.subscriptions.length +
       data.orders.length +
       data.abandonedCheckouts.length +
-      data.subscriptionLogs.length +
+      // Note: webhookLogs are not migrated
       data.phonepeOrders.length +
       data.phonepeSubscriptions.length
     );
@@ -656,7 +656,7 @@ export class MigrationService {
       subscriptions: 'subscriptions',
       orders: 'orders',
       abandonedCheckouts: 'abandonedCheckouts',
-      subscriptionLogs: 'subscriptionLogs',
+      // Note: webhookLogs are not migrated
       phonepeOrders: 'phonepeOrders',
       phonepeSubscriptions: 'phonepeSubscriptions',
     };
@@ -678,7 +678,7 @@ export class MigrationService {
       subscriptions: MigrationState.MIGRATING_SUBSCRIPTIONS,
       orders: MigrationState.MIGRATING_ORDERS,
       abandonedCheckouts: MigrationState.MIGRATING_ABANDONED_CHECKOUTS,
-      subscriptionLogs: MigrationState.MIGRATING_SUBSCRIPTION_LOGS,
+      // Note: webhookLogs are not migrated
       phonepeOrders: MigrationState.MIGRATING_PHONEPE_ORDERS,
       phonepeSubscriptions: MigrationState.MIGRATING_PHONEPE_SUBSCRIPTIONS,
     };
@@ -859,7 +859,7 @@ export class MigrationService {
       subscriptions: schema.subscriptions,
       orders: schema.orders,
       abandonedCheckouts: schema.abandonedCheckouts,
-      subscriptionLogs: schema.subscriptionLogs,
+      // Note: webhookLogs are not migrated
       phonepeOrders: schema.phonepeOrders,
       phonepeSubscriptions: schema.phonepeSubscriptions,
     };

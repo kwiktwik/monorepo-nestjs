@@ -173,15 +173,13 @@ export class MigrationStateMachine {
       ],
 
       [MigrationState.MIGRATING_ABANDONED_CHECKOUTS]: [
-        MigrationState.MIGRATING_SUBSCRIPTION_LOGS,
+        // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
+        MigrationState.MIGRATING_PHONEPE_ORDERS,
         MigrationState.FAILED,
       ],
 
       // Level 4 migration states
-      [MigrationState.MIGRATING_SUBSCRIPTION_LOGS]: [
-        MigrationState.MIGRATING_PHONEPE_ORDERS,
-        MigrationState.FAILED,
-      ],
+      // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
 
       [MigrationState.MIGRATING_PHONEPE_ORDERS]: [
         MigrationState.MIGRATING_PHONEPE_SUBSCRIPTIONS,
