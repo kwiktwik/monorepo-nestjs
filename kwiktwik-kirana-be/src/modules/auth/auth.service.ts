@@ -500,7 +500,7 @@ export class AuthService {
       .set({ verified: true })
       .where(eq(schema.otpCodes.id, otpRecord.id));
 
-    // Find or create user
+    // Find or create user (check both active and deleted users by phone)
     let userRecord = await this.db
       .select()
       .from(schema.user)
@@ -516,30 +516,69 @@ export class AuthService {
       const tempName = `User ${cleanPhone.slice(-4)}`;
 
       userId = nanoid();
-      await this.db.insert(schema.user).values({
-        id: userId,
-        name: tempName,
-        email: tempEmail,
-        emailVerified: false,
-        phoneNumber: normalized,
-        phoneNumberVerified: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      try {
+        await this.db.insert(schema.user).values({
+          id: userId,
+          name: tempName,
+          email: tempEmail,
+          emailVerified: false,
+          phoneNumber: normalized,
+          phoneNumberVerified: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (error: any) {
+        // Handle duplicate email - find user by email and reactivate if deleted
+        if (
+          error.code === '23505' &&
+          error.message?.includes('user_email_unique')
+        ) {
+          const existingUser = await this.db
+            .select()
+            .from(schema.user)
+            .where(eq(schema.user.email, tempEmail))
+            .limit(1);
 
-      // Create user metadata for this app
-      await this.db.insert(schema.userMetadata).values({
-        userId,
-        appId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+          if (existingUser.length > 0 && existingUser[0].isDeleted) {
+            // Reactivate deleted user
+            userId = existingUser[0].id;
+            await this.db
+              .update(schema.user)
+              .set({
+                isDeleted: false,
+                deletedAt: null,
+                name: tempName,
+                phoneNumber: normalized,
+                phoneNumberVerified: true,
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.user.id, userId));
 
-      userRecord = await this.db
-        .select()
-        .from(schema.user)
-        .where(eq(schema.user.id, userId))
-        .limit(1);
+            userRecord = await this.db
+              .select()
+              .from(schema.user)
+              .where(eq(schema.user.id, userId))
+              .limit(1);
+          } else if (existingUser.length > 0 && !existingUser[0].isDeleted) {
+            // Active user with same email exists - use that user
+            userId = existingUser[0].id;
+            userRecord = existingUser;
+          } else {
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
+
+      // For new users, fetch the record after insert
+      if (!userRecord || userRecord.length === 0) {
+        userRecord = await this.db
+          .select()
+          .from(schema.user)
+          .where(eq(schema.user.id, userId))
+          .limit(1);
+      }
     } else {
       userId = userRecord[0].id;
 
@@ -552,27 +591,27 @@ export class AuthService {
           updatedAt: new Date(),
         })
         .where(eq(schema.user.id, userId));
+    }
 
-      // Check if user metadata exists for this app
-      const metadata = await this.db
-        .select()
-        .from(schema.userMetadata)
-        .where(
-          and(
-            eq(schema.userMetadata.userId, userId),
-            eq(schema.userMetadata.appId, appId),
-          ),
-        )
-        .limit(1);
+    // Ensure metadata exists for this app (handles new, reactivated, and existing users)
+    const metadata = await this.db
+      .select()
+      .from(schema.userMetadata)
+      .where(
+        and(
+          eq(schema.userMetadata.userId, userId),
+          eq(schema.userMetadata.appId, appId),
+        ),
+      )
+      .limit(1);
 
-      if (metadata.length === 0) {
-        await this.db.insert(schema.userMetadata).values({
-          userId,
-          appId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
+    if (metadata.length === 0) {
+      await this.db.insert(schema.userMetadata).values({
+        userId,
+        appId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
     }
 
     // Generate JWT token with optional auth provider info
