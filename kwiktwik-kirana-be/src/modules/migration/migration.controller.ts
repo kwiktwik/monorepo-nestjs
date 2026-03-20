@@ -12,7 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Observable, interval, map } from 'rxjs';
-import { ApiExcludeController } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { MigrationService } from './migration.service';
 import {
   MigrateSessionDto,
@@ -26,9 +32,8 @@ import { MigrationProgress } from './interfaces/migration.interfaces';
  * Migration Controller
  * Handles user migration from kirana-fe to kwiktwik-kirana-be
  * Supports Server-Sent Events for real-time progress updates
- * @ApiExcludeController hides from Swagger docs (internal endpoint)
  */
-@ApiExcludeController()
+@ApiTags('migration')
 @UseGuards(AppIdGuard)
 @Controller('v1/migration')
 export class MigrationController {
@@ -39,6 +44,76 @@ export class MigrationController {
    * POST /v1/migration/migrate-session
    */
   @Post('migrate-session')
+  @ApiOperation({
+    summary: 'Migrate user session from kirana-fe to kwiktwik-kirana-be',
+    description: `Migrates all user data from the legacy kirana-fe system to the new kwiktwik-kirana-be backend.
+    
+Requires an active Better-Auth session token from kirana-fe.
+This endpoint performs a complete migration including:
+- User metadata and profile
+- OAuth accounts (Google, Truecaller)
+- Push tokens
+- Device sessions
+- Subscriptions
+- Orders
+- Payment records
+
+The migration is atomic - either all data is migrated successfully or nothing is saved.`,
+  })
+  @ApiBody({
+    type: MigrateSessionDto,
+    description:
+      'Migration request containing Better-Auth token from kirana-fe',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Migration completed successfully',
+    schema: {
+      example: {
+        success: true,
+        migrationId: 'mig_abc123def456',
+        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        user: 'user_abc123',
+        migratedTables: [
+          'user_metadata',
+          'accounts',
+          'pushTokens',
+          'deviceSessions',
+          'subscriptions',
+          'orders',
+        ],
+        recordsMigrated: 25,
+        duration: 1234,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid input or partial data detected',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: {
+          code: 'ERR_PARTIAL_001',
+          message:
+            'Migration cannot proceed. Existing data found in tables: user_metadata, accounts. Please contact support team with error code: ERR_PARTIAL_001',
+          details: {
+            tablesWithData: ['user_metadata', 'accounts'],
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or expired Better-Auth session',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid or expired Better-Auth session',
+      },
+    },
+  })
   async migrateSession(
     @Body() dto: MigrateSessionDto,
     @AppId() appId: string,
@@ -95,6 +170,63 @@ export class MigrationController {
    * GET /v1/migration/status/:migrationId
    */
   @Get('status/:migrationId')
+  @ApiOperation({
+    summary: 'Get migration status by ID',
+    description:
+      'Retrieves the current status and details of a migration process',
+  })
+  @ApiParam({
+    name: 'migrationId',
+    description: 'The unique migration ID returned from migrate-session',
+    example: 'mig_abc123def456',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Migration status retrieved successfully',
+    schema: {
+      example: {
+        migrationId: 'mig_abc123def456',
+        userId: 'user_abc123',
+        phoneNumber: '+919876543210',
+        status: 'completed',
+        currentState: 'completed',
+        startedAt: '2024-01-15T10:30:00Z',
+        completedAt: '2024-01-15T10:30:01Z',
+        duration: 1234,
+        tablesMigrated: ['user_metadata', 'accounts', 'subscriptions'],
+        tablesFailed: [],
+        recordsCount: 25,
+        errorCode: null,
+        errorMessage: null,
+        isLocked: false,
+        lockedAt: null,
+        lastHeartbeat: '2024-01-15T10:30:01Z',
+        sourceHash: 'abc123...',
+        destinationHash: 'def456...',
+        deviceId: 'device_abc123',
+        deviceInfo: {
+          brand: 'Samsung',
+          model: 'Galaxy S21',
+          os: 'Android 13',
+          appVersion: '2.0.0',
+        },
+        retryCount: 0,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Migration not found',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: {
+          code: 'ERR_NOT_FOUND',
+          message: 'Migration not found',
+        },
+      },
+    },
+  })
   async getMigrationStatus(
     @Param() params: MigrationStatusDto,
     @AppId() appId: string,
@@ -125,6 +257,48 @@ export class MigrationController {
    * };
    */
   @Sse('progress/:migrationId')
+  @ApiOperation({
+    summary: 'Stream real-time migration progress (SSE)',
+    description: `Server-Sent Events endpoint that streams migration progress updates in real-time.
+
+**Usage Example:**
+\`\`\`javascript
+const eventSource = new EventSource('/v1/migration/progress/mig_abc123');
+eventSource.onmessage = (event) => {
+  const progress = JSON.parse(event.data);
+  console.log(\`Progress: \${progress.progress}%\`);
+  console.log(\`Current table: \${progress.currentTable}\`);
+  updateProgressBar(progress.progress);
+};
+\`\`\`
+
+**Note:** This endpoint returns text/event-stream content type, not JSON.`,
+  })
+  @ApiParam({
+    name: 'migrationId',
+    description: 'The unique migration ID',
+    example: 'mig_abc123def456',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'SSE stream established - receives progress events',
+    schema: {
+      example: {
+        data: {
+          migrationId: 'mig_abc123def456',
+          userId: 'user_abc123',
+          state: 'migrating_metadata',
+          progress: 45,
+          currentTable: 'accounts',
+          recordsProcessed: 15,
+          totalRecords: 25,
+          estimatedTimeRemaining: 5,
+          message: 'Migrating accounts...',
+          timestamp: '2024-01-15T10:30:00Z',
+        },
+      },
+    },
+  })
   migrationProgress(
     @Param() params: MigrationStatusDto,
   ): Observable<MessageEvent> {

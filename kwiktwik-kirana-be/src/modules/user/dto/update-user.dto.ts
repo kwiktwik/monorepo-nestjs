@@ -72,8 +72,7 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message:
-      'Phone number must be in E.164 format (e.g., +919876543210)',
+    message: 'Phone number must be in E.164 format (e.g., +919876543210)',
   })
   phoneNumber?: string;
 }
