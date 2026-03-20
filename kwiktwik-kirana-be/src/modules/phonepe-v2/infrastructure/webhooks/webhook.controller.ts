@@ -14,7 +14,7 @@ import { Inject } from '@nestjs/common';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
-} from '../../phonepe-v2.module';
+} from '../../constants';
 import type {
   SubscriptionRepository,
   RedemptionRepository,

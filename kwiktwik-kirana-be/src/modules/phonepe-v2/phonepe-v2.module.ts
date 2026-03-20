@@ -15,9 +15,8 @@ import { SubscriptionService } from './application/services/subscription.service
 // Presentation
 import { SubscriptionController } from './presentation/subscription.controller';
 
-// Repository Tokens
-export const SUBSCRIPTION_REPOSITORY = Symbol('SUBSCRIPTION_REPOSITORY');
-export const REDEMPTION_REPOSITORY = Symbol('REDEMPTION_REPOSITORY');
+// Constants
+import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from './constants';
 
 @Module({
   imports: [ConfigModule, DrizzleModule],
