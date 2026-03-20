@@ -14,6 +14,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   USER_TYPES,
   DEEPLINK_CAMPAIGNS,
+  SUPPORTED_LANGUAGES,
   type UserType,
   type DeeplinkCampaign,
 } from './config.data';
@@ -55,11 +56,13 @@ export class ConfigController {
   })
   @ApiQuery({
     name: 'language',
+    enum: Object.values(SUPPORTED_LANGUAGES),
     required: false,
-    description: 'Language for localized content (en, hi, etc)',
+    description: 'Language for localized content',
   })
   @ApiQuery({
     name: 'lang',
+    enum: Object.values(SUPPORTED_LANGUAGES),
     required: false,
     description: 'Language for localized content (fallback)',
   })

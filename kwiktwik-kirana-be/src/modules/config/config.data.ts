@@ -125,6 +125,27 @@ export type DeeplinkCampaign =
   (typeof DEEPLINK_CAMPAIGNS)[keyof typeof DEEPLINK_CAMPAIGNS];
 
 // ============================================================================
+// SUPPORTED LANGUAGES
+// ============================================================================
+
+export const SUPPORTED_LANGUAGES = {
+  EN: 'en',
+  HI: 'hi',
+  BN: 'bn',
+  MR: 'mr',
+  TE: 'te',
+  TA: 'ta',
+  GU: 'gu',
+  UR: 'ur',
+  KN: 'kn',
+  OR: 'or',
+  ML: 'ml',
+} as const;
+
+export type SupportedLanguage =
+  (typeof SUPPORTED_LANGUAGES)[keyof typeof SUPPORTED_LANGUAGES];
+
+// ============================================================================
 // JSON RULES ENGINE - PAYWALL RULES
 // ============================================================================
 
