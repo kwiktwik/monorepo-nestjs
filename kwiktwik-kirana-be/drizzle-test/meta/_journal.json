@@ -64,6 +64,13 @@
       "when": 1773902344162,
       "tag": "0008_abandoned_sir_ram",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774001145822,
+      "tag": "0009_glossy_gorgon",
+      "breakpoints": true
     }
   ]
 }

@@ -109,7 +109,6 @@ export default async function AdminLayout({
           <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 p-4 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <h3 className="text-sm font-medium text-zinc-500">System Context:</h3>
                 <BackendToggle />
               </div>
               <div className="flex items-center gap-4">
