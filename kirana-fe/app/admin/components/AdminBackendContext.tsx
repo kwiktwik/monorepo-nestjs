@@ -2,6 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
+/**
+ * Backend type for admin operations
+ * - "local": Current kirana-fe system (old/monolith)
+ * - "kwiktwik": New kwiktwik-kirana-be system (microservices)
+ */
 type BackendType = "local" | "kwiktwik";
 
 interface AdminBackendContextType {
