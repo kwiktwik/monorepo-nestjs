@@ -12,6 +12,7 @@ import { UserModule } from './modules/user/user.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { RazorpayModule } from './modules/razorpay/razorpay.module';
 import { PhonePeModule } from './modules/phonepe/phonepe.module';
+import { PhonePeV2Module } from './modules/phonepe-v2/phonepe-v2.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { BackgroundRemovalModule } from './modules/background-removal/background-removal.module';
 import { VideoOverlayModule } from './modules/video-overlay/video-overlay.module';
@@ -43,6 +44,7 @@ const dbModule =
     UploadModule,
     RazorpayModule,
     PhonePeModule,
+    PhonePeV2Module,
     FeedModule,
     BackgroundRemovalModule,
     VideoOverlayModule,

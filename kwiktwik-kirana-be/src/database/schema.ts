@@ -60,11 +60,13 @@ export const phonepeSubscriptionStateEnum = pgEnum(
   'phonepe_subscription_state',
   [
     'CREATED',
-    'AUTHENTICATED',
+    'ACTIVATION_IN_PROGRESS',
     'ACTIVE',
     'PAUSED',
+    'CANCEL_IN_PROGRESS',
     'CANCELLED',
-    'COMPLETED',
+    'REVOKED',
+    'EXPIRED',
     'FAILED',
   ],
 );
@@ -658,9 +660,16 @@ export const phonepeSubscriptions = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     appId: text('app_id').notNull().default('alertpay-default'),
     amount: integer('amount'),
+    maxAmount: integer('max_amount'),
     amountType: varchar('amount_type', { length: 20 }),
     frequency: varchar('frequency', { length: 20 }),
+    authWorkflowType: varchar('auth_workflow_type', { length: 20 }),
+    productType: varchar('product_type', { length: 20 }),
     state: phonepeSubscriptionStateEnum('state'),
+    expireAt: timestamp('expire_at'),
+    activatedAt: timestamp('activated_at'),
+    cancelledAt: timestamp('cancelled_at'),
+    metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -674,6 +683,51 @@ export const phonepeSubscriptions = pgTable(
     phonepeSubscriptionsMerchantIdIdx: index(
       'phonepe_subscriptions_merchant_id_idx',
     ).on(table.merchantSubscriptionId),
+  }),
+).enableRLS();
+
+export const phonepeRedemptionStateEnum = pgEnum('phonepe_redemption_state', [
+  'NOTIFICATION_IN_PROGRESS',
+  'NOTIFIED',
+  'PENDING',
+  'COMPLETED',
+  'FAILED',
+]);
+
+export const phonepeRedemptions = pgTable(
+  'phonepe_redemptions',
+  {
+    id: varchar('id', { length: 10 }).primaryKey(),
+    merchantOrderId: text('merchant_order_id').notNull().unique(),
+    merchantSubscriptionId: text('merchant_subscription_id').notNull(),
+    phonepeOrderId: text('phonepe_order_id'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    appId: text('app_id').notNull().default('alertpay-default'),
+    amount: integer('amount').notNull(),
+    state: phonepeRedemptionStateEnum('state').notNull(),
+    autoDebit: boolean('auto_debit').notNull().default(true),
+    transactionId: text('transaction_id'),
+    notifiedAt: timestamp('notified_at'),
+    validAfter: timestamp('valid_after'),
+    validUpto: timestamp('valid_upto'),
+    errorCode: text('error_code'),
+    detailedErrorCode: text('detailed_error_code'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    phonepeRedemptionsOrderIdIdx: index('phonepe_redemptions_order_id_idx').on(
+      table.merchantOrderId,
+    ),
+    phonepeRedemptionsSubscriptionIdIdx: index(
+      'phonepe_redemptions_subscription_id_idx',
+    ).on(table.merchantSubscriptionId),
+    phonepeRedemptionsUserIdIdx: index('phonepe_redemptions_userId_idx').on(
+      table.userId,
+    ),
   }),
 ).enableRLS();
 
