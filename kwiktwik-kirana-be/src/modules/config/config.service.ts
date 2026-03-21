@@ -188,12 +188,7 @@ export class ConfigService {
       const dynamicConfig = JSON.parse(JSON.stringify(config));
 
       // Import unified plans
-      const {
-        getUnifiedPlan,
-        UNIFIED_PLANS,
-        USER_TYPES,
-        DEEPLINK_CAMPAIGNS,
-      } = require('./config.data');
+      const { getUnifiedPlan, UNIFIED_PLANS } = require('./config.data');
 
       let selectedPlanId: string;
       let planSelectionSource: string;
@@ -203,25 +198,9 @@ export class ConfigService {
         selectedPlanId = planId;
         planSelectionSource = 'client_override';
       } else {
-        // Backend determines the plan based on user context
-        const context = {
-          appId,
-          userType: user?.userType || USER_TYPES.NEW,
-          deeplink: user?.deeplink || DEEPLINK_CAMPAIGNS.NONE,
-        };
-
-        // Use paywall engine to determine the plan
-        const paywallResult = await this.paywallEngine.determinePlan(context);
-
-        // Map paywall plan to unified plan
-        const planMapping: Record<string, string> = {
-          plan_S3FaBrk7sjPQEU: 'plan_S3FaBrk7sjPQEU',
-          plan_PHONEPE_AUTOPAY_001: 'plan_PHONEPE_AUTOPAY_001',
-        };
-
-        selectedPlanId =
-          planMapping[paywallResult.plan.plan_id] || 'plan_S3FaBrk7sjPQEU';
-        planSelectionSource = `backend_rule:${paywallResult.ruleName}`;
+        // Backend defaults to Razorpay plan
+        selectedPlanId = 'plan_S3FaBrk7sjPQEU';
+        planSelectionSource = 'backend_default:razorpay';
       }
 
       // Get the unified plan
