@@ -40,6 +40,34 @@ export interface SetupSubscriptionResponse {
   redirectUrl: string;
 }
 
+export interface SetupSubscriptionMobileRequest {
+  merchantOrderId: string;
+  amount: number;
+  paymentFlow: {
+    type: 'SUBSCRIPTION_CHECKOUT_SETUP';
+    message?: string;
+    subscriptionDetails: {
+      subscriptionType: 'RECURRING';
+      merchantSubscriptionId: string;
+      authWorkflowType: AuthWorkflowType;
+      amountType: AmountType;
+      maxAmount: number;
+      frequency: SubscriptionFrequency;
+      productType: 'UPI_MANDATE';
+      expireAt?: number; // epoch in milliseconds
+    };
+  };
+  expireAfter?: number;
+  metaInfo?: Record<string, string>;
+}
+
+export interface SetupSubscriptionMobileResponse {
+  orderId: string;
+  state: 'PENDING';
+  expireAt: number;
+  token: string;
+}
+
 export interface NotifyRedemptionRequest {
   merchantOrderId: string;
   amount: number;
@@ -101,7 +129,7 @@ export class PhonePeHttpClient {
   constructor(private readonly authManager: PhonePeAuthManager) {}
 
   /**
-   * Setup a new subscription mandate
+   * Setup a new subscription mandate (Web Checkout)
    * POST /checkout/v2/pay
    */
   async setupSubscription(
@@ -133,6 +161,47 @@ export class PhonePeHttpClient {
       this.logger.error(`Subscription setup failed: ${error}`);
       throw new Error(
         `PhonePe subscription setup failed: ${response.status} - ${error}`,
+      );
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  /**
+   * Setup a new subscription mandate (Mobile SDK)
+   * POST /checkout/v2/sdk/order
+   * No redirectUrl required - returns token for SDK
+   */
+  async setupSubscriptionMobile(
+    appId: string,
+    request: SetupSubscriptionMobileRequest,
+  ): Promise<SetupSubscriptionMobileResponse> {
+    const baseUrl = this.authManager.getBaseUrl(appId);
+    const token = await this.authManager.getToken(appId);
+
+    const url = `${baseUrl}/checkout/v2/sdk/order`;
+
+    this.logger.log(
+      `Setting up mobile SDK subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
+    );
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `O-Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      this.logger.error(`Mobile SDK subscription setup failed: ${error}`);
+      throw new Error(
+        `PhonePe mobile SDK subscription setup failed: ${response.status} - ${error}`,
       );
     }
 

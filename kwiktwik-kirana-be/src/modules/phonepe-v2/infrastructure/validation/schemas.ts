@@ -27,12 +27,10 @@ const MetadataSchema = z.any().optional();
 // Setup Subscription Schema
 export const SetupSubscriptionSchema = z.object({
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z
-    .string()
-    .url('Redirect URL must be a valid URL address')
-    .optional(),
+  redirectUrl: z.string().optional(),
   merchantSubscriptionId: z.string().optional(),
   metadata: z.any().optional(),
+  mobileSdk: z.boolean().optional(),
 });
 
 export type SetupSubscriptionInput = z.infer<typeof SetupSubscriptionSchema>;
@@ -95,12 +93,10 @@ export const SetupSubscriptionServiceSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   appId: z.string().min(1, 'App ID is required'),
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z
-    .string()
-    .url('Redirect URL must be a valid URL address')
-    .optional(),
+  redirectUrl: z.string().optional(),
   merchantSubscriptionId: z.string().optional(),
   metadata: z.any().optional(),
+  mobileSdk: z.boolean().optional(),
 });
 
 export const NotifyRedemptionServiceSchema = z.object({

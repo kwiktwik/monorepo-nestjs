@@ -71,6 +71,7 @@ export class SubscriptionController {
       redirectUrl: dto.redirectUrl,
       merchantSubscriptionId: dto.merchantSubscriptionId,
       metadata: dto.metadata,
+      mobileSdk: dto.mobileSdk,
     });
   }
 

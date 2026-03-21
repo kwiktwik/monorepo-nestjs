@@ -49,11 +49,11 @@ export class SetupSubscriptionDto {
 
   @ApiPropertyOptional({
     description:
-      'URL to redirect user after mandate approval (defaults to app callback URL if not provided)',
+      'URL to redirect user after mandate approval (only for web checkout)',
     example: 'https://yourapp.com/subscription/callback',
   })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   redirectUrl?: string;
 
   @ApiPropertyOptional({
@@ -69,6 +69,13 @@ export class SetupSubscriptionDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Use mobile SDK flow (default: true, no redirectUrl needed)',
+    example: true,
+  })
+  @IsOptional()
+  mobileSdk?: boolean;
 }
 
 export class NotifyRedemptionDto {

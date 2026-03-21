@@ -29,9 +29,10 @@ export interface SetupSubscriptionRequest {
   userId: string;
   appId: string;
   planId: string; // Plan ID from PAYWALL_PLANS (e.g., 'plan_PHONEPE_AUTOPAY_001')
-  redirectUrl?: string; // Optional - defaults to app callback URL
+  redirectUrl?: string; // Optional - only for web checkout
   merchantSubscriptionId?: string;
   metadata?: Record<string, unknown>;
+  mobileSdk?: boolean; // Use mobile SDK endpoint (no redirectUrl needed)
 }
 
 export interface SetupSubscriptionResponse {
@@ -95,9 +96,7 @@ export class SubscriptionService {
   ): Promise<SetupSubscriptionResponse> {
     const merchantSubscriptionId = request.merchantSubscriptionId || nanoid(10);
     const merchantOrderId = nanoid(10);
-    const redirectUrl =
-      request.redirectUrl ||
-      `https://services.kiranaapps.com/api/phonepe/callback`;
+    const redirectUrl = request.redirectUrl || '';
 
     // Check if merchant subscription ID already exists
     const exists = await this.subscriptionRepo.existsByMerchantSubscriptionId(
@@ -172,35 +171,93 @@ export class SubscriptionService {
     // Save to database
     await this.subscriptionRepo.create(subscription);
 
-    // Call PhonePe API
-    const response = await this.httpClient.setupSubscription(request.appId, {
-      merchantOrderId,
-      amount: Math.round(amount * 100),
-      paymentFlow: {
-        type: 'SUBSCRIPTION_CHECKOUT_SETUP',
-        merchantUrls: {
-          redirectUrl: redirectUrl,
+    // Get merchant ID for SDK configuration
+    const credentials = this.authManager.getCredentials(request.appId);
+
+    let response;
+    let sdkToken = '';
+
+    if (request.mobileSdk !== false) {
+      // Mobile SDK flow - no redirectUrl needed
+      const mobileResponse = await this.httpClient.setupSubscriptionMobile(
+        request.appId,
+        {
+          merchantOrderId,
+          amount: Math.round(amount * 100),
+          paymentFlow: {
+            type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+            message: request.metadata?.message as string,
+            subscriptionDetails: {
+              subscriptionType: 'RECURRING',
+              merchantSubscriptionId,
+              authWorkflowType: subscription.authWorkflowType,
+              amountType: subscription.amountType,
+              maxAmount: subscription.maxAmount,
+              frequency: subscription.frequency,
+              productType: 'UPI_MANDATE',
+              expireAt: subscription.expireAt
+                ? subscription.expireAt.getTime()
+                : undefined,
+            },
+          },
+          expireAfter: 1800, // 30 minutes
+          metaInfo: request.metadata as Record<string, string>,
         },
-        // Restrict to UPI payments only
-        paymentModeConfig: {
-          type: upiPaymentMode,
+      );
+
+      sdkToken = mobileResponse.token;
+      response = {
+        orderId: mobileResponse.orderId,
+        state: mobileResponse.state,
+        expireAt: mobileResponse.expireAt,
+        redirectUrl: '',
+      };
+    } else {
+      // Web checkout flow - requires redirectUrl
+      const webResponse = await this.httpClient.setupSubscription(
+        request.appId,
+        {
+          merchantOrderId,
+          amount: Math.round(amount * 100),
+          paymentFlow: {
+            type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+            merchantUrls: {
+              redirectUrl: redirectUrl,
+            },
+            // Restrict to UPI payments only
+            paymentModeConfig: {
+              type: upiPaymentMode,
+            },
+            subscriptionDetails: {
+              subscriptionType: 'RECURRING',
+              merchantSubscriptionId,
+              authWorkflowType: subscription.authWorkflowType,
+              amountType: subscription.amountType,
+              maxAmount: subscription.maxAmount,
+              frequency: subscription.frequency,
+              productType: 'UPI_MANDATE',
+              expireAt: subscription.expireAt
+                ? subscription.expireAt.getTime()
+                : undefined,
+            },
+          },
+          expireAfter: 1800, // 30 minutes
+          metaInfo: request.metadata as Record<string, string>,
         },
-        subscriptionDetails: {
-          subscriptionType: 'RECURRING',
-          merchantSubscriptionId,
-          authWorkflowType: subscription.authWorkflowType,
-          amountType: subscription.amountType,
-          maxAmount: subscription.maxAmount,
-          frequency: subscription.frequency,
-          productType: 'UPI_MANDATE',
-          expireAt: subscription.expireAt
-            ? subscription.expireAt.getTime()
-            : undefined,
-        },
-      },
-      expireAfter: 1800, // 30 minutes
-      metaInfo: request.metadata as Record<string, string>,
-    });
+      );
+
+      // Extract token from redirectUrl for mobile SDK
+      try {
+        const url = new URL(webResponse.redirectUrl);
+        sdkToken = url.searchParams.get('token') || '';
+      } catch (error) {
+        this.logger.warn(
+          `Failed to extract token from redirectUrl: ${error.message}`,
+        );
+      }
+
+      response = webResponse;
+    }
 
     // Update subscription state
     subscription.markAsActivationInProgress();
@@ -209,20 +266,6 @@ export class SubscriptionService {
     this.logger.log(
       `Subscription setup initiated: ${merchantSubscriptionId} for user ${request.userId}`,
     );
-
-    // Get merchant ID for SDK configuration
-    const credentials = this.authManager.getCredentials(request.appId);
-
-    // Extract token from redirectUrl for mobile SDK
-    let sdkToken = '';
-    try {
-      const url = new URL(response.redirectUrl);
-      sdkToken = url.searchParams.get('token') || '';
-    } catch (error) {
-      this.logger.warn(
-        `Failed to extract token from redirectUrl: ${error.message}`,
-      );
-    }
 
     return {
       orderId: response.orderId,
