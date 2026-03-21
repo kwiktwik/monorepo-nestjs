@@ -202,14 +202,14 @@ export class TableMigrationService {
         appId: parsedRecord.appId,
         hasUpiVpa: !!parsedRecord.upiVpa,
       });
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         userId: userId,
         appId: parsedRecord.appId || 'com.kiranaapps.app',
         upiVpa: parsedRecord.upiVpa,
         audioLanguage: parsedRecord.audioLanguage,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
-      };
+      });
 
       // Check if record exists first
       console.log(
