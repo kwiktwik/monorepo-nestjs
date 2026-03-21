@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +27,11 @@ import {
   SubscriptionStatusDto,
   OrderStatusDto,
 } from './dto/subscription.dto';
+import { ZodValidationPipe } from '../infrastructure/validation/zod-validation.pipe';
+import {
+  SetupSubscriptionSchema,
+  NotifyRedemptionSchema,
+} from '../infrastructure/validation/schemas';
 
 @ApiTags('PhonePe Autopay')
 @ApiBearerAuth('JWT')
@@ -33,6 +46,7 @@ export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
   @Post()
+  @UsePipes(new ZodValidationPipe(SetupSubscriptionSchema))
   @ApiOperation({
     summary: 'Setup a new subscription mandate',
     description:
@@ -67,6 +81,7 @@ export class SubscriptionController {
   }
 
   @Post('redeem')
+  @UsePipes(new ZodValidationPipe(NotifyRedemptionSchema))
   @ApiOperation({
     summary: 'Notify user about upcoming charge',
     description:

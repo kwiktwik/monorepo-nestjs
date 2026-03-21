@@ -20,6 +20,7 @@ import type {
   RedemptionRepository,
 } from '../../application/interfaces/repository.interface';
 import type { PhonePeWebhookEvent } from '../../domain/enums/subscription.enum';
+import { WebhookPayloadSchema } from '../validation/schemas';
 
 // Webhook payload types
 interface SubscriptionSetupPayload {
@@ -105,6 +106,15 @@ export class PhonePeWebhookController {
     if (!this.validateWebhook(authHeader)) {
       this.logger.warn('Invalid webhook authorization');
       throw new UnauthorizedException('Invalid authorization');
+    }
+
+    // Validate webhook payload structure
+    const validationResult = WebhookPayloadSchema.safeParse(body);
+    if (!validationResult.success) {
+      this.logger.warn(
+        `Invalid webhook payload: ${validationResult.error.message}`,
+      );
+      throw new BadRequestException('Invalid webhook payload structure');
     }
 
     this.logger.log(`Received webhook: ${body.event}`);
