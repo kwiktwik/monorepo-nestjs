@@ -96,7 +96,7 @@ export class HashCalculator {
       let value: unknown = record[key];
 
       // Normalize dates to ISO string
-      if (value instanceof Date) {
+      if (value instanceof Date && !isNaN(value.getTime())) {
         value = value.toISOString();
       } else if (typeof value === 'object' && value !== null) {
         // Recursively normalize nested objects
