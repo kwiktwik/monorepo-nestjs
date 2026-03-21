@@ -53,9 +53,7 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
-      const newId = idMapper.generateNewId('user_metadata', record.id);
       const mappedRecord = {
-        id: newId,
         userId: userId,
         appId: record.appId,
         upiVpa: record.upiVpa,
