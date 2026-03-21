@@ -159,17 +159,32 @@ export class TableMigrationService {
         updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
-      await this.db
-        .insert(schema.userMetadata)
-        .values(mappedRecord)
-        .onConflictDoUpdate({
-          target: [schema.userMetadata.userId, schema.userMetadata.appId],
-          set: {
+      // Check if record exists first
+      const existing = await this.db
+        .select()
+        .from(schema.userMetadata)
+        .where(
+          and(
+            eq(schema.userMetadata.userId, userId),
+            eq(schema.userMetadata.appId, mappedRecord.appId),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing record
+        await this.db
+          .update(schema.userMetadata)
+          .set({
             upiVpa: mappedRecord.upiVpa,
             audioLanguage: mappedRecord.audioLanguage,
             updatedAt: new Date(),
-          },
-        });
+          })
+          .where(eq(schema.userMetadata.id, existing[0].id));
+      } else {
+        // Insert new record
+        await this.db.insert(schema.userMetadata).values(mappedRecord);
+      }
       migrated.push(mappedRecord);
     }
 
