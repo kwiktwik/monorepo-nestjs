@@ -289,8 +289,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('playStoreRating', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
@@ -315,8 +316,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('subscription', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
@@ -342,8 +344,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('order', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
@@ -369,8 +372,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('abandonedCheckout', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
