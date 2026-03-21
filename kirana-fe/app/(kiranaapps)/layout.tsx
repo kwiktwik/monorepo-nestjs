@@ -56,7 +56,7 @@ export default function KiranaAppsLayout({
                 <ul className="space-y-4 text-sm sm:text-base text-gray-600">
                   <li><Link href="/alertpe-soundbox" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Alert Soundbox</Link></li>
                   <li><Link href="/jamun" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Jamun</Link></li>
-                  <li><Link href="/sangam-privacy" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Sangam App</Link></li>
+                  <li><Link href="/sangam" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Sangam App</Link></li>
                   <li><Link href="/#apps" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Mobile Soundbox</Link></li>
                   <li><Link href="/#apps" className="hover:text-primary hover:translate-x-1 inline-block transition-all">Customer & Supplier App</Link></li>
                 </ul>

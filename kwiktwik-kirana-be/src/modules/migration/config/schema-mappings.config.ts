@@ -165,12 +165,35 @@ export const ORDERS_MAPPING: TableMapping = {
       oldFields: ['razorpayCustomerId', 'razorpay_customer_id'],
       defaultValue: null,
     },
-    { newField: 'amount', oldFields: ['amount'], defaultValue: 0 },
+    {
+      newField: 'amount',
+      oldFields: ['amount'],
+      defaultValue: 0,
+      transform: (value) => {
+        if (typeof value === 'string') {
+          const parsed = parseInt(value, 10);
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        if (typeof value === 'number') {
+          return Math.floor(value);
+        }
+        return 0;
+      },
+    },
     { newField: 'currency', oldFields: ['currency'], defaultValue: 'INR' },
     {
       newField: 'maxAmount',
       oldFields: ['maxAmount', 'max_amount'],
       defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+          const parsed = parseInt(value, 10);
+          return isNaN(parsed) ? null : parsed;
+        }
+        if (typeof value === 'number') return Math.floor(value);
+        return null;
+      },
     },
     { newField: 'frequency', oldFields: ['frequency'], defaultValue: null },
     { newField: 'status', oldFields: ['status'], defaultValue: 'created' },
@@ -188,6 +211,23 @@ export const ORDERS_MAPPING: TableMapping = {
       newField: 'paymentMetadata',
       oldFields: ['paymentMetadata', 'payment_metadata'],
       defaultValue: null,
+      transform: (value) => {
+        // Ensure value is valid JSON object/array or null
+        if (value === null || value === undefined) {
+          return null;
+        }
+        if (typeof value === 'object') {
+          return value; // Already an object, pass through
+        }
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value); // Try to parse if it's a JSON string
+          } catch {
+            return null; // Invalid JSON string
+          }
+        }
+        return null;
+      },
     },
     {
       newField: 'notes',
