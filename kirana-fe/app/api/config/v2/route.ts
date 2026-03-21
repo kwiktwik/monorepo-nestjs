@@ -175,14 +175,14 @@ const kiranaappsOverrides = {
 const sangamOverrides = {
   ...kiranaappsOverrides,
   app: {
-    name: "Sangam Kirana Apps",
+    name: "Sangam Wallpaper",
   },
 };
 
 const PACKAGE_OVERRIDES: Record<string, Record<string, any>> = {
   "com.paymentalert.app": alertpayOverrides,
   "com.kiranaapps.app": kiranaappsOverrides,
-  "com.sangam.kiranaapps": sangamOverrides,
+  "com.sangam.wallpaperapp": sangamOverrides,
   "com.sharestatus.app": jamunOverrides,
   "com.sharekaro.kirana": jamunOverrides,
 };

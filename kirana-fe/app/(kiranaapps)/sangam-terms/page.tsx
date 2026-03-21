@@ -15,7 +15,7 @@ export default function SangamTerms() {
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">1. Agreement to Terms</h2>
             <p className="text-lg">
-              By accessing or using Sangam Kirana Apps (com.sangam.kiranaapps), you agree to comply with and be bound by these Terms of Service. These terms apply to all visitors, users, and others who access or use the Service.
+              By accessing or using Sangam Wallpaper (com.sangam.wallpaperapp), you agree to comply with and be bound by these Terms of Service. These terms apply to all visitors, users, and others who access or use the Service.
             </p>
           </section>
 
@@ -39,7 +39,7 @@ export default function SangamTerms() {
           <section className="bg-primary/10 p-10 rounded-[3rem] border border-primary/20">
             <h2 className="text-2xl font-bold text-primary mb-6">4. Limitation of Liability</h2>
             <p className="text-lg text-primary/80">
-              In no event shall Sangam Kirana Apps, nor its directors, employees, or partners, be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the service.
+              In no event shall Sangam Wallpaper, nor its directors, employees, or partners, be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the service.
             </p>
           </section>
 
