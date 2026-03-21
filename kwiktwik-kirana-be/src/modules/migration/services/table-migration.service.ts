@@ -210,6 +210,7 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
+      });
 
       // Check if record exists first
       console.log(
@@ -285,6 +286,7 @@ export class TableMigrationService {
         password: parsedRecord.password,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
+      });
       };
 
       await this.db.insert(schema.account).values(mappedRecord);
@@ -318,6 +320,7 @@ export class TableMigrationService {
         isActive: parsedRecord.isActive ?? true,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
+      });
       };
 
       await this.db.insert(schema.pushTokens).values(mappedRecord);
@@ -420,6 +423,7 @@ export class TableMigrationService {
         submittedToPlayStoreAt: parsedRecord.submittedToPlayStoreAt,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
+      });
       };
 
       await this.db.insert(schema.playStoreRatings).values(mappedRecord);
@@ -469,6 +473,7 @@ export class TableMigrationService {
         metadata: parsedRecord.metadata,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
+      });
       });
 
       await this.db.insert(schema.subscriptions).values(mappedRecord);
