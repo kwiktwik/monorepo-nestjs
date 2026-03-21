@@ -1,10 +1,8 @@
 /**
- * Table Migration Service
+ * Table Migration Service - Refactored
  *
+ * Uses DataTransformationService for proper schema mapping
  * SAFETY NOTICE: This service ONLY inserts data into kwiktwik-kirana-be tables
- * - All operations are INSERT only into the new system's database
- * - NO delete or update operations on kirana-fe (old system)
- * - Original data in kirana-fe is ALWAYS preserved
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -14,132 +12,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../database/schema';
 import { IdMapper } from '../utils/id-mapper.util';
 import { and, eq } from 'drizzle-orm';
-
-/**
- * Parse a date string or Date object into a valid Date
- * Returns null if the value is null/undefined or invalid
- */
-function parseDate(value: unknown): Date | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (value instanceof Date) {
-    return isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === 'string') {
-    const parsed = new Date(value);
-    return isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-}
-
-/**
- * Common date field names that need parsing
- */
-const DATE_FIELDS = [
-  'createdAt',
-  'updatedAt',
-  'created_at',
-  'updated_at',
-  'expiresAt',
-  'expires_at',
-  'deletedAt',
-  'deleted_at',
-  'timestamp',
-  'lastHeartbeat',
-  'last_heartbeat',
-  'lockedAt',
-  'locked_at',
-  'startAt',
-  'start_at',
-  'endAt',
-  'end_at',
-  'chargeAt',
-  'charge_at',
-  'currentStart',
-  'current_start',
-  'currentEnd',
-  'current_end',
-  'expireAt',
-  'expire_at',
-  'activatedAt',
-  'activated_at',
-  'cancelledAt',
-  'cancelled_at',
-  'notifiedAt',
-  'notified_at',
-  'validAfter',
-  'valid_after',
-  'validUpto',
-  'valid_upto',
-  'sentAt',
-  'sent_at',
-  'submittedToPlayStoreAt',
-  'submitted_to_play_store_at',
-  'offerExpiresAt',
-  'offer_expires_at',
-  'discountNotificationSentAt',
-  'discount_notification_sent_at',
-  'lastNotificationSentAt',
-  'last_notification_sent_at',
-  'nextNotificationScheduledAt',
-  'next_notification_scheduled_at',
-  'checkoutStartedAt',
-  'checkout_started_at',
-  'lastMessageAt',
-  'last_message_at',
-  'joinedAt',
-  'joined_at',
-  'lastReadAt',
-  'last_read_at',
-  'mutedUntil',
-  'muted_until',
-  'editedAt',
-  'edited_at',
-  'readAt',
-  'read_at',
-  'sendAt',
-  'send_at',
-  'processedAt',
-  'processed_at',
-  'accessTokenExpiresAt',
-  'accessTokenExpires_at',
-  'refreshTokenExpiresAt',
-  'refreshTokenExpires_at',
-];
-
-/**
- * Parse all date fields in a record and convert undefined to null
- */
-function parseRecordDates(record: any): any {
-  if (!record || typeof record !== 'object') {
-    return record;
-  }
-
-  const parsed: any = {};
-  for (const [key, value] of Object.entries(record)) {
-    if (DATE_FIELDS.includes(key)) {
-      parsed[key] = parseDate(value);
-    } else if (typeof value === 'object' && value !== null) {
-      parsed[key] = parseRecordDates(value);
-    } else {
-      // Convert undefined to null for database compatibility
-      parsed[key] = value === undefined ? null : value;
-    }
-  }
-  return parsed;
-}
-
-/**
- * Clean object by removing undefined values (convert to null)
- */
-function cleanUndefined(obj: any): any {
-  const cleaned: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    cleaned[key] = value === undefined ? null : value;
-  }
-  return cleaned;
-}
+import { DataTransformationService } from './data-transformation.service';
 
 @Injectable()
 export class TableMigrationService {
@@ -148,13 +21,13 @@ export class TableMigrationService {
   constructor(
     @Inject(DRIZZLE_TOKEN)
     private readonly db: NodePgDatabase<typeof schema>,
+    private readonly transformationService: DataTransformationService,
   ) {}
 
   /**
-   * Migrate user_metadata table
+   * Ensure user exists before migrating related data
    */
   private async ensureUserExists(userId: string, record: any): Promise<void> {
-    // Check if user exists
     const existingUser = await this.db
       .select({ id: schema.user.id })
       .from(schema.user)
@@ -162,93 +35,126 @@ export class TableMigrationService {
       .limit(1);
 
     if (existingUser.length === 0) {
-      console.log(`[MIGRATION_DEBUG] Creating user with id=${userId}`);
-      // Create user from metadata record
+      this.logger.log(`Creating user with id=${userId}`);
+
       await this.db.insert(schema.user).values({
         id: userId,
-        name: record.name || 'Unknown',
-        email: record.email || `${userId}@placeholder.com`,
-        emailVerified: record.emailVerified || false,
-        phoneNumber: record.phoneNumber,
-        phoneNumberVerified: record.phoneNumberVerified || false,
-        image: record.image,
+        name: record?.name || 'Unknown',
+        email: record?.email || `${userId}@placeholder.com`,
+        emailVerified: record?.emailVerified || false,
+        phoneNumber: record?.phoneNumber,
+        phoneNumberVerified: record?.phoneNumberVerified || false,
+        image: record?.image,
         isDeleted: false,
-        createdAt: parseDate(record.createdAt) || new Date(),
-        updatedAt: parseDate(record.updatedAt) || new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
-      console.log(`[MIGRATION_DEBUG] User created successfully`);
-    } else {
-      console.log(`[MIGRATION_DEBUG] User already exists`);
+
+      this.logger.log(`User ${userId} created successfully`);
     }
   }
 
+  /**
+   * Generic migration handler with transformation
+   */
+  private async migrateTable<T>(
+    records: any[],
+    tableName: string,
+    schemaTable: any,
+    transformFn: (
+      records: any[],
+      idMapper: IdMapper,
+    ) => { success: any[]; failed: any[] },
+    idMapper: IdMapper,
+    userId: string,
+  ): Promise<T[]> {
+    if (!records || records.length === 0) return [];
+
+    const { success, failed } = transformFn(records, idMapper);
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} ${tableName} records`,
+      );
+    }
+
+    const migrated: T[] = [];
+    for (const record of success) {
+      try {
+        await this.db.insert(schemaTable).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert ${tableName} record:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+        // Continue with other records
+      }
+    }
+
+    this.logger.log(
+      `Migrated ${migrated.length}/${records.length} ${tableName} records`,
+    );
+    return migrated;
+  }
+
+  /**
+   * Migrate user_metadata table
+   */
   async migrateMetadata(
     records: any[],
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    console.log(
-      `[MIGRATION_DEBUG] migrateMetadata called with ${records?.length || 0} records for user ${userId}`,
-    );
     if (!records || records.length === 0) return [];
 
-    // Ensure user exists before migrating metadata
+    // Ensure user exists first
     await this.ensureUserExists(userId, records[0]);
 
+    const { success, failed } =
+      this.transformationService.transformUserMetadata(records, userId);
+
+    if (failed.length > 0) {
+      this.logger.warn(`Failed to transform ${failed.length} metadata records`);
+    }
+
     const migrated: any[] = [];
-    for (const record of records) {
-      const parsedRecord = parseRecordDates(record);
-      console.log(`[MIGRATION_DEBUG] Processing record:`, {
-        appId: parsedRecord.appId,
-        hasUpiVpa: !!parsedRecord.upiVpa,
-      });
-      const mappedRecord = cleanUndefined({
-        userId: userId,
-        appId: parsedRecord.appId || 'com.kiranaapps.app',
-        upiVpa: parsedRecord.upiVpa,
-        audioLanguage: parsedRecord.audioLanguage,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
+    for (const record of success) {
+      try {
+        // Check if record exists
+        const existing = await this.db
+          .select()
+          .from(schema.userMetadata)
+          .where(
+            and(
+              eq(schema.userMetadata.userId, userId),
+              eq(schema.userMetadata.appId, record.appId),
+            ),
+          )
+          .limit(1);
 
-      // Check if record exists first
-      console.log(
-        `[MIGRATION_DEBUG] Checking if record exists for userId=${userId}, appId=${mappedRecord.appId}`,
-      );
-      const existing = await this.db
-        .select()
-        .from(schema.userMetadata)
-        .where(
-          and(
-            eq(schema.userMetadata.userId, userId),
-            eq(schema.userMetadata.appId, mappedRecord.appId),
-          ),
-        )
-        .limit(1);
+        if (existing.length > 0) {
+          // Update existing
+          await this.db
+            .update(schema.userMetadata)
+            .set({
+              upiVpa: record.upiVpa,
+              audioLanguage: record.audioLanguage,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.userMetadata.id, existing[0].id));
+        } else {
+          // Insert new
+          await this.db.insert(schema.userMetadata).values(record);
+        }
 
-      console.log(
-        `[MIGRATION_DEBUG] Found ${existing.length} existing records`,
-      );
-
-      if (existing.length > 0) {
-        console.log(
-          `[MIGRATION_DEBUG] Updating existing record with id=${existing[0].id}`,
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to migrate metadata:`,
+          error instanceof Error ? error.message : 'Unknown error',
         );
-        // Update existing record
-        await this.db
-          .update(schema.userMetadata)
-          .set({
-            upiVpa: mappedRecord.upiVpa,
-            audioLanguage: mappedRecord.audioLanguage,
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.userMetadata.id, existing[0].id));
-      } else {
-        console.log(`[MIGRATION_DEBUG] Inserting new record`);
-        // Insert new record
-        await this.db.insert(schema.userMetadata).values(mappedRecord);
       }
-      migrated.push(mappedRecord);
     }
 
     this.logger.log(`Migrated ${migrated.length} metadata records`);
@@ -256,43 +162,22 @@ export class TableMigrationService {
   }
 
   /**
-   * Migrate accounts table (Google, Truecaller, etc)
+   * Migrate accounts table
    */
   async migrateAccounts(
     records: any[],
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
-
-    const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('account', record.id);
-      const parsedRecord = parseRecordDates(record);
-
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        accountId: parsedRecord.accountId,
-        providerId: parsedRecord.providerId,
-        userId: userId,
-        appId: parsedRecord.appId,
-        accessToken: parsedRecord.accessToken,
-        refreshToken: parsedRecord.refreshToken,
-        idToken: parsedRecord.idToken,
-        accessTokenExpiresAt: parsedRecord.accessTokenExpiresAt,
-        refreshTokenExpiresAt: parsedRecord.refreshTokenExpiresAt,
-        scope: parsedRecord.scope,
-        password: parsedRecord.password,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.account).values(mappedRecord);
-      migrated.push(mappedRecord);
-    }
-
-    this.logger.log(`Migrated ${migrated.length} account records`);
-    return migrated;
+    return this.migrateTable(
+      records,
+      'accounts',
+      schema.account,
+      (recs, mapper) =>
+        this.transformationService.transformAccounts(recs, mapper),
+      idMapper,
+      userId,
+    );
   }
 
   /**
@@ -303,25 +188,28 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } = this.transformationService.transformPushTokens(
+      records,
+      userId,
+    );
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} push token records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const parsedRecord = parseRecordDates(record);
-
-      const mappedRecord = cleanUndefined({
-        userId: userId,
-        appId: parsedRecord.appId,
-        token: parsedRecord.token,
-        deviceModel: parsedRecord.deviceModel,
-        osVersion: parsedRecord.osVersion,
-        isActive: parsedRecord.isActive ?? true,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.pushTokens).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.pushTokens).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert push token:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -335,29 +223,26 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } =
+      this.transformationService.transformDeviceSessions(records, userId);
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} device session records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const parsedRecord = parseRecordDates(record);
-
-      const mappedRecord = cleanUndefined({
-        userId: userId,
-        appId: parsedRecord.appId,
-        deviceModel: parsedRecord.deviceModel,
-        osVersion: parsedRecord.osVersion,
-        appVersion: parsedRecord.appVersion,
-        buildNumber: parsedRecord.buildNumber,
-        platform: parsedRecord.platform,
-        manufacturer: parsedRecord.manufacturer,
-        brand: parsedRecord.brand,
-        locale: parsedRecord.locale,
-        timezone: parsedRecord.timezone,
-        createdAt: parsedRecord.createdAt || new Date(),
-      });
-
-      await this.db.insert(schema.deviceSessions).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.deviceSessions).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert device session:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -371,22 +256,28 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } = this.transformationService.transformUserImages(
+      records,
+      userId,
+    );
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} user image records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const parsedRecord = parseRecordDates(record);
-
-      const mappedRecord = cleanUndefined({
-        userId: userId,
-        appId: parsedRecord.appId,
-        imageUrl: parsedRecord.imageUrl,
-        removedBgImageUrl: parsedRecord.removedBgImageUrl,
-        createdAt: parsedRecord.createdAt || new Date(),
-      });
-
-      await this.db.insert(schema.userImages).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.userImages).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert user image:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -400,30 +291,26 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } =
+      this.transformationService.transformPlayStoreRatings(records, userId);
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} play store rating records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const parsedRecord = parseRecordDates(record);
-
-      const mappedRecord = cleanUndefined({
-        userId: userId,
-        appId: parsedRecord.appId,
-        rating: parsedRecord.rating,
-        review: parsedRecord.review,
-        reviewTitle: parsedRecord.reviewTitle,
-        packageName: parsedRecord.packageName,
-        appVersion: parsedRecord.appVersion,
-        deviceModel: parsedRecord.deviceModel,
-        osVersion: parsedRecord.osVersion,
-        language: parsedRecord.language,
-        submittedToPlayStoreAt: parsedRecord.submittedToPlayStoreAt,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.playStoreRatings).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.playStoreRatings).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert play store rating:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -437,79 +324,37 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    this.logger.log(`Migrating ${records?.length || 0} subscriptions`);
 
-    const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('subscription', record.id);
-      const parsedRecord = parseRecordDates(record);
+    const { success, failed } =
+      this.transformationService.transformSubscriptions(records, idMapper);
 
-      console.log(`[MIGRATION_DEBUG] Subscription record:`, {
-        id: newId,
-        currentStart: parsedRecord.currentStart,
-        currentEnd: parsedRecord.currentEnd,
-        current_start: parsedRecord.current_start,
-        current_end: parsedRecord.current_end,
-        currentStartType: typeof parsedRecord.currentStart,
-        currentEndType: typeof parsedRecord.currentEnd,
-        allFields: Object.keys(parsedRecord),
-      });
-
-      // Explicitly map only the fields in the new schema
-      // Support both camelCase and snake_case from old system
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        userId: userId,
-        razorpaySubscriptionId:
-          parsedRecord.razorpaySubscriptionId ??
-          parsedRecord.razorpay_subscription_id ??
-          null,
-        razorpayPlanId:
-          parsedRecord.razorpayPlanId ?? parsedRecord.razorpay_plan_id ?? null,
-        appId: parsedRecord.appId ?? parsedRecord.app_id ?? null,
-        customerId: parsedRecord.customerId ?? parsedRecord.customer_id ?? null,
-        razorpayCustomerId:
-          parsedRecord.razorpayCustomerId ??
-          parsedRecord.razorpay_customer_id ??
-          null,
-        status: parsedRecord.status ?? null,
-        quantity: parsedRecord.quantity ?? null,
-        totalCount: parsedRecord.totalCount ?? parsedRecord.total_count ?? null,
-        paidCount: parsedRecord.paidCount ?? parsedRecord.paid_count ?? null,
-        remainingCount:
-          parsedRecord.remainingCount ?? parsedRecord.remaining_count ?? null,
-        startAt: parsedRecord.startAt ?? parsedRecord.start_at ?? null,
-        endAt: parsedRecord.endAt ?? parsedRecord.end_at ?? null,
-        chargeAt: parsedRecord.chargeAt ?? parsedRecord.charge_at ?? null,
-        currentStart:
-          parsedRecord.currentStart ?? parsedRecord.current_start ?? null,
-        currentEnd: parsedRecord.currentEnd ?? parsedRecord.current_end ?? null,
-        notes: parsedRecord.notes ?? null,
-        razorpayPaymentId:
-          parsedRecord.razorpayPaymentId ??
-          parsedRecord.razorpay_payment_id ??
-          null,
-        fourHourEventSent:
-          parsedRecord.fourHourEventSent ??
-          parsedRecord.four_hour_event_sent ??
-          false,
-        metadata: parsedRecord.metadata ?? null,
-        createdAt:
-          parsedRecord.createdAt ?? parsedRecord.created_at ?? new Date(),
-        updatedAt:
-          parsedRecord.updatedAt ?? parsedRecord.updated_at ?? new Date(),
-      });
-
-      console.log(`[MIGRATION_DEBUG] Mapped subscription:`, {
-        currentStart: mappedRecord.currentStart,
-        currentEnd: mappedRecord.currentEnd,
-      });
-
-      await this.db.insert(schema.subscriptions).values(mappedRecord);
-      migrated.push(mappedRecord);
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} subscription records:`,
+        failed.map((f) => f.errors).flat(),
+      );
     }
 
-    this.logger.log(`Migrated ${migrated.length} subscription records`);
+    this.logger.log(`Successfully transformed ${success.length} subscriptions`);
+
+    const migrated: any[] = [];
+    for (const record of success) {
+      try {
+        this.logger.debug(`Inserting subscription: ${record.id}`);
+        await this.db.insert(schema.subscriptions).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert subscription ${record.id}:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    }
+
+    this.logger.log(
+      `Migrated ${migrated.length}/${records.length} subscription records`,
+    );
     return migrated;
   }
 
@@ -521,35 +366,26 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } = this.transformationService.transformOrders(
+      records,
+      idMapper,
+    );
+
+    if (failed.length > 0) {
+      this.logger.warn(`Failed to transform ${failed.length} order records`);
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('order', record.id);
-      const parsedRecord = parseRecordDates(record);
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        userId: userId,
-        razorpayOrderId: parsedRecord.razorpayOrderId,
-        appId: parsedRecord.appId,
-        customerId: parsedRecord.customerId,
-        razorpayCustomerId: parsedRecord.razorpayCustomerId,
-        amount: parsedRecord.amount,
-        currency: parsedRecord.currency,
-        maxAmount: parsedRecord.maxAmount,
-        frequency: parsedRecord.frequency,
-        status: parsedRecord.status,
-        razorpayPaymentId: parsedRecord.razorpayPaymentId,
-        tokenId: parsedRecord.tokenId,
-        paymentMetadata: parsedRecord.paymentMetadata,
-        notes: parsedRecord.notes,
-        expireAt: parsedRecord.expireAt,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.orders).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.orders).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert order:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     this.logger.log(`Migrated ${migrated.length} order records`);
@@ -564,29 +400,26 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } =
+      this.transformationService.transformAbandonedCheckouts(records, userId);
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} abandoned checkout records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('abandonedCheckout', record.id);
-      const parsedRecord = parseRecordDates(record);
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        userId: userId,
-        appId: parsedRecord.appId,
-        checkoutStartedAt: parsedRecord.checkoutStartedAt,
-        offerExpiresAt: parsedRecord.offerExpiresAt,
-        discountNotificationSent:
-          parsedRecord.discountNotificationSent ?? false,
-        discountNotificationSentAt: parsedRecord.discountNotificationSentAt,
-        notificationsSent: parsedRecord.notificationsSent ?? 0,
-        lastNotificationSentAt: parsedRecord.lastNotificationSentAt,
-        nextNotificationScheduledAt: parsedRecord.nextNotificationScheduledAt,
-        createdAt: parsedRecord.createdAt || new Date(),
-      });
-
-      await this.db.insert(schema.abandonedCheckouts).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.abandonedCheckouts).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert abandoned checkout:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -600,28 +433,26 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } =
+      this.transformationService.transformPhonepeOrders(records, idMapper);
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} PhonePe order records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('phonepeOrder', record.id);
-      const parsedRecord = parseRecordDates(record);
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        userId: userId,
-        orderId: parsedRecord.orderId,
-        phonepeOrderId: parsedRecord.phonepeOrderId,
-        appId: parsedRecord.appId,
-        state: parsedRecord.state,
-        amount: parsedRecord.amount,
-        currency: parsedRecord.currency,
-        expireAt: parsedRecord.expireAt,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.phonepeOrders).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.phonepeOrders).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert PhonePe order:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
@@ -635,35 +466,29 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    if (!records || records.length === 0) return [];
+    const { success, failed } =
+      this.transformationService.transformPhonepeSubscriptions(
+        records,
+        idMapper,
+      );
+
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} PhonePe subscription records`,
+      );
+    }
 
     const migrated: any[] = [];
-    for (const record of records) {
-      const newId = idMapper.generateNewId('phonepeSubscription', record.id);
-      const parsedRecord = parseRecordDates(record);
-      const mappedRecord = cleanUndefined({
-        id: newId,
-        userId: userId,
-        merchantSubscriptionId: parsedRecord.merchantSubscriptionId,
-        phonepeSubscriptionId: parsedRecord.phonepeSubscriptionId,
-        appId: parsedRecord.appId,
-        amount: parsedRecord.amount,
-        maxAmount: parsedRecord.maxAmount,
-        amountType: parsedRecord.amountType,
-        frequency: parsedRecord.frequency,
-        authWorkflowType: parsedRecord.authWorkflowType,
-        productType: parsedRecord.productType,
-        state: parsedRecord.state,
-        expireAt: parsedRecord.expireAt,
-        activatedAt: parsedRecord.activatedAt,
-        cancelledAt: parsedRecord.cancelledAt,
-        metadata: parsedRecord.metadata,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
-      });
-
-      await this.db.insert(schema.phonepeSubscriptions).values(mappedRecord);
-      migrated.push(mappedRecord);
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.phonepeSubscriptions).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert PhonePe subscription:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
     }
 
     return migrated;
