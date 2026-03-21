@@ -189,7 +189,18 @@ export const ORDERS_MAPPING: TableMapping = {
       oldFields: ['paymentMetadata', 'payment_metadata'],
       defaultValue: null,
     },
-    { newField: 'notes', oldFields: ['notes'], defaultValue: null },
+    {
+      newField: 'notes',
+      oldFields: ['notes'],
+      defaultValue: null,
+      transform: (value) => {
+        // Convert array to JSON string, or return as-is if already string/null
+        if (Array.isArray(value)) {
+          return value.length > 0 ? JSON.stringify(value) : null;
+        }
+        return value;
+      },
+    },
     {
       newField: 'expireAt',
       oldFields: ['expireAt', 'expire_at'],
