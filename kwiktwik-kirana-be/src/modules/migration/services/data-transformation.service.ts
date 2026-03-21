@@ -96,8 +96,9 @@ export class DataTransformationService {
     const errors: string[] = [];
     const transformed: any = {};
 
-    // Generate new ID if needed
-    if (idMapper && oldId) {
+    // Generate new ID if needed (only if 'id' is defined in table mapping fields)
+    const hasIdField = tableMapping.fields.some((f) => f.newField === 'id');
+    if (idMapper && oldId && hasIdField) {
       try {
         transformed.id = idMapper.generateNewId(tableMapping.tableName, oldId);
       } catch (error) {
