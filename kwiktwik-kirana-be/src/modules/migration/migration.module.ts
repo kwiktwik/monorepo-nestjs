@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MigrationService } from './migration.service';
@@ -10,7 +10,18 @@ import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
 
 @Module({
-  imports: [ConfigModule, JwtModule, ScheduleModule.forRoot()],
+  imports: [
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '30d' },
+      }),
+      inject: [ConfigService],
+    }),
+    ScheduleModule.forRoot(),
+  ],
   controllers: [MigrationController],
   providers: [
     MigrationService,
