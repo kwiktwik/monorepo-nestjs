@@ -202,12 +202,28 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of success) {
       try {
+        // Check if token already exists
+        const existing = await this.db
+          .select()
+          .from(schema.pushTokens)
+          .where(eq(schema.pushTokens.token, record.token))
+          .limit(1);
+
+        if (existing.length > 0) {
+          this.logger.log(
+            `Push token already exists, skipping: ${record.token.substring(0, 20)}...`,
+          );
+          continue;
+        }
+
         await this.db.insert(schema.pushTokens).values(record);
         migrated.push(record);
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const errorCode = (error as any)?.code || '';
         this.logger.error(
-          `Failed to insert push token:`,
-          error instanceof Error ? error.message : 'Unknown error',
+          `Failed to insert push token: ${errorMessage} (code: ${errorCode})`,
         );
       }
     }
