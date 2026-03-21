@@ -383,18 +383,19 @@ export class MigrationService {
           CRITICAL_TABLES.includes(table),
         );
 
-        if (criticalFailures.length > 0) {
+        // All tables are critical - if any failed, migration fails
+        if (failedTables.length > 0) {
           stateMachine.forceTransition(MigrationState.FAILED);
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
             errorCode: MigrationErrorCode.DATA_INTEGRITY_ERROR,
-            errorMessage: `Critical tables failed to migrate: ${criticalFailures.join(', ')}`,
-            tablesMigrated,
+            errorMessage: `Tables failed to migrate: ${failedTables.join(', ')}`,
+            tablesMigrated: migratedTables,
             tablesFailed: failedTables,
           });
 
           throw new InternalServerErrorException({
             code: MigrationErrorCode.DATA_INTEGRITY_ERROR,
-            message: `Migration failed: Critical tables could not be migrated: ${criticalFailures.join(', ')}`,
+            message: `Migration failed: Tables could not be migrated: ${failedTables.join(', ')}`,
           });
         }
 
