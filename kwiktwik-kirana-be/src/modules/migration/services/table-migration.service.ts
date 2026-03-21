@@ -381,14 +381,23 @@ export class TableMigrationService {
         await this.db.insert(schema.orders).values(record);
         migrated.push(record);
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const errorDetail = (error as any)?.detail || '';
+        const errorCode = (error as any)?.code || '';
         this.logger.error(
-          `Failed to insert order:`,
-          error instanceof Error ? error.message : 'Unknown error',
+          `Failed to insert order ${record.id}: ${errorMessage} (code: ${errorCode}, detail: ${errorDetail})`,
+        );
+        // Log the problematic record for debugging
+        this.logger.debug(
+          `Problematic order record: ${JSON.stringify(record, null, 2)}`,
         );
       }
     }
 
-    this.logger.log(`Migrated ${migrated.length} order records`);
+    this.logger.log(
+      `Migrated ${migrated.length}/${success.length} order records`,
+    );
     return migrated;
   }
 

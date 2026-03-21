@@ -117,6 +117,37 @@ export class MigrationService {
         throw new Error('Migration already in progress for this user');
       }
 
+      // Check for in-progress migration before starting
+      const inProgressMigration = await this.db
+        .select()
+        .from(schema.migrationLogs)
+        .where(
+          and(
+            eq(schema.migrationLogs.status, MigrationState.PENDING),
+            eq(schema.migrationLogs.isLocked, true),
+          ),
+        )
+        .limit(1);
+
+      if (inProgressMigration.length > 0 && inProgressMigration[0].userId) {
+        this.logger.warn(
+          `Migration already in progress for user ${inProgressMigration[0].userId}. Cannot start new migration.`,
+        );
+        return {
+          success: false,
+          migrationId,
+          userId: '',
+          error: {
+            code: MigrationErrorCode.MAX_RETRIES_EXCEEDED,
+            message:
+              'Migration already in progress. Please wait for it to complete.',
+          },
+          migratedTables: [],
+          recordsMigrated: 0,
+          duration: 0,
+        };
+      }
+
       // Start heartbeat
       const heartbeatInterval = setInterval(
         () => this.updateHeartbeat(migrationId),
@@ -277,8 +308,18 @@ export class MigrationService {
             userId,
           );
 
-          migratedTables.push(tableName);
-          totalRecords += records.length;
+          // Only mark table as migrated if records were actually inserted
+          if (records.length > 0) {
+            migratedTables.push(tableName);
+            totalRecords += records.length;
+            this.logger.log(
+              `Successfully migrated ${records.length} records to ${tableName}`,
+            );
+          } else {
+            this.logger.warn(
+              `No records were migrated to ${tableName} - table will not be marked as migrated`,
+            );
+          }
         }
 
         // Step 8: Calculate destination hash
