@@ -8,6 +8,7 @@ import { MigrationCronService } from './migration-cron.service';
 import { BetterAuthValidator } from './services/better-auth-validator.service';
 import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
+import { DataTransformationService } from './services/data-transformation.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { TableMigrationService } from './services/table-migration.service';
     BetterAuthValidator,
     KiranaFeDataService,
     TableMigrationService,
+    DataTransformationService,
   ],
   exports: [MigrationService],
 })
