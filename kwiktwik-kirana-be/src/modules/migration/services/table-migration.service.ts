@@ -393,10 +393,32 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('subscription', record.id);
       const parsedRecord = parseRecordDates(record);
+
+      // Explicitly map only the fields in the new schema
       const mappedRecord = {
-        ...parsedRecord,
         id: newId,
         userId: userId,
+        razorpaySubscriptionId: parsedRecord.razorpaySubscriptionId,
+        razorpayPlanId: parsedRecord.razorpayPlanId,
+        appId: parsedRecord.appId,
+        customerId: parsedRecord.customerId,
+        razorpayCustomerId: parsedRecord.razorpayCustomerId,
+        status: parsedRecord.status,
+        quantity: parsedRecord.quantity,
+        totalCount: parsedRecord.totalCount,
+        paidCount: parsedRecord.paidCount,
+        remainingCount: parsedRecord.remainingCount,
+        startAt: parsedRecord.startAt,
+        endAt: parsedRecord.endAt,
+        chargeAt: parsedRecord.chargeAt,
+        currentStart: parsedRecord.currentStart,
+        currentEnd: parsedRecord.currentEnd,
+        notes: parsedRecord.notes,
+        razorpayPaymentId: parsedRecord.razorpayPaymentId,
+        fourHourEventSent: parsedRecord.fourHourEventSent,
+        metadata: parsedRecord.metadata,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
       await this.db.insert(schema.subscriptions).values(mappedRecord);

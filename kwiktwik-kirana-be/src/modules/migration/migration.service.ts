@@ -147,7 +147,18 @@ export class MigrationService {
         userId = sessionData.userId;
         const phoneNumber = sessionData.phoneNumber;
 
-        // Check if user is already migrated
+        // Check if user is already migrated in old system
+        const oldSystemStatus =
+          await this.kiranaFeDataService.checkMigrationStatusInOldSystem(
+            userId,
+          );
+        if (oldSystemStatus.isMigrated) {
+          this.logger.log(
+            `User ${userId} already marked as migrated in old system at ${oldSystemStatus.migratedAt}`,
+          );
+        }
+
+        // Check if user is already migrated in new system
         const existingMigration = await this.db
           .select()
           .from(schema.migrationLogs)
@@ -313,6 +324,12 @@ export class MigrationService {
             tablesMigrated: migratedTables,
             recordsCount: totalRecords,
           },
+        );
+
+        // Mark user as migrated in old system
+        await this.kiranaFeDataService.markUserAsMigratedInOldSystem(
+          userId,
+          userId,
         );
 
         clearTimeout(timeoutId);

@@ -84,4 +84,79 @@ export class KiranaFeDataService {
       throw error;
     }
   }
+
+  /**
+   * Check if user is already migrated in old system
+   */
+  async checkMigrationStatusInOldSystem(
+    userId: string,
+  ): Promise<{
+    isMigrated: boolean;
+    migratedAt?: string;
+    kwiktwikUserId?: string;
+  }> {
+    try {
+      const response = await fetch(
+        `${this.kiranaFeBaseUrl}/api/internal/user/${userId}/migration-status`,
+        {
+          method: 'GET',
+          headers: {
+            'X-Internal-Key': this.internalApiKey,
+            'X-App-ID': 'com.kiranaapps.app',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        return { isMigrated: false };
+      }
+
+      return await response.json();
+    } catch (error) {
+      this.logger.error(
+        `Failed to check migration status in old system:`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+      return { isMigrated: false };
+    }
+  }
+
+  /**
+   * Mark user as migrated in old system after successful migration
+   */
+  async markUserAsMigratedInOldSystem(
+    userId: string,
+    kwiktwikUserId: string,
+  ): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.kiranaFeBaseUrl}/api/internal/user/mark-migrated`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Key': this.internalApiKey,
+            'X-App-ID': 'com.kiranaapps.app',
+          },
+          body: JSON.stringify({ userId, kwiktwikUserId }),
+        },
+      );
+
+      if (!response.ok) {
+        this.logger.error(
+          `Failed to mark user as migrated in old system: ${response.status}`,
+        );
+        // Don't throw - migration succeeded, this is just for tracking
+        return;
+      }
+
+      this.logger.log(`User ${userId} marked as migrated in old system`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark user as migrated in old system:`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+      // Don't throw - migration succeeded, this is just for tracking
+    }
+  }
 }
