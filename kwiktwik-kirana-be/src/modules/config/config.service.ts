@@ -162,6 +162,104 @@ export class ConfigService {
   }
 
   /**
+   * Get configuration v4 with unified plan structure
+   * Works for both PhonePe (local) and Razorpay (provider-fetched) plans
+   *
+   * @throws NotFoundException - If app is not registered or plan not found
+   * @throws ConfigSyncError - If app is registered but config is missing (500 error)
+   */
+  async getConfigV4(
+    appId: string,
+    planId: string,
+    language: string = 'en',
+  ): Promise<Record<string, any>> {
+    try {
+      const config = getSafeConfigForAppId(appId);
+
+      if (!config) {
+        throw new NotFoundException(
+          `App "${appId}" is not registered. Please register the app first.`,
+        );
+      }
+
+      // Deep clone the config to avoid mutating the original
+      const dynamicConfig = JSON.parse(JSON.stringify(config));
+
+      // Import unified plans
+      const { getUnifiedPlan, UNIFIED_PLANS } = require('./config.data');
+
+      // Get the unified plan
+      const unifiedPlan = getUnifiedPlan(planId);
+
+      if (!unifiedPlan) {
+        throw new NotFoundException(
+          `Plan "${planId}" not found. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
+        );
+      }
+
+      this.logger.log(
+        `Config v4: App=${appId}, Plan=${planId}, Provider=${unifiedPlan.provider}`,
+      );
+
+      // Get translations for the requested language
+      const { PAYWALL_TRANSLATIONS } = require('./config.data');
+      const translations =
+        PAYWALL_TRANSLATIONS[language] || PAYWALL_TRANSLATIONS.en;
+
+      // Update the config with unified plan structure
+      dynamicConfig.features.subscription = {
+        ...dynamicConfig.features.subscription,
+        plan_id: unifiedPlan.plan_id,
+        provider: unifiedPlan.provider,
+      };
+
+      // Add unified plan details
+      dynamicConfig.features.subscription.planDetails = {
+        plan_id: unifiedPlan.plan_id,
+        provider: unifiedPlan.provider,
+        pricing: unifiedPlan.localConfig?.pricing,
+        providerConfig: unifiedPlan.providerConfig,
+      };
+
+      // Update UI paywall
+      if (unifiedPlan.localConfig) {
+        dynamicConfig.ui.paywall = {
+          ...dynamicConfig.ui.paywall,
+          heading: unifiedPlan.localConfig.heading,
+          description: unifiedPlan.localConfig.description,
+          buttonText: unifiedPlan.localConfig.buttonText,
+          pricing: unifiedPlan.localConfig.pricing,
+        };
+      }
+
+      // Use localized strings
+      dynamicConfig.ui.paywall.heading = translations.heading;
+      dynamicConfig.ui.paywall.description = translations.description;
+      dynamicConfig.ui.paywall.buttonText = translations.buttonText;
+      dynamicConfig.ui.paywall.videoDescription = translations.videoDescription;
+
+      // Add metadata
+      dynamicConfig._paywallMeta = {
+        version: 'v4',
+        plan_id: unifiedPlan.plan_id,
+        provider: unifiedPlan.provider,
+        language,
+      };
+
+      return dynamicConfig;
+    } catch (error) {
+      // Re-throw ConfigSyncError (500) as-is
+      if (
+        error instanceof ConfigSyncError ||
+        error.name === 'ConfigSyncError'
+      ) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Legacy method for backward compatibility
    * @deprecated Use getConfig with PaywallContext instead
    *

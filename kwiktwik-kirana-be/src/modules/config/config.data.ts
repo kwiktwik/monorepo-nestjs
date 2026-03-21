@@ -118,6 +118,112 @@ export const PAYWALL_PLANS = {
 export type PlanType = keyof typeof PAYWALL_PLANS;
 
 // ============================================================================
+// UNIFIED PLANS (v4) - Supports both local and provider-fetched plans
+// ============================================================================
+
+export type PaymentProvider = 'PHONEPE' | 'RAZORPAY';
+
+export interface UnifiedPlan {
+  plan_id: string;
+  provider: PaymentProvider;
+  // For PhonePe: full config is local
+  // For Razorpay: basic info local, details fetched from provider
+  localConfig?: {
+    pricing: {
+      initialAmount: string;
+      recurringAmount: string;
+      period: string;
+    };
+    heading: string;
+    description: string;
+    buttonText: string;
+    refundText: string;
+    videoDescription: string;
+  };
+  // Provider-specific config
+  providerConfig?: {
+    // PhonePe specific
+    maxAmount?: number; // in paise
+    frequency?: string;
+    amountType?: string;
+    authWorkflowType?: string;
+    upiPaymentMode?: string;
+    productType?: string;
+    // Razorpay specific - these reference the actual Razorpay plan
+    razorpayPlanId?: string;
+    interval?: number;
+    period?: string;
+  };
+}
+
+// Unified plan registry - works for both PhonePe and Razorpay
+export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
+  // PhonePe Plans - fully local
+  plan_PHONEPE_AUTOPAY_001: {
+    plan_id: 'plan_PHONEPE_AUTOPAY_001',
+    provider: 'PHONEPE',
+    localConfig: {
+      pricing: {
+        initialAmount: '₹1',
+        recurringAmount: '₹199',
+        period: 'month',
+      },
+      heading: 'Setup Autopay with PhonePe',
+      description:
+        'Secure your subscription with UPI Autopay. Just ₹1 to setup.',
+      buttonText: 'Setup PhonePe Autopay',
+      refundText: 'INSTANT REFUND',
+      videoDescription:
+        'Autopay ₹199 every month via PhonePe UPI, cancel anytime',
+    },
+    providerConfig: {
+      maxAmount: 19900,
+      frequency: 'MONTHLY',
+      amountType: 'VARIABLE',
+      authWorkflowType: 'TRANSACTION',
+      upiPaymentMode: 'UPI_INTENT',
+      productType: 'UPI_MANDATE',
+    },
+  },
+  // Razorpay Plans - reference external plans
+  plan_S3FaBrk7sjPQEU: {
+    plan_id: 'plan_S3FaBrk7sjPQEU',
+    provider: 'RAZORPAY',
+    localConfig: {
+      pricing: {
+        initialAmount: '₹5',
+        recurringAmount: '₹199',
+        period: 'month',
+      },
+      heading: 'Never miss a payment',
+      description: 'Start your free trial for <s>₹199</s>',
+      buttonText: 'Start free trial',
+      refundText: 'REFUNDED INSTANTLY',
+      videoDescription: 'Autopay ₹199 every month, cancel anytime',
+    },
+    providerConfig: {
+      razorpayPlanId: 'plan_S3FaBrk7sjPQEU',
+      interval: 1,
+      period: 'monthly',
+    },
+  },
+};
+
+// Helper to get plan by ID
+export const getUnifiedPlan = (planId: string): UnifiedPlan | undefined => {
+  return UNIFIED_PLANS[planId];
+};
+
+// Helper to get all plans for a provider
+export const getPlansByProvider = (
+  provider: PaymentProvider,
+): UnifiedPlan[] => {
+  return Object.values(UNIFIED_PLANS).filter(
+    (plan) => plan.provider === provider,
+  );
+};
+
+// ============================================================================
 // USER TYPES
 // ============================================================================
 

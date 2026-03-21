@@ -11,7 +11,6 @@ import { ConfigModule } from './modules/config/config.module';
 import { UserModule } from './modules/user/user.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { RazorpayModule } from './modules/razorpay/razorpay.module';
-import { PhonePeModule } from './modules/phonepe/phonepe.module';
 import { PhonePeV2Module } from './modules/phonepe-v2/phonepe-v2.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { BackgroundRemovalModule } from './modules/background-removal/background-removal.module';
@@ -43,7 +42,6 @@ const dbModule =
     UserModule,
     UploadModule,
     RazorpayModule,
-    PhonePeModule,
     PhonePeV2Module,
     FeedModule,
     BackgroundRemovalModule,

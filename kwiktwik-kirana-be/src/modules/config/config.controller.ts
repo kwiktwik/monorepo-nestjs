@@ -84,4 +84,56 @@ export class ConfigController {
       config,
     };
   }
+
+  @Get('v4')
+  @ApiOperation({
+    summary: 'Get app configuration with unified plan structure (v4)',
+  })
+  @ApiQuery({
+    name: 'plan_id',
+    required: true,
+    description:
+      'Plan ID to get specific plan configuration (e.g., plan_PHONEPE_AUTOPAY_001 or plan_S3FaBrk7sjPQEU)',
+    example: 'plan_PHONEPE_AUTOPAY_001',
+  })
+  @ApiQuery({
+    name: 'language',
+    enum: Object.values(SUPPORTED_LANGUAGES),
+    required: false,
+    description: 'Language for localized content',
+  })
+  @ApiQuery({
+    name: 'lang',
+    enum: Object.values(SUPPORTED_LANGUAGES),
+    required: false,
+    description: 'Language for localized content (fallback)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'App config with unified plan structure returned',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Plan not found' })
+  async getConfigV4(
+    @AppId() appId: string,
+    @CurrentUser() user: any,
+    @Query('plan_id') plan_id: string,
+    @Query('language') language?: string,
+    @Query('lang') lang?: string,
+  ) {
+    const resolvedLanguage = language || lang || user?.language || 'en';
+
+    const config = await this.configService.getConfigV4(
+      appId,
+      plan_id,
+      resolvedLanguage,
+    );
+
+    return {
+      success: true,
+      appId,
+      plan_id,
+      config,
+    };
+  }
 }
