@@ -175,7 +175,7 @@ const kiranaappsOverrides = {
 const sangamOverrides = {
   ...kiranaappsOverrides,
   app: {
-    name: "Sangam Wallpaper",
+    name: "Sangam App",
   },
 };
 
