@@ -210,7 +210,6 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
-      });
 
       // Check if record exists first
       console.log(
@@ -287,7 +286,6 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
-      };
 
       await this.db.insert(schema.account).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -321,7 +319,6 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
-      };
 
       await this.db.insert(schema.pushTokens).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -357,7 +354,7 @@ export class TableMigrationService {
         locale: parsedRecord.locale,
         timezone: parsedRecord.timezone,
         createdAt: parsedRecord.createdAt || new Date(),
-      };
+      });
 
       await this.db.insert(schema.deviceSessions).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -386,7 +383,7 @@ export class TableMigrationService {
         imageUrl: parsedRecord.imageUrl,
         removedBgImageUrl: parsedRecord.removedBgImageUrl,
         createdAt: parsedRecord.createdAt || new Date(),
-      };
+      });
 
       await this.db.insert(schema.userImages).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -424,7 +421,6 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
-      };
 
       await this.db.insert(schema.playStoreRatings).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -474,7 +470,6 @@ export class TableMigrationService {
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       });
-      });
 
       await this.db.insert(schema.subscriptions).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -499,10 +494,25 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('order', record.id);
       const parsedRecord = parseRecordDates(record);
       const mappedRecord = cleanUndefined({
-        ...parsedRecord,
         id: newId,
         userId: userId,
-      };
+        razorpayOrderId: parsedRecord.razorpayOrderId,
+        appId: parsedRecord.appId,
+        customerId: parsedRecord.customerId,
+        razorpayCustomerId: parsedRecord.razorpayCustomerId,
+        amount: parsedRecord.amount,
+        currency: parsedRecord.currency,
+        maxAmount: parsedRecord.maxAmount,
+        frequency: parsedRecord.frequency,
+        status: parsedRecord.status,
+        razorpayPaymentId: parsedRecord.razorpayPaymentId,
+        tokenId: parsedRecord.tokenId,
+        paymentMetadata: parsedRecord.paymentMetadata,
+        notes: parsedRecord.notes,
+        expireAt: parsedRecord.expireAt,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
+      });
 
       await this.db.insert(schema.orders).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -527,10 +537,19 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('abandonedCheckout', record.id);
       const parsedRecord = parseRecordDates(record);
       const mappedRecord = cleanUndefined({
-        ...parsedRecord,
         id: newId,
         userId: userId,
-      };
+        appId: parsedRecord.appId,
+        checkoutStartedAt: parsedRecord.checkoutStartedAt,
+        offerExpiresAt: parsedRecord.offerExpiresAt,
+        discountNotificationSent:
+          parsedRecord.discountNotificationSent ?? false,
+        discountNotificationSentAt: parsedRecord.discountNotificationSentAt,
+        notificationsSent: parsedRecord.notificationsSent ?? 0,
+        lastNotificationSentAt: parsedRecord.lastNotificationSentAt,
+        nextNotificationScheduledAt: parsedRecord.nextNotificationScheduledAt,
+        createdAt: parsedRecord.createdAt || new Date(),
+      });
 
       await this.db.insert(schema.abandonedCheckouts).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -554,10 +573,18 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('phonepeOrder', record.id);
       const parsedRecord = parseRecordDates(record);
       const mappedRecord = cleanUndefined({
-        ...parsedRecord,
         id: newId,
         userId: userId,
-      };
+        orderId: parsedRecord.orderId,
+        phonepeOrderId: parsedRecord.phonepeOrderId,
+        appId: parsedRecord.appId,
+        state: parsedRecord.state,
+        amount: parsedRecord.amount,
+        currency: parsedRecord.currency,
+        expireAt: parsedRecord.expireAt,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
+      });
 
       await this.db.insert(schema.phonepeOrders).values(mappedRecord);
       migrated.push(mappedRecord);
@@ -581,10 +608,25 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('phonepeSubscription', record.id);
       const parsedRecord = parseRecordDates(record);
       const mappedRecord = cleanUndefined({
-        ...parsedRecord,
         id: newId,
         userId: userId,
-      };
+        merchantSubscriptionId: parsedRecord.merchantSubscriptionId,
+        phonepeSubscriptionId: parsedRecord.phonepeSubscriptionId,
+        appId: parsedRecord.appId,
+        amount: parsedRecord.amount,
+        maxAmount: parsedRecord.maxAmount,
+        amountType: parsedRecord.amountType,
+        frequency: parsedRecord.frequency,
+        authWorkflowType: parsedRecord.authWorkflowType,
+        productType: parsedRecord.productType,
+        state: parsedRecord.state,
+        expireAt: parsedRecord.expireAt,
+        activatedAt: parsedRecord.activatedAt,
+        cancelledAt: parsedRecord.cancelledAt,
+        metadata: parsedRecord.metadata,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
+      });
 
       await this.db.insert(schema.phonepeSubscriptions).values(mappedRecord);
       migrated.push(mappedRecord);
