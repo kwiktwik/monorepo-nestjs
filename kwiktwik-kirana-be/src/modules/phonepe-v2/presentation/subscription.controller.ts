@@ -26,6 +26,7 @@ import {
   RedemptionResponseDto,
   SubscriptionStatusDto,
   OrderStatusDto,
+  SyncStatusRequestDto,
 } from './dto/subscription.dto';
 import { ZodValidationPipe } from '../infrastructure/validation/zod-validation.pipe';
 import {
@@ -169,7 +170,7 @@ export class SubscriptionController {
   @ApiOperation({
     summary: 'Sync subscription status from PhonePe',
     description:
-      'Manually sync subscription status from PhonePe (useful when webhook not received)',
+      'Manually sync subscription status from PhonePe (useful when webhook not received). Mobile app should call this after successful payment.',
   })
   @ApiResponse({
     status: 200,
@@ -179,17 +180,17 @@ export class SubscriptionController {
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   async syncSubscriptionStatus(
     @AppId() appId: string,
-    @Body() body: { merchantOrderId: string; merchantSubscriptionId: string },
+    @Body() body: SyncStatusRequestDto,
   ): Promise<SubscriptionStatusDto> {
-    // First check order status
+    // First check order status from PhonePe
     const orderStatus = await this.subscriptionService.getOrderStatus(
       appId,
       body.merchantOrderId,
       true,
     );
 
-    // If order is completed, subscription should be updated via webhook
-    // But as fallback, we can refresh subscription status
+    // Sync subscription status from PhonePe
+    // This will update local state if PhonePe shows ACTIVE
     return this.subscriptionService.getSubscriptionStatus(
       appId,
       body.merchantSubscriptionId,
