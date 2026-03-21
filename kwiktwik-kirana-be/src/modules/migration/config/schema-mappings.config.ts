@@ -745,7 +745,6 @@ export const PHONEPE_ORDERS_MAPPING: TableMapping = {
 export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
   tableName: 'enhanced_notifications',
   requiredFields: [
-    'id',
     'userId',
     'notificationId',
     'packageName',
@@ -755,7 +754,6 @@ export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
     'timestamp',
   ],
   fields: [
-    { newField: 'id', oldFields: ['id'], defaultValue: null },
     {
       newField: 'userId',
       oldFields: ['userId', 'user_id'],
