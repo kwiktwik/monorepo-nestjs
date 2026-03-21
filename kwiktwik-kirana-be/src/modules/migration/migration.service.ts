@@ -117,37 +117,6 @@ export class MigrationService {
         throw new Error('Migration already in progress for this user');
       }
 
-      // Check for in-progress migration before starting
-      const inProgressMigration = await this.db
-        .select()
-        .from(schema.migrationLogs)
-        .where(
-          and(
-            eq(schema.migrationLogs.status, MigrationState.PENDING),
-            eq(schema.migrationLogs.isLocked, true),
-          ),
-        )
-        .limit(1);
-
-      if (inProgressMigration.length > 0 && inProgressMigration[0].userId) {
-        this.logger.warn(
-          `Migration already in progress for user ${inProgressMigration[0].userId}. Cannot start new migration.`,
-        );
-        return {
-          success: false,
-          migrationId,
-          userId: '',
-          error: {
-            code: MigrationErrorCode.MAX_RETRIES_EXCEEDED,
-            message:
-              'Migration already in progress. Please wait for it to complete.',
-          },
-          migratedTables: [],
-          recordsMigrated: 0,
-          duration: 0,
-        };
-      }
-
       // Start heartbeat
       const heartbeatInterval = setInterval(
         () => this.updateHeartbeat(migrationId),
@@ -177,6 +146,38 @@ export class MigrationService {
 
         userId = sessionData.userId;
         const phoneNumber = sessionData.phoneNumber;
+
+        // Check for in-progress migration for this specific user
+        const inProgressMigration = await this.db
+          .select()
+          .from(schema.migrationLogs)
+          .where(
+            and(
+              eq(schema.migrationLogs.userId, userId),
+              eq(schema.migrationLogs.status, MigrationState.PENDING),
+              eq(schema.migrationLogs.isLocked, true),
+            ),
+          )
+          .limit(1);
+
+        if (inProgressMigration.length > 0) {
+          this.logger.warn(
+            `Migration already in progress for user ${userId} (migrationId: ${inProgressMigration[0].id}). Cannot start new migration.`,
+          );
+          return {
+            success: false,
+            migrationId,
+            userId,
+            error: {
+              code: MigrationErrorCode.MAX_RETRIES_EXCEEDED,
+              message:
+                'Migration already in progress for this user. Please wait for it to complete.',
+            },
+            migratedTables: [],
+            recordsMigrated: 0,
+            duration: 0,
+          };
+        }
 
         // Check if user is already migrated in old system
         const oldSystemStatus =
