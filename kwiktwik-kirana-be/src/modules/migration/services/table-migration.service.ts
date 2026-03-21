@@ -180,11 +180,11 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('account', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
-        // Map FK references
       };
 
       await this.db.insert(schema.account).values(mappedRecord);
@@ -208,8 +208,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('pushToken', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
@@ -234,8 +235,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('deviceSession', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
@@ -260,8 +262,9 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of records) {
       const newId = idMapper.generateNewId('userImage', record.id);
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
-        ...record,
+        ...parsedRecord,
         id: newId,
         userId: userId,
       };
