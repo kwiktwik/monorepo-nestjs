@@ -40,31 +40,12 @@ export enum UpiPaymentMode {
 }
 
 export class SetupSubscriptionDto {
-  @ApiPropertyOptional({
-    description: 'Initial amount to charge during setup (in rupees)',
-    example: 100,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  amount?: number;
-
   @ApiProperty({
-    description:
-      'Maximum amount that can be charged per redemption (in rupees)',
-    example: 1000,
+    description: 'Plan ID from configuration (e.g., plan_PHONEPE_AUTOPAY_001)',
+    example: 'plan_PHONEPE_AUTOPAY_001',
   })
-  @IsNumber()
-  @Min(1)
-  maxAmount: number;
-
-  @ApiProperty({
-    enum: Frequency,
-    description: 'Frequency of recurring payments',
-    example: Frequency.MONTHLY,
-  })
-  @IsEnum(Frequency)
-  frequency: Frequency;
+  @IsString()
+  planId: string;
 
   @ApiProperty({
     description: 'URL to redirect user after mandate approval',
@@ -79,41 +60,6 @@ export class SetupSubscriptionDto {
   @IsOptional()
   @IsString()
   merchantSubscriptionId?: string;
-
-  @ApiPropertyOptional({
-    enum: AuthWorkflowType,
-    default: AuthWorkflowType.TRANSACTION,
-  })
-  @IsOptional()
-  @IsEnum(AuthWorkflowType)
-  authWorkflowType?: AuthWorkflowType;
-
-  @ApiPropertyOptional({
-    enum: AmountType,
-    default: AmountType.VARIABLE,
-  })
-  @IsOptional()
-  @IsEnum(AmountType)
-  amountType?: AmountType;
-
-  @ApiPropertyOptional({
-    enum: UpiPaymentMode,
-    description: 'UPI payment mode for mandate setup (UPI only)',
-    default: UpiPaymentMode.UPI_INTENT,
-    example: UpiPaymentMode.UPI_INTENT,
-  })
-  @IsOptional()
-  @IsEnum(UpiPaymentMode)
-  upiPaymentMode?: UpiPaymentMode;
-
-  @ApiPropertyOptional({
-    description: 'Subscription expiry date',
-    type: Date,
-  })
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  expireAt?: Date;
 
   @ApiPropertyOptional({
     description: 'Additional metadata',

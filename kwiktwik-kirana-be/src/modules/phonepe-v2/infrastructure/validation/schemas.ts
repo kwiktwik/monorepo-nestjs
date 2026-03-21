@@ -26,27 +26,10 @@ const MetadataSchema = z.any().optional();
 
 // Setup Subscription Schema
 export const SetupSubscriptionSchema = z.object({
-  amount: z
-    .number()
-    .min(0, 'Amount must be non-negative')
-    .max(1000000, 'Amount cannot exceed 10,00,000')
-    .optional(),
-  maxAmount: z
-    .number()
-    .min(1, 'Max amount must be at least 1')
-    .max(1000000, 'Max amount cannot exceed 10,00,000'),
-  frequency: FrequencyEnum,
+  planId: z.string().min(1, 'Plan ID is required'),
   redirectUrl: z.string().min(1, 'Redirect URL is required'),
-  merchantSubscriptionId: z
-    .string()
-    .min(1, 'Merchant subscription ID cannot be empty')
-    .max(100, 'Merchant subscription ID too long')
-    .optional(),
-  authWorkflowType: AuthWorkflowTypeEnum.optional().default('TRANSACTION'),
-  amountType: AmountTypeEnum.optional().default('VARIABLE'),
-  upiPaymentMode: UpiPaymentModeEnum.optional().default('UPI_INTENT'),
-  expireAt: z.coerce.date().optional(),
-  metadata: MetadataSchema,
+  merchantSubscriptionId: z.string().optional(),
+  metadata: z.any().optional(),
 });
 
 export type SetupSubscriptionInput = z.infer<typeof SetupSubscriptionSchema>;
@@ -108,15 +91,9 @@ export type WebhookPayloadInput = z.infer<typeof WebhookPayloadSchema>;
 export const SetupSubscriptionServiceSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   appId: z.string().min(1, 'App ID is required'),
-  amount: z.number().min(0).optional(),
-  maxAmount: z.number().min(1),
-  frequency: FrequencyEnum,
+  planId: z.string().min(1, 'Plan ID is required'),
   redirectUrl: z.string().min(1, 'Redirect URL is required'),
-  merchantSubscriptionId: z.string().min(1).optional(),
-  authWorkflowType: AuthWorkflowTypeEnum.optional(),
-  amountType: AmountTypeEnum.optional(),
-  upiPaymentMode: UpiPaymentModeEnum.optional(),
-  expireAt: z.date().optional(),
+  merchantSubscriptionId: z.string().optional(),
   metadata: z.any().optional(),
 });
 

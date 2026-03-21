@@ -67,15 +67,9 @@ export class SubscriptionController {
     return this.subscriptionService.setupSubscription({
       userId: user.userId,
       appId,
-      amount: dto.amount,
-      maxAmount: dto.maxAmount,
-      frequency: dto.frequency as any,
+      planId: dto.planId,
       redirectUrl: dto.redirectUrl,
       merchantSubscriptionId: dto.merchantSubscriptionId,
-      authWorkflowType: dto.authWorkflowType as any,
-      amountType: dto.amountType as any,
-      upiPaymentMode: dto.upiPaymentMode,
-      expireAt: dto.expireAt,
       metadata: dto.metadata,
     });
   }

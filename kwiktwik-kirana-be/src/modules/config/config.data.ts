@@ -89,6 +89,30 @@ export const PAYWALL_PLANS = {
     videoDescription: 'Autopay ₹199 every month, cancel anytime',
     priority: 6,
   },
+  PHONEPE_AUTOPAY: {
+    plan_id: 'plan_PHONEPE_AUTOPAY_001',
+    pricing: {
+      initialAmount: '₹1',
+      recurringAmount: '₹199',
+      period: 'month',
+    },
+    heading: 'Setup Autopay with PhonePe',
+    description: 'Secure your subscription with UPI Autopay. Just ₹1 to setup.',
+    buttonText: 'Setup PhonePe Autopay',
+    refundText: 'INSTANT REFUND',
+    videoDescription:
+      'Autopay ₹199 every month via PhonePe UPI, cancel anytime',
+    priority: 7,
+    phonepeConfig: {
+      provider: 'PHONEPE',
+      maxAmount: 19900, // in paise
+      frequency: 'MONTHLY',
+      amountType: 'VARIABLE',
+      authWorkflowType: 'TRANSACTION',
+      upiPaymentMode: 'UPI_INTENT',
+      productType: 'UPI_MANDATE',
+    },
+  },
 } as const;
 
 export type PlanType = keyof typeof PAYWALL_PLANS;
@@ -119,6 +143,7 @@ export const DEEPLINK_CAMPAIGNS = {
   REFERRAL: 'referral',
   RETARGETING: 'retargeting',
   SEASONAL: 'seasonal',
+  PHONEPE_SETUP: 'phonepe_setup',
 } as const;
 
 export type DeeplinkCampaign =
@@ -381,7 +406,30 @@ export const PAYWALL_RULES = [
     priority: 10,
   },
 
-  // Rule 12: Default Fallback - This should ALWAYS match
+  // Rule 12: PhonePe Autopay - For users selecting PhonePe payment method
+  {
+    name: 'phonepe_autopay',
+    conditions: {
+      all: [
+        {
+          fact: 'deeplink',
+          operator: 'equal',
+          value: DEEPLINK_CAMPAIGNS.PHONEPE_SETUP,
+        },
+      ],
+    },
+    event: {
+      type: 'phonepe_autopay',
+      params: {
+        plan: PAYWALL_PLANS.PHONEPE_AUTOPAY,
+        reason: 'PhonePe UPI Autopay setup',
+        priority: 25,
+      },
+    },
+    priority: 25,
+  },
+
+  // Rule 13: Default Fallback - This should ALWAYS match
   {
     name: 'default_fallback',
     conditions: {

@@ -23,19 +23,14 @@ import type {
   AuthWorkflowType,
   AmountType,
 } from '../../domain/enums/subscription.enum';
+import { PAYWALL_PLANS } from '../../../config/config.data';
 
 export interface SetupSubscriptionRequest {
   userId: string;
   appId: string;
-  amount?: number; // Initial amount in rupees (optional)
-  maxAmount: number; // Max amount in rupees
-  frequency: SubscriptionFrequency;
+  planId: string; // Plan ID from PAYWALL_PLANS (e.g., 'plan_PHONEPE_AUTOPAY_001')
   redirectUrl: string;
   merchantSubscriptionId?: string;
-  authWorkflowType?: AuthWorkflowType;
-  amountType?: AmountType;
-  upiPaymentMode?: 'UPI_INTENT' | 'UPI_COLLECT' | 'UPI_QR';
-  expireAt?: Date;
   metadata?: Record<string, unknown>;
 }
 
@@ -93,6 +88,7 @@ export class SubscriptionService {
   /**
    * Setup a new subscription mandate
    * User will be redirected to PhonePe to approve the mandate
+   * REQUIRES planId - all values come from plan configuration
    */
   async setupSubscription(
     request: SetupSubscriptionRequest,
@@ -110,18 +106,64 @@ export class SubscriptionService {
       );
     }
 
+    // REQUIRES planId - fail if not provided
+    if (!request.planId) {
+      throw new BadRequestException('planId is required');
+    }
+
+    // Find plan by plan_id - fail if not found
+    const planEntry = Object.entries(PAYWALL_PLANS).find(
+      ([, plan]) => plan.plan_id === request.planId,
+    );
+
+    if (!planEntry) {
+      throw new BadRequestException(
+        `Plan not found for plan_id: ${request.planId}`,
+      );
+    }
+
+    const [planName, planConfig] = planEntry;
+    this.logger.log(
+      `Using plan configuration: ${planName} (${planConfig.plan_id})`,
+    );
+
+    // Check if plan has PhonePe config
+    if (!('phonepeConfig' in planConfig)) {
+      throw new BadRequestException(
+        `Plan ${request.planId} is not configured for PhonePe`,
+      );
+    }
+
+    const phonepeConfig = (
+      planConfig as (typeof PAYWALL_PLANS)['PHONEPE_AUTOPAY']
+    ).phonepeConfig;
+
+    // Extract all values from plan configuration
+    const maxAmount = phonepeConfig.maxAmount / 100; // Convert from paise to rupees
+    const frequency = phonepeConfig.frequency as SubscriptionFrequency;
+    const authWorkflowType = phonepeConfig.authWorkflowType as AuthWorkflowType;
+    const amountType = phonepeConfig.amountType as AmountType;
+    const upiPaymentMode = phonepeConfig.upiPaymentMode;
+    const amount = parseInt(
+      planConfig.pricing.initialAmount.replace(/[^0-9]/g, ''),
+    );
+
     // Create domain entity
     const subscription = Subscription.create({
       id: nanoid(10),
       merchantSubscriptionId,
       userId: request.userId,
       appId: request.appId,
-      maxAmount: Math.round(request.maxAmount * 100), // Convert to paise
-      frequency: request.frequency,
-      authWorkflowType: request.authWorkflowType || 'TRANSACTION',
-      amountType: request.amountType || 'VARIABLE',
-      expireAt: request.expireAt,
-      metadata: request.metadata || {},
+      maxAmount: Math.round(maxAmount * 100), // Convert to paise
+      frequency,
+      authWorkflowType,
+      amountType,
+      expireAt: undefined, // No expiry - comes from plan
+      metadata: {
+        ...(request.metadata || {}),
+        planId: request.planId,
+        planName: planName,
+      },
     });
 
     // Save to database
@@ -130,17 +172,15 @@ export class SubscriptionService {
     // Call PhonePe API
     const response = await this.httpClient.setupSubscription(request.appId, {
       merchantOrderId,
-      amount: request.amount
-        ? Math.round(request.amount * 100)
-        : subscription.maxAmount,
+      amount: Math.round(amount * 100),
       paymentFlow: {
         type: 'SUBSCRIPTION_CHECKOUT_SETUP',
         merchantUrls: {
           redirectUrl: request.redirectUrl,
         },
-        // Restrict to UPI payments only (client-controlled)
+        // Restrict to UPI payments only
         paymentModeConfig: {
-          type: request.upiPaymentMode || 'UPI_INTENT',
+          type: upiPaymentMode,
         },
         subscriptionDetails: {
           subscriptionType: 'RECURRING',

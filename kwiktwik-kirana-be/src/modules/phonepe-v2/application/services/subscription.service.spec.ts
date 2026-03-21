@@ -79,9 +79,7 @@ describe('SubscriptionService', () => {
     const setupRequest = {
       userId: 'user123',
       appId: 'app123',
-      amount: 100,
-      maxAmount: 1000,
-      frequency: 'MONTHLY' as const,
+      planId: 'plan_PHONEPE_AUTOPAY_001',
       redirectUrl: 'https://example.com/callback',
     };
 
