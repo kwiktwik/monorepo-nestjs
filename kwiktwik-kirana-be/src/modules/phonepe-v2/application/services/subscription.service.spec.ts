@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { PhonePeHttpClient } from '../../infrastructure/http/phonepe-http.client';
+import { PhonePeAuthManager } from '../../infrastructure/http/auth-manager';
 import {
   SubscriptionRepository,
   RedemptionRepository,
@@ -30,6 +31,14 @@ describe('SubscriptionService', () => {
             notifyRedemption: jest.fn(),
             getSubscriptionStatus: jest.fn(),
             getOrderStatus: jest.fn(),
+          },
+        },
+        {
+          provide: PhonePeAuthManager,
+          useValue: {
+            getCredentials: jest.fn().mockReturnValue({
+              merchantId: 'PGTESTPAYUAT',
+            }),
           },
         },
         {

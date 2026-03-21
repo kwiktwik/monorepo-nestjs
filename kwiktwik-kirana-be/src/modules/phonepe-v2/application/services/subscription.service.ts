@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { nanoid } from 'nanoid';
 import { PhonePeHttpClient } from '../../infrastructure/http/phonepe-http.client';
+import { PhonePeAuthManager } from '../../infrastructure/http/auth-manager';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
@@ -38,11 +39,13 @@ export interface SetupSubscriptionRequest {
 }
 
 export interface SetupSubscriptionResponse {
+  orderId: string;
   merchantSubscriptionId: string;
   merchantOrderId: string;
   redirectUrl: string;
   state: string;
   expireAt: Date;
+  merchantId: string;
 }
 
 export interface NotifyRedemptionRequest {
@@ -54,6 +57,7 @@ export interface NotifyRedemptionRequest {
 }
 
 export interface NotifyRedemptionResponse {
+  orderId: string;
   merchantOrderId: string;
   state: string;
   expireAt: Date;
@@ -77,6 +81,7 @@ export class SubscriptionService {
 
   constructor(
     private readonly httpClient: PhonePeHttpClient,
+    private readonly authManager: PhonePeAuthManager,
     @Inject(SUBSCRIPTION_REPOSITORY)
     private readonly subscriptionRepo: SubscriptionRepository,
     @Inject(REDEMPTION_REPOSITORY)
@@ -156,12 +161,17 @@ export class SubscriptionService {
       `Subscription setup initiated: ${merchantSubscriptionId} for user ${request.userId}`,
     );
 
+    // Get merchant ID for SDK configuration
+    const credentials = this.authManager.getCredentials(request.appId);
+
     return {
+      orderId: response.orderId,
       merchantSubscriptionId,
       merchantOrderId,
       redirectUrl: response.redirectUrl,
       state: response.state,
       expireAt: new Date(response.expireAt),
+      merchantId: credentials.merchantId,
     };
   }
 
@@ -253,6 +263,7 @@ export class SubscriptionService {
     );
 
     return {
+      orderId: response.orderId,
       merchantOrderId,
       state: response.state,
       expireAt: new Date(response.expireAt),
@@ -377,5 +388,50 @@ export class SubscriptionService {
         subscription.markAsFailed();
         break;
     }
+  }
+
+  /**
+   * Get order status with payment details
+   */
+  async getOrderStatus(
+    appId: string,
+    merchantOrderId: string,
+    details?: boolean,
+  ): Promise<{
+    merchantId: string;
+    merchantOrderId: string;
+    orderId: string;
+    state: string;
+    amount: number;
+    expireAt: Date;
+    paymentDetails?: Array<{
+      transactionId: string;
+      paymentMode: string | null;
+      timestamp: Date;
+      amount: number;
+      state: string;
+    }>;
+  }> {
+    const response = await this.httpClient.getOrderStatus(
+      appId,
+      merchantOrderId,
+      details ?? false,
+    );
+
+    return {
+      merchantId: response.merchantId,
+      merchantOrderId: response.merchantOrderId,
+      orderId: response.orderId,
+      state: response.state,
+      amount: response.amount / 100, // Convert from paise to rupees
+      expireAt: new Date(response.expireAt),
+      paymentDetails: response.paymentDetails?.map((detail) => ({
+        transactionId: detail.transactionId,
+        paymentMode: detail.paymentMode,
+        timestamp: new Date(detail.timestamp),
+        amount: detail.amount / 100, // Convert from paise to rupees
+        state: detail.state,
+      })),
+    };
   }
 }

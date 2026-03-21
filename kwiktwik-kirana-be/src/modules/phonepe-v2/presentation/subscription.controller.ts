@@ -17,6 +17,7 @@ import {
   SubscriptionResponseDto,
   RedemptionResponseDto,
   SubscriptionStatusDto,
+  OrderStatusDto,
 } from './dto/subscription.dto';
 
 @ApiTags('PhonePe Autopay')
@@ -127,5 +128,29 @@ export class SubscriptionController {
     @AppId() appId: string,
   ): Promise<SubscriptionStatusDto[]> {
     return this.subscriptionService.getUserSubscriptions(user.userId, appId);
+  }
+
+  @Get('order-status')
+  @ApiOperation({
+    summary: 'Get order status',
+    description:
+      'Fetches detailed order status from PhonePe including payment details',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Order status with payment details',
+    type: OrderStatusDto,
+  })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  async getOrderStatus(
+    @AppId() appId: string,
+    @Query('merchantOrderId') merchantOrderId: string,
+    @Query('details') details?: boolean,
+  ): Promise<OrderStatusDto> {
+    return this.subscriptionService.getOrderStatus(
+      appId,
+      merchantOrderId,
+      details,
+    );
   }
 }

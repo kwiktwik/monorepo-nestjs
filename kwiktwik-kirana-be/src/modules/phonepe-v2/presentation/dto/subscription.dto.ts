@@ -132,30 +132,72 @@ export class NotifyRedemptionDto {
 }
 
 export class SubscriptionResponseDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'PhonePe order ID - required for SDK initialization',
+    example: 'OM2401241327446521266639W',
+  })
+  orderId: string;
+
+  @ApiProperty({
+    description: 'Your internal merchant subscription ID',
+    example: 'sub_abc123',
+  })
   merchantSubscriptionId: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Your internal merchant order ID',
+    example: 'order_xyz789',
+  })
   merchantOrderId: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Redirect URL for web checkout (fallback)',
+    example: 'https://phonepe.com/checkout/...',
+  })
   redirectUrl: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Current state of the order',
+    example: 'PENDING',
+  })
   state: string;
 
-  @ApiProperty({ type: Date })
+  @ApiProperty({
+    description: 'Order expiry timestamp',
+    type: Date,
+  })
   expireAt: Date;
+
+  @ApiProperty({
+    description: 'Merchant ID for SDK configuration',
+    example: 'PGTESTPAYUAT',
+  })
+  merchantId: string;
 }
 
 export class RedemptionResponseDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'PhonePe order ID - required for SDK initialization',
+    example: 'OM2401241327446521266639W',
+  })
+  orderId: string;
+
+  @ApiProperty({
+    description: 'Your internal merchant order ID',
+    example: 'order_xyz789',
+  })
   merchantOrderId: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Current state of the redemption',
+    example: 'NOTIFICATION_IN_PROGRESS',
+  })
   state: string;
 
-  @ApiProperty({ type: Date })
+  @ApiProperty({
+    description: 'Order expiry timestamp',
+    type: Date,
+  })
   expireAt: Date;
 }
 
@@ -177,4 +219,82 @@ export class SubscriptionStatusDto {
 
   @ApiProperty()
   canRedeem: boolean;
+}
+
+export class PaymentDetailsDto {
+  @ApiProperty({
+    description: 'PhonePe transaction ID',
+    example: 'TXN2401241327446521266640W',
+  })
+  transactionId: string;
+
+  @ApiProperty({
+    description: 'Payment mode used',
+    example: 'UPI_AUTO_PAY',
+    nullable: true,
+  })
+  paymentMode: string | null;
+
+  @ApiProperty({
+    description: 'Transaction timestamp',
+    type: Date,
+  })
+  timestamp: Date;
+
+  @ApiProperty({
+    description: 'Amount in rupees',
+    example: 100,
+  })
+  amount: number;
+
+  @ApiProperty({
+    description: 'Transaction state',
+    example: 'COMPLETED',
+  })
+  state: string;
+}
+
+export class OrderStatusDto {
+  @ApiProperty({
+    description: 'Merchant ID',
+    example: 'PGTESTPAYUAT',
+  })
+  merchantId: string;
+
+  @ApiProperty({
+    description: 'Merchant order ID',
+    example: 'order_xyz789',
+  })
+  merchantOrderId: string;
+
+  @ApiProperty({
+    description: 'PhonePe order ID',
+    example: 'OM2401241327446521266639W',
+  })
+  orderId: string;
+
+  @ApiProperty({
+    description: 'Order state',
+    example: 'COMPLETED',
+  })
+  state: string;
+
+  @ApiProperty({
+    description: 'Amount in rupees',
+    example: 100,
+  })
+  amount: number;
+
+  @ApiProperty({
+    description: 'Order expiry timestamp',
+    type: Date,
+  })
+  expireAt: Date;
+
+  @ApiProperty({
+    description: 'Payment transaction details',
+    type: [PaymentDetailsDto],
+    nullable: true,
+  })
+  paymentDetails?: PaymentDetailsDto[];
 }
