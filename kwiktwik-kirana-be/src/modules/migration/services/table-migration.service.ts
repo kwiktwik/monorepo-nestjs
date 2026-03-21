@@ -270,7 +270,7 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('account', record.id);
       const parsedRecord = parseRecordDates(record);
 
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         id: newId,
         accountId: parsedRecord.accountId,
         providerId: parsedRecord.providerId,
@@ -309,7 +309,7 @@ export class TableMigrationService {
     for (const record of records) {
       const parsedRecord = parseRecordDates(record);
 
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         userId: userId,
         appId: parsedRecord.appId,
         token: parsedRecord.token,
@@ -341,7 +341,7 @@ export class TableMigrationService {
     for (const record of records) {
       const parsedRecord = parseRecordDates(record);
 
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         userId: userId,
         appId: parsedRecord.appId,
         deviceModel: parsedRecord.deviceModel,
@@ -377,7 +377,7 @@ export class TableMigrationService {
     for (const record of records) {
       const parsedRecord = parseRecordDates(record);
 
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         userId: userId,
         appId: parsedRecord.appId,
         imageUrl: parsedRecord.imageUrl,
@@ -406,7 +406,7 @@ export class TableMigrationService {
     for (const record of records) {
       const parsedRecord = parseRecordDates(record);
 
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         userId: userId,
         appId: parsedRecord.appId,
         rating: parsedRecord.rating,
@@ -493,7 +493,7 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('order', record.id);
       const parsedRecord = parseRecordDates(record);
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         ...parsedRecord,
         id: newId,
         userId: userId,
@@ -521,7 +521,7 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('abandonedCheckout', record.id);
       const parsedRecord = parseRecordDates(record);
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         ...parsedRecord,
         id: newId,
         userId: userId,
@@ -548,7 +548,7 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('phonepeOrder', record.id);
       const parsedRecord = parseRecordDates(record);
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         ...parsedRecord,
         id: newId,
         userId: userId,
@@ -575,7 +575,7 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('phonepeSubscription', record.id);
       const parsedRecord = parseRecordDates(record);
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         ...parsedRecord,
         id: newId,
         userId: userId,
