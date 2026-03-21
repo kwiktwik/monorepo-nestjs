@@ -527,14 +527,34 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of success) {
       try {
+        // Check if notification already exists by notificationId
+        const existing = await this.db
+          .select({ id: schema.enhancedNotifications.id })
+          .from(schema.enhancedNotifications)
+          .where(
+            eq(
+              schema.enhancedNotifications.notificationId,
+              record.notificationId,
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          this.logger.log(
+            `Enhanced notification already exists, skipping: ${record.notificationId}`,
+          );
+          continue;
+        }
+
         await this.db.insert(schema.enhancedNotifications).values(record);
         migrated.push(record);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         const errorCode = (error as any)?.code || '';
+        const errorConstraint = (error as any)?.constraint || '';
         this.logger.error(
-          `Failed to insert enhanced notification ${record.id}: ${errorMessage} (code: ${errorCode})`,
+          `Failed to insert enhanced notification ${record.notificationId}: ${errorMessage} (code: ${errorCode}, constraint: ${errorConstraint})`,
         );
       }
     }
