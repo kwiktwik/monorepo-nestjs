@@ -13,6 +13,7 @@ import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../database/schema';
 import { IdMapper } from '../utils/id-mapper.util';
+import { and, eq } from 'drizzle-orm';
 
 /**
  * Parse a date string or Date object into a valid Date
