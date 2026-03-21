@@ -47,10 +47,12 @@ async function bootstrap() {
     // which contains the inlined Swagger JSON spec
     res.setHeader(
       'Cache-Control',
-      'no-store, no-cache, must-revalidate, max-age=0',
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
     );
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Cloudflare-CDN-Cache-Control', 'no-store');
 
     const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
     const [login, password] = Buffer.from(b64auth, 'base64')
@@ -74,7 +76,7 @@ async function bootstrap() {
   };
 
   // Protect swagger endpoints
-  app.use(['/docs', '/docs-json'], swaggerAuthMiddleware);
+  app.use(['/docs', '/docs-json', '/api/docs-json'], swaggerAuthMiddleware);
 
   const config = new DocumentBuilder()
     .setTitle('KwikTwik Kirana API')
