@@ -418,4 +418,39 @@ export class UserService {
       message: 'User and all associated data permanently deleted',
     };
   }
+
+  /**
+   * Check if user has been migrated from kirana-fe
+   */
+  async checkMigrationStatus(userId: string) {
+    const migrationRecord = await this.db
+      .select({
+        id: schema.migrationLogs.id,
+        status: schema.migrationLogs.status,
+        completedAt: schema.migrationLogs.completedAt,
+        startedAt: schema.migrationLogs.startedAt,
+        recordsCount: schema.migrationLogs.recordsCount,
+      })
+      .from(schema.migrationLogs)
+      .where(eq(schema.migrationLogs.userId, userId))
+      .orderBy(desc(schema.migrationLogs.createdAt))
+      .limit(1);
+
+    const isMigrated =
+      migrationRecord.length > 0 && migrationRecord[0].status === 'completed';
+
+    return {
+      isMigrated,
+      migrationDetails:
+        migrationRecord.length > 0
+          ? {
+              migrationId: migrationRecord[0].id,
+              status: migrationRecord[0].status,
+              startedAt: migrationRecord[0].startedAt,
+              completedAt: migrationRecord[0].completedAt,
+              recordsMigrated: migrationRecord[0].recordsCount,
+            }
+          : null,
+    };
+  }
 }

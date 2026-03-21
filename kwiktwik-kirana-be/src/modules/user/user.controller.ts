@@ -141,4 +141,13 @@ export class UserController {
 
     return result;
   }
+
+  @Get('migration-status/v1')
+  @ApiOperation({ summary: 'Check if user is migrated from kirana-fe' })
+  @ApiResponse({ status: 200, description: 'Migration status retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async checkMigrationStatus(@CurrentUser() user: AuthUser) {
+    const data = await this.userService.checkMigrationStatus(user.userId);
+    return { success: true, data };
+  }
 }
