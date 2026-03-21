@@ -152,14 +152,24 @@ export class TableMigrationService {
       const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
         userId: userId,
-        appId: parsedRecord.appId,
+        appId: parsedRecord.appId || 'com.kiranaapps.app',
         upiVpa: parsedRecord.upiVpa,
         audioLanguage: parsedRecord.audioLanguage,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
-      await this.db.insert(schema.userMetadata).values(mappedRecord);
+      await this.db
+        .insert(schema.userMetadata)
+        .values(mappedRecord)
+        .onConflictDoUpdate({
+          target: [schema.userMetadata.userId, schema.userMetadata.appId],
+          set: {
+            upiVpa: mappedRecord.upiVpa,
+            audioLanguage: mappedRecord.audioLanguage,
+            updatedAt: new Date(),
+          },
+        });
       migrated.push(mappedRecord);
     }
 
