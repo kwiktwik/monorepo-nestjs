@@ -32,6 +32,102 @@ function parseDate(value: unknown): Date | null {
   return null;
 }
 
+/**
+ * Common date field names that need parsing
+ */
+const DATE_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'created_at',
+  'updated_at',
+  'expiresAt',
+  'expires_at',
+  'deletedAt',
+  'deleted_at',
+  'timestamp',
+  'lastHeartbeat',
+  'last_heartbeat',
+  'lockedAt',
+  'locked_at',
+  'startAt',
+  'start_at',
+  'endAt',
+  'end_at',
+  'chargeAt',
+  'charge_at',
+  'currentStart',
+  'current_start',
+  'currentEnd',
+  'current_end',
+  'expireAt',
+  'expire_at',
+  'activatedAt',
+  'activated_at',
+  'cancelledAt',
+  'cancelled_at',
+  'notifiedAt',
+  'notified_at',
+  'validAfter',
+  'valid_after',
+  'validUpto',
+  'valid_upto',
+  'sentAt',
+  'sent_at',
+  'submittedToPlayStoreAt',
+  'submitted_to_play_store_at',
+  'offerExpiresAt',
+  'offer_expires_at',
+  'discountNotificationSentAt',
+  'discount_notification_sent_at',
+  'lastNotificationSentAt',
+  'last_notification_sent_at',
+  'nextNotificationScheduledAt',
+  'next_notification_scheduled_at',
+  'checkoutStartedAt',
+  'checkout_started_at',
+  'lastMessageAt',
+  'last_message_at',
+  'joinedAt',
+  'joined_at',
+  'lastReadAt',
+  'last_read_at',
+  'mutedUntil',
+  'muted_until',
+  'editedAt',
+  'edited_at',
+  'readAt',
+  'read_at',
+  'sendAt',
+  'send_at',
+  'processedAt',
+  'processed_at',
+  'accessTokenExpiresAt',
+  'accessTokenExpires_at',
+  'refreshTokenExpiresAt',
+  'refreshTokenExpires_at',
+];
+
+/**
+ * Parse all date fields in a record
+ */
+function parseRecordDates(record: any): any {
+  if (!record || typeof record !== 'object') {
+    return record;
+  }
+
+  const parsed: any = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (DATE_FIELDS.includes(key)) {
+      parsed[key] = parseDate(value);
+    } else if (typeof value === 'object' && value !== null) {
+      parsed[key] = parseRecordDates(value);
+    } else {
+      parsed[key] = value;
+    }
+  }
+  return parsed;
+}
+
 @Injectable()
 export class TableMigrationService {
   private readonly logger = new Logger(TableMigrationService.name);
@@ -53,13 +149,14 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
+      const parsedRecord = parseRecordDates(record);
       const mappedRecord = {
         userId: userId,
-        appId: record.appId,
-        upiVpa: record.upiVpa,
-        audioLanguage: record.audioLanguage,
-        createdAt: parseDate(record.createdAt) || new Date(),
-        updatedAt: parseDate(record.updatedAt) || new Date(),
+        appId: parsedRecord.appId,
+        upiVpa: parsedRecord.upiVpa,
+        audioLanguage: parsedRecord.audioLanguage,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
       await this.db.insert(schema.userMetadata).values(mappedRecord);
