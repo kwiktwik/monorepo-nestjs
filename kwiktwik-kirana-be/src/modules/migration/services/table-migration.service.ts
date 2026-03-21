@@ -457,43 +457,48 @@ export class TableMigrationService {
 
       // Explicitly map only the fields in the new schema
       // Support both camelCase and snake_case from old system
-      const mappedRecord = {
+      const mappedRecord = cleanUndefined({
         id: newId,
         userId: userId,
         razorpaySubscriptionId:
-          parsedRecord.razorpaySubscriptionId ||
-          parsedRecord.razorpay_subscription_id,
+          parsedRecord.razorpaySubscriptionId ??
+          parsedRecord.razorpay_subscription_id ??
+          null,
         razorpayPlanId:
-          parsedRecord.razorpayPlanId || parsedRecord.razorpay_plan_id,
-        appId: parsedRecord.appId || parsedRecord.app_id,
-        customerId: parsedRecord.customerId || parsedRecord.customer_id,
+          parsedRecord.razorpayPlanId ?? parsedRecord.razorpay_plan_id ?? null,
+        appId: parsedRecord.appId ?? parsedRecord.app_id ?? null,
+        customerId: parsedRecord.customerId ?? parsedRecord.customer_id ?? null,
         razorpayCustomerId:
-          parsedRecord.razorpayCustomerId || parsedRecord.razorpay_customer_id,
-        status: parsedRecord.status,
-        quantity: parsedRecord.quantity,
-        totalCount: parsedRecord.totalCount || parsedRecord.total_count,
-        paidCount: parsedRecord.paidCount || parsedRecord.paid_count,
+          parsedRecord.razorpayCustomerId ??
+          parsedRecord.razorpay_customer_id ??
+          null,
+        status: parsedRecord.status ?? null,
+        quantity: parsedRecord.quantity ?? null,
+        totalCount: parsedRecord.totalCount ?? parsedRecord.total_count ?? null,
+        paidCount: parsedRecord.paidCount ?? parsedRecord.paid_count ?? null,
         remainingCount:
-          parsedRecord.remainingCount || parsedRecord.remaining_count,
-        startAt: parsedRecord.startAt || parsedRecord.start_at,
-        endAt: parsedRecord.endAt || parsedRecord.end_at,
-        chargeAt: parsedRecord.chargeAt || parsedRecord.charge_at,
+          parsedRecord.remainingCount ?? parsedRecord.remaining_count ?? null,
+        startAt: parsedRecord.startAt ?? parsedRecord.start_at ?? null,
+        endAt: parsedRecord.endAt ?? parsedRecord.end_at ?? null,
+        chargeAt: parsedRecord.chargeAt ?? parsedRecord.charge_at ?? null,
         currentStart:
-          parsedRecord.currentStart || parsedRecord.current_start || null,
-        currentEnd: parsedRecord.currentEnd || parsedRecord.current_end || null,
-        notes: parsedRecord.notes,
+          parsedRecord.currentStart ?? parsedRecord.current_start ?? null,
+        currentEnd: parsedRecord.currentEnd ?? parsedRecord.current_end ?? null,
+        notes: parsedRecord.notes ?? null,
         razorpayPaymentId:
-          parsedRecord.razorpayPaymentId || parsedRecord.razorpay_payment_id,
+          parsedRecord.razorpayPaymentId ??
+          parsedRecord.razorpay_payment_id ??
+          null,
         fourHourEventSent:
-          parsedRecord.fourHourEventSent ||
-          parsedRecord.four_hour_event_sent ||
+          parsedRecord.fourHourEventSent ??
+          parsedRecord.four_hour_event_sent ??
           false,
-        metadata: parsedRecord.metadata,
+        metadata: parsedRecord.metadata ?? null,
         createdAt:
-          parsedRecord.createdAt || parsedRecord.created_at || new Date(),
+          parsedRecord.createdAt ?? parsedRecord.created_at ?? new Date(),
         updatedAt:
-          parsedRecord.updatedAt || parsedRecord.updated_at || new Date(),
-      };
+          parsedRecord.updatedAt ?? parsedRecord.updated_at ?? new Date(),
+      });
 
       console.log(`[MIGRATION_DEBUG] Mapped subscription:`, {
         currentStart: mappedRecord.currentStart,
