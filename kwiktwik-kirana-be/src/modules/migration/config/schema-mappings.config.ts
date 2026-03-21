@@ -878,6 +878,11 @@ export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
       newField: 'notificationLogId',
       oldFields: ['notificationLogId', 'notification_log_id'],
       defaultValue: null,
+      transform: (value) => {
+        // Notification logs are not migrated, so always set to null
+        // to avoid FK constraint violations
+        return null;
+      },
     },
     {
       newField: 'ttsAnnounced',

@@ -553,8 +553,12 @@ export class TableMigrationService {
           error instanceof Error ? error.message : 'Unknown error';
         const errorCode = (error as any)?.code || '';
         const errorConstraint = (error as any)?.constraint || '';
+        const errorDetail = (error as any)?.detail || '';
         this.logger.error(
-          `Failed to insert enhanced notification ${record.notificationId}: ${errorMessage} (code: ${errorCode}, constraint: ${errorConstraint})`,
+          `Failed to insert enhanced notification ${record.notificationId}: ${errorMessage} (code: ${errorCode}, constraint: ${errorConstraint}, detail: ${errorDetail})`,
+        );
+        this.logger.error(
+          `Full error object: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
         );
       }
     }
