@@ -99,7 +99,7 @@ export async function syncOrdersAction(razorpayOrderIds: string[], targetAppId: 
 
             // Normalize phone numbers for matching
             const normalizedEmailPhone = normalizePhoneNumber(email);
-            const normalizedContactPhone = normalizePhoneNumber(contact);
+            const normalizedContactPhone = normalizePhoneNumber(contact ? String(contact) : null);
 
             // Find user in our DB - try multiple strategies
             let dbUser = null;
@@ -135,29 +135,23 @@ export async function syncOrdersAction(razorpayOrderIds: string[], targetAppId: 
                 });
             }
 
+            // If user not found, use system_deleted_user to preserve order data
+            const SYSTEM_DELETED_USER = 'system_deleted_user';
+            let isSystemUser = false;
             if (!dbUser) {
-                // Diagnostic: Search for similar phone numbers to help debug
-                const searchPattern = normalizedEmailPhone || normalizedContactPhone;
-                let diagnosticInfo = '';
-                
-                if (searchPattern) {
-                    // Try to find any user with a similar phone number
-                    const similarUsers = await db.query.user.findMany({
-                        where: sql`${user.phoneNumber} LIKE ${'%' + searchPattern.replace('+', '').slice(-8) + '%'}`,
-                        limit: 3,
-                    });
-                    
-                    if (similarUsers.length > 0) {
-                        diagnosticInfo = ` | Similar numbers found: ${similarUsers.map(u => `${u.phoneNumber} (ID: ${u.id})`).join(', ')}`;
-                    }
-                }
-                
-                results.push({
-                    razorpayOrderId: rzpOrderId,
-                    status: "error",
-                    message: `User not found for ${email || contact} (normalized: ${normalizedEmailPhone || normalizedContactPhone || 'N/A'})${diagnosticInfo}`,
+                dbUser = await db.query.user.findFirst({
+                    where: eq(user.id, SYSTEM_DELETED_USER),
                 });
-                continue;
+                
+                if (!dbUser) {
+                    results.push({
+                        razorpayOrderId: rzpOrderId,
+                        status: "error",
+                        message: `User not found and system_deleted_user does not exist`,
+                    });
+                    continue;
+                }
+                isSystemUser = true;
             }
 
             // Insert order into our DB
@@ -216,7 +210,9 @@ export async function syncOrdersAction(razorpayOrderIds: string[], targetAppId: 
             results.push({
                 razorpayOrderId: rzpOrderId,
                 status: "success",
-                message: "Order successfully synced",
+                message: isSystemUser 
+                    ? "Order successfully synced (assigned to system_deleted_user - user was deleted)" 
+                    : "Order successfully synced",
             });
 
         } catch (error: any) {
