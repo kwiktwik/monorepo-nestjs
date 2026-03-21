@@ -19,18 +19,6 @@ describe('Config Schemas', () => {
         subscription: {
           plan_id: 'plan_test',
         },
-        gateway: 'RAZORPAY',
-        order: {
-          amount: 500,
-          currency: 'INR',
-          payment_method: 'upi',
-          isRecurring: true,
-          token: {
-            frequency: 'monthly',
-            max_amount: 19900,
-            expire_at: 1735689600,
-          },
-        },
         otpLogin: true,
         truecallerLogin: true,
         googleLogin: true,
@@ -102,14 +90,6 @@ describe('Config Schemas', () => {
         },
         features: {
           subscription: { plan_id: 'plan_123' },
-          order: {
-            amount: 100,
-            token: {
-              frequency: 'monthly',
-              max_amount: 10000,
-              expire_at: 1735689600,
-            },
-          },
         },
         limits: {},
         ui: {
@@ -137,24 +117,10 @@ describe('Config Schemas', () => {
       if (result.success) {
         expect(result.data.app.version).toBe('1.0.0');
         expect(result.data.app.environment).toBe('development');
-        expect(result.data.features.gateway).toBe('RAZORPAY');
         expect(result.data.features.otpLogin).toBe(true);
         expect(result.data.ui.theme).toBe('light');
         expect(result.data.api.timeout).toBe(30000);
       }
-    });
-
-    it('should validate gateway enum values', () => {
-      const invalidGateway = {
-        ...validConfig,
-        features: {
-          ...validConfig.features,
-          gateway: 'INVALID_GATEWAY',
-        },
-      };
-
-      const result = AppConfigDataSchema.safeParse(invalidGateway);
-      expect(result.success).toBe(false);
     });
 
     it('should validate theme enum values', () => {

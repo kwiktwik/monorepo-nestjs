@@ -565,18 +565,6 @@ const baseConfig = {
   },
   features: {
     subscription: { plan_id: '' } as SubscriptionConfig,
-    gateway: 'RAZORPAY',
-    order: {
-      amount: 500,
-      currency: 'INR',
-      payment_method: 'upi',
-      isRecurring: true,
-      token: {
-        frequency: 'monthly',
-        max_amount: SUBSCRIPTION_AMOUNT_INR * 100,
-        expire_at: 1735689600,
-      },
-    },
     otpLogin: true,
     truecallerLogin: true,
     googleLogin: true,

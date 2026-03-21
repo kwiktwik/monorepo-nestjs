@@ -58,7 +58,6 @@ describe('Config Data - APP_CONFIGS', () => {
         expect(config?.features?.otpLogin).toBe(true);
         expect(config?.features?.truecallerLogin).toBe(true);
         expect(config?.features?.googleLogin).toBe(true);
-        expect(config?.features?.gateway).toBe('RAZORPAY');
       });
 
       it('should have video configurations for all supported languages', () => {
@@ -150,7 +149,6 @@ describe('Config Data - APP_CONFIGS', () => {
 
         // Validate features section
         expect(config.features).toHaveProperty('subscription');
-        expect(config.features).toHaveProperty('gateway');
         expect(config.features).toHaveProperty('otpLogin');
         expect(config.features).toHaveProperty('truecallerLogin');
         expect(config.features).toHaveProperty('googleLogin');

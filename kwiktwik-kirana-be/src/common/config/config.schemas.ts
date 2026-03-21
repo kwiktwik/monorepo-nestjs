@@ -23,18 +23,6 @@ const SubscriptionConfigSchema = z.object({
 // Features schema
 const FeaturesSchema = z.object({
   subscription: SubscriptionConfigSchema,
-  gateway: z.enum(['RAZORPAY', 'PHONEPE', 'STRIPE']).default('RAZORPAY'),
-  order: z.object({
-    amount: z.number().positive(),
-    currency: z.string().default('INR'),
-    payment_method: z.string().default('upi'),
-    isRecurring: z.boolean().default(true),
-    token: z.object({
-      frequency: z.string(),
-      max_amount: z.number().positive(),
-      expire_at: z.number().positive(),
-    }),
-  }),
   otpLogin: z.boolean().default(true),
   truecallerLogin: z.boolean().default(true),
   googleLogin: z.boolean().default(true),
