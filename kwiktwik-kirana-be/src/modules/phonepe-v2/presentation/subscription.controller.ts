@@ -60,6 +60,7 @@ export class SubscriptionController {
       merchantSubscriptionId: dto.merchantSubscriptionId,
       authWorkflowType: dto.authWorkflowType as any,
       amountType: dto.amountType as any,
+      upiPaymentMode: dto.upiPaymentMode,
       expireAt: dto.expireAt,
       metadata: dto.metadata,
     });

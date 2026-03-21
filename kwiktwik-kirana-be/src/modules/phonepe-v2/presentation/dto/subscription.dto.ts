@@ -33,6 +33,12 @@ export enum AmountType {
   VARIABLE = 'VARIABLE',
 }
 
+export enum UpiPaymentMode {
+  UPI_INTENT = 'UPI_INTENT',
+  UPI_COLLECT = 'UPI_COLLECT',
+  UPI_QR = 'UPI_QR',
+}
+
 export class SetupSubscriptionDto {
   @ApiPropertyOptional({
     description: 'Initial amount to charge during setup (in rupees)',
@@ -89,6 +95,16 @@ export class SetupSubscriptionDto {
   @IsOptional()
   @IsEnum(AmountType)
   amountType?: AmountType;
+
+  @ApiPropertyOptional({
+    enum: UpiPaymentMode,
+    description: 'UPI payment mode for mandate setup (UPI only)',
+    default: UpiPaymentMode.UPI_INTENT,
+    example: UpiPaymentMode.UPI_INTENT,
+  })
+  @IsOptional()
+  @IsEnum(UpiPaymentMode)
+  upiPaymentMode?: UpiPaymentMode;
 
   @ApiPropertyOptional({
     description: 'Subscription expiry date',

@@ -15,6 +15,9 @@ export interface SetupSubscriptionRequest {
     merchantUrls: {
       redirectUrl: string;
     };
+    paymentModeConfig?: {
+      type: 'UPI_INTENT' | 'UPI_COLLECT' | 'UPI_QR';
+    };
     subscriptionDetails: {
       subscriptionType: 'RECURRING';
       merchantSubscriptionId: string;

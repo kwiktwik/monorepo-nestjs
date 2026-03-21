@@ -34,6 +34,7 @@ export interface SetupSubscriptionRequest {
   merchantSubscriptionId?: string;
   authWorkflowType?: AuthWorkflowType;
   amountType?: AmountType;
+  upiPaymentMode?: 'UPI_INTENT' | 'UPI_COLLECT' | 'UPI_QR';
   expireAt?: Date;
   metadata?: Record<string, unknown>;
 }
@@ -136,6 +137,10 @@ export class SubscriptionService {
         type: 'SUBSCRIPTION_CHECKOUT_SETUP',
         merchantUrls: {
           redirectUrl: request.redirectUrl,
+        },
+        // Restrict to UPI payments only (client-controlled)
+        paymentModeConfig: {
+          type: request.upiPaymentMode || 'UPI_INTENT',
         },
         subscriptionDetails: {
           subscriptionType: 'RECURRING',
