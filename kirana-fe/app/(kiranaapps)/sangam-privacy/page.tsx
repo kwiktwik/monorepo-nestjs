@@ -14,7 +14,7 @@ export default function SangamPrivacy() {
         <div className="space-y-12 text-gray-600 leading-relaxed max-w-none">
           <section>
             <p className="text-lg">
-              At Sangam Kirana Apps, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile applications and services under the package name <strong>com.sangam.kiranaapps</strong>.
+              At Sangam Wallpaper, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile applications and services under the package name <strong>com.sangam.wallpaperapp</strong>.
             </p>
           </section>
 
@@ -39,7 +39,7 @@ export default function SangamPrivacy() {
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">2. How We Use Your Information</h2>
             <ul className="space-y-4 list-disc list-inside ml-4 text-lg">
-              <li>To provide and maintain our services for Sangam Kirana Apps.</li>
+              <li>To provide and maintain our services for Sangam Wallpaper.</li>
               <li>To notify you about changes to our apps.</li>
               <li>To provide customer support and gather feedback.</li>
               <li>To detect, prevent, and address technical issues.</li>

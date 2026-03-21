@@ -4,7 +4,7 @@ import Link from "next/link";
 
 const WHAT_GETS_DELETED = [
   "Your profile and account information",
-  "All business and store data within Sangam Kirana Apps",
+  "All business and store data within Sangam Wallpaper",
   "Customer and supplier records",
   "Inventory and stock information",
   "Transaction and sales history",
@@ -15,7 +15,7 @@ const HOW_TO_DELETE_STEPS = [
   'Send an email to support@kiranaapps.com',
   'Use the subject line: "Sangam Account Deletion Request"',
   "Include your registered email address or phone number",
-  "Specify the package name: com.sangam.kiranaapps",
+  "Specify the package name: com.sangam.wallpaperapp",
   "Confirm that you want to permanently delete your account and all associated data",
 ];
 
@@ -35,7 +35,7 @@ export default function SangamDeleteAccount() {
             Delete Your <span className="text-gradient">Sangam Account</span>
           </h1>
           <p className="text-lg text-gray-600">
-            We&apos;re sorry to see you go. Here&apos;s how you can delete your account from Sangam Kirana Apps.
+            We&apos;re sorry to see you go. Here&apos;s how you can delete your account from Sangam Wallpaper.
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function SangamDeleteAccount() {
               <div>
                 <h2 className="text-xl font-bold text-amber-900 mb-2">Important Notice</h2>
                 <p className="text-amber-900/90 font-medium">
-                  Deleting your account is permanent and cannot be undone. All your data, including business information, customer records, inventory data, and transaction history within Sangam Kirana Apps will be permanently deleted.
+                  Deleting your account is permanent and cannot be undone. All your data, including business information, customer records, inventory data, and transaction history within Sangam Wallpaper will be permanently deleted.
                 </p>
               </div>
             </div>
@@ -71,7 +71,7 @@ export default function SangamDeleteAccount() {
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">How to Delete Your Account</h2>
             <p className="mb-6 text-lg">
-              To request account deletion for <strong>com.sangam.kiranaapps</strong>, please follow these steps:
+              To request account deletion for <strong>com.sangam.wallpaperapp</strong>, please follow these steps:
             </p>
             <ol className="space-y-4 list-decimal list-inside ml-4 text-lg">
               {HOW_TO_DELETE_STEPS.map((step, i) => (

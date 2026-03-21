@@ -165,10 +165,10 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       gateway: Gateway.PHONEPE,
     },
   },
-  "com.sangam.kiranaapps": {
-    id: "com.sangam.kiranaapps",
-    name: "Sangam Kirana Apps",
-    description: "Sangam Kirana Apps mobile application",
+  "com.sangam.wallpaperapp": {
+    id: "com.sangam.wallpaperapp",
+    name: "Sangam Wallpaper",
+    description: "Sangam Wallpaper mobile application",
     enabled: true,
     rateLimit: {
       maxRequests: 999999,
