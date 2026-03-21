@@ -91,9 +91,9 @@ export class ConfigController {
   })
   @ApiQuery({
     name: 'plan_id',
-    required: true,
+    required: false,
     description:
-      'Plan ID to get specific plan configuration (e.g., plan_PHONEPE_AUTOPAY_001 or plan_S3FaBrk7sjPQEU)',
+      'Optional: Plan ID to override backend selection (e.g., plan_PHONEPE_AUTOPAY_001 or plan_S3FaBrk7sjPQEU). If not provided, backend will determine the plan.',
     example: 'plan_PHONEPE_AUTOPAY_001',
   })
   @ApiQuery({
@@ -101,12 +101,6 @@ export class ConfigController {
     enum: Object.values(SUPPORTED_LANGUAGES),
     required: false,
     description: 'Language for localized content',
-  })
-  @ApiQuery({
-    name: 'lang',
-    enum: Object.values(SUPPORTED_LANGUAGES),
-    required: false,
-    description: 'Language for localized content (fallback)',
   })
   @ApiResponse({
     status: 200,
@@ -117,22 +111,22 @@ export class ConfigController {
   async getConfigV4(
     @AppId() appId: string,
     @CurrentUser() user: any,
-    @Query('plan_id') plan_id: string,
+    @Query('plan_id') plan_id?: string,
     @Query('language') language?: string,
-    @Query('lang') lang?: string,
   ) {
-    const resolvedLanguage = language || lang || user?.language || 'en';
+    const resolvedLanguage = language || user?.language || 'en';
 
     const config = await this.configService.getConfigV4(
       appId,
       plan_id,
       resolvedLanguage,
+      user,
     );
 
     return {
       success: true,
       appId,
-      plan_id,
+      plan_id: config._paywallMeta?.plan_id,
       config,
     };
   }

@@ -164,14 +164,16 @@ export class ConfigService {
   /**
    * Get configuration v4 with unified plan structure
    * Works for both PhonePe (local) and Razorpay (provider-fetched) plans
+   * Backend controls plan selection, but client can override with plan_id
    *
    * @throws NotFoundException - If app is not registered or plan not found
    * @throws ConfigSyncError - If app is registered but config is missing (500 error)
    */
   async getConfigV4(
     appId: string,
-    planId: string,
+    planId: string | undefined,
     language: string = 'en',
+    user?: any,
   ): Promise<Record<string, any>> {
     try {
       const config = getSafeConfigForAppId(appId);
@@ -186,19 +188,53 @@ export class ConfigService {
       const dynamicConfig = JSON.parse(JSON.stringify(config));
 
       // Import unified plans
-      const { getUnifiedPlan, UNIFIED_PLANS } = require('./config.data');
+      const {
+        getUnifiedPlan,
+        UNIFIED_PLANS,
+        USER_TYPES,
+        DEEPLINK_CAMPAIGNS,
+      } = require('./config.data');
+
+      let selectedPlanId: string;
+      let planSelectionSource: string;
+
+      if (planId) {
+        // Client provided plan_id - use it as override
+        selectedPlanId = planId;
+        planSelectionSource = 'client_override';
+      } else {
+        // Backend determines the plan based on user context
+        const context = {
+          appId,
+          userType: user?.userType || USER_TYPES.NEW,
+          deeplink: user?.deeplink || DEEPLINK_CAMPAIGNS.NONE,
+        };
+
+        // Use paywall engine to determine the plan
+        const paywallResult = await this.paywallEngine.determinePlan(context);
+
+        // Map paywall plan to unified plan
+        const planMapping: Record<string, string> = {
+          plan_S3FaBrk7sjPQEU: 'plan_S3FaBrk7sjPQEU',
+          plan_PHONEPE_AUTOPAY_001: 'plan_PHONEPE_AUTOPAY_001',
+        };
+
+        selectedPlanId =
+          planMapping[paywallResult.plan.plan_id] || 'plan_S3FaBrk7sjPQEU';
+        planSelectionSource = `backend_rule:${paywallResult.ruleName}`;
+      }
 
       // Get the unified plan
-      const unifiedPlan = getUnifiedPlan(planId);
+      const unifiedPlan = getUnifiedPlan(selectedPlanId);
 
       if (!unifiedPlan) {
         throw new NotFoundException(
-          `Plan "${planId}" not found. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
+          `Plan "${selectedPlanId}" not found. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
         );
       }
 
       this.logger.log(
-        `Config v4: App=${appId}, Plan=${planId}, Provider=${unifiedPlan.provider}`,
+        `Config v4: App=${appId}, Plan=${selectedPlanId}, Provider=${unifiedPlan.provider}, Source=${planSelectionSource}`,
       );
 
       // Get translations for the requested language
@@ -244,6 +280,7 @@ export class ConfigService {
         plan_id: unifiedPlan.plan_id,
         provider: unifiedPlan.provider,
         language,
+        selectionSource: planSelectionSource,
       };
 
       return dynamicConfig;
