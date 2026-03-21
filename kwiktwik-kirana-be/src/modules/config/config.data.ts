@@ -143,7 +143,6 @@ export const DEEPLINK_CAMPAIGNS = {
   REFERRAL: 'referral',
   RETARGETING: 'retargeting',
   SEASONAL: 'seasonal',
-  PHONEPE_SETUP: 'phonepe_setup',
 } as const;
 
 export type DeeplinkCampaign =
@@ -406,30 +405,7 @@ export const PAYWALL_RULES = [
     priority: 10,
   },
 
-  // Rule 12: PhonePe Autopay - For users selecting PhonePe payment method
-  {
-    name: 'phonepe_autopay',
-    conditions: {
-      all: [
-        {
-          fact: 'deeplink',
-          operator: 'equal',
-          value: DEEPLINK_CAMPAIGNS.PHONEPE_SETUP,
-        },
-      ],
-    },
-    event: {
-      type: 'phonepe_autopay',
-      params: {
-        plan: PAYWALL_PLANS.PHONEPE_AUTOPAY,
-        reason: 'PhonePe UPI Autopay setup',
-        priority: 25,
-      },
-    },
-    priority: 25,
-  },
-
-  // Rule 13: Default Fallback - This should ALWAYS match
+  // Rule 12: Default Fallback - This should ALWAYS match
   {
     name: 'default_fallback',
     conditions: {

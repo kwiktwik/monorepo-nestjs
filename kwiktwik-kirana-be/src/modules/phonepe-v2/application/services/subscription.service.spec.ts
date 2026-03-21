@@ -105,11 +105,11 @@ describe('SubscriptionService', () => {
         setupRequest.appId,
         expect.objectContaining({
           merchantOrderId: expect.any(String),
-          amount: 10000,
+          amount: 100, // ₹1 from plan
           paymentFlow: expect.objectContaining({
             type: 'SUBSCRIPTION_CHECKOUT_SETUP',
             subscriptionDetails: expect.objectContaining({
-              maxAmount: 100000,
+              maxAmount: 19900, // ₹199 from plan
               frequency: 'MONTHLY',
             }),
           }),
@@ -163,7 +163,7 @@ describe('SubscriptionService', () => {
       expect(httpClient.setupSubscription).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          amount: 10000, // 100 INR -> 10000 paise
+          amount: 100, // ₹1 -> 100 paise (from plan_PHONEPE_AUTOPAY_001)
         }),
       );
     });

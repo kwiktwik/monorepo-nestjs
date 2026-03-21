@@ -20,6 +20,7 @@ export interface PaywallContext {
   appId: string;
   userType: UserType;
   deeplink: DeeplinkCampaign;
+  plan_id?: string;
   language?: string;
 }
 
@@ -82,8 +83,36 @@ export class ConfigService {
       // Deep clone the config to avoid mutating the original
       const dynamicConfig = JSON.parse(JSON.stringify(config));
 
-      // Use the rules engine to determine the appropriate plan
-      const paywallResult = await this.paywallEngine.determinePlan(context);
+      let paywallResult;
+
+      // If plan_id is provided, use that plan directly
+      if (context.plan_id) {
+        const { PAYWALL_PLANS } = require('./config.data');
+        const planEntry = Object.entries(PAYWALL_PLANS).find(
+          ([, plan]: [string, any]) => plan.plan_id === context.plan_id,
+        );
+
+        if (planEntry) {
+          const [planName, plan] = planEntry;
+          paywallResult = {
+            plan: plan as (typeof PAYWALL_PLANS)['PHONEPE_AUTOPAY'],
+            reason: `Direct plan selection: ${planName}`,
+            ruleName: 'direct_plan_selection',
+          };
+          this.logger.log(
+            `App: ${appId}, Plan ID: ${context.plan_id} -> Direct plan selection: ${planName}`,
+          );
+        } else {
+          // Fallback to rules engine if plan_id not found
+          this.logger.warn(
+            `Plan ID ${context.plan_id} not found, falling back to rules engine`,
+          );
+          paywallResult = await this.paywallEngine.determinePlan(context);
+        }
+      } else {
+        // Use the rules engine to determine the appropriate plan
+        paywallResult = await this.paywallEngine.determinePlan(context);
+      }
 
       this.logger.log(
         `App: ${appId}, User: ${context.userType}, Deeplink: ${context.deeplink} -> Plan: ${paywallResult.plan.plan_id} (${paywallResult.ruleName})`,
@@ -115,6 +144,7 @@ export class ConfigService {
           appId: context.appId,
           userType: context.userType,
           deeplink: context.deeplink,
+          plan_id: context.plan_id,
         },
       };
 

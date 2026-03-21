@@ -15,8 +15,6 @@ import {
   USER_TYPES,
   DEEPLINK_CAMPAIGNS,
   SUPPORTED_LANGUAGES,
-  type UserType,
-  type DeeplinkCampaign,
 } from './config.data';
 
 @ApiTags('config')
@@ -41,18 +39,13 @@ export class ConfigController {
   }
 
   @Get('v3')
-  @ApiOperation({ summary: 'Get app configuration with dynamic paywall (v3)' })
+  @ApiOperation({ summary: 'Get app configuration with plan selection (v3)' })
   @ApiQuery({
-    name: 'userType',
-    enum: Object.values(USER_TYPES),
+    name: 'plan_id',
     required: false,
-    description: 'User type for paywall selection',
-  })
-  @ApiQuery({
-    name: 'deeplink',
-    enum: Object.values(DEEPLINK_CAMPAIGNS),
-    required: false,
-    description: 'Deeplink campaign source',
+    description:
+      'Plan ID to get specific plan configuration (e.g., plan_PHONEPE_AUTOPAY_001). If not provided, uses rules engine.',
+    example: 'plan_PHONEPE_AUTOPAY_001',
   })
   @ApiQuery({
     name: 'language',
@@ -71,23 +64,15 @@ export class ConfigController {
   async getConfigV3(
     @AppId() appId: string,
     @CurrentUser() user: any,
-    @Query('userType') userType?: UserType,
-    @Query('deeplink') deeplink?: DeeplinkCampaign,
+    @Query('plan_id') plan_id?: string,
     @Query('language') language?: string,
     @Query('lang') lang?: string,
   ) {
-    // Determine user type from query or user object
-    const resolvedUserType: UserType =
-      userType || user?.userType || USER_TYPES.NEW;
-
-    // Determine deeplink from query or user object
-    const resolvedDeeplink: DeeplinkCampaign =
-      deeplink || user?.deeplink || DEEPLINK_CAMPAIGNS.NONE;
-
     const context = {
       appId,
-      userType: resolvedUserType,
-      deeplink: resolvedDeeplink,
+      userType: USER_TYPES.NEW,
+      deeplink: DEEPLINK_CAMPAIGNS.NONE,
+      plan_id,
       language: language || lang || user?.language || 'en',
     };
 

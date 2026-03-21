@@ -32,6 +32,8 @@
     "db:copy-quotes": "node scripts/copy-quotes-from-kirana-fe.mjs",
     "manage-users": "node scripts/manage-users.mjs",
     "generate:jwt": "node scripts/generate-mock-jwt.mjs",
+    "generate:jwt:8855866494": "node scripts/generate-jwt-8855866494.mjs",
+    "generate:jwt:otp": "node scripts/generate-jwt-otp-flow.mjs",
     "generate:paywall-tokens": "node scripts/generate-paywall-tokens.mjs",
     "test:checkout-abandoned": "node scripts/test-checkout-abandoned.mjs",
     "test:paywall": "node scripts/test-paywall-rules.mjs"
