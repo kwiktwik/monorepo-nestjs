@@ -162,6 +162,23 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       otpLogin: true,
       truecallerLogin: true,
       googleLogin: true,
+      gateway: Gateway.PHONEPE,
+    },
+  },
+  "com.sangam.kiranaapps": {
+    id: "com.sangam.kiranaapps",
+    name: "Sangam Kirana Apps",
+    description: "Sangam Kirana Apps mobile application",
+    enabled: true,
+    rateLimit: {
+      maxRequests: 999999,
+      windowMs: 15 * 60 * 1000, // 15 minutes
+    },
+    features: {
+      otpLogin: true,
+      truecallerLogin: true,
+      googleLogin: true,
+      gateway: Gateway.PHONEPE,
     },
   },
 };
