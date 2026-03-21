@@ -593,6 +593,9 @@ export class MigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
+    console.log(
+      `[MIGRATION_DEBUG] migrateTable called: tableName=${tableName}, userId=${userId}, recordsCount=${records?.length || 0}`,
+    );
     if (!records || records.length === 0) {
       return [];
     }

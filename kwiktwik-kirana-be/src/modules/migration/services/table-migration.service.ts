@@ -141,6 +141,35 @@ export class TableMigrationService {
   /**
    * Migrate user_metadata table
    */
+  private async ensureUserExists(userId: string, record: any): Promise<void> {
+    // Check if user exists
+    const existingUser = await this.db
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      console.log(`[MIGRATION_DEBUG] Creating user with id=${userId}`);
+      // Create user from metadata record
+      await this.db.insert(schema.user).values({
+        id: userId,
+        name: record.name || 'Unknown',
+        email: record.email || `${userId}@placeholder.com`,
+        emailVerified: record.emailVerified || false,
+        phoneNumber: record.phoneNumber,
+        phoneNumberVerified: record.phoneNumberVerified || false,
+        image: record.image,
+        isDeleted: false,
+        createdAt: parseDate(record.createdAt) || new Date(),
+        updatedAt: parseDate(record.updatedAt) || new Date(),
+      });
+      console.log(`[MIGRATION_DEBUG] User created successfully`);
+    } else {
+      console.log(`[MIGRATION_DEBUG] User already exists`);
+    }
+  }
+
   async migrateMetadata(
     records: any[],
     idMapper: IdMapper,
@@ -150,6 +179,9 @@ export class TableMigrationService {
       `[MIGRATION_DEBUG] migrateMetadata called with ${records?.length || 0} records for user ${userId}`,
     );
     if (!records || records.length === 0) return [];
+
+    // Ensure user exists before migrating metadata
+    await this.ensureUserExists(userId, records[0]);
 
     const migrated: any[] = [];
     for (const record of records) {
