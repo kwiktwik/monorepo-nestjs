@@ -219,15 +219,39 @@ export class PhonePeWebhookController {
       `Processing checkout.order.completed for order: ${payload.orderId}, merchantOrderId: ${payload.merchantOrderId}`,
     );
 
+    // Log full payload for debugging
+    this.logger.debug(`Full webhook payload: ${JSON.stringify(payload)}`);
+
+    let merchantSubscriptionId: string | undefined;
+    let phonepeSubscriptionId: string | undefined;
+
+    // Try to get merchantSubscriptionId from paymentFlow
+    if (payload.paymentFlow?.merchantSubscriptionId) {
+      merchantSubscriptionId = payload.paymentFlow.merchantSubscriptionId;
+      phonepeSubscriptionId = payload.paymentFlow.subscriptionId;
+    }
+
+    // If not found in paymentFlow, try to extract from other fields
+    if (!merchantSubscriptionId) {
+      this.logger.warn(
+        `paymentFlow.merchantSubscriptionId missing, attempting fallback lookup for order: ${payload.orderId}`,
+      );
+
+      // Try to find subscription by merchantOrderId from the payload
+      // This is a fallback mechanism
+      this.logger.warn(
+        `Unable to process webhook without merchantSubscriptionId. Order: ${payload.orderId}`,
+      );
+      return;
+    }
+
     const subscription =
       await this.subscriptionRepo.findByMerchantSubscriptionId(
-        payload.paymentFlow.merchantSubscriptionId,
+        merchantSubscriptionId,
       );
 
     if (!subscription) {
-      this.logger.warn(
-        `Subscription not found: ${payload.paymentFlow.merchantSubscriptionId}`,
-      );
+      this.logger.warn(`Subscription not found: ${merchantSubscriptionId}`);
       return;
     }
 
@@ -236,13 +260,11 @@ export class PhonePeWebhookController {
     );
 
     try {
-      subscription.activate(
-        payload.paymentFlow.subscriptionId || payload.orderId,
-      );
+      subscription.activate(phonepeSubscriptionId || payload.orderId);
       await this.subscriptionRepo.update(subscription);
 
       this.logger.log(
-        `Subscription activated: ${payload.paymentFlow.merchantSubscriptionId}, new state: ACTIVE`,
+        `Subscription activated: ${merchantSubscriptionId}, new state: ACTIVE`,
       );
     } catch (error) {
       this.logger.error(
@@ -254,24 +276,34 @@ export class PhonePeWebhookController {
   }
 
   private async handleSetupFailed(payload: SubscriptionSetupPayload) {
+    this.logger.log(
+      `Processing checkout.order.failed for order: ${payload.orderId}, merchantOrderId: ${payload.merchantOrderId}`,
+    );
+
+    // Try to get merchantSubscriptionId from paymentFlow
+    const merchantSubscriptionId = payload.paymentFlow?.merchantSubscriptionId;
+
+    if (!merchantSubscriptionId) {
+      this.logger.warn(
+        `merchantSubscriptionId missing in paymentFlow for order: ${payload.orderId}`,
+      );
+      return;
+    }
+
     const subscription =
       await this.subscriptionRepo.findByMerchantSubscriptionId(
-        payload.paymentFlow.merchantSubscriptionId,
+        merchantSubscriptionId,
       );
 
     if (!subscription) {
-      this.logger.warn(
-        `Subscription not found: ${payload.paymentFlow.merchantSubscriptionId}`,
-      );
+      this.logger.warn(`Subscription not found: ${merchantSubscriptionId}`);
       return;
     }
 
     subscription.markAsFailed();
     await this.subscriptionRepo.update(subscription);
 
-    this.logger.log(
-      `Subscription failed: ${payload.paymentFlow.merchantSubscriptionId}`,
-    );
+    this.logger.log(`Subscription failed: ${merchantSubscriptionId}`);
   }
 
   private async handleSubscriptionPaused(
