@@ -109,7 +109,7 @@ const DATE_FIELDS = [
 ];
 
 /**
- * Parse all date fields in a record
+ * Parse all date fields in a record and convert undefined to null
  */
 function parseRecordDates(record: any): any {
   if (!record || typeof record !== 'object') {
@@ -123,10 +123,22 @@ function parseRecordDates(record: any): any {
     } else if (typeof value === 'object' && value !== null) {
       parsed[key] = parseRecordDates(value);
     } else {
-      parsed[key] = value;
+      // Convert undefined to null for database compatibility
+      parsed[key] = value === undefined ? null : value;
     }
   }
   return parsed;
+}
+
+/**
+ * Clean object by removing undefined values (convert to null)
+ */
+function cleanUndefined(obj: any): any {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    cleaned[key] = value === undefined ? null : value;
+  }
+  return cleaned;
 }
 
 @Injectable()
