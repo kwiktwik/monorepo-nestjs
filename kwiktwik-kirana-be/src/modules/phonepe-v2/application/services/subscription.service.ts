@@ -29,7 +29,7 @@ export interface SetupSubscriptionRequest {
   userId: string;
   appId: string;
   planId: string; // Plan ID from PAYWALL_PLANS (e.g., 'plan_PHONEPE_AUTOPAY_001')
-  redirectUrl: string;
+  redirectUrl?: string; // Optional - defaults to app callback URL
   merchantSubscriptionId?: string;
   metadata?: Record<string, unknown>;
 }
