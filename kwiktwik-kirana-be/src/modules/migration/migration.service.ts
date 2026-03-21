@@ -378,11 +378,6 @@ export class MigrationService {
           });
         }
 
-        // Check if any critical tables failed
-        const criticalFailures = failedTables.filter((table) =>
-          CRITICAL_TABLES.includes(table),
-        );
-
         // All tables are critical - if any failed, migration fails
         if (failedTables.length > 0) {
           stateMachine.forceTransition(MigrationState.FAILED);
