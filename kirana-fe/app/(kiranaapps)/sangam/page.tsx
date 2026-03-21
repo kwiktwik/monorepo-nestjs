@@ -70,7 +70,7 @@ export default function SangamLanding() {
           <div className="relative group perspective-1000">
             <div className="relative z-10 transition-transform duration-500 group-hover:rotate-y-6">
               <Image 
-                src="/Users/rajat/.gemini/antigravity/brain/2292f802-2a34-4d53-a21c-e866a09934bc/sangam_hero_wallpaper_1774093204588.png" 
+                src="/sangam/hero.png" 
                 alt="Sangam App Showcase" 
                 width={640} 
                 height={640} 
@@ -119,7 +119,7 @@ export default function SangamLanding() {
 
           <div className="relative rounded-[4rem] overflow-hidden bg-gray-900 shadow-3xl group">
              <Image 
-                src="/Users/rajat/.gemini/antigravity/brain/2292f802-2a34-4d53-a21c-e866a09934bc/religious_wallpaper_collection_1774093229466.png" 
+                src="/sangam/collection.png" 
                 alt="Religious Wallpaper Collection Grid" 
                 width={1280} 
                 height={800} 
