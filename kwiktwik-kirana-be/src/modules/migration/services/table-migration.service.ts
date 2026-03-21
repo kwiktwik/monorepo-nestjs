@@ -36,7 +36,6 @@ export class TableMigrationService {
 
     if (existingUser.length === 0) {
       this.logger.log(`Creating user with id=${userId}`);
-
       await this.db.insert(schema.user).values({
         id: userId,
         name: record?.name || 'Unknown',
@@ -49,53 +48,8 @@ export class TableMigrationService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-
       this.logger.log(`User ${userId} created successfully`);
     }
-  }
-
-  /**
-   * Generic migration handler with transformation
-   */
-  private async migrateTable<T>(
-    records: any[],
-    tableName: string,
-    schemaTable: any,
-    transformFn: (
-      records: any[],
-      idMapper: IdMapper,
-    ) => { success: any[]; failed: any[] },
-    idMapper: IdMapper,
-    userId: string,
-  ): Promise<T[]> {
-    if (!records || records.length === 0) return [];
-
-    const { success, failed } = transformFn(records, idMapper);
-
-    if (failed.length > 0) {
-      this.logger.warn(
-        `Failed to transform ${failed.length} ${tableName} records`,
-      );
-    }
-
-    const migrated: T[] = [];
-    for (const record of success) {
-      try {
-        await this.db.insert(schemaTable).values(record);
-        migrated.push(record);
-      } catch (error) {
-        this.logger.error(
-          `Failed to insert ${tableName} record:`,
-          error instanceof Error ? error.message : 'Unknown error',
-        );
-        // Continue with other records
-      }
-    }
-
-    this.logger.log(
-      `Migrated ${migrated.length}/${records.length} ${tableName} records`,
-    );
-    return migrated;
   }
 
   /**
@@ -107,13 +61,10 @@ export class TableMigrationService {
     userId: string,
   ): Promise<any[]> {
     if (!records || records.length === 0) return [];
-
-    // Ensure user exists first
     await this.ensureUserExists(userId, records[0]);
 
     const { success, failed } =
       this.transformationService.transformUserMetadata(records, userId);
-
     if (failed.length > 0) {
       this.logger.warn(`Failed to transform ${failed.length} metadata records`);
     }
@@ -121,7 +72,6 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of success) {
       try {
-        // Check if record exists
         const existing = await this.db
           .select()
           .from(schema.userMetadata)
@@ -134,7 +84,6 @@ export class TableMigrationService {
           .limit(1);
 
         if (existing.length > 0) {
-          // Update existing
           await this.db
             .update(schema.userMetadata)
             .set({
@@ -144,10 +93,8 @@ export class TableMigrationService {
             })
             .where(eq(schema.userMetadata.id, existing[0].id));
         } else {
-          // Insert new
           await this.db.insert(schema.userMetadata).values(record);
         }
-
         migrated.push(record);
       } catch (error) {
         this.logger.error(
@@ -169,15 +116,30 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
-    return this.migrateTable(
+    if (!records || records.length === 0) return [];
+    const { success, failed } = this.transformationService.transformAccounts(
       records,
-      'accounts',
-      schema.account,
-      (recs, mapper) =>
-        this.transformationService.transformAccounts(recs, mapper),
       idMapper,
-      userId,
     );
+    if (failed.length > 0) {
+      this.logger.warn(`Failed to transform ${failed.length} account records`);
+    }
+
+    const migrated: any[] = [];
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.account).values(record);
+        migrated.push(record);
+      } catch (error) {
+        this.logger.error(
+          `Failed to insert account:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    }
+
+    this.logger.log(`Migrated ${migrated.length} account records`);
+    return migrated;
   }
 
   /**
@@ -192,7 +154,6 @@ export class TableMigrationService {
       records,
       userId,
     );
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} push token records`,
@@ -202,7 +163,6 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of success) {
       try {
-        // Check if token already exists
         const existing = await this.db
           .select()
           .from(schema.pushTokens)
@@ -241,7 +201,6 @@ export class TableMigrationService {
   ): Promise<any[]> {
     const { success, failed } =
       this.transformationService.transformDeviceSessions(records, userId);
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} device session records`,
@@ -276,7 +235,6 @@ export class TableMigrationService {
       records,
       userId,
     );
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} user image records`,
@@ -309,7 +267,6 @@ export class TableMigrationService {
   ): Promise<any[]> {
     const { success, failed } =
       this.transformationService.transformPlayStoreRatings(records, userId);
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} play store rating records`,
@@ -341,7 +298,6 @@ export class TableMigrationService {
     userId: string,
   ): Promise<any[]> {
     this.logger.log(`Migrating ${records?.length || 0} subscriptions`);
-
     const { success, failed } =
       this.transformationService.transformSubscriptions(records, idMapper);
 
@@ -352,42 +308,41 @@ export class TableMigrationService {
       );
     }
 
-    this.logger.log(`Successfully transformed ${success.length} subscriptions`);
-
     const migrated: any[] = [];
     for (const record of success) {
       try {
-        // Check if subscription already exists by razorpaySubscriptionId
+        // Check if subscription already exists
         if (record.razorpaySubscriptionId) {
           const existing = await this.db
             .select()
             .from(schema.subscriptions)
-            .where(eq(schema.subscriptions.razorpaySubscriptionId, record.razorpaySubscriptionId))
+            .where(
+              eq(
+                schema.subscriptions.razorpaySubscriptionId,
+                record.razorpaySubscriptionId,
+              ),
+            )
             .limit(1);
 
           if (existing.length > 0) {
-            this.logger.log(`Subscription already exists, skipping: ${record.razorpaySubscriptionId}`);
+            this.logger.log(
+              `Subscription already exists, skipping: ${record.razorpaySubscriptionId}`,
+            );
             continue;
           }
         }
 
-        this.logger.debug(`Inserting subscription: ${record.id}`);
         await this.db.insert(schema.subscriptions).values(record);
         migrated.push(record);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         const errorCode = (error as any)?.code || '';
         this.logger.error(
-          `Failed to insert subscription ${record.id}: ${errorMessage} (code: ${errorCode})`
+          `Failed to insert subscription ${record.id}: ${errorMessage} (code: ${errorCode})`,
         );
       }
     }
-
-    this.logger.log(
-      `Migrated ${migrated.length}/${records.length} subscription records`,
-    );
-    return migrated;
-  }
 
     this.logger.log(
       `Migrated ${migrated.length}/${records.length} subscription records`,
@@ -407,7 +362,6 @@ export class TableMigrationService {
       records,
       idMapper,
     );
-
     if (failed.length > 0) {
       this.logger.warn(`Failed to transform ${failed.length} order records`);
     }
@@ -420,35 +374,9 @@ export class TableMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        const errorDetail = (error as any)?.detail || '';
         const errorCode = (error as any)?.code || '';
-        const errorTable = (error as any)?.table || '';
-        const errorConstraint = (error as any)?.constraint || '';
-        const errorRoutine = (error as any)?.routine || '';
-        const errorCause = (error as any)?.cause;
-
         this.logger.error(
-          `Failed to insert order ${record.id}: ${errorMessage}`,
-        );
-        this.logger.error(
-          `Error details - code: ${errorCode}, table: ${errorTable}, constraint: ${errorConstraint}, detail: ${errorDetail}, routine: ${errorRoutine}`,
-        );
-
-        // Log cause if exists
-        if (errorCause) {
-          this.logger.error(
-            `Error cause: ${JSON.stringify(errorCause, Object.getOwnPropertyNames(errorCause))}`,
-          );
-        }
-
-        // Log full error object
-        this.logger.error(
-          `Full error: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
-        );
-
-        // Log the problematic record for debugging
-        this.logger.error(
-          `Problematic order record: ${JSON.stringify(record, null, 2)}`,
+          `Failed to insert order ${record.id}: ${errorMessage} (code: ${errorCode})`,
         );
       }
     }
@@ -469,7 +397,6 @@ export class TableMigrationService {
   ): Promise<any[]> {
     const { success, failed } =
       this.transformationService.transformAbandonedCheckouts(records, userId);
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} abandoned checkout records`,
@@ -502,7 +429,6 @@ export class TableMigrationService {
   ): Promise<any[]> {
     const { success, failed } =
       this.transformationService.transformPhonepeOrders(records, idMapper);
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} PhonePe order records`,
@@ -538,7 +464,6 @@ export class TableMigrationService {
         records,
         idMapper,
       );
-
     if (failed.length > 0) {
       this.logger.warn(
         `Failed to transform ${failed.length} PhonePe subscription records`,
