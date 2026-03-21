@@ -101,6 +101,8 @@ export class MigrationService {
     // Variables to track migration state for rollback
     let userId = '';
     const migratedTables: string[] = [];
+    const failedTables: string[] = [];
+    const CRITICAL_TABLES = ['user_metadata', 'accounts']; // Tables that must succeed
 
     try {
       // Step 1: Create migration log
@@ -301,25 +303,35 @@ export class MigrationService {
             timestamp: new Date(),
           });
 
+          // Get source records for this table
+          const sourceRecords = sourceData[
+            this.getTablePropertyName(tableName)
+          ] as any[];
+          const sourceCount = sourceRecords?.length || 0;
+
           // Migrate table
           const records = await this.migrateTable(
             tableName,
-            sourceData[this.getTablePropertyName(tableName)] as any[],
+            sourceRecords,
             idMapper,
             userId,
           );
 
-          // Only mark table as migrated if records were actually inserted
+          // Track success/failure
           if (records.length > 0) {
             migratedTables.push(tableName);
             totalRecords += records.length;
             this.logger.log(
-              `Successfully migrated ${records.length} records to ${tableName}`,
+              `Successfully migrated ${records.length}/${sourceCount} records to ${tableName}`,
+            );
+          } else if (sourceCount > 0) {
+            // Had source data but failed to migrate any
+            failedTables.push(tableName);
+            this.logger.error(
+              `FAILED to migrate ${sourceCount} records from ${tableName} - all records failed`,
             );
           } else {
-            this.logger.warn(
-              `No records were migrated to ${tableName} - table will not be marked as migrated`,
-            );
+            this.logger.log(`No source data for ${tableName} - skipping`);
           }
         }
 
@@ -366,6 +378,26 @@ export class MigrationService {
           });
         }
 
+        // Check if any critical tables failed
+        const criticalFailures = failedTables.filter((table) =>
+          CRITICAL_TABLES.includes(table),
+        );
+
+        if (criticalFailures.length > 0) {
+          stateMachine.forceTransition(MigrationState.FAILED);
+          await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
+            errorCode: MigrationErrorCode.DATA_INTEGRITY_ERROR,
+            errorMessage: `Critical tables failed to migrate: ${criticalFailures.join(', ')}`,
+            tablesMigrated,
+            tablesFailed: failedTables,
+          });
+
+          throw new InternalServerErrorException({
+            code: MigrationErrorCode.DATA_INTEGRITY_ERROR,
+            message: `Migration failed: Critical tables could not be migrated: ${criticalFailures.join(', ')}`,
+          });
+        }
+
         // Step 9: Issue JWT
         const token = this.jwtService.sign({
           sub: userId,
@@ -373,14 +405,21 @@ export class MigrationService {
           authProvider: 'migration',
         });
 
-        // Success!
+        // Success! (Possibly with some non-critical tables failed)
+        if (failedTables.length > 0) {
+          this.logger.warn(
+            `Migration completed with warnings. Failed tables: ${failedTables.join(', ')}`,
+          );
+        }
+
         stateMachine.transitionTo(MigrationState.COMPLETED);
         await this.updateMigrationStatus(
           migrationId,
           MigrationState.COMPLETED,
           {
             destinationHash: destHash,
-            tablesMigrated: migratedTables,
+            tablesMigrated,
+            tablesFailed: failedTables,
             recordsCount: totalRecords,
           },
         );
