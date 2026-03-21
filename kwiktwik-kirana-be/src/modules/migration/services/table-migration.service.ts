@@ -385,11 +385,32 @@ export class TableMigrationService {
           error instanceof Error ? error.message : 'Unknown error';
         const errorDetail = (error as any)?.detail || '';
         const errorCode = (error as any)?.code || '';
+        const errorTable = (error as any)?.table || '';
+        const errorConstraint = (error as any)?.constraint || '';
+        const errorRoutine = (error as any)?.routine || '';
+        const errorCause = (error as any)?.cause;
+
         this.logger.error(
-          `Failed to insert order ${record.id}: ${errorMessage} (code: ${errorCode}, detail: ${errorDetail})`,
+          `Failed to insert order ${record.id}: ${errorMessage}`,
         );
+        this.logger.error(
+          `Error details - code: ${errorCode}, table: ${errorTable}, constraint: ${errorConstraint}, detail: ${errorDetail}, routine: ${errorRoutine}`,
+        );
+
+        // Log cause if exists
+        if (errorCause) {
+          this.logger.error(
+            `Error cause: ${JSON.stringify(errorCause, Object.getOwnPropertyNames(errorCause))}`,
+          );
+        }
+
+        // Log full error object
+        this.logger.error(
+          `Full error: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
+        );
+
         // Log the problematic record for debugging
-        this.logger.debug(
+        this.logger.error(
           `Problematic order record: ${JSON.stringify(record, null, 2)}`,
         );
       }

@@ -15,7 +15,7 @@ export class IdMapper {
    * Generate new ID for a record
    */
   generateNewId(tableName: string, oldId: string): string {
-    const newId = nanoid();
+    const newId = nanoid(10); // Generate 10 character ID to match schema
     this.setMapping(tableName, oldId, newId);
     return newId;
   }
