@@ -146,11 +146,18 @@ export class TableMigrationService {
     idMapper: IdMapper,
     userId: string,
   ): Promise<any[]> {
+    console.log(
+      `[MIGRATION_DEBUG] migrateMetadata called with ${records?.length || 0} records for user ${userId}`,
+    );
     if (!records || records.length === 0) return [];
 
     const migrated: any[] = [];
     for (const record of records) {
       const parsedRecord = parseRecordDates(record);
+      console.log(`[MIGRATION_DEBUG] Processing record:`, {
+        appId: parsedRecord.appId,
+        hasUpiVpa: !!parsedRecord.upiVpa,
+      });
       const mappedRecord = {
         userId: userId,
         appId: parsedRecord.appId || 'com.kiranaapps.app',
@@ -161,6 +168,9 @@ export class TableMigrationService {
       };
 
       // Check if record exists first
+      console.log(
+        `[MIGRATION_DEBUG] Checking if record exists for userId=${userId}, appId=${mappedRecord.appId}`,
+      );
       const existing = await this.db
         .select()
         .from(schema.userMetadata)
@@ -172,7 +182,14 @@ export class TableMigrationService {
         )
         .limit(1);
 
+      console.log(
+        `[MIGRATION_DEBUG] Found ${existing.length} existing records`,
+      );
+
       if (existing.length > 0) {
+        console.log(
+          `[MIGRATION_DEBUG] Updating existing record with id=${existing[0].id}`,
+        );
         // Update existing record
         await this.db
           .update(schema.userMetadata)
@@ -183,6 +200,7 @@ export class TableMigrationService {
           })
           .where(eq(schema.userMetadata.id, existing[0].id));
       } else {
+        console.log(`[MIGRATION_DEBUG] Inserting new record`);
         // Insert new record
         await this.db.insert(schema.userMetadata).values(mappedRecord);
       }
