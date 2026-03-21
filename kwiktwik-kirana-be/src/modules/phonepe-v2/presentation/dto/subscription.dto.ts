@@ -153,6 +153,22 @@ export class SubscriptionResponseDto {
   merchantId: string;
 }
 
+export class SyncStatusRequestDto {
+  @ApiProperty({
+    description: 'Merchant order ID from subscription setup',
+    example: 'order_xyz789',
+  })
+  @IsString()
+  merchantOrderId: string;
+
+  @ApiProperty({
+    description: 'Merchant subscription ID',
+    example: 'sub_abc123',
+  })
+  @IsString()
+  merchantSubscriptionId: string;
+}
+
 export class RedemptionResponseDto {
   @ApiProperty({
     description: 'PhonePe order ID - required for SDK initialization',
