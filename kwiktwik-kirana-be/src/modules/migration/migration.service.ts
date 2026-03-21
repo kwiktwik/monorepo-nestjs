@@ -518,7 +518,8 @@ export class MigrationService {
   }
 
   /**
-   * Check for partial data
+   * Check for partial data and clean it up if found
+   * This handles cases where previous migration attempts failed mid-way
    */
   private async checkPartialData(
     userId: string,
@@ -534,9 +535,18 @@ export class MigrationService {
       }
     }
 
+    // If partial data found, clean it up (it's from a failed previous attempt)
+    if (tablesWithData.length > 0) {
+      this.logger.warn(
+        `Found partial data from previous failed migration for user ${userId}. ` +
+          `Cleaning up tables: ${tablesWithData.join(', ')}`,
+      );
+      await this.rollbackMigration(userId, tablesWithData);
+    }
+
     return {
-      hasPartialData: tablesWithData.length > 0,
-      tablesWithData,
+      hasPartialData: false, // After cleanup, no partial data remains
+      tablesWithData: [],
     };
   }
 
