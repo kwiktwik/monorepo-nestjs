@@ -40,6 +40,7 @@ export interface SetupSubscriptionRequest {
 
 export interface SetupSubscriptionResponse {
   orderId: string;
+  token: string;
   merchantSubscriptionId: string;
   merchantOrderId: string;
   redirectUrl: string;
@@ -164,8 +165,20 @@ export class SubscriptionService {
     // Get merchant ID for SDK configuration
     const credentials = this.authManager.getCredentials(request.appId);
 
+    // Extract token from redirectUrl for mobile SDK
+    let sdkToken = '';
+    try {
+      const url = new URL(response.redirectUrl);
+      sdkToken = url.searchParams.get('token') || '';
+    } catch (error) {
+      this.logger.warn(
+        `Failed to extract token from redirectUrl: ${error.message}`,
+      );
+    }
+
     return {
       orderId: response.orderId,
+      token: sdkToken,
       merchantSubscriptionId,
       merchantOrderId,
       redirectUrl: response.redirectUrl,

@@ -139,6 +139,13 @@ export class SubscriptionResponseDto {
   orderId: string;
 
   @ApiProperty({
+    description:
+      'SDK Token - extracted from redirectUrl for mobile SDK initialization',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  token: string;
+
+  @ApiProperty({
     description: 'Your internal merchant subscription ID',
     example: 'sub_abc123',
   })
