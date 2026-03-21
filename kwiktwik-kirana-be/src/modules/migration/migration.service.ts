@@ -147,6 +147,40 @@ export class MigrationService {
         userId = sessionData.userId;
         const phoneNumber = sessionData.phoneNumber;
 
+        // Check if user is already migrated
+        const existingMigration = await this.db
+          .select()
+          .from(schema.migrationLogs)
+          .where(
+            and(
+              eq(schema.migrationLogs.userId, userId),
+              eq(schema.migrationLogs.status, MigrationState.COMPLETED),
+            ),
+          )
+          .limit(1);
+
+        if (existingMigration.length > 0) {
+          // User already migrated - return existing JWT token
+          this.logger.log(
+            `User ${userId} already migrated (migrationId: ${existingMigration[0].id}). Returning existing token.`,
+          );
+          const token = this.jwtService.sign({
+            sub: userId,
+            appId: 'com.kiranaapps.app',
+            authProvider: 'migration',
+          });
+
+          return {
+            success: true,
+            migrationId: existingMigration[0].id,
+            userId,
+            token,
+            migratedTables: existingMigration[0].tablesMigrated || [],
+            recordsMigrated: existingMigration[0].recordsCount || 0,
+            duration: existingMigration[0].duration || 0,
+          };
+        }
+
         // Step 4: Fetch source data
         stateMachine.transitionTo(MigrationState.FETCHING_SOURCE_DATA);
         await this.updateMigrationState(
