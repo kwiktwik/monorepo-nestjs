@@ -59,21 +59,47 @@ export const SUBSCRIPTIONS_MAPPING: TableMapping = {
       defaultValue: null,
     },
     { newField: 'status', oldFields: ['status'], defaultValue: 'created' },
-    { newField: 'quantity', oldFields: ['quantity'], defaultValue: 1 },
+    {
+      newField: 'quantity',
+      oldFields: ['quantity'],
+      defaultValue: 1,
+      transform: (value) => {
+        if (typeof value === 'string') return parseInt(value, 10) || 1;
+        if (typeof value === 'number') return Math.floor(value);
+        return 1;
+      },
+    },
     {
       newField: 'totalCount',
       oldFields: ['totalCount', 'total_count'],
       defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') return parseInt(value, 10) || null;
+        if (typeof value === 'number') return Math.floor(value);
+        return null;
+      },
     },
     {
       newField: 'paidCount',
       oldFields: ['paidCount', 'paid_count'],
       defaultValue: 0,
+      transform: (value) => {
+        if (typeof value === 'string') return parseInt(value, 10) || 0;
+        if (typeof value === 'number') return Math.floor(value);
+        return 0;
+      },
     },
     {
       newField: 'remainingCount',
       oldFields: ['remainingCount', 'remaining_count'],
       defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') return parseInt(value, 10) || null;
+        if (typeof value === 'number') return Math.floor(value);
+        return null;
+      },
     },
     {
       newField: 'startAt',

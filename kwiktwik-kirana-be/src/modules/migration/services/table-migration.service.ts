@@ -357,15 +357,37 @@ export class TableMigrationService {
     const migrated: any[] = [];
     for (const record of success) {
       try {
+        // Check if subscription already exists by razorpaySubscriptionId
+        if (record.razorpaySubscriptionId) {
+          const existing = await this.db
+            .select()
+            .from(schema.subscriptions)
+            .where(eq(schema.subscriptions.razorpaySubscriptionId, record.razorpaySubscriptionId))
+            .limit(1);
+
+          if (existing.length > 0) {
+            this.logger.log(`Subscription already exists, skipping: ${record.razorpaySubscriptionId}`);
+            continue;
+          }
+        }
+
         this.logger.debug(`Inserting subscription: ${record.id}`);
         await this.db.insert(schema.subscriptions).values(record);
         migrated.push(record);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorCode = (error as any)?.code || '';
         this.logger.error(
-          `Failed to insert subscription ${record.id}:`,
-          error instanceof Error ? error.message : 'Unknown error',
+          `Failed to insert subscription ${record.id}: ${errorMessage} (code: ${errorCode})`
         );
       }
+    }
+
+    this.logger.log(
+      `Migrated ${migrated.length}/${records.length} subscription records`,
+    );
+    return migrated;
+  }
     }
 
     this.logger.log(
