@@ -14,6 +14,24 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../database/schema';
 import { IdMapper } from '../utils/id-mapper.util';
 
+/**
+ * Parse a date string or Date object into a valid Date
+ * Returns null if the value is null/undefined or invalid
+ */
+function parseDate(value: unknown): Date | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
 @Injectable()
 export class TableMigrationService {
   private readonly logger = new Logger(TableMigrationService.name);
@@ -37,10 +55,13 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('user_metadata', record.id);
       const mappedRecord = {
-        ...record,
         id: newId,
         userId: userId,
-        // Keep other fields as-is
+        appId: record.appId,
+        upiVpa: record.upiVpa,
+        audioLanguage: record.audioLanguage,
+        createdAt: parseDate(record.createdAt) || new Date(),
+        updatedAt: parseDate(record.updatedAt) || new Date(),
       };
 
       await this.db.insert(schema.userMetadata).values(mappedRecord);
