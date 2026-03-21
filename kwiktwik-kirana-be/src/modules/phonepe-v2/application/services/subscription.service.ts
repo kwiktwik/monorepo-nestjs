@@ -95,6 +95,9 @@ export class SubscriptionService {
   ): Promise<SetupSubscriptionResponse> {
     const merchantSubscriptionId = request.merchantSubscriptionId || nanoid(10);
     const merchantOrderId = nanoid(10);
+    const redirectUrl =
+      request.redirectUrl ||
+      `https://services.kiranaapps.com/api/phonepe/callback`;
 
     // Check if merchant subscription ID already exists
     const exists = await this.subscriptionRepo.existsByMerchantSubscriptionId(
@@ -176,7 +179,7 @@ export class SubscriptionService {
       paymentFlow: {
         type: 'SUBSCRIPTION_CHECKOUT_SETUP',
         merchantUrls: {
-          redirectUrl: request.redirectUrl,
+          redirectUrl: redirectUrl,
         },
         // Restrict to UPI payments only
         paymentModeConfig: {
