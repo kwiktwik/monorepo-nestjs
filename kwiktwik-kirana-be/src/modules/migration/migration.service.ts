@@ -291,6 +291,23 @@ export class MigrationService {
         const destData = await this.fetchAllUserData(userId, phoneNumber);
         const destHash = HashCalculator.calculateDataHash(destData);
 
+        // VALIDATION: Check if any data was actually migrated
+        const destRecordCount = this.countTotalRecords(destData);
+        if (destRecordCount === 0 && totalRecords > 0) {
+          stateMachine.forceTransition(MigrationState.FAILED);
+          await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
+            errorCode: MigrationErrorCode.DATA_INTEGRITY_ERROR,
+            errorMessage: `Migration reported ${totalRecords} records but destination database is empty.`,
+            tablesMigrated: migratedTables,
+          });
+
+          throw new InternalServerErrorException({
+            code: MigrationErrorCode.DATA_INTEGRITY_ERROR,
+            message:
+              'Data integrity check failed. No records found in destination database.',
+          });
+        }
+
         // Verify hashes match
         if (!HashCalculator.compareHashes(sourceHash, destHash)) {
           stateMachine.forceTransition(MigrationState.FAILED);
