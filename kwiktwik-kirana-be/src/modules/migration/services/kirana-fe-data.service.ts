@@ -60,6 +60,17 @@ export class KiranaFeDataService {
 
       const data = await response.json();
 
+      // Debug: Log first subscription to see field names
+      if (data.subscriptions && data.subscriptions.length > 0) {
+        console.log(`[KIRANA_FE_DEBUG] First subscription from old system:`, {
+          fields: Object.keys(data.subscriptions[0]),
+          currentStart: data.subscriptions[0].currentStart,
+          currentEnd: data.subscriptions[0].currentEnd,
+          current_start: data.subscriptions[0].current_start,
+          current_end: data.subscriptions[0].current_end,
+        });
+      }
+
       return {
         userId: data.userId,
         phoneNumber: data.phoneNumber,
@@ -88,9 +99,7 @@ export class KiranaFeDataService {
   /**
    * Check if user is already migrated in old system
    */
-  async checkMigrationStatusInOldSystem(
-    userId: string,
-  ): Promise<{
+  async checkMigrationStatusInOldSystem(userId: string): Promise<{
     isMigrated: boolean;
     migratedAt?: string;
     kwiktwikUserId?: string;

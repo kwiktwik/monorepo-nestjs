@@ -448,35 +448,51 @@ export class TableMigrationService {
         id: newId,
         currentStart: parsedRecord.currentStart,
         currentEnd: parsedRecord.currentEnd,
+        current_start: parsedRecord.current_start,
+        current_end: parsedRecord.current_end,
         currentStartType: typeof parsedRecord.currentStart,
         currentEndType: typeof parsedRecord.currentEnd,
+        allFields: Object.keys(parsedRecord),
       });
 
       // Explicitly map only the fields in the new schema
+      // Support both camelCase and snake_case from old system
       const mappedRecord = {
         id: newId,
         userId: userId,
-        razorpaySubscriptionId: parsedRecord.razorpaySubscriptionId,
-        razorpayPlanId: parsedRecord.razorpayPlanId,
-        appId: parsedRecord.appId,
-        customerId: parsedRecord.customerId,
-        razorpayCustomerId: parsedRecord.razorpayCustomerId,
+        razorpaySubscriptionId:
+          parsedRecord.razorpaySubscriptionId ||
+          parsedRecord.razorpay_subscription_id,
+        razorpayPlanId:
+          parsedRecord.razorpayPlanId || parsedRecord.razorpay_plan_id,
+        appId: parsedRecord.appId || parsedRecord.app_id,
+        customerId: parsedRecord.customerId || parsedRecord.customer_id,
+        razorpayCustomerId:
+          parsedRecord.razorpayCustomerId || parsedRecord.razorpay_customer_id,
         status: parsedRecord.status,
         quantity: parsedRecord.quantity,
-        totalCount: parsedRecord.totalCount,
-        paidCount: parsedRecord.paidCount,
-        remainingCount: parsedRecord.remainingCount,
-        startAt: parsedRecord.startAt,
-        endAt: parsedRecord.endAt,
-        chargeAt: parsedRecord.chargeAt,
-        currentStart: parsedRecord.currentStart || null,
-        currentEnd: parsedRecord.currentEnd || null,
+        totalCount: parsedRecord.totalCount || parsedRecord.total_count,
+        paidCount: parsedRecord.paidCount || parsedRecord.paid_count,
+        remainingCount:
+          parsedRecord.remainingCount || parsedRecord.remaining_count,
+        startAt: parsedRecord.startAt || parsedRecord.start_at,
+        endAt: parsedRecord.endAt || parsedRecord.end_at,
+        chargeAt: parsedRecord.chargeAt || parsedRecord.charge_at,
+        currentStart:
+          parsedRecord.currentStart || parsedRecord.current_start || null,
+        currentEnd: parsedRecord.currentEnd || parsedRecord.current_end || null,
         notes: parsedRecord.notes,
-        razorpayPaymentId: parsedRecord.razorpayPaymentId,
-        fourHourEventSent: parsedRecord.fourHourEventSent ?? false,
+        razorpayPaymentId:
+          parsedRecord.razorpayPaymentId || parsedRecord.razorpay_payment_id,
+        fourHourEventSent:
+          parsedRecord.fourHourEventSent ||
+          parsedRecord.four_hour_event_sent ||
+          false,
         metadata: parsedRecord.metadata,
-        createdAt: parsedRecord.createdAt || new Date(),
-        updatedAt: parsedRecord.updatedAt || new Date(),
+        createdAt:
+          parsedRecord.createdAt || parsedRecord.created_at || new Date(),
+        updatedAt:
+          parsedRecord.updatedAt || parsedRecord.updated_at || new Date(),
       };
 
       console.log(`[MIGRATION_DEBUG] Mapped subscription:`, {
