@@ -444,8 +444,16 @@ export class TableMigrationService {
       const newId = idMapper.generateNewId('subscription', record.id);
       const parsedRecord = parseRecordDates(record);
 
+      console.log(`[MIGRATION_DEBUG] Subscription record:`, {
+        id: newId,
+        currentStart: parsedRecord.currentStart,
+        currentEnd: parsedRecord.currentEnd,
+        currentStartType: typeof parsedRecord.currentStart,
+        currentEndType: typeof parsedRecord.currentEnd,
+      });
+
       // Explicitly map only the fields in the new schema
-      const mappedRecord = cleanUndefined({
+      const mappedRecord = {
         id: newId,
         userId: userId,
         razorpaySubscriptionId: parsedRecord.razorpaySubscriptionId,
@@ -461,14 +469,19 @@ export class TableMigrationService {
         startAt: parsedRecord.startAt,
         endAt: parsedRecord.endAt,
         chargeAt: parsedRecord.chargeAt,
-        currentStart: parsedRecord.currentStart,
-        currentEnd: parsedRecord.currentEnd,
+        currentStart: parsedRecord.currentStart || null,
+        currentEnd: parsedRecord.currentEnd || null,
         notes: parsedRecord.notes,
         razorpayPaymentId: parsedRecord.razorpayPaymentId,
         fourHourEventSent: parsedRecord.fourHourEventSent ?? false,
         metadata: parsedRecord.metadata,
         createdAt: parsedRecord.createdAt || new Date(),
         updatedAt: parsedRecord.updatedAt || new Date(),
+      };
+
+      console.log(`[MIGRATION_DEBUG] Mapped subscription:`, {
+        currentStart: mappedRecord.currentStart,
+        currentEnd: mappedRecord.currentEnd,
       });
 
       await this.db.insert(schema.subscriptions).values(mappedRecord);
