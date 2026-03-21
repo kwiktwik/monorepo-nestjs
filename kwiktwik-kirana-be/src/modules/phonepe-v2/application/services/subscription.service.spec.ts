@@ -28,6 +28,7 @@ describe('SubscriptionService', () => {
           provide: PhonePeHttpClient,
           useValue: {
             setupSubscription: jest.fn(),
+            setupSubscriptionMobile: jest.fn(),
             notifyRedemption: jest.fn(),
             getSubscriptionStatus: jest.fn(),
             getOrderStatus: jest.fn(),
@@ -81,6 +82,7 @@ describe('SubscriptionService', () => {
       appId: 'app123',
       planId: 'plan_PHONEPE_AUTOPAY_001',
       redirectUrl: 'https://example.com/callback',
+      mobileSdk: false,
     };
 
     it('should setup a subscription successfully', async () => {
@@ -166,6 +168,42 @@ describe('SubscriptionService', () => {
           amount: 100, // ₹1 -> 100 paise (from plan_PHONEPE_AUTOPAY_001)
         }),
       );
+    });
+
+    it('should use mobile SDK flow by default (no redirectUrl needed)', async () => {
+      subscriptionRepo.existsByMerchantSubscriptionId.mockResolvedValue(false);
+      subscriptionRepo.create.mockImplementation((sub) => Promise.resolve(sub));
+      subscriptionRepo.update.mockImplementation((sub) => Promise.resolve(sub));
+      httpClient.setupSubscriptionMobile.mockResolvedValue({
+        orderId: 'phonepe_order_123',
+        state: 'PENDING',
+        expireAt: Date.now() + 1800000,
+        token: 'sdk_token_123',
+      });
+
+      const result = await service.setupSubscription({
+        userId: 'user123',
+        appId: 'app123',
+        planId: 'plan_PHONEPE_AUTOPAY_001',
+      });
+
+      expect(result).toHaveProperty('token', 'sdk_token_123');
+      expect(result).toHaveProperty('orderId', 'phonepe_order_123');
+      expect(httpClient.setupSubscriptionMobile).toHaveBeenCalledWith(
+        'app123',
+        expect.objectContaining({
+          merchantOrderId: expect.any(String),
+          amount: 100,
+          paymentFlow: expect.objectContaining({
+            type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+            subscriptionDetails: expect.objectContaining({
+              maxAmount: 19900,
+              frequency: 'MONTHLY',
+            }),
+          }),
+        }),
+      );
+      expect(httpClient.setupSubscription).not.toHaveBeenCalled();
     });
   });
 
