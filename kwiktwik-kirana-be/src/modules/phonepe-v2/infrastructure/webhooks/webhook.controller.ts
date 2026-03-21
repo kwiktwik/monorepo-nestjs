@@ -215,6 +215,10 @@ export class PhonePeWebhookController {
   }
 
   private async handleSetupCompleted(payload: SubscriptionSetupPayload) {
+    this.logger.log(
+      `Processing checkout.order.completed for order: ${payload.orderId}, merchantOrderId: ${payload.merchantOrderId}`,
+    );
+
     const subscription =
       await this.subscriptionRepo.findByMerchantSubscriptionId(
         payload.paymentFlow.merchantSubscriptionId,
@@ -227,14 +231,26 @@ export class PhonePeWebhookController {
       return;
     }
 
-    subscription.activate(
-      payload.paymentFlow.subscriptionId || payload.orderId,
-    );
-    await this.subscriptionRepo.update(subscription);
-
     this.logger.log(
-      `Subscription activated: ${payload.paymentFlow.merchantSubscriptionId}`,
+      `Found subscription: ${subscription.merchantSubscriptionId}, current state: ${subscription.state}`,
     );
+
+    try {
+      subscription.activate(
+        payload.paymentFlow.subscriptionId || payload.orderId,
+      );
+      await this.subscriptionRepo.update(subscription);
+
+      this.logger.log(
+        `Subscription activated: ${payload.paymentFlow.merchantSubscriptionId}, new state: ACTIVE`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to activate subscription: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   private async handleSetupFailed(payload: SubscriptionSetupPayload) {

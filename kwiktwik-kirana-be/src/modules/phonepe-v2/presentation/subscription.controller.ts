@@ -164,4 +164,35 @@ export class SubscriptionController {
       details,
     );
   }
+
+  @Post('sync-status')
+  @ApiOperation({
+    summary: 'Sync subscription status from PhonePe',
+    description:
+      'Manually sync subscription status from PhonePe (useful when webhook not received)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription status synced',
+    type: SubscriptionStatusDto,
+  })
+  @ApiResponse({ status: 404, description: 'Subscription not found' })
+  async syncSubscriptionStatus(
+    @AppId() appId: string,
+    @Body() body: { merchantOrderId: string; merchantSubscriptionId: string },
+  ): Promise<SubscriptionStatusDto> {
+    // First check order status
+    const orderStatus = await this.subscriptionService.getOrderStatus(
+      appId,
+      body.merchantOrderId,
+      true,
+    );
+
+    // If order is completed, subscription should be updated via webhook
+    // But as fallback, we can refresh subscription status
+    return this.subscriptionService.getSubscriptionStatus(
+      appId,
+      body.merchantSubscriptionId,
+    );
+  }
 }
