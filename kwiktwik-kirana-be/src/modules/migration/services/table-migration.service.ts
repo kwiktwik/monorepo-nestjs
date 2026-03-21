@@ -257,10 +257,22 @@ export class TableMigrationService {
     for (const record of records) {
       const newId = idMapper.generateNewId('account', record.id);
       const parsedRecord = parseRecordDates(record);
+
       const mappedRecord = {
-        ...parsedRecord,
         id: newId,
+        accountId: parsedRecord.accountId,
+        providerId: parsedRecord.providerId,
         userId: userId,
+        appId: parsedRecord.appId,
+        accessToken: parsedRecord.accessToken,
+        refreshToken: parsedRecord.refreshToken,
+        idToken: parsedRecord.idToken,
+        accessTokenExpiresAt: parsedRecord.accessTokenExpiresAt,
+        refreshTokenExpiresAt: parsedRecord.refreshTokenExpiresAt,
+        scope: parsedRecord.scope,
+        password: parsedRecord.password,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
       await this.db.insert(schema.account).values(mappedRecord);
@@ -283,12 +295,17 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
-      const newId = idMapper.generateNewId('pushToken', record.id);
       const parsedRecord = parseRecordDates(record);
+
       const mappedRecord = {
-        ...parsedRecord,
-        id: newId,
         userId: userId,
+        appId: parsedRecord.appId,
+        token: parsedRecord.token,
+        deviceModel: parsedRecord.deviceModel,
+        osVersion: parsedRecord.osVersion,
+        isActive: parsedRecord.isActive ?? true,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
       await this.db.insert(schema.pushTokens).values(mappedRecord);
@@ -310,12 +327,21 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
-      const newId = idMapper.generateNewId('deviceSession', record.id);
       const parsedRecord = parseRecordDates(record);
+
       const mappedRecord = {
-        ...parsedRecord,
-        id: newId,
         userId: userId,
+        appId: parsedRecord.appId,
+        deviceModel: parsedRecord.deviceModel,
+        osVersion: parsedRecord.osVersion,
+        appVersion: parsedRecord.appVersion,
+        buildNumber: parsedRecord.buildNumber,
+        platform: parsedRecord.platform,
+        manufacturer: parsedRecord.manufacturer,
+        brand: parsedRecord.brand,
+        locale: parsedRecord.locale,
+        timezone: parsedRecord.timezone,
+        createdAt: parsedRecord.createdAt || new Date(),
       };
 
       await this.db.insert(schema.deviceSessions).values(mappedRecord);
@@ -337,12 +363,14 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
-      const newId = idMapper.generateNewId('userImage', record.id);
       const parsedRecord = parseRecordDates(record);
+
       const mappedRecord = {
-        ...parsedRecord,
-        id: newId,
         userId: userId,
+        appId: parsedRecord.appId,
+        imageUrl: parsedRecord.imageUrl,
+        removedBgImageUrl: parsedRecord.removedBgImageUrl,
+        createdAt: parsedRecord.createdAt || new Date(),
       };
 
       await this.db.insert(schema.userImages).values(mappedRecord);
@@ -364,12 +392,22 @@ export class TableMigrationService {
 
     const migrated: any[] = [];
     for (const record of records) {
-      const newId = idMapper.generateNewId('playStoreRating', record.id);
       const parsedRecord = parseRecordDates(record);
+
       const mappedRecord = {
-        ...parsedRecord,
-        id: newId,
         userId: userId,
+        appId: parsedRecord.appId,
+        rating: parsedRecord.rating,
+        review: parsedRecord.review,
+        reviewTitle: parsedRecord.reviewTitle,
+        packageName: parsedRecord.packageName,
+        appVersion: parsedRecord.appVersion,
+        deviceModel: parsedRecord.deviceModel,
+        osVersion: parsedRecord.osVersion,
+        language: parsedRecord.language,
+        submittedToPlayStoreAt: parsedRecord.submittedToPlayStoreAt,
+        createdAt: parsedRecord.createdAt || new Date(),
+        updatedAt: parsedRecord.updatedAt || new Date(),
       };
 
       await this.db.insert(schema.playStoreRatings).values(mappedRecord);
