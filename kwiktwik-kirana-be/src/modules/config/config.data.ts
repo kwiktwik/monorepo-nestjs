@@ -958,7 +958,7 @@ export const PAYWALL_TRANSLATIONS = {
   },
   hi: {
     heading: 'भुगतान कभी मिस न करें',
-    description: '<s>₹199</s> के लिए अपना निःशुल्क ट्रायल शुरू करें',
+    description: 'अपना फ्री ट्रायल शुरू करें <s>₹199</s> में',
     buttonText: 'निःशुल्क ट्रायल शुरू करें',
     videoDescription: 'हर महीने ₹199 का ऑटोपे, कभी भी रद्द करें',
   },
