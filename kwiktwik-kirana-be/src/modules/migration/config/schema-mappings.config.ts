@@ -770,6 +770,14 @@ export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
       newField: 'originalNotificationId',
       oldFields: ['originalNotificationId', 'original_notification_id'],
       defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined || value === '') {
+          return null;
+        }
+        // Convert to integer if it's a valid number
+        const parsed = parseInt(value, 10);
+        return isNaN(parsed) ? null : parsed;
+      },
     },
     {
       newField: 'packageName',
