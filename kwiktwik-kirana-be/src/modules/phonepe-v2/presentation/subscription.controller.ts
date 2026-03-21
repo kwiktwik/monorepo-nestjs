@@ -13,6 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiHeader,
+  ApiBody,
 } from '@nestjs/swagger';
 import { SubscriptionService } from '../application/services/subscription.service';
 import { AppIdGuard } from '../../../common/guards/app-id.guard';
@@ -172,6 +173,7 @@ export class SubscriptionController {
     description:
       'Manually sync subscription status from PhonePe (useful when webhook not received). Mobile app should call this after successful payment.',
   })
+  @ApiBody({ type: SyncStatusRequestDto })
   @ApiResponse({
     status: 200,
     description: 'Subscription status synced',
