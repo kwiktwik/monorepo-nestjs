@@ -419,7 +419,7 @@ export class MigrationService {
           MigrationState.COMPLETED,
           {
             destinationHash: destHash,
-            tablesMigrated,
+            tablesMigrated: migratedTables,
             tablesFailed: failedTables,
             recordsCount: totalRecords,
           },
