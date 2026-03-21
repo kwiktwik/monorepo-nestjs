@@ -388,7 +388,6 @@ export class TableMigrationService {
     );
     return migrated;
   }
-    }
 
     this.logger.log(
       `Migrated ${migrated.length}/${records.length} subscription records`,
