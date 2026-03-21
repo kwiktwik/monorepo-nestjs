@@ -167,20 +167,21 @@ export class SubscriptionController {
     );
   }
 
-  @Post('sync-status')
+  @Post('verify')
   @ApiOperation({
-    summary: 'Sync subscription status from PhonePe',
+    summary: 'Verify subscription payment status',
     description:
-      'Manually sync subscription status from PhonePe (useful when webhook not received). Mobile app should call this after successful payment. This endpoint checks order status and activates subscription if order is completed.',
+      'Verify subscription payment status from PhonePe and activate if completed. Mobile app should call this after successful payment. This endpoint checks order status and activates subscription if order is completed.',
   })
   @ApiBody({ type: SyncStatusRequestDto })
   @ApiResponse({
     status: 200,
-    description: 'Subscription status synced',
+    description:
+      'Subscription status verified and activated if payment completed',
     type: SubscriptionStatusDto,
   })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
-  async syncSubscriptionStatus(
+  async verifySubscriptionStatus(
     @AppId() appId: string,
     @Body() body: SyncStatusRequestDto,
   ): Promise<SubscriptionStatusDto> {
