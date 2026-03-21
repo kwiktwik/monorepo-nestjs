@@ -771,12 +771,22 @@ export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
       oldFields: ['originalNotificationId', 'original_notification_id'],
       defaultValue: null,
       transform: (value) => {
+        // Handle null, undefined, empty string
         if (value === null || value === undefined || value === '') {
           return null;
         }
-        // Convert to integer if it's a valid number
-        const parsed = parseInt(value, 10);
-        return isNaN(parsed) ? null : parsed;
+        // If already a number, return it
+        if (typeof value === 'number') {
+          return value;
+        }
+        // Convert string to integer if it's a valid number
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed === '') return null;
+          const parsed = parseInt(trimmed, 10);
+          return isNaN(parsed) ? null : parsed;
+        }
+        return null;
       },
     },
     {
