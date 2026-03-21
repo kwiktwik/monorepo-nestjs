@@ -102,7 +102,7 @@ export class MigrationService {
     let userId = '';
     const migratedTables: string[] = [];
     const failedTables: string[] = [];
-    const CRITICAL_TABLES = ['user_metadata', 'accounts']; // Tables that must succeed
+    // All tables are critical - if any fail, migration fails
 
     try {
       // Step 1: Create migration log
