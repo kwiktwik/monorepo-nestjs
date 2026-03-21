@@ -458,10 +458,20 @@ export class MigrationService {
       recordsCount?: number;
     },
   ): Promise<void> {
+    // Fetch the migration log to calculate actual duration
+    const migration = await this.db
+      .select({ startedAt: schema.migrationLogs.startedAt })
+      .from(schema.migrationLogs)
+      .where(eq(schema.migrationLogs.id, migrationId))
+      .limit(1);
+
+    const startedAt = migration[0]?.startedAt;
+    const duration = startedAt ? Date.now() - startedAt.getTime() : 0;
+
     const updateData: any = {
       status,
       completedAt: new Date(),
-      duration: Date.now(), // Calculate actual duration
+      duration,
     };
 
     if (updates.errorCode) updateData.errorCode = updates.errorCode;
