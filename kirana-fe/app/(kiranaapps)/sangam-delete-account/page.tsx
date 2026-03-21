@@ -4,7 +4,7 @@ import Link from "next/link";
 
 const WHAT_GETS_DELETED = [
   "Your profile and account information",
-  "All business and store data within Sangam Wallpaper",
+  "All business and store data within Sangam App",
   "Customer and supplier records",
   "Inventory and stock information",
   "Transaction and sales history",
@@ -35,7 +35,7 @@ export default function SangamDeleteAccount() {
             Delete Your <span className="text-gradient">Sangam Account</span>
           </h1>
           <p className="text-lg text-gray-600">
-            We&apos;re sorry to see you go. Here&apos;s how you can delete your account from Sangam Wallpaper.
+            We&apos;re sorry to see you go. Here&apos;s how you can delete your account from Sangam App.
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function SangamDeleteAccount() {
               <div>
                 <h2 className="text-xl font-bold text-amber-900 mb-2">Important Notice</h2>
                 <p className="text-amber-900/90 font-medium">
-                  Deleting your account is permanent and cannot be undone. All your data, including business information, customer records, inventory data, and transaction history within Sangam Wallpaper will be permanently deleted.
+                  Deleting your account is permanent and cannot be undone. All your data, including business information, customer records, inventory data, and transaction history within Sangam App will be permanently deleted.
                 </p>
               </div>
             </div>

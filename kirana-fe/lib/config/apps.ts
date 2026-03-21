@@ -167,8 +167,8 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
   },
   "com.sangam.wallpaperapp": {
     id: "com.sangam.wallpaperapp",
-    name: "Sangam Wallpaper",
-    description: "Sangam Wallpaper mobile application",
+    name: "Sangam App",
+    description: "Sangam App mobile application",
     enabled: true,
     rateLimit: {
       maxRequests: 999999,
