@@ -767,6 +767,11 @@ export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
       defaultValue: null,
     },
     {
+      newField: 'originalNotificationId',
+      oldFields: ['originalNotificationId', 'original_notification_id'],
+      defaultValue: null,
+    },
+    {
       newField: 'packageName',
       oldFields: ['packageName', 'package_name'],
       defaultValue: null,
