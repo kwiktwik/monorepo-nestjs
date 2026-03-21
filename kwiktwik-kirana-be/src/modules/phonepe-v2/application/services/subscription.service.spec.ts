@@ -205,6 +205,119 @@ describe('SubscriptionService', () => {
       );
       expect(httpClient.setupSubscription).not.toHaveBeenCalled();
     });
+
+    it('should sync subscription from order status and activate if completed', async () => {
+      const mockSubscription = {
+        id: 'sub_id',
+        merchantSubscriptionId: 'sub_123',
+        userId: 'user123',
+        appId: 'app123',
+        state: 'ACTIVATION_IN_PROGRESS',
+        maxAmount: 19900,
+        frequency: 'MONTHLY',
+        activate: jest.fn(),
+        canRedeem: jest.fn().mockReturnValue(false),
+      } as unknown as Subscription;
+
+      subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(
+        mockSubscription,
+      );
+      subscriptionRepo.update.mockImplementation((sub) => Promise.resolve(sub));
+      httpClient.getOrderStatus.mockResolvedValue({
+        merchantId: 'PGTESTPAYUAT',
+        merchantOrderId: 'order_123',
+        orderId: 'phonepe_order_123',
+        state: 'COMPLETED',
+        amount: 100,
+        expireAt: Date.now() + 1800000,
+        paymentDetails: [
+          {
+            transactionId: 'txn_123',
+            paymentMode: 'UPI_AUTO_PAY',
+            timestamp: Date.now(),
+            amount: 100,
+            state: 'COMPLETED',
+          },
+        ],
+      });
+      httpClient.getSubscriptionStatus.mockResolvedValue({
+        merchantSubscriptionId: 'sub_123',
+        subscriptionId: 'phonepe_sub_123',
+        state: 'ACTIVE',
+        productType: 'UPI_MANDATE',
+        authInstrumentType: null,
+        authWorkflowType: 'TRANSACTION',
+        amountType: 'FIXED',
+        currency: 'INR',
+        maxAmount: 19900,
+        frequency: 'MONTHLY',
+        expireAt: Date.now() + 86400000 * 30,
+        pauseStartDate: null,
+        pauseEndDate: null,
+      });
+
+      const result = await service.syncSubscriptionFromOrder(
+        'app123',
+        'order_123',
+        'sub_123',
+      );
+
+      expect(mockSubscription.activate).toHaveBeenCalledWith(
+        'phonepe_order_123',
+      );
+      expect(subscriptionRepo.update).toHaveBeenCalled();
+      expect(result.state).toBe('ACTIVE');
+    });
+
+    it('should not activate subscription if order is not completed', async () => {
+      const mockSubscription = {
+        id: 'sub_id',
+        merchantSubscriptionId: 'sub_123',
+        userId: 'user123',
+        appId: 'app123',
+        state: 'ACTIVATION_IN_PROGRESS',
+        maxAmount: 19900,
+        frequency: 'MONTHLY',
+        activate: jest.fn(),
+        canRedeem: jest.fn().mockReturnValue(false),
+      } as unknown as Subscription;
+
+      subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(
+        mockSubscription,
+      );
+      httpClient.getOrderStatus.mockResolvedValue({
+        merchantId: 'PGTESTPAYUAT',
+        merchantOrderId: 'order_123',
+        orderId: 'phonepe_order_123',
+        state: 'PENDING',
+        amount: 100,
+        expireAt: Date.now() + 1800000,
+      });
+      httpClient.getSubscriptionStatus.mockResolvedValue({
+        merchantSubscriptionId: 'sub_123',
+        subscriptionId: 'phonepe_sub_123',
+        state: 'ACTIVATION_IN_PROGRESS',
+        productType: 'UPI_MANDATE',
+        authInstrumentType: null,
+        authWorkflowType: 'TRANSACTION',
+        amountType: 'FIXED',
+        currency: 'INR',
+        maxAmount: 19900,
+        frequency: 'MONTHLY',
+        expireAt: Date.now() + 86400000 * 30,
+        pauseStartDate: null,
+        pauseEndDate: null,
+      });
+
+      const result = await service.syncSubscriptionFromOrder(
+        'app123',
+        'order_123',
+        'sub_123',
+      );
+
+      expect(mockSubscription.activate).not.toHaveBeenCalled();
+      expect(result.state).toBe('ACTIVATION_IN_PROGRESS');
+    });
   });
 
   describe('notifyRedemption', () => {

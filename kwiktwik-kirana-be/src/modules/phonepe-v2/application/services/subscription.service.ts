@@ -495,6 +495,49 @@ export class SubscriptionService {
   }
 
   /**
+   * Sync subscription status from order status (manual fallback when webhook not received)
+   */
+  async syncSubscriptionFromOrder(
+    appId: string,
+    merchantOrderId: string,
+    merchantSubscriptionId: string,
+  ): Promise<GetSubscriptionStatusResponse> {
+    // First check order status
+    const orderStatus = await this.httpClient.getOrderStatus(
+      appId,
+      merchantOrderId,
+      true,
+    );
+
+    // Find local subscription
+    const subscription =
+      await this.subscriptionRepo.findByMerchantSubscriptionId(
+        merchantSubscriptionId,
+      );
+
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription ${merchantSubscriptionId} not found`,
+      );
+    }
+
+    // If order is completed and subscription is still in ACTIVATION_IN_PROGRESS, activate it
+    if (
+      orderStatus.state === 'COMPLETED' &&
+      subscription.state === 'ACTIVATION_IN_PROGRESS'
+    ) {
+      this.logger.log(
+        `Order ${merchantOrderId} is COMPLETED, activating subscription ${merchantSubscriptionId}`,
+      );
+      subscription.activate(orderStatus.orderId);
+      await this.subscriptionRepo.update(subscription);
+    }
+
+    // Return updated status
+    return this.getSubscriptionStatus(appId, merchantSubscriptionId);
+  }
+
+  /**
    * Get order status with payment details
    */
   async getOrderStatus(

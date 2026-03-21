@@ -171,7 +171,7 @@ export class SubscriptionController {
   @ApiOperation({
     summary: 'Sync subscription status from PhonePe',
     description:
-      'Manually sync subscription status from PhonePe (useful when webhook not received). Mobile app should call this after successful payment.',
+      'Manually sync subscription status from PhonePe (useful when webhook not received). Mobile app should call this after successful payment. This endpoint checks order status and activates subscription if order is completed.',
   })
   @ApiBody({ type: SyncStatusRequestDto })
   @ApiResponse({
@@ -184,17 +184,11 @@ export class SubscriptionController {
     @AppId() appId: string,
     @Body() body: SyncStatusRequestDto,
   ): Promise<SubscriptionStatusDto> {
-    // First check order status from PhonePe
-    const orderStatus = await this.subscriptionService.getOrderStatus(
+    // Sync subscription status from order status
+    // If order is COMPLETED, this will activate the subscription
+    return this.subscriptionService.syncSubscriptionFromOrder(
       appId,
       body.merchantOrderId,
-      true,
-    );
-
-    // Sync subscription status from PhonePe
-    // This will update local state if PhonePe shows ACTIVE
-    return this.subscriptionService.getSubscriptionStatus(
-      appId,
       body.merchantSubscriptionId,
     );
   }
