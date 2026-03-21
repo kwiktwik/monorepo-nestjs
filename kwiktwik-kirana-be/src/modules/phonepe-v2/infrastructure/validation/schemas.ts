@@ -27,7 +27,10 @@ const MetadataSchema = z.any().optional();
 // Setup Subscription Schema
 export const SetupSubscriptionSchema = z.object({
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z.string().min(1, 'Redirect URL is required'),
+  redirectUrl: z
+    .string()
+    .url('Redirect URL must be a valid URL address')
+    .optional(),
   merchantSubscriptionId: z.string().optional(),
   metadata: z.any().optional(),
 });
@@ -92,7 +95,10 @@ export const SetupSubscriptionServiceSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   appId: z.string().min(1, 'App ID is required'),
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z.string().min(1, 'Redirect URL is required'),
+  redirectUrl: z
+    .string()
+    .url('Redirect URL must be a valid URL address')
+    .optional(),
   merchantSubscriptionId: z.string().optional(),
   metadata: z.any().optional(),
 });

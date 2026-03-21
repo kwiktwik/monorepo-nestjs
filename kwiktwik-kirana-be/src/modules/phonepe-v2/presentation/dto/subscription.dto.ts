@@ -47,12 +47,14 @@ export class SetupSubscriptionDto {
   @IsString()
   planId: string;
 
-  @ApiProperty({
-    description: 'URL to redirect user after mandate approval',
+  @ApiPropertyOptional({
+    description:
+      'URL to redirect user after mandate approval (defaults to app callback URL if not provided)',
     example: 'https://yourapp.com/subscription/callback',
   })
+  @IsOptional()
   @IsUrl()
-  redirectUrl: string;
+  redirectUrl?: string;
 
   @ApiPropertyOptional({
     description: 'Custom merchant subscription ID',
