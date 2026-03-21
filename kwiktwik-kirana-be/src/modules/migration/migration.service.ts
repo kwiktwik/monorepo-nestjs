@@ -362,23 +362,7 @@ export class MigrationService {
           });
         }
 
-        // Verify hashes match
-        if (!HashCalculator.compareHashes(sourceHash, destHash)) {
-          stateMachine.forceTransition(MigrationState.FAILED);
-          await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
-            errorCode: MigrationErrorCode.HASH_MISMATCH,
-            errorMessage:
-              'Data verification failed. Source and destination hashes do not match.',
-            destinationHash: destHash,
-          });
-
-          throw new InternalServerErrorException({
-            code: MigrationErrorCode.HASH_MISMATCH,
-            message: 'Data verification failed. Migration rolled back.',
-          });
-        }
-
-        // All tables are critical - if any failed, migration fails
+        // All tables are critical - if any failed, migration fails (check BEFORE hash)
         if (failedTables.length > 0) {
           stateMachine.forceTransition(MigrationState.FAILED);
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
@@ -391,6 +375,23 @@ export class MigrationService {
           throw new InternalServerErrorException({
             code: MigrationErrorCode.DATA_INTEGRITY_ERROR,
             message: `Migration failed: Tables could not be migrated: ${failedTables.join(', ')}`,
+          });
+        }
+
+        // Verify hashes match (only if all tables migrated successfully)
+        if (!HashCalculator.compareHashes(sourceHash, destHash)) {
+          stateMachine.forceTransition(MigrationState.FAILED);
+          await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
+            errorCode: MigrationErrorCode.HASH_MISMATCH,
+            errorMessage:
+              'Data verification failed. Source and destination hashes do not match.',
+            destinationHash: destHash,
+            tablesMigrated: migratedTables,
+          });
+
+          throw new InternalServerErrorException({
+            code: MigrationErrorCode.HASH_MISMATCH,
+            message: 'Data verification failed. Migration rolled back.',
           });
         }
 
