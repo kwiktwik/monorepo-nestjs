@@ -194,11 +194,15 @@ export const ORDERS_MAPPING: TableMapping = {
       oldFields: ['notes'],
       defaultValue: null,
       transform: (value) => {
-        // Convert array to JSON string, or return as-is if already string/null
-        if (Array.isArray(value)) {
-          return value.length > 0 ? JSON.stringify(value) : null;
+        // Convert arrays/objects to JSON string, or return as-is if already string/null
+        if (value === null || value === undefined) {
+          return null;
         }
-        return value;
+        if (typeof value === 'string') {
+          return value;
+        }
+        // Handle arrays and objects
+        return JSON.stringify(value);
       },
     },
     {
