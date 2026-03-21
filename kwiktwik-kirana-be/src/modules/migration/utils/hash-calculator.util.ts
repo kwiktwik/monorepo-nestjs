@@ -68,6 +68,9 @@ export class HashCalculator {
       phonepeSubscriptions: data.phonepeSubscriptions.map((r) =>
         this.normalizeRecord(r),
       ),
+      enhancedNotifications: data.enhancedNotifications.map((r) =>
+        this.normalizeRecord(r),
+      ),
     };
   }
 

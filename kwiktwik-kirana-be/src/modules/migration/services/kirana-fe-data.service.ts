@@ -86,6 +86,7 @@ export class KiranaFeDataService {
         webhookLogs: [], // Not migrated - old subscription_logs are not compatible with new schema
         phonepeOrders: data.phonepeOrders || [],
         phonepeSubscriptions: data.phonepeSubscriptions || [],
+        enhancedNotifications: data.enhancedNotifications || [],
       };
     } catch (error) {
       this.logger.error(

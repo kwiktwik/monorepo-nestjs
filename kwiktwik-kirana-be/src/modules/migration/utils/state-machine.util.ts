@@ -187,6 +187,11 @@ export class MigrationStateMachine {
       ],
 
       [MigrationState.MIGRATING_PHONEPE_SUBSCRIPTIONS]: [
+        MigrationState.MIGRATING_ENHANCED_NOTIFICATIONS,
+        MigrationState.FAILED,
+      ],
+
+      [MigrationState.MIGRATING_ENHANCED_NOTIFICATIONS]: [
         MigrationState.VERIFYING_HASH,
         MigrationState.FAILED,
       ],

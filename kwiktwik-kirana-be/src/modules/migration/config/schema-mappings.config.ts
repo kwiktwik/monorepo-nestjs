@@ -740,6 +740,150 @@ export const PHONEPE_ORDERS_MAPPING: TableMapping = {
 };
 
 /**
+ * Enhanced notifications mapping
+ */
+export const ENHANCED_NOTIFICATIONS_MAPPING: TableMapping = {
+  tableName: 'enhanced_notifications',
+  requiredFields: [
+    'id',
+    'userId',
+    'notificationId',
+    'packageName',
+    'appName',
+    'title',
+    'content',
+    'timestamp',
+  ],
+  fields: [
+    { newField: 'id', oldFields: ['id'], defaultValue: null },
+    {
+      newField: 'userId',
+      oldFields: ['userId', 'user_id'],
+      defaultValue: null,
+    },
+    {
+      newField: 'notificationId',
+      oldFields: ['notificationId', 'notification_id'],
+      defaultValue: null,
+    },
+    {
+      newField: 'packageName',
+      oldFields: ['packageName', 'package_name'],
+      defaultValue: null,
+    },
+    {
+      newField: 'appName',
+      oldFields: ['appName', 'app_name'],
+      defaultValue: null,
+    },
+    { newField: 'title', oldFields: ['title'], defaultValue: null },
+    { newField: 'content', oldFields: ['content'], defaultValue: null },
+    {
+      newField: 'bigText',
+      oldFields: ['bigText', 'big_text'],
+      defaultValue: '',
+    },
+    {
+      newField: 'timestamp',
+      oldFields: ['timestamp'],
+      isDate: true,
+      defaultValue: null,
+    },
+    {
+      newField: 'hasTransaction',
+      oldFields: ['hasTransaction', 'has_transaction'],
+      defaultValue: false,
+    },
+    {
+      newField: 'amount',
+      oldFields: ['amount'],
+      defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+          const parsed = parseInt(value, 10);
+          return isNaN(parsed) ? null : parsed;
+        }
+        if (typeof value === 'number') return Math.floor(value);
+        return null;
+      },
+    },
+    {
+      newField: 'payerName',
+      oldFields: ['payerName', 'payer_name'],
+      defaultValue: null,
+    },
+    {
+      newField: 'transactionType',
+      oldFields: ['transactionType', 'transaction_type'],
+      defaultValue: null,
+    },
+    {
+      newField: 'processingTimeMs',
+      oldFields: ['processingTimeMs', 'processing_time_ms'],
+      defaultValue: null,
+      transform: (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+          const parsed = parseInt(value, 10);
+          return isNaN(parsed) ? null : parsed;
+        }
+        if (typeof value === 'number') return Math.floor(value);
+        return null;
+      },
+    },
+    {
+      newField: 'processingMetadata',
+      oldFields: ['processingMetadata', 'processing_metadata'],
+      defaultValue: {},
+      transform: (value) => {
+        if (value === null || value === undefined) {
+          return {};
+        }
+        if (typeof value === 'object') {
+          return value;
+        }
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value);
+          } catch {
+            return {};
+          }
+        }
+        return {};
+      },
+    },
+    {
+      newField: 'notificationLogId',
+      oldFields: ['notificationLogId', 'notification_log_id'],
+      defaultValue: null,
+    },
+    {
+      newField: 'ttsAnnounced',
+      oldFields: ['ttsAnnounced', 'tts_announced'],
+      defaultValue: false,
+    },
+    {
+      newField: 'teamNotificationSent',
+      oldFields: ['teamNotificationSent', 'team_notification_sent'],
+      defaultValue: false,
+    },
+    {
+      newField: 'createdAt',
+      oldFields: ['createdAt', 'created_at'],
+      isDate: true,
+      defaultValue: () => new Date(),
+    },
+    {
+      newField: 'updatedAt',
+      oldFields: ['updatedAt', 'updated_at'],
+      isDate: true,
+      defaultValue: () => new Date(),
+    },
+  ],
+};
+
+/**
  * PhonePe subscriptions mapping
  */
 export const PHONEPE_SUBSCRIPTIONS_MAPPING: TableMapping = {
@@ -839,4 +983,5 @@ export const ALL_TABLE_MAPPINGS: Record<string, TableMapping> = {
   abandonedCheckouts: ABANDONED_CHECKOUTS_MAPPING,
   phonepeOrders: PHONEPE_ORDERS_MAPPING,
   phonepeSubscriptions: PHONEPE_SUBSCRIPTIONS_MAPPING,
+  enhancedNotifications: ENHANCED_NOTIFICATIONS_MAPPING,
 };

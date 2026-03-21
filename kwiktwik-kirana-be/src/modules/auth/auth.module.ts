@@ -8,11 +8,13 @@ import { InternalAuthController } from './internal-auth.controller';
 import { AuthService } from './auth.service';
 import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
 import { JwtStrategy } from './jwt.strategy';
+import { MigrationModule } from '../migration/migration.module';
 
 @Module({
   imports: [
     PassportModule,
     ConfigModule,
+    MigrationModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

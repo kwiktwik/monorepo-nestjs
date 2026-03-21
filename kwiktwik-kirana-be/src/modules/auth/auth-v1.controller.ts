@@ -27,6 +27,12 @@ import {
 } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
+import { MigrationService } from '../migration/migration.service';
+import { Inject } from '@nestjs/common';
+import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../database/schema';
+import { eq, and } from 'drizzle-orm';
 import {
   LoginOtpDto,
   LoginTruecallerDto,
@@ -60,7 +66,12 @@ interface UnifiedLoginResponse {
 export class AuthV1Controller {
   private readonly logger = new Logger(AuthV1Controller.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly migrationService: MigrationService,
+    @Inject(DRIZZLE_TOKEN)
+    private readonly db: NodePgDatabase<typeof schema>,
+  ) {}
 
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
@@ -326,6 +337,43 @@ export class AuthV1Controller {
     };
   }
 
+  /**
+   * Check if user is already migrated to new system
+   * If migrated, skip kirana-fe check
+   */
+  private async isUserMigrated(phoneNumber: string): Promise<boolean> {
+    try {
+      // Normalize phone number
+      const normalized = normalizePhoneNumber(phoneNumber);
+
+      // Check if user exists in new database
+      const userRecord = await this.db
+        .select()
+        .from(schema.user)
+        .where(
+          and(
+            eq(schema.user.phoneNumber, normalized),
+            eq(schema.user.isDeleted, false),
+          ),
+        )
+        .limit(1);
+
+      if (userRecord.length > 0) {
+        this.logger.log(
+          `[Login] User ${phoneNumber} already exists in new system, skipping kirana-fe check`,
+        );
+        return true;
+      }
+      return false;
+    } catch (error) {
+      this.logger.warn(
+        `[Login] Error checking migration status for ${phoneNumber}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
   private async loginWithOtp(
     dto: LoginOtpDto,
     appId: string,
@@ -333,15 +381,23 @@ export class AuthV1Controller {
     // Normalize phone number for consistent detection
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
 
-    // Check for kirana-fe user detection first
-    const isKiranaFeUser =
-      await this.authService.checkKiranaFeUser(normalizedPhone);
-
-    if (isKiranaFeUser) {
+    // Check if user already migrated to new system
+    const isMigrated = await this.isUserMigrated(normalizedPhone);
+    if (isMigrated) {
       this.logger.log(
-        `[OTP Login] Kirana-FE user detected: ${normalizedPhone}`,
+        `[OTP Login] User ${normalizedPhone} already migrated, proceeding with login`,
       );
-      return this.createAlternateBackendResponse();
+    } else {
+      // Check for kirana-fe user detection only if not migrated
+      const isKiranaFeUser =
+        await this.authService.checkKiranaFeUser(normalizedPhone);
+
+      if (isKiranaFeUser) {
+        this.logger.log(
+          `[OTP Login] Kirana-FE user detected: ${normalizedPhone}`,
+        );
+        return this.createAlternateBackendResponse();
+      }
     }
 
     // Verify OTP

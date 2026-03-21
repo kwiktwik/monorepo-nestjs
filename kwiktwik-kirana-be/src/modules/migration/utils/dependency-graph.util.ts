@@ -34,7 +34,7 @@ export const MIGRATION_DEPENDENCY_GRAPH: TableDependencyLevel[] = [
   // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
   {
     level: 4,
-    tables: ['phonepeOrders', 'phonepeSubscriptions'],
+    tables: ['phonepeOrders', 'phonepeSubscriptions', 'enhancedNotifications'],
     description: 'Transaction logs and history',
   },
 ];
@@ -63,6 +63,7 @@ export function getTableWeight(tableName: string): number {
     // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
     phonepeOrders: 5,
     phonepeSubscriptions: 5,
+    enhancedNotifications: 10,
   };
 
   return weights[tableName] || 5;

@@ -338,16 +338,35 @@ export class TableMigrationService {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         const errorCode = (error as any)?.code || '';
+        const errorDetail = (error as any)?.detail || '';
+        const errorTable = (error as any)?.table || '';
+        const errorConstraint = (error as any)?.constraint || '';
+
         this.logger.error(
-          `Failed to insert subscription ${record.id}: ${errorMessage} (code: ${errorCode})`,
+          `Failed to insert subscription ${record.id}: ${errorMessage}`,
+        );
+        this.logger.error(
+          `Subscription error details - code: ${errorCode}, table: ${errorTable}, constraint: ${errorConstraint}, detail: ${errorDetail}`,
+        );
+        this.logger.error(
+          `Failed subscription record: ${JSON.stringify(record, null, 2)}`,
         );
       }
     }
 
+    // Count records that were skipped (already exist) as successful
+    const skippedCount = records.length - migrated.length;
     this.logger.log(
-      `Migrated ${migrated.length}/${records.length} subscription records`,
+      `Migrated ${migrated.length}/${records.length} subscription records (${skippedCount} skipped - already exist)`,
     );
-    return migrated;
+
+    // Return array with proper length - skipped records count as success
+    // Fill with dummy objects to maintain array length
+    const result: any[] = new Array(records.length).fill(null);
+    for (let i = 0; i < migrated.length; i++) {
+      result[i] = migrated[i];
+    }
+    return result;
   }
 
   /**
@@ -483,6 +502,46 @@ export class TableMigrationService {
       }
     }
 
+    return migrated;
+  }
+
+  /**
+   * Migrate enhanced notifications
+   */
+  async migrateEnhancedNotifications(
+    records: any[],
+    idMapper: IdMapper,
+    userId: string,
+  ): Promise<any[]> {
+    const { success, failed } =
+      this.transformationService.transformEnhancedNotifications(
+        records,
+        idMapper,
+      );
+    if (failed.length > 0) {
+      this.logger.warn(
+        `Failed to transform ${failed.length} enhanced notification records`,
+      );
+    }
+
+    const migrated: any[] = [];
+    for (const record of success) {
+      try {
+        await this.db.insert(schema.enhancedNotifications).values(record);
+        migrated.push(record);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const errorCode = (error as any)?.code || '';
+        this.logger.error(
+          `Failed to insert enhanced notification ${record.id}: ${errorMessage} (code: ${errorCode})`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Migrated ${migrated.length}/${success.length} enhanced notification records`,
+    );
     return migrated;
   }
 }

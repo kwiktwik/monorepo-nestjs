@@ -13,7 +13,8 @@ import {
   abandonedCheckouts,
   subscriptionLogs,
   phonepeOrders,
-  phonepeSubscriptions
+  phonepeSubscriptions,
+  enhancedNotifications,
 } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!INTERNAL_API_KEY || internalKey !== INTERNAL_API_KEY) {
       return NextResponse.json(
         { error: "Unauthorized - invalid internal API key" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     if (!userId || !phoneNumber) {
       return NextResponse.json(
         { error: "userId and phoneNumber are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -68,67 +69,112 @@ export async function POST(req: NextRequest) {
       abandonedCheckoutsData,
       subscriptionLogsData,
       phonepeOrdersData,
-      phonepeSubscriptionsData
+      phonepeSubscriptionsData,
+      enhancedNotificationsData,
     ] = await Promise.all([
       // User metadata
-      db.select()
+      db
+        .select()
         .from(userMetadata)
-        .where(and(eq(userMetadata.userId, userId), eq(userMetadata.appId, appId))),
+        .where(
+          and(eq(userMetadata.userId, userId), eq(userMetadata.appId, appId)),
+        ),
 
       // Linked accounts (Google, Truecaller, etc)
-      db.select()
-        .from(account)
-        .where(eq(account.userId, userId)),
+      db.select().from(account).where(eq(account.userId, userId)),
 
       // Push tokens
-      db.select()
+      db
+        .select()
         .from(pushTokens)
         .where(and(eq(pushTokens.userId, userId), eq(pushTokens.appId, appId))),
 
       // Device sessions
-      db.select()
+      db
+        .select()
         .from(deviceSessions)
-        .where(and(eq(deviceSessions.userId, userId), eq(deviceSessions.appId, appId))),
+        .where(
+          and(
+            eq(deviceSessions.userId, userId),
+            eq(deviceSessions.appId, appId),
+          ),
+        ),
 
       // User images
-      db.select()
+      db
+        .select()
         .from(userImages)
         .where(and(eq(userImages.userId, userId), eq(userImages.appId, appId))),
 
       // Play Store ratings
-      db.select()
+      db
+        .select()
         .from(playStoreRatings)
-        .where(and(eq(playStoreRatings.userId, userId), eq(playStoreRatings.appId, appId))),
+        .where(
+          and(
+            eq(playStoreRatings.userId, userId),
+            eq(playStoreRatings.appId, appId),
+          ),
+        ),
 
       // Subscriptions
-      db.select()
+      db
+        .select()
         .from(subscriptions)
-        .where(and(eq(subscriptions.userId, userId), eq(subscriptions.appId, appId))),
+        .where(
+          and(eq(subscriptions.userId, userId), eq(subscriptions.appId, appId)),
+        ),
 
       // Orders
-      db.select()
+      db
+        .select()
         .from(orders)
         .where(and(eq(orders.userId, userId), eq(orders.appId, appId))),
 
       // Abandoned checkouts
-      db.select()
+      db
+        .select()
         .from(abandonedCheckouts)
-        .where(and(eq(abandonedCheckouts.userId, userId), eq(abandonedCheckouts.appId, appId))),
+        .where(
+          and(
+            eq(abandonedCheckouts.userId, userId),
+            eq(abandonedCheckouts.appId, appId),
+          ),
+        ),
 
       // Subscription logs
-      db.select()
+      db
+        .select()
         .from(subscriptionLogs)
-        .where(and(eq(subscriptionLogs.userId, userId), eq(subscriptionLogs.appId, appId))),
+        .where(
+          and(
+            eq(subscriptionLogs.userId, userId),
+            eq(subscriptionLogs.appId, appId),
+          ),
+        ),
 
       // PhonePe orders
-      db.select()
+      db
+        .select()
         .from(phonepeOrders)
         .where(eq(phonepeOrders.merchantUserId, userId)),
 
       // PhonePe subscriptions
-      db.select()
+      db
+        .select()
         .from(phonepeSubscriptions)
-        .where(and(eq(phonepeSubscriptions.userId, userId), eq(phonepeSubscriptions.appId, appId))),
+        .where(
+          and(
+            eq(phonepeSubscriptions.userId, userId),
+            eq(phonepeSubscriptions.appId, appId),
+          ),
+        ),
+
+      // Enhanced notifications
+      db
+        .select()
+        .from(enhancedNotifications)
+        .where(eq(enhancedNotifications.userId, userId)),
     ]);
 
     return NextResponse.json({
@@ -146,13 +192,13 @@ export async function POST(req: NextRequest) {
       subscriptionLogs: subscriptionLogsData,
       phonepeOrders: phonepeOrdersData,
       phonepeSubscriptions: phonepeSubscriptionsData,
+      enhancedNotifications: enhancedNotificationsData,
     });
-
   } catch (error) {
     console.error("[Internal API] Error fetching user data:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

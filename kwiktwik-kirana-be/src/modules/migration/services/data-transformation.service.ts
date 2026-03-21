@@ -323,6 +323,16 @@ export class DataTransformationService {
   }
 
   /**
+   * Transform enhanced notifications specifically
+   */
+  transformEnhancedNotifications(
+    records: any[],
+    idMapper: { generateNewId: (table: string, oldId: string) => string },
+  ): { success: any[]; failed: { record: any; errors: string[] }[] } {
+    return this.transformRecords(records, 'enhancedNotifications', idMapper);
+  }
+
+  /**
    * Get field mapping info for debugging
    */
   getFieldMappingInfo(tableName: string): TableMapping | null {

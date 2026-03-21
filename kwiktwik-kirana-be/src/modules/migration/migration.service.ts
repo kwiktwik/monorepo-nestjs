@@ -716,6 +716,7 @@ export class MigrationService {
       // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
       phonepeOrders: schema.phonepeOrders,
       phonepeSubscriptions: schema.phonepeSubscriptions,
+      enhancedNotifications: schema.enhancedNotifications,
     };
 
     const table = tableMap[tableName];
@@ -770,6 +771,7 @@ export class MigrationService {
       // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
       phonepeOrders: 'migratePhonepeOrders',
       phonepeSubscriptions: 'migratePhonepeSubscriptions',
+      enhancedNotifications: 'migrateEnhancedNotifications',
     };
 
     const methodName = methodMap[tableName];
@@ -807,7 +809,8 @@ export class MigrationService {
       data.abandonedCheckouts.length +
       // Note: webhookLogs are not migrated
       data.phonepeOrders.length +
-      data.phonepeSubscriptions.length
+      data.phonepeSubscriptions.length +
+      data.enhancedNotifications.length
     );
   }
 
@@ -828,6 +831,7 @@ export class MigrationService {
       // Note: webhookLogs are not migrated
       phonepeOrders: 'phonepeOrders',
       phonepeSubscriptions: 'phonepeSubscriptions',
+      enhancedNotifications: 'enhancedNotifications',
     };
 
     return mapping[tableName] || 'metadata';
@@ -850,6 +854,7 @@ export class MigrationService {
       // Note: webhookLogs are not migrated
       phonepeOrders: MigrationState.MIGRATING_PHONEPE_ORDERS,
       phonepeSubscriptions: MigrationState.MIGRATING_PHONEPE_SUBSCRIPTIONS,
+      enhancedNotifications: MigrationState.MIGRATING_ENHANCED_NOTIFICATIONS,
     };
 
     return mapping[tableName] || MigrationState.MIGRATING_METADATA;
@@ -1031,6 +1036,7 @@ export class MigrationService {
       // Note: webhookLogs are not migrated
       phonepeOrders: schema.phonepeOrders,
       phonepeSubscriptions: schema.phonepeSubscriptions,
+      enhancedNotifications: schema.enhancedNotifications,
     };
 
     const table = tableMap[tableName];

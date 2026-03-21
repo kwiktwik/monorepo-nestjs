@@ -30,6 +30,7 @@ export enum MigrationState {
   // Note: webhookLogs are not migrated - old subscription_logs are not compatible with new schema
   MIGRATING_PHONEPE_ORDERS = 'migrating_phonepe_orders',
   MIGRATING_PHONEPE_SUBSCRIPTIONS = 'migrating_phonepe_subscriptions',
+  MIGRATING_ENHANCED_NOTIFICATIONS = 'migrating_enhanced_notifications',
 
   // Verification
   VERIFYING_HASH = 'verifying_hash',
@@ -92,6 +93,7 @@ export interface MigratableUserData {
   webhookLogs: any[];
   phonepeOrders: any[];
   phonepeSubscriptions: any[];
+  enhancedNotifications: any[];
 }
 
 /**
