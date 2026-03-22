@@ -28,21 +28,10 @@ export class PhonePeAuthManager {
 
   async getToken(appId: string): Promise<string> {
     const credentials = this.getCredentials(appId);
-    const cacheKey = `${appId}_${credentials.env}`;
 
-    const cached = this.tokenCache.get(cacheKey);
-    const now = Date.now();
-
-    // Return cached token if still valid (with 5 min buffer)
-    if (cached && cached.expires_at > now + 5 * 60 * 1000) {
-      this.logger.debug(`Using cached token for ${appId}`);
-      return cached.access_token;
-    }
-
-    // Fetch new token
-    this.logger.log(`Fetching new auth token for ${appId}`);
+    // TEMP: Skip cache for debugging
+    this.logger.log(`Fetching new auth token for ${appId} (cache disabled)`);
     const token = await this.fetchToken(credentials);
-    this.tokenCache.set(cacheKey, token);
 
     return token.access_token;
   }
