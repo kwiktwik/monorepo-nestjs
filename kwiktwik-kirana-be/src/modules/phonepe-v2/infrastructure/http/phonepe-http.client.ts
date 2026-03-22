@@ -256,8 +256,13 @@ export class PhonePeHttpClient {
   async getSubscriptionStatus(
     appId: string,
     merchantSubscriptionId: string,
+    environment?: 'SANDBOX' | 'PRODUCTION',
   ): Promise<GetSubscriptionStatusResponse> {
-    const baseUrl = this.authManager.getBaseUrl(appId);
+    const baseUrl = environment
+      ? environment === 'PRODUCTION'
+        ? 'https://api.phonepe.com/apis/pg'
+        : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
+      : this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
 
     const url = `${baseUrl}/checkout/v2/subscriptions/${merchantSubscriptionId}/status`;

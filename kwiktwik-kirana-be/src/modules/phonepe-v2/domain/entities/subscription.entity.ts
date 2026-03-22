@@ -43,6 +43,7 @@ export class Subscription {
     amountType: AmountType;
     expireAt?: Date;
     metadata?: Record<string, unknown>;
+    environment?: 'SANDBOX' | 'PRODUCTION';
   }): Subscription {
     return new Subscription(
       params.id,
@@ -56,7 +57,10 @@ export class Subscription {
       params.amountType,
       'UPI_MANDATE',
       params.expireAt || null,
-      params.metadata || {},
+      {
+        ...(params.metadata || {}),
+        environment: params.environment || 'SANDBOX',
+      },
       null,
       null,
       null,

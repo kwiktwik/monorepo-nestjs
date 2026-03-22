@@ -148,7 +148,10 @@ export class SubscriptionService {
       planConfig.pricing.initialAmount.replace(/[^0-9]/g, ''),
     );
 
-    // Create domain entity
+    // Get merchant ID and environment for SDK configuration
+    const credentials = this.authManager.getCredentials(request.appId);
+
+    // Create domain entity with environment
     const subscription = Subscription.create({
       id: nanoid(10),
       merchantSubscriptionId,
@@ -164,13 +167,11 @@ export class SubscriptionService {
         planId: request.planId,
         planName: planName,
       },
+      environment: credentials.env,
     });
 
     // Save to database
     await this.subscriptionRepo.create(subscription);
-
-    // Get merchant ID for SDK configuration
-    const credentials = this.authManager.getCredentials(request.appId);
 
     let response;
     let sdkToken = '';
@@ -379,26 +380,34 @@ export class SubscriptionService {
     appId: string,
     merchantSubscriptionId: string,
   ): Promise<GetSubscriptionStatusResponse> {
-    // Try to get from PhonePe first
-    try {
-      const phonepeStatus = await this.httpClient.getSubscriptionStatus(
-        appId,
+    // Get subscription from DB first to check environment
+    const subscription =
+      await this.subscriptionRepo.findByMerchantSubscriptionId(
         merchantSubscriptionId,
       );
 
-      // Update local state if needed
-      const subscription =
-        await this.subscriptionRepo.findByMerchantSubscriptionId(
-          merchantSubscriptionId,
-        );
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription ${merchantSubscriptionId} not found`,
+      );
+    }
 
-      if (subscription) {
-        // Sync state if different
-        const phonepeState = phonepeStatus.state.toUpperCase();
-        if (this.isStateTransitionValid(subscription.state, phonepeState)) {
-          this.applyStateTransition(subscription, phonepeState);
-          await this.subscriptionRepo.update(subscription);
-        }
+    // Try to get from PhonePe using the stored environment from metadata
+    try {
+      const environment =
+        (subscription.metadata.environment as 'SANDBOX' | 'PRODUCTION') ||
+        'SANDBOX';
+      const phonepeStatus = await this.httpClient.getSubscriptionStatus(
+        appId,
+        merchantSubscriptionId,
+        environment,
+      );
+
+      // Sync state if different
+      const phonepeState = phonepeStatus.state.toUpperCase();
+      if (this.isStateTransitionValid(subscription.state, phonepeState)) {
+        this.applyStateTransition(subscription, phonepeState);
+        await this.subscriptionRepo.update(subscription);
       }
 
       return {
@@ -411,17 +420,6 @@ export class SubscriptionService {
       };
     } catch (error) {
       // Fall back to local state if PhonePe call fails
-      const subscription =
-        await this.subscriptionRepo.findByMerchantSubscriptionId(
-          merchantSubscriptionId,
-        );
-
-      if (!subscription) {
-        throw new NotFoundException(
-          `Subscription ${merchantSubscriptionId} not found`,
-        );
-      }
-
       return {
         merchantSubscriptionId: subscription.merchantSubscriptionId,
         phonepeSubscriptionId: subscription.phonepeSubscriptionId,
