@@ -56,8 +56,8 @@ export class AdminModule implements NestModule {
     consumer
       .apply(basicAuthMiddleware)
       .forRoutes(
-        { path: '/admin*', method: RequestMethod.ALL },
-        { path: '/api/admin*', method: RequestMethod.ALL },
+        { path: '/admin*path', method: RequestMethod.ALL },
+        { path: '/api/admin*path', method: RequestMethod.ALL },
       );
   }
 }
