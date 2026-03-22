@@ -136,9 +136,7 @@ export class SubscriptionService {
       );
     }
 
-    const phonepeConfig = (
-      planConfig as (typeof PAYWALL_PLANS)['PHONEPE_AUTOPAY']
-    ).phonepeConfig;
+    const phonepeConfig = planConfig.phonepeConfig;
 
     // Extract all values from plan configuration
     const maxAmount = phonepeConfig.maxAmount / 100; // Convert from paise to rupees

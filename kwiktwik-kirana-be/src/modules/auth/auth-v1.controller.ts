@@ -135,7 +135,7 @@ export class AuthV1Controller {
 
     // Check if user already migrated to new system
     const isMigrated = await this.isUserMigrated(normalizedPhone);
-    
+
     if (isMigrated) {
       this.logger.log(
         `[Send OTP v1] User ${normalizedPhone} already migrated, proceeding to send OTP`,
@@ -518,7 +518,7 @@ export class AuthV1Controller {
   ): Promise<UnifiedLoginResponse> {
     // Check for kirana-fe user detection first
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
-    
+
     const isMigrated = await this.isUserMigrated(normalizedPhone);
     let skipLegacyCheck = false;
 

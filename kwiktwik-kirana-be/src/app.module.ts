@@ -24,6 +24,7 @@ import { MqttModule } from './common/mqtt/mqtt.module';
 import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 const dbModule =
   process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
@@ -58,6 +59,7 @@ const dbModule =
     MessagesModule.forRoot({
       get: (key: string) => process.env[key],
     } as ConfigService),
+    AdminModule,
   ],
   controllers: [HealthController],
 })

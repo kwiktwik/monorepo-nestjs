@@ -1036,7 +1036,7 @@ export class AuthService {
     const phoneToCheck = inputPhoneNumber
       ? normalizePhoneNumber(inputPhoneNumber)
       : normalized;
-      
+
     if (!skipLegacyCheck) {
       // Check if user already migrated to new system
       const migratedUser = await this.db

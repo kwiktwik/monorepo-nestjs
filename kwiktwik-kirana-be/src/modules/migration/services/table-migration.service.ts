@@ -181,7 +181,7 @@ export class TableMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        const errorCode = (error as any)?.code || '';
+        const errorCode = error?.code || '';
         this.logger.error(
           `Failed to insert push token: ${errorMessage} (code: ${errorCode})`,
         );
@@ -337,10 +337,10 @@ export class TableMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        const errorCode = (error as any)?.code || '';
-        const errorDetail = (error as any)?.detail || '';
-        const errorTable = (error as any)?.table || '';
-        const errorConstraint = (error as any)?.constraint || '';
+        const errorCode = error?.code || '';
+        const errorDetail = error?.detail || '';
+        const errorTable = error?.table || '';
+        const errorConstraint = error?.constraint || '';
 
         this.logger.error(
           `Failed to insert subscription ${record.id}: ${errorMessage}`,
@@ -393,7 +393,7 @@ export class TableMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        const errorCode = (error as any)?.code || '';
+        const errorCode = error?.code || '';
         this.logger.error(
           `Failed to insert order ${record.id}: ${errorMessage} (code: ${errorCode})`,
         );
@@ -551,9 +551,9 @@ export class TableMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        const errorCode = (error as any)?.code || '';
-        const errorConstraint = (error as any)?.constraint || '';
-        const errorDetail = (error as any)?.detail || '';
+        const errorCode = error?.code || '';
+        const errorConstraint = error?.constraint || '';
+        const errorDetail = error?.detail || '';
         this.logger.error(
           `Failed to insert enhanced notification ${record.notificationId}: ${errorMessage} (code: ${errorCode}, constraint: ${errorConstraint}, detail: ${errorDetail})`,
         );
