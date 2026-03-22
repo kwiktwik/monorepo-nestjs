@@ -37,6 +37,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       amountType: subscription.amountType,
       productType: subscription.productType,
       expireAt: subscription.expireAt,
+      metadata: subscription.metadata,
       activatedAt: subscription.activatedAt,
       cancelledAt: subscription.cancelledAt,
       createdAt: subscription.createdAt,
@@ -112,6 +113,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
         activatedAt: subscription.activatedAt,
         cancelledAt: subscription.cancelledAt,
         updatedAt: subscription.updatedAt,
+        metadata: subscription.metadata,
       })
       .where(eq(schema.phonepeSubscriptions.id, subscription.id));
 
