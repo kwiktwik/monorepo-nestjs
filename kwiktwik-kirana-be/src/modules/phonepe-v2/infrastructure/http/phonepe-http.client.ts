@@ -138,6 +138,7 @@ export class PhonePeHttpClient {
   ): Promise<SetupSubscriptionResponse> {
     const baseUrl = this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
+    const credentials = this.authManager.getCredentials(appId);
 
     const url = `${baseUrl}/checkout/v2/pay`;
 
@@ -151,6 +152,7 @@ export class PhonePeHttpClient {
         'Content-Type': 'application/json',
         Authorization: `O-Bearer ${token}`,
         Accept: 'application/json',
+        'X-MERCHANT-ID': credentials.merchantId,
       },
       body: JSON.stringify(request),
       signal: AbortSignal.timeout(30000),
@@ -179,6 +181,7 @@ export class PhonePeHttpClient {
   ): Promise<SetupSubscriptionMobileResponse> {
     const baseUrl = this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
+    const credentials = this.authManager.getCredentials(appId);
 
     const url = `${baseUrl}/checkout/v2/sdk/order`;
 
@@ -192,6 +195,7 @@ export class PhonePeHttpClient {
         'Content-Type': 'application/json',
         Authorization: `O-Bearer ${token}`,
         Accept: 'application/json',
+        'X-MERCHANT-ID': credentials.merchantId,
       },
       body: JSON.stringify(request),
       signal: AbortSignal.timeout(30000),
@@ -219,6 +223,7 @@ export class PhonePeHttpClient {
   ): Promise<NotifyRedemptionResponse> {
     const baseUrl = this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
+    const credentials = this.authManager.getCredentials(appId);
 
     const url = `${baseUrl}/checkout/v2/subscriptions/notify`;
 
@@ -232,6 +237,7 @@ export class PhonePeHttpClient {
         'Content-Type': 'application/json',
         Authorization: `O-Bearer ${token}`,
         Accept: 'application/json',
+        'X-MERCHANT-ID': credentials.merchantId,
       },
       body: JSON.stringify(request),
       signal: AbortSignal.timeout(30000),
@@ -259,6 +265,7 @@ export class PhonePeHttpClient {
   ): Promise<GetSubscriptionStatusResponse> {
     const baseUrl = this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
+    const credentials = this.authManager.getCredentials(appId);
 
     const url = `${baseUrl}/checkout/v2/subscriptions/${merchantSubscriptionId}/status`;
 
@@ -272,6 +279,7 @@ export class PhonePeHttpClient {
         'Content-Type': 'application/json',
         Authorization: `O-Bearer ${token}`,
         Accept: 'application/json',
+        'X-MERCHANT-ID': credentials.merchantId,
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -299,6 +307,7 @@ export class PhonePeHttpClient {
   ): Promise<GetOrderStatusResponse> {
     const baseUrl = this.authManager.getBaseUrl(appId);
     const token = await this.authManager.getToken(appId);
+    const credentials = this.authManager.getCredentials(appId);
 
     const url = `${baseUrl}/checkout/v2/order/${merchantOrderId}/status?details=${details}`;
 
@@ -310,6 +319,7 @@ export class PhonePeHttpClient {
         'Content-Type': 'application/json',
         Authorization: `O-Bearer ${token}`,
         Accept: 'application/json',
+        'X-MERCHANT-ID': credentials.merchantId,
       },
       signal: AbortSignal.timeout(10000),
     });
