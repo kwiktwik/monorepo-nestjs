@@ -616,10 +616,10 @@ export class AuthService {
 
     // Generate JWT token with optional auth provider info
     const tokenPayload: { sub: string; appId: string; authProvider?: string } =
-      {
-        sub: userId,
-        appId,
-      };
+    {
+      sub: userId,
+      appId,
+    };
 
     // Add auth provider if provided (for v1 unified login)
     if (authProvider) {
@@ -709,10 +709,10 @@ export class AuthService {
     }
 
     const tokenPayload: { sub: string; appId: string; authProvider?: string } =
-      {
-        sub: userId,
-        appId,
-      };
+    {
+      sub: userId,
+      appId,
+    };
 
     // Add auth provider if provided (for v1 unified login)
     if (authProvider) {
@@ -826,10 +826,10 @@ export class AuthService {
     }
 
     const tokenPayload: { sub: string; appId: string; authProvider?: string } =
-      {
-        sub: userId,
-        appId,
-      };
+    {
+      sub: userId,
+      appId,
+    };
 
     const token = this.jwtService.sign(tokenPayload);
     const userProfile = {
@@ -868,32 +868,32 @@ export class AuthService {
     skipLegacyCheck: boolean = false,
   ): Promise<
     | {
-        token: string;
-        user: AuthUserResponse;
-        userProfile: {
-          sub?: string;
-          given_name?: string;
-          family_name?: string;
-          phone_number?: string;
-          email?: string;
-          picture?: string;
-          gender?: string;
-          phone_number_country_code?: string;
-          phone_number_verified?: boolean;
-          address?: Record<string, unknown>;
-        };
-      }
+      token: string;
+      user: AuthUserResponse;
+      userProfile: {
+        sub?: string;
+        given_name?: string;
+        family_name?: string;
+        phone_number?: string;
+        email?: string;
+        picture?: string;
+        gender?: string;
+        phone_number_country_code?: string;
+        phone_number_verified?: boolean;
+        address?: Record<string, unknown>;
+      };
+    }
     | {
-        error: 'USE_ALTERNATE_BACKEND';
-        message: string;
-        alternateBackend: string;
-        alternateEndpoints: {
-          sendOtp: string;
-          verifyOtp: string;
-          truecaller: string;
-          google: string;
-        };
-      }
+      error: 'USE_ALTERNATE_BACKEND';
+      message: string;
+      alternateBackend: string;
+      alternateEndpoints: {
+        sendOtp: string;
+        verifyOtp: string;
+        truecaller: string;
+        google: string;
+      };
+    }
   > {
     // Log incoming parameters
     this.logger.log(
@@ -948,8 +948,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         tokenData.error_description ||
-          tokenData.error ||
-          `Truecaller token exchange failed (${tokenResponse.status})`,
+        tokenData.error ||
+        `Truecaller token exchange failed (${tokenResponse.status})`,
       );
     }
 
@@ -997,8 +997,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         userInfoData.error_description ||
-          userInfoData.error ||
-          `Truecaller profile fetch failed (${userInfoResponse.status})`,
+        userInfoData.error ||
+        `Truecaller profile fetch failed (${userInfoResponse.status})`,
       );
     }
 
@@ -1231,10 +1231,10 @@ export class AuthService {
 
     // Step 6: Generate JWT token with auth provider info
     const tokenPayload: { sub: string; appId: string; authProvider?: string } =
-      {
-        sub: userId,
-        appId,
-      };
+    {
+      sub: userId,
+      appId,
+    };
 
     // Add auth provider if provided (for v1 unified login)
     if (authProvider) {
@@ -1269,31 +1269,31 @@ export class AuthService {
     authProvider?: string,
   ): Promise<
     | {
-        token: string;
-        user: AuthUserResponse;
-        userProfile: {
-          sub?: string;
-          given_name?: string;
-          family_name?: string;
-          phone_number?: string;
-          email?: string;
-          picture?: string;
-          gender?: string;
-          phone_number_country_code?: string;
-          phone_number_verified?: boolean;
-          address?: Record<string, unknown>;
-        };
-      }
+      token: string;
+      user: AuthUserResponse;
+      userProfile: {
+        sub?: string;
+        given_name?: string;
+        family_name?: string;
+        phone_number?: string;
+        email?: string;
+        picture?: string;
+        gender?: string;
+        phone_number_country_code?: string;
+        phone_number_verified?: boolean;
+        address?: Record<string, unknown>;
+      };
+    }
     | {
-        error: 'USE_ALTERNATE_BACKEND';
-        message: string;
-        alternateBackend: string;
-        alternateEndpoints: {
-          sendOtp: string;
-          verifyOtp: string;
-          truecaller: string;
-        };
-      }
+      error: 'USE_ALTERNATE_BACKEND';
+      message: string;
+      alternateBackend: string;
+      alternateEndpoints: {
+        sendOtp: string;
+        verifyOtp: string;
+        truecaller: string;
+      };
+    }
   > {
     // First, do the normal Truecaller signin to get the phone number
     // We need to intercept before user creation to check for kirana-fe
@@ -1335,8 +1335,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         tokenData.error_description ||
-          tokenData.error ||
-          `Truecaller token exchange failed (${tokenResponse.status})`,
+        tokenData.error ||
+        `Truecaller token exchange failed (${tokenResponse.status})`,
       );
     }
 
@@ -1367,8 +1367,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         userInfoData.error_description ||
-          userInfoData.error ||
-          `Truecaller profile fetch failed (${userInfoResponse.status})`,
+        userInfoData.error ||
+        `Truecaller profile fetch failed (${userInfoResponse.status})`,
       );
     }
 
@@ -1562,10 +1562,10 @@ export class AuthService {
 
     // Step 7: Generate JWT token with auth provider info
     const tokenPayload: { sub: string; appId: string; authProvider?: string } =
-      {
-        sub: userId,
-        appId,
-      };
+    {
+      sub: userId,
+      appId,
+    };
 
     // Add auth provider if provided (for v1 unified login)
     if (authProvider) {
