@@ -32,7 +32,7 @@ import { Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import {
   LoginOtpDto,
   LoginTruecallerDto,
@@ -352,8 +352,11 @@ export class AuthV1Controller {
    */
   private async isUserMigrated(phoneNumber: string): Promise<boolean> {
     try {
-      // Normalize phone number
+      // Create different formats to check, as BetterAuth might store them differently
       const normalized = normalizePhoneNumber(phoneNumber);
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      const with91 = digitsOnly.length === 10 ? `91${digitsOnly}` : digitsOnly;
+      const plusDigits = `+${digitsOnly}`;
 
       // Check if user exists in new database
       const userRecord = await this.db
@@ -361,7 +364,12 @@ export class AuthV1Controller {
         .from(schema.user)
         .where(
           and(
-            eq(schema.user.phoneNumber, normalized),
+            or(
+              eq(schema.user.phoneNumber, normalized),
+              eq(schema.user.phoneNumber, digitsOnly),
+              eq(schema.user.phoneNumber, with91),
+              eq(schema.user.phoneNumber, plusDigits),
+            ),
             eq(schema.user.isDeleted, false),
           ),
         )
