@@ -133,26 +133,35 @@ export class AuthV1Controller {
     // Normalize phone number
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
 
-    // Check for kirana-fe user detection first
-    const isKiranaFeUser =
-      await this.authService.checkKiranaFeUser(normalizedPhone);
-
-    if (isKiranaFeUser) {
+    // Check if user already migrated to new system
+    const isMigrated = await this.isUserMigrated(normalizedPhone);
+    
+    if (isMigrated) {
       this.logger.log(
-        `[Send OTP v1] Kirana-FE user detected: ${normalizedPhone}`,
+        `[Send OTP v1] User ${normalizedPhone} already migrated, proceeding to send OTP`,
       );
-      return {
-        success: true,
-        message: 'User already registered on legacy system',
-        error: 'USE_ALTERNATE_BACKEND',
-        alternateBackend: 'https://api.kiranaapps.com',
-        alternateEndpoints: {
-          sendOtp: '/api/phone-number/send-otp',
-          verifyOtp: '/api/phone-number/verify',
-          truecaller: '/api/auth/truecaller/token',
-          google: '/api/auth/google-signin',
-        },
-      };
+    } else {
+      // Check for kirana-fe user detection only if not migrated
+      const isKiranaFeUser =
+        await this.authService.checkKiranaFeUser(normalizedPhone);
+
+      if (isKiranaFeUser) {
+        this.logger.log(
+          `[Send OTP v1] Kirana-FE user detected: ${normalizedPhone}`,
+        );
+        return {
+          success: true,
+          message: 'User already registered on legacy system',
+          error: 'USE_ALTERNATE_BACKEND',
+          alternateBackend: 'https://api.kiranaapps.com',
+          alternateEndpoints: {
+            sendOtp: '/api/phone-number/send-otp',
+            verifyOtp: '/api/phone-number/verify',
+            truecaller: '/api/auth/truecaller/token',
+            google: '/api/auth/google-signin',
+          },
+        };
+      }
     }
 
     // Get client IP for rate limiting
@@ -433,6 +442,31 @@ export class AuthV1Controller {
       `[Truecaller Login] Code verifier preview: ${dto.code_verifier?.substring(0, 30)}...`,
     );
 
+    let skipLegacyCheck = false;
+
+    // Early check if phone number is provided
+    if (dto.phoneNumber) {
+      const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
+      const isMigrated = await this.isUserMigrated(normalizedPhone);
+
+      if (isMigrated) {
+        this.logger.log(
+          `[Truecaller Login] User ${normalizedPhone} already migrated, proceeding with login`,
+        );
+        skipLegacyCheck = true;
+      } else {
+        const isKiranaFeUser =
+          await this.authService.checkKiranaFeUser(normalizedPhone);
+
+        if (isKiranaFeUser) {
+          this.logger.log(
+            `[Truecaller Login] Kirana-FE user detected: ${normalizedPhone}`,
+          );
+          return this.createAlternateBackendResponse();
+        }
+      }
+    }
+
     // Proceed with Truecaller OAuth - kirana-fe check will be done inside service after getting phone from Truecaller
     const result = await this.authService.truecallerSignin(
       dto.code,
@@ -441,6 +475,7 @@ export class AuthV1Controller {
       appId,
       'truecaller',
       dto.phoneNumber, // Pass optional phone number for kirana-fe check
+      skipLegacyCheck,
     );
 
     // Check if result is an alternate backend response
@@ -483,14 +518,25 @@ export class AuthV1Controller {
   ): Promise<UnifiedLoginResponse> {
     // Check for kirana-fe user detection first
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
-    const isKiranaFeUser =
-      await this.authService.checkKiranaFeUser(normalizedPhone);
+    
+    const isMigrated = await this.isUserMigrated(normalizedPhone);
+    let skipLegacyCheck = false;
 
-    if (isKiranaFeUser) {
+    if (isMigrated) {
       this.logger.log(
-        `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
+        `[Google Login] User ${normalizedPhone} already migrated, proceeding with login`,
       );
-      return this.createAlternateBackendResponse();
+      skipLegacyCheck = true;
+    } else {
+      const isKiranaFeUser =
+        await this.authService.checkKiranaFeUser(normalizedPhone);
+
+      if (isKiranaFeUser) {
+        this.logger.log(
+          `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
+        );
+        return this.createAlternateBackendResponse();
+      }
     }
 
     // Proceed with Google Sign-In
@@ -498,6 +544,7 @@ export class AuthV1Controller {
       dto.idToken,
       appId,
       'google',
+      skipLegacyCheck,
     );
 
     this.logger.log(`[Google Login] Success for user: ${result.user.id}`);
