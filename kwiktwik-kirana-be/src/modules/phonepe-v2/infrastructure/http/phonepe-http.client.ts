@@ -142,8 +142,10 @@ export class PhonePeHttpClient {
     const url = `${baseUrl}/checkout/v2/pay`;
 
     this.logger.log(
-      `Setting up subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
+      `[PhonePe API] Setting up subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
     );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
+    this.logger.debug(`[PhonePe API] Request body: ${JSON.stringify(request)}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -156,15 +158,22 @@ export class PhonePeHttpClient {
       signal: AbortSignal.timeout(30000),
     });
 
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Subscription setup failed: ${error}`);
+      this.logger.error(
+        `[PhonePe API] Subscription setup failed: ${responseText}`,
+      );
       throw new Error(
-        `PhonePe subscription setup failed: ${response.status} - ${error}`,
+        `PhonePe subscription setup failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Subscription setup success: orderId=${data.orderId}, state=${data.state}`,
+    );
     return data;
   }
 
@@ -183,8 +192,10 @@ export class PhonePeHttpClient {
     const url = `${baseUrl}/checkout/v2/sdk/order`;
 
     this.logger.log(
-      `Setting up mobile SDK subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
+      `[PhonePe API] Setting up mobile SDK subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
     );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
+    this.logger.debug(`[PhonePe API] Request body: ${JSON.stringify(request)}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -197,15 +208,22 @@ export class PhonePeHttpClient {
       signal: AbortSignal.timeout(30000),
     });
 
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Mobile SDK subscription setup failed: ${error}`);
+      this.logger.error(
+        `[PhonePe API] Mobile SDK subscription setup failed: ${responseText}`,
+      );
       throw new Error(
-        `PhonePe mobile SDK subscription setup failed: ${response.status} - ${error}`,
+        `PhonePe mobile SDK subscription setup failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Mobile SDK subscription setup success: orderId=${data.orderId}, state=${data.state}`,
+    );
     return data;
   }
 
@@ -223,8 +241,10 @@ export class PhonePeHttpClient {
     const url = `${baseUrl}/checkout/v2/subscriptions/notify`;
 
     this.logger.log(
-      `Notifying redemption for ${appId}: order=${request.merchantOrderId}, sub=${request.paymentFlow.merchantSubscriptionId}`,
+      `[PhonePe API] Notifying redemption for ${appId}: order=${request.merchantOrderId}, sub=${request.paymentFlow.merchantSubscriptionId}`,
     );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
+    this.logger.debug(`[PhonePe API] Request body: ${JSON.stringify(request)}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -237,15 +257,19 @@ export class PhonePeHttpClient {
       signal: AbortSignal.timeout(30000),
     });
 
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Redemption notification failed: ${error}`);
+      this.logger.error(
+        `[PhonePe API] Redemption notification failed: ${responseText}`,
+      );
       throw new Error(
-        `PhonePe redemption notification failed: ${response.status} - ${error}`,
+        `PhonePe redemption notification failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     return data;
   }
 
@@ -268,8 +292,9 @@ export class PhonePeHttpClient {
     const url = `${baseUrl}/checkout/v2/subscriptions/${merchantSubscriptionId}/status`;
 
     this.logger.log(
-      `Getting subscription status for ${merchantSubscriptionId}`,
+      `[PhonePe API] Getting subscription status for ${merchantSubscriptionId} (env: ${environment || 'default'})`,
     );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -281,15 +306,22 @@ export class PhonePeHttpClient {
       signal: AbortSignal.timeout(10000),
     });
 
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Get subscription status failed: ${error}`);
+      this.logger.error(
+        `[PhonePe API] Get subscription status failed: ${responseText}`,
+      );
       throw new Error(
-        `PhonePe get subscription status failed: ${response.status} - ${error}`,
+        `PhonePe get subscription status failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Subscription status: ${data.state}, subscriptionId: ${data.subscriptionId}`,
+    );
     return data;
   }
 
@@ -307,7 +339,10 @@ export class PhonePeHttpClient {
 
     const url = `${baseUrl}/checkout/v2/order/${merchantOrderId}/status?details=${details}`;
 
-    this.logger.log(`Getting order status for ${merchantOrderId}`);
+    this.logger.log(
+      `[PhonePe API] Getting order status for ${merchantOrderId}`,
+    );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -319,15 +354,22 @@ export class PhonePeHttpClient {
       signal: AbortSignal.timeout(10000),
     });
 
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
     if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`Get order status failed: ${error}`);
+      this.logger.error(
+        `[PhonePe API] Get order status failed: ${responseText}`,
+      );
       throw new Error(
-        `PhonePe get order status failed: ${response.status} - ${error}`,
+        `PhonePe get order status failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Order status: ${data.state}, orderId: ${data.orderId}`,
+    );
     return data;
   }
 }
