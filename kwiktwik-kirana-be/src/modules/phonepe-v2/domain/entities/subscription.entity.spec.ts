@@ -57,7 +57,10 @@ describe('Subscription Entity', () => {
         metadata,
       });
 
-      expect(subscription.metadata).toEqual(metadata);
+      expect(subscription.metadata).toEqual({
+        ...metadata,
+        environment: 'SANDBOX',
+      });
     });
   });
 

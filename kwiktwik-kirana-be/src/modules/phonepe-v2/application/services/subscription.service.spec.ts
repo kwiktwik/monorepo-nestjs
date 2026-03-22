@@ -217,6 +217,7 @@ describe('SubscriptionService', () => {
         frequency: 'MONTHLY',
         activate: jest.fn(),
         canRedeem: jest.fn().mockReturnValue(false),
+        metadata: { environment: 'SANDBOX' },
       } as unknown as Subscription;
 
       subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(
@@ -280,6 +281,7 @@ describe('SubscriptionService', () => {
         frequency: 'MONTHLY',
         activate: jest.fn(),
         canRedeem: jest.fn().mockReturnValue(false),
+        metadata: { environment: 'SANDBOX' },
       } as unknown as Subscription;
 
       subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(
@@ -477,6 +479,7 @@ describe('SubscriptionService', () => {
       maxAmount: 100000,
       frequency: 'MONTHLY',
       canRedeem: jest.fn().mockReturnValue(true),
+      metadata: { environment: 'SANDBOX' },
     } as unknown as Subscription;
 
     it('should return status from PhonePe API', async () => {
@@ -494,6 +497,7 @@ describe('SubscriptionService', () => {
       expect(httpClient.getSubscriptionStatus).toHaveBeenCalledWith(
         'app123',
         'sub_123',
+        'SANDBOX',
       );
     });
 
