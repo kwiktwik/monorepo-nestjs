@@ -25,7 +25,83 @@ export class TableMigrationService {
   ) {}
 
   /**
-   * Ensure user exists before migrating related data
+   * Migrate user table with actual user data from old system
+   */
+  async migrateUser(
+    records: any[],
+    idMapper: IdMapper,
+    userId: string,
+  ): Promise<any[]> {
+    if (!records || records.length === 0) {
+      this.logger.warn(`No user data to migrate for user ${userId}`);
+      return [];
+    }
+
+    const userData = records[0];
+    const migrated: any[] = [];
+
+    try {
+      // Check if user already exists
+      const existingUser = await this.db
+        .select()
+        .from(schema.user)
+        .where(eq(schema.user.id, userId))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        // Update existing user with correct data
+        this.logger.log(`Updating existing user ${userId} with migrated data`);
+        await this.db
+          .update(schema.user)
+          .set({
+            name: userData.name || existingUser[0].name,
+            email: userData.email || existingUser[0].email,
+            emailVerified:
+              userData.emailVerified ?? existingUser[0].emailVerified,
+            phoneNumber: userData.phoneNumber || existingUser[0].phoneNumber,
+            phoneNumberVerified:
+              userData.phoneNumberVerified ??
+              existingUser[0].phoneNumberVerified,
+            image: userData.image || existingUser[0].image,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.user.id, userId));
+      } else {
+        // Insert new user with actual data
+        this.logger.log(`Creating user ${userId} with migrated data`);
+        await this.db.insert(schema.user).values({
+          id: userId,
+          name: userData.name,
+          email: userData.email,
+          emailVerified: userData.emailVerified || false,
+          phoneNumber: userData.phoneNumber,
+          phoneNumberVerified: userData.phoneNumberVerified || false,
+          image: userData.image,
+          isDeleted: false,
+          createdAt: userData.createdAt
+            ? new Date(userData.createdAt)
+            : new Date(),
+          updatedAt: userData.updatedAt
+            ? new Date(userData.updatedAt)
+            : new Date(),
+        });
+      }
+
+      migrated.push(userData);
+      this.logger.log(`Successfully migrated user ${userId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to migrate user ${userId}:`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+      throw error;
+    }
+
+    return migrated;
+  }
+
+  /**
+   * Ensure user exists before migrating related data (fallback for backwards compatibility)
    */
   private async ensureUserExists(userId: string, record: any): Promise<void> {
     const existingUser = await this.db
@@ -35,20 +111,10 @@ export class TableMigrationService {
       .limit(1);
 
     if (existingUser.length === 0) {
-      this.logger.log(`Creating user with id=${userId}`);
-      await this.db.insert(schema.user).values({
-        id: userId,
-        name: record?.name || 'Unknown',
-        email: record?.email || `${userId}@placeholder.com`,
-        emailVerified: record?.emailVerified || false,
-        phoneNumber: record?.phoneNumber,
-        phoneNumberVerified: record?.phoneNumberVerified || false,
-        image: record?.image,
-        isDeleted: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      this.logger.log(`User ${userId} created successfully`);
+      this.logger.warn(
+        `User ${userId} does not exist, this should not happen during proper migration`,
+      );
+      throw new Error(`User ${userId} must be migrated before related data`);
     }
   }
 

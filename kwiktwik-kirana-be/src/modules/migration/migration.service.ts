@@ -759,6 +759,7 @@ export class MigrationService {
 
     // Route to appropriate migration method
     const methodMap: Record<string, keyof TableMigrationService> = {
+      user: 'migrateUser',
       user_metadata: 'migrateMetadata',
       accounts: 'migrateAccounts',
       pushTokens: 'migratePushTokens',
@@ -798,6 +799,7 @@ export class MigrationService {
    */
   private countTotalRecords(data: MigratableUserData): number {
     return (
+      (data.user ? 1 : 0) +
       data.metadata.length +
       data.accounts.length +
       data.pushTokens.length +
@@ -819,6 +821,7 @@ export class MigrationService {
    */
   private getTablePropertyName(tableName: string): keyof MigratableUserData {
     const mapping: Record<string, keyof MigratableUserData> = {
+      user: 'user',
       user_metadata: 'metadata',
       accounts: 'accounts',
       pushTokens: 'pushTokens',
@@ -842,6 +845,7 @@ export class MigrationService {
    */
   private getTableMigrationState(tableName: string): MigrationState {
     const mapping: Record<string, MigrationState> = {
+      user: MigrationState.MIGRATING_USER,
       user_metadata: MigrationState.MIGRATING_METADATA,
       accounts: MigrationState.MIGRATING_ACCOUNTS,
       pushTokens: MigrationState.MIGRATING_PUSH_TOKENS,
