@@ -141,7 +141,8 @@ export class RazorpayService {
       };
     },
   ) {
-    const { quantity = 1, flow = 'intent', vpa, notes } = dto;
+    const { quantity = 1, flow = 'intent', vpa, notes: rawNotes } = dto;
+    const notes = { ...rawNotes, db: 'kirana-kwiktwik-be' };
     const email = notes.email;
     const contact = notes.contact;
 
