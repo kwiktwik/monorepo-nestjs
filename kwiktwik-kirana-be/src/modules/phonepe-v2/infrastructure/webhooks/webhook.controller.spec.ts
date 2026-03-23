@@ -58,18 +58,14 @@ describe('PhonePeWebhookController', () => {
           provide: DRIZZLE_TOKEN,
           useValue: {
             insert: jest.fn().mockReturnValue({ values: jest.fn() }),
-            select: jest
-              .fn()
-              .mockReturnValue({
-                from: jest
-                  .fn()
-                  .mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
-              }),
-            update: jest
-              .fn()
-              .mockReturnValue({
-                set: jest.fn().mockReturnValue({ where: jest.fn() }),
-              }),
+            select: jest.fn().mockReturnValue({
+              from: jest
+                .fn()
+                .mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+            }),
+            update: jest.fn().mockReturnValue({
+              set: jest.fn().mockReturnValue({ where: jest.fn() }),
+            }),
           },
         },
         {

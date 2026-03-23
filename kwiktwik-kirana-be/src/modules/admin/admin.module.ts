@@ -8,6 +8,8 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { PhonePeAdminController } from './phonepe-admin.controller';
+import { PhonePeV2Module } from '../phonepe-v2/phonepe-v2.module';
 import type { Request, Response, NextFunction } from 'express';
 
 const basicAuthMiddleware = (
@@ -47,8 +49,9 @@ const basicAuthMiddleware = (
         index: ['index.html'],
       },
     }),
+    PhonePeV2Module,
   ],
-  controllers: [AdminController],
+  controllers: [AdminController, PhonePeAdminController],
   providers: [AdminService],
 })
 export class AdminModule implements NestModule {
