@@ -65,7 +65,6 @@ export const UPI_APP_PACKAGES = [
   'com.mobikwik_new',
   'com.freecharge.android',
   'com.myairtelapp',
-  'com.grabpenny',
 ] as const;
 
 /**

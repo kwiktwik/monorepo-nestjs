@@ -71,4 +71,8 @@ export type PhonePeWebhookEvent =
   | 'subscription.redemption.order.completed'
   | 'subscription.redemption.order.failed'
   | 'subscription.redemption.transaction.completed'
-  | 'subscription.redemption.transaction.failed';
+  | 'subscription.redemption.transaction.failed'
+  // Refund callbacks
+  | 'pg.refund.accepted'
+  | 'pg.refund.completed'
+  | 'pg.refund.failed';

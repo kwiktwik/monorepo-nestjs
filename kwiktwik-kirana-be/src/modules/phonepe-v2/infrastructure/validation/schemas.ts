@@ -79,6 +79,9 @@ export const PhonePeWebhookEventEnum = z.enum([
   'subscription.redemption.order.failed',
   'subscription.redemption.transaction.completed',
   'subscription.redemption.transaction.failed',
+  'pg.refund.accepted',
+  'pg.refund.completed',
+  'pg.refund.failed',
 ]);
 
 export const WebhookPayloadSchema = z.object({

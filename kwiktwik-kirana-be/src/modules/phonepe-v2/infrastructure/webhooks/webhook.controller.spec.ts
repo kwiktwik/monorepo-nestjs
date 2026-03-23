@@ -14,6 +14,8 @@ import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
 } from '../../constants';
+import { DRIZZLE_TOKEN } from '../../../../database/drizzle.module';
+import { NotificationService } from '../../../../modules/notification/notification.service';
 
 describe('PhonePeWebhookController', () => {
   let controller: PhonePeWebhookController;
@@ -51,6 +53,28 @@ describe('PhonePeWebhookController', () => {
           useValue: {
             scheduleFirstRedemption: jest.fn().mockResolvedValue(undefined),
           },
+        },
+        {
+          provide: DRIZZLE_TOKEN,
+          useValue: {
+            insert: jest.fn().mockReturnValue({ values: jest.fn() }),
+            select: jest
+              .fn()
+              .mockReturnValue({
+                from: jest
+                  .fn()
+                  .mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+              }),
+            update: jest
+              .fn()
+              .mockReturnValue({
+                set: jest.fn().mockReturnValue({ where: jest.fn() }),
+              }),
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {},
         },
       ],
     }).compile();

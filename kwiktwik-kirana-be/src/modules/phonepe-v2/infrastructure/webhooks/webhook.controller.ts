@@ -11,6 +11,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { Inject, forwardRef } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
@@ -22,6 +23,11 @@ import type {
 import type { PhonePeWebhookEvent } from '../../domain/enums/subscription.enum';
 import { WebhookPayloadSchema } from '../validation/schemas';
 import { RedemptionSchedulerService } from '../../application/services/redemption-scheduler.service';
+import { DRIZZLE_TOKEN } from '../../../../database/drizzle.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../../../database/schema';
+import { NotificationService } from '../../../../modules/notification/notification.service';
+import * as admin from 'firebase-admin';
 
 // Webhook payload types
 interface SubscriptionSetupPayload {
@@ -69,12 +75,26 @@ interface RedemptionPayload {
   detailedErrorCode?: string;
 }
 
+interface RefundPayload {
+  merchantId: string;
+  merchantOrderId: string;
+  orderId: string;
+  refundId: string;
+  transactionId: string;
+  state: 'ACCEPTED' | 'COMPLETED' | 'FAILED';
+  currency: string;
+  amount: number;
+  errorCode?: string;
+  detailedErrorCode?: string;
+}
+
 interface WebhookBody {
   event: PhonePeWebhookEvent;
   payload:
     | SubscriptionSetupPayload
     | SubscriptionStateChangePayload
-    | RedemptionPayload;
+    | RedemptionPayload
+    | RefundPayload;
 }
 
 /**
@@ -94,6 +114,9 @@ export class PhonePeWebhookController {
     private readonly redemptionRepo: RedemptionRepository,
     @Inject(forwardRef(() => RedemptionSchedulerService))
     private readonly redemptionScheduler: RedemptionSchedulerService,
+    @Inject(DRIZZLE_TOKEN)
+    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   @Post()
@@ -181,6 +204,17 @@ export class PhonePeWebhookController {
         case 'subscription.redemption.order.failed':
         case 'subscription.redemption.transaction.failed':
           await this.handleRedemptionFailed(body.payload as RedemptionPayload);
+          break;
+
+        // Refund callbacks
+        case 'pg.refund.accepted':
+          await this.handleRefundAccepted(body.payload as RefundPayload);
+          break;
+        case 'pg.refund.completed':
+          await this.handleRefundCompleted(body.payload as RefundPayload);
+          break;
+        case 'pg.refund.failed':
+          await this.handleRefundFailed(body.payload as RefundPayload);
           break;
 
         default:
@@ -472,5 +506,391 @@ export class PhonePeWebhookController {
     this.logger.log(
       `Redemption failed: ${payload.merchantOrderId}, error: ${errorCode}`,
     );
+  }
+
+  private async handleRefundAccepted(payload: RefundPayload) {
+    this.logger.log(
+      `Refund accepted: ${payload.refundId} for order ${payload.merchantOrderId}, amount: ${payload.amount}`,
+    );
+
+    try {
+      // Find the redemption by merchant order ID
+      const redemption = await this.redemptionRepo.findByMerchantOrderId(
+        payload.merchantOrderId,
+      );
+
+      let userId: string | null = null;
+      let appId: string = 'alertpay-default';
+
+      if (redemption) {
+        userId = redemption.userId;
+        appId = redemption.appId;
+
+        // Update redemption metadata with refund info
+        const updatedMetadata = {
+          ...redemption.metadata,
+          refundId: payload.refundId,
+          refundStatus: 'ACCEPTED',
+          refundAmount: payload.amount,
+          refundCurrency: payload.currency,
+          refundAcceptedAt: new Date().toISOString(),
+        };
+
+        // Log to webhook_logs
+        await this.db.insert(schema.webhookLogs).values({
+          userId: redemption.userId,
+          appId: redemption.appId,
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.accepted',
+          status: 'ACCEPTED',
+          metadata: {
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            amount: payload.amount,
+            currency: payload.currency,
+            redemptionId: redemption.id,
+            ...updatedMetadata,
+          } as Record<string, unknown>,
+        });
+
+        this.logger.log(
+          `Refund acceptance logged for redemption: ${redemption.id}`,
+        );
+      } else {
+        // Log webhook even if redemption not found
+        await this.db.insert(schema.webhookLogs).values({
+          appId: 'alertpay-default',
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.accepted',
+          status: 'ACCEPTED',
+          metadata: {
+            refundId: payload.refundId,
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            amount: payload.amount,
+            currency: payload.currency,
+            note: 'Redemption not found for this order',
+          } as Record<string, unknown>,
+        });
+
+        this.logger.warn(
+          `Redemption not found for refund: ${payload.merchantOrderId}`,
+        );
+      }
+
+      // Send push notification to user
+      if (userId) {
+        await this.sendRefundNotification(userId, appId, 'accepted', payload);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error handling refund accepted: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  private async handleRefundCompleted(payload: RefundPayload) {
+    this.logger.log(
+      `Refund completed: ${payload.refundId} for order ${payload.merchantOrderId}, amount: ${payload.amount}`,
+    );
+
+    try {
+      // Find the redemption by merchant order ID
+      const redemption = await this.redemptionRepo.findByMerchantOrderId(
+        payload.merchantOrderId,
+      );
+
+      let userId: string | null = null;
+      let appId: string = 'alertpay-default';
+
+      if (redemption) {
+        userId = redemption.userId;
+        appId = redemption.appId;
+
+        // Update redemption metadata with refund completion info
+        const updatedMetadata = {
+          ...redemption.metadata,
+          refundId: payload.refundId,
+          refundStatus: 'COMPLETED',
+          refundAmount: payload.amount,
+          refundCurrency: payload.currency,
+          refundTransactionId: payload.transactionId,
+          refundCompletedAt: new Date().toISOString(),
+        };
+
+        // Log to webhook_logs
+        await this.db.insert(schema.webhookLogs).values({
+          userId: redemption.userId,
+          appId: redemption.appId,
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.completed',
+          status: 'COMPLETED',
+          metadata: {
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            transactionId: payload.transactionId,
+            amount: payload.amount,
+            currency: payload.currency,
+            redemptionId: redemption.id,
+            ...updatedMetadata,
+          } as Record<string, unknown>,
+        });
+
+        this.logger.log(
+          `Refund completion logged for redemption: ${redemption.id}`,
+        );
+      } else {
+        // Log webhook even if redemption not found
+        await this.db.insert(schema.webhookLogs).values({
+          appId: 'alertpay-default',
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.completed',
+          status: 'COMPLETED',
+          metadata: {
+            refundId: payload.refundId,
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            transactionId: payload.transactionId,
+            amount: payload.amount,
+            currency: payload.currency,
+            note: 'Redemption not found for this order',
+          } as Record<string, unknown>,
+        });
+
+        this.logger.warn(
+          `Redemption not found for refund completion: ${payload.merchantOrderId}`,
+        );
+      }
+
+      // Send push notification to user
+      if (userId) {
+        await this.sendRefundNotification(userId, appId, 'completed', payload);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error handling refund completed: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  private async handleRefundFailed(payload: RefundPayload) {
+    this.logger.warn(
+      `Refund failed: ${payload.refundId} for order ${payload.merchantOrderId}, error: ${payload.errorCode || 'Unknown'}`,
+    );
+
+    try {
+      // Find the redemption by merchant order ID
+      const redemption = await this.redemptionRepo.findByMerchantOrderId(
+        payload.merchantOrderId,
+      );
+
+      let userId: string | null = null;
+      let appId: string = 'alertpay-default';
+
+      if (redemption) {
+        userId = redemption.userId;
+        appId = redemption.appId;
+
+        // Update redemption metadata with refund failure info
+        const updatedMetadata = {
+          ...redemption.metadata,
+          refundId: payload.refundId,
+          refundStatus: 'FAILED',
+          refundAmount: payload.amount,
+          refundCurrency: payload.currency,
+          refundErrorCode: payload.errorCode,
+          refundDetailedErrorCode: payload.detailedErrorCode,
+          refundFailedAt: new Date().toISOString(),
+        };
+
+        // Log to webhook_logs with error details
+        await this.db.insert(schema.webhookLogs).values({
+          userId: redemption.userId,
+          appId: redemption.appId,
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.failed',
+          status: 'FAILED',
+          errorMessage: payload.errorCode || 'Refund processing failed',
+          metadata: {
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            amount: payload.amount,
+            currency: payload.currency,
+            errorCode: payload.errorCode,
+            detailedErrorCode: payload.detailedErrorCode,
+            redemptionId: redemption.id,
+            ...updatedMetadata,
+          } as Record<string, unknown>,
+        });
+
+        this.logger.log(
+          `Refund failure logged for redemption: ${redemption.id}`,
+        );
+      } else {
+        // Log webhook even if redemption not found
+        await this.db.insert(schema.webhookLogs).values({
+          appId: 'alertpay-default',
+          entityType: 'refund',
+          entityId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          provider: 'phonepe',
+          action: 'pg.refund.failed',
+          status: 'FAILED',
+          errorMessage: payload.errorCode || 'Refund processing failed',
+          metadata: {
+            refundId: payload.refundId,
+            orderId: payload.orderId,
+            merchantOrderId: payload.merchantOrderId,
+            amount: payload.amount,
+            currency: payload.currency,
+            errorCode: payload.errorCode,
+            detailedErrorCode: payload.detailedErrorCode,
+            note: 'Redemption not found for this order',
+          } as Record<string, unknown>,
+        });
+
+        this.logger.warn(
+          `Redemption not found for refund failure: ${payload.merchantOrderId}`,
+        );
+      }
+
+      // Send push notification to user about refund failure
+      if (userId) {
+        await this.sendRefundNotification(userId, appId, 'failed', payload);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error handling refund failed: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  private async sendRefundNotification(
+    userId: string,
+    appId: string,
+    status: 'accepted' | 'completed' | 'failed',
+    payload: RefundPayload,
+  ): Promise<void> {
+    try {
+      // Get user's push tokens
+      const tokens = await this.db
+        .select({ token: schema.pushTokens.token })
+        .from(schema.pushTokens)
+        .where(
+          and(
+            eq(schema.pushTokens.userId, userId),
+            eq(schema.pushTokens.appId, appId),
+            eq(schema.pushTokens.isActive, true),
+          ),
+        );
+
+      if (tokens.length === 0) {
+        this.logger.warn(
+          `No active push tokens found for user: ${userId}, app: ${appId}`,
+        );
+        return;
+      }
+
+      const tokenList = tokens.map((t) => t.token);
+      const amountInRupees = (payload.amount / 100).toFixed(2);
+
+      let title: string;
+      let body: string;
+
+      switch (status) {
+        case 'accepted':
+          title = 'Refund Request Accepted';
+          body = `Your refund request for ₹${amountInRupees} has been accepted and is being processed.`;
+          break;
+        case 'completed':
+          title = 'Refund Completed';
+          body = `Your refund of ₹${amountInRupees} has been successfully processed. The amount will be credited to your account within 5-7 business days.`;
+          break;
+        case 'failed':
+          title = 'Refund Failed';
+          body = `We apologize, but your refund request for ₹${amountInRupees} could not be processed. Please contact support for assistance.`;
+          break;
+      }
+
+      // Send push notification via Firebase
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens: tokenList,
+        notification: {
+          title,
+          body,
+        },
+        data: {
+          type: 'refund_update',
+          status,
+          refundId: payload.refundId,
+          orderId: payload.merchantOrderId,
+          amount: amountInRupees,
+          currency: payload.currency,
+          timestamp: new Date().toISOString(),
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'high_importance_channel',
+            priority: 'high',
+          },
+        },
+      });
+
+      this.logger.log(
+        `Refund notification sent: ${status}, success: ${response.successCount}, failed: ${response.failureCount}`,
+      );
+
+      // Handle invalid tokens
+      if (response.failureCount > 0) {
+        const invalidTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            const code = resp.error?.code;
+            if (
+              code === 'messaging/invalid-registration-token' ||
+              code === 'messaging/registration-token-not-registered'
+            ) {
+              invalidTokens.push(tokenList[idx]);
+            }
+          }
+        });
+
+        if (invalidTokens.length > 0) {
+          for (const token of invalidTokens) {
+            await this.db
+              .update(schema.pushTokens)
+              .set({ isActive: false, updatedAt: new Date() })
+              .where(eq(schema.pushTokens.token, token));
+          }
+          this.logger.log(
+            `Deactivated ${invalidTokens.length} invalid push tokens`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to send refund notification: ${error.message}`,
+        error.stack,
+      );
+    }
   }
 }
