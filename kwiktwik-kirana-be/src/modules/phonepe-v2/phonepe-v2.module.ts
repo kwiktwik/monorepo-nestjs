@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DrizzleModule } from '../../database/drizzle.module';
+import { NotificationModule } from '../notification/notification.module';
 
 // Infrastructure
 import { PhonePeAuthManager } from './infrastructure/http/auth-manager';
@@ -21,7 +22,12 @@ import { SubscriptionController } from './presentation/subscription.controller';
 import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from './constants';
 
 @Module({
-  imports: [ConfigModule, DrizzleModule, ScheduleModule.forRoot()],
+  imports: [
+    ConfigModule,
+    DrizzleModule,
+    ScheduleModule.forRoot(),
+    NotificationModule,
+  ],
   controllers: [SubscriptionController, PhonePeWebhookController],
   providers: [
     // HTTP Client
