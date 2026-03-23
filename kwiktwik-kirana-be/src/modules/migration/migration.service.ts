@@ -704,6 +704,7 @@ export class MigrationService {
     userId: string,
   ): Promise<boolean> {
     const tableMap: Record<string, any> = {
+      user: schema.user,
       user_metadata: schema.userMetadata,
       accounts: schema.account,
       pushTokens: schema.pushTokens,
@@ -1028,6 +1029,7 @@ export class MigrationService {
     userId: string,
   ): Promise<void> {
     const tableMap: Record<string, any> = {
+      user: schema.user,
       user_metadata: schema.userMetadata,
       accounts: schema.account,
       pushTokens: schema.pushTokens,
@@ -1049,7 +1051,12 @@ export class MigrationService {
       return;
     }
 
-    await this.db.delete(table).where(eq(table.userId, userId));
+    // User table uses 'id' column, others use 'userId'
+    if (tableName === 'user') {
+      await this.db.delete(table).where(eq(table.id, userId));
+    } else {
+      await this.db.delete(table).where(eq(table.userId, userId));
+    }
   }
 
   /**

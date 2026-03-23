@@ -50,6 +50,7 @@ export class HashCalculator {
     return {
       userId: data.userId,
       phoneNumber: data.phoneNumber,
+      user: data.user ? this.normalizeRecord(data.user) : null,
       metadata: data.metadata.map((r) => this.normalizeRecord(r)),
       accounts: data.accounts.map((r) => this.normalizeRecord(r)),
       pushTokens: data.pushTokens.map((r) => this.normalizeRecord(r)),
