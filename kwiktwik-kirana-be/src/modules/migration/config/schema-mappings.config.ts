@@ -21,6 +21,47 @@ export interface TableMapping {
 }
 
 /**
+ * User table mapping
+ */
+export const USER_MAPPING: TableMapping = {
+  tableName: 'user',
+  requiredFields: ['id', 'name', 'email', 'phoneNumber'],
+  fields: [
+    { newField: 'id', oldFields: ['id'], defaultValue: null },
+    { newField: 'name', oldFields: ['name'], defaultValue: null },
+    { newField: 'email', oldFields: ['email'], defaultValue: null },
+    {
+      newField: 'emailVerified',
+      oldFields: ['emailVerified', 'email_verified'],
+      defaultValue: false,
+    },
+    { newField: 'image', oldFields: ['image'], defaultValue: null },
+    {
+      newField: 'phoneNumber',
+      oldFields: ['phoneNumber', 'phone_number'],
+      defaultValue: null,
+    },
+    {
+      newField: 'phoneNumberVerified',
+      oldFields: ['phoneNumberVerified', 'phone_number_verified'],
+      defaultValue: false,
+    },
+    {
+      newField: 'createdAt',
+      oldFields: ['createdAt', 'created_at'],
+      isDate: true,
+      defaultValue: () => new Date(),
+    },
+    {
+      newField: 'updatedAt',
+      oldFields: ['updatedAt', 'updated_at'],
+      isDate: true,
+      defaultValue: () => new Date(),
+    },
+  ],
+};
+
+/**
  * Subscriptions table mapping
  */
 export const SUBSCRIPTIONS_MAPPING: TableMapping = {
@@ -998,6 +1039,7 @@ export const PHONEPE_SUBSCRIPTIONS_MAPPING: TableMapping = {
  * All table mappings
  */
 export const ALL_TABLE_MAPPINGS: Record<string, TableMapping> = {
+  user: USER_MAPPING,
   subscriptions: SUBSCRIPTIONS_MAPPING,
   orders: ORDERS_MAPPING,
   accounts: ACCOUNTS_MAPPING,
