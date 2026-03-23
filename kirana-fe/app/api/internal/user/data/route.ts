@@ -56,6 +56,13 @@ export async function POST(req: NextRequest) {
 
     const appId = "com.kiranaapps.app";
 
+    // Fetch user data first
+    const userData = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
     // Fetch all user data in parallel
     const [
       metadata,
@@ -180,6 +187,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       userId,
       phoneNumber,
+      user: userData[0] || null,
       metadata,
       accounts,
       pushTokens: pushTokensData,
