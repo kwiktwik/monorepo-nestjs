@@ -22,7 +22,8 @@ const basicAuthMiddleware = (
     .split(':');
 
   const expectedUser = process.env.ADMIN_USER || 'admin';
-  const expectedPass = process.env.ADMIN_PASSWORD || 'K!r@nA$Admin_2026_#Secur3'; // Complex default
+  const expectedPass =
+    process.env.ADMIN_PASSWORD || 'K!r@nA$Admin_2026_#Secur3'; // Complex default
 
   if (
     login &&

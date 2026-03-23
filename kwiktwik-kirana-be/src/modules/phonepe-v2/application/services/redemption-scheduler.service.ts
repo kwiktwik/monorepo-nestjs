@@ -1,7 +1,13 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from '../../constants';
-import type { SubscriptionRepository, RedemptionRepository } from '../interfaces/repository.interface';
+import {
+  SUBSCRIPTION_REPOSITORY,
+  REDEMPTION_REPOSITORY,
+} from '../../constants';
+import type {
+  SubscriptionRepository,
+  RedemptionRepository,
+} from '../interfaces/repository.interface';
 import { SubscriptionService } from './subscription.service';
 import { PhonePeHttpClient } from '../../infrastructure/http/phonepe-http.client';
 import { PAYWALL_PLANS } from '../../../config/config.data';
@@ -62,8 +68,11 @@ export class RedemptionSchedulerService {
   async processStuckActivations() {
     this.logger.log('Starting stuck activations processing cron job');
     try {
-      const stuckSubscriptions = await this.subscriptionRepo.findStuckActivations(30);
-      this.logger.log(`Found ${stuckSubscriptions.length} subscriptions stuck in activation`);
+      const stuckSubscriptions =
+        await this.subscriptionRepo.findStuckActivations(30);
+      this.logger.log(
+        `Found ${stuckSubscriptions.length} subscriptions stuck in activation`,
+      );
 
       for (const subscription of stuckSubscriptions) {
         try {
@@ -71,23 +80,33 @@ export class RedemptionSchedulerService {
           const status = await this.httpClient.getSubscriptionStatus(
             subscription.appId,
             subscription.merchantSubscriptionId,
-            env
+            env,
           );
 
           if (status.state === 'ACTIVE') {
             subscription.activate(status.subscriptionId);
             await this.subscriptionRepo.update(subscription);
-            this.logger.log(`Subscription ${subscription.merchantSubscriptionId} successfully activated from fallback poll`);
-            
+            this.logger.log(
+              `Subscription ${subscription.merchantSubscriptionId} successfully activated from fallback poll`,
+            );
+
             // Schedule first redemption
             await this.scheduleFirstRedemption(subscription);
-          } else if (status.state === 'FAILED' || status.state === 'CANCELLED') {
+          } else if (
+            status.state === 'FAILED' ||
+            status.state === 'CANCELLED'
+          ) {
             subscription.markAsFailed();
             await this.subscriptionRepo.update(subscription);
-            this.logger.log(`Subscription ${subscription.merchantSubscriptionId} failed from fallback poll`);
+            this.logger.log(
+              `Subscription ${subscription.merchantSubscriptionId} failed from fallback poll`,
+            );
           }
         } catch (subErr) {
-          this.logger.error(`Failed to sync status for stuck subscription ${subscription.merchantSubscriptionId}`, subErr);
+          this.logger.error(
+            `Failed to sync status for stuck subscription ${subscription.merchantSubscriptionId}`,
+            subErr,
+          );
         }
       }
     } catch (error) {
@@ -99,30 +118,45 @@ export class RedemptionSchedulerService {
   async processStuckRedemptions() {
     this.logger.log('Starting stuck redemptions processing cron job');
     try {
-      const stuckRedemptions = await this.redemptionRepo.findStuckRedemptions(2);
-      this.logger.log(`Found ${stuckRedemptions.length} stuck redemptions to verify`);
+      const stuckRedemptions =
+        await this.redemptionRepo.findStuckRedemptions(2);
+      this.logger.log(
+        `Found ${stuckRedemptions.length} stuck redemptions to verify`,
+      );
 
       for (const redemption of stuckRedemptions) {
         try {
           const status = await this.httpClient.getOrderStatus(
             redemption.appId,
             redemption.merchantOrderId,
-            true
+            true,
           );
 
           if (status.state === 'COMPLETED') {
-            const transactionId = status.paymentDetails?.[0]?.transactionId || status.orderId;
+            const transactionId =
+              status.paymentDetails?.[0]?.transactionId || status.orderId;
             redemption.complete(transactionId);
             await this.redemptionRepo.update(redemption);
-            this.logger.log(`Redemption ${redemption.merchantOrderId} completed from fallback poll`);
+            this.logger.log(
+              `Redemption ${redemption.merchantOrderId} completed from fallback poll`,
+            );
           } else if (status.state === 'FAILED') {
-            const errorCode = status.paymentDetails?.[0]?.errorCode || 'POLL_FAILED';
-            redemption.fail(errorCode, 'Failed during fallback poll verification');
+            const errorCode =
+              status.paymentDetails?.[0]?.errorCode || 'POLL_FAILED';
+            redemption.fail(
+              errorCode,
+              'Failed during fallback poll verification',
+            );
             await this.redemptionRepo.update(redemption);
-            this.logger.log(`Redemption ${redemption.merchantOrderId} failed from fallback poll`);
+            this.logger.log(
+              `Redemption ${redemption.merchantOrderId} failed from fallback poll`,
+            );
           }
         } catch (redErr) {
-          this.logger.error(`Failed to sync status for stuck redemption ${redemption.merchantOrderId}`, redErr);
+          this.logger.error(
+            `Failed to sync status for stuck redemption ${redemption.merchantOrderId}`,
+            redErr,
+          );
         }
       }
     } catch (error) {

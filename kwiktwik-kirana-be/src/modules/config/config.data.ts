@@ -947,6 +947,23 @@ export const APP_CONFIGS = {
         'https://play.google.com/store/apps/details?id=com.sharestatus.app',
     },
   },
+  'com.dailyattendance.staffbook': {
+    ...baseConfig,
+    app: {
+      ...baseConfig.app,
+      name: 'StaffBook',
+      id: 'com.dailyattendance.staffbook',
+    },
+    features: {
+      ...baseConfig.features,
+      subscription: { plan_id: 'plan_S3FaBrk7sjPQEU' } as SubscriptionConfig,
+    },
+    appUpdate: {
+      ...baseConfig.appUpdate,
+      updateUrl:
+        'https://play.google.com/store/apps/details?id=com.dailyattendance.staffbook',
+    },
+  },
 };
 
 export const PAYWALL_TRANSLATIONS = {

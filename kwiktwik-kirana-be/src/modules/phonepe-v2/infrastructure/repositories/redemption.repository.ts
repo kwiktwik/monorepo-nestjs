@@ -87,7 +87,11 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       .where(
         and(
           eq(schema.phonepeRedemptions.merchantSubscriptionId, subscriptionId),
-          inArray(schema.phonepeRedemptions.state, ['NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING']),
+          inArray(schema.phonepeRedemptions.state, [
+            'NOTIFICATION_IN_PROGRESS',
+            'NOTIFIED',
+            'PENDING',
+          ]),
         ),
       )
       .limit(1);
@@ -138,7 +142,11 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       .from(schema.phonepeRedemptions)
       .where(
         and(
-          inArray(schema.phonepeRedemptions.state, ['NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING']),
+          inArray(schema.phonepeRedemptions.state, [
+            'NOTIFICATION_IN_PROGRESS',
+            'NOTIFIED',
+            'PENDING',
+          ]),
           lt(schema.phonepeRedemptions.createdAt, cutoff),
         ),
       );

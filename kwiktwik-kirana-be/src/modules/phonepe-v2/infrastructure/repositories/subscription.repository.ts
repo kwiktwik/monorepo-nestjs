@@ -195,8 +195,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       .where(
         and(
           eq(schema.phonepeSubscriptions.state, 'ACTIVATION_IN_PROGRESS'),
-          lt(schema.phonepeSubscriptions.createdAt, cutoff)
-        )
+          lt(schema.phonepeSubscriptions.createdAt, cutoff),
+        ),
       );
 
     return results.map((r) => this.toDomain(r));
