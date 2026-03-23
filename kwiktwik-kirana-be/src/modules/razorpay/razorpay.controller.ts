@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Logger,
+  Headers,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,16 @@ import { VerifyPaymentDto } from './dto/verify-payment.dto';
 @ApiTags('razorpay')
 @ApiBearerAuth('JWT')
 @ApiHeader({ name: 'X-App-ID', required: true, description: 'App identifier' })
+@ApiHeader({
+  name: 'X-App-Version',
+  required: false,
+  description: 'App version (e.g., 1.2.3)',
+})
+@ApiHeader({
+  name: 'X-Build-Number',
+  required: false,
+  description: 'Build number (e.g., 123)',
+})
 @Controller('razorpay')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class RazorpayController {
@@ -43,9 +54,11 @@ export class RazorpayController {
     @CurrentUser() user: { userId: string },
     @AppId() appId: string,
     @Body() dto: CreateSubscriptionV2Dto,
+    @Headers('x-app-version') appVersion?: string,
+    @Headers('x-build-number') buildNumber?: string,
   ) {
     this.logger.log(
-      `[createSubscriptionV2] Incoming request | userId=${user.userId} appId=${appId} body=${JSON.stringify(dto)}`,
+      `[createSubscriptionV2] Incoming request | userId=${user.userId} appId=${appId} body=${JSON.stringify(dto)} appVersion=${appVersion} buildNumber=${buildNumber}`,
     );
 
     let planId = dto.plan_id;
@@ -62,13 +75,20 @@ export class RazorpayController {
       this.logger.log(`[createSubscriptionV2] Using provided planId=${planId}`);
     }
 
+    // Merge headers into notes
+    const notes = {
+      ...dto.notes,
+      ...(appVersion && { app_version: appVersion }),
+      ...(buildNumber && { build_number: buildNumber }),
+    };
+
     return this.razorpayService.createSubscriptionV2(user.userId, appId, {
       plan_id: planId,
       quantity: dto.quantity ?? 1,
       start_at: dto.start_at,
       flow: dto.flow ?? 'intent',
       vpa: dto.vpa,
-      notes: dto.notes,
+      notes,
     });
   }
 
