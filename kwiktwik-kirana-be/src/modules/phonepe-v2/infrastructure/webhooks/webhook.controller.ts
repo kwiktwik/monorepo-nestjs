@@ -10,7 +10,7 @@ import {
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
-import { Inject } from '@nestjs/common';
+import { Inject, forwardRef } from '@nestjs/common';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
@@ -21,6 +21,7 @@ import type {
 } from '../../application/interfaces/repository.interface';
 import type { PhonePeWebhookEvent } from '../../domain/enums/subscription.enum';
 import { WebhookPayloadSchema } from '../validation/schemas';
+import { RedemptionSchedulerService } from '../../application/services/redemption-scheduler.service';
 
 // Webhook payload types
 interface SubscriptionSetupPayload {
@@ -90,6 +91,8 @@ export class PhonePeWebhookController {
     private readonly subscriptionRepo: SubscriptionRepository,
     @Inject(REDEMPTION_REPOSITORY)
     private readonly redemptionRepo: RedemptionRepository,
+    @Inject(forwardRef(() => RedemptionSchedulerService))
+    private readonly redemptionScheduler: RedemptionSchedulerService,
   ) {}
 
   @Post()
@@ -266,6 +269,8 @@ export class PhonePeWebhookController {
       this.logger.log(
         `Subscription activated: ${merchantSubscriptionId}, new state: ACTIVE`,
       );
+
+      await this.redemptionScheduler.scheduleFirstRedemption(subscription);
     } catch (error) {
       this.logger.error(
         `Failed to activate subscription: ${error.message}`,

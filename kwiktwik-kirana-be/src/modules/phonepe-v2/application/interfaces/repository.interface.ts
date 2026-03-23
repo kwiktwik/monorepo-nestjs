@@ -43,6 +43,24 @@ export interface SubscriptionRepository {
   existsByMerchantSubscriptionId(
     merchantSubscriptionId: string,
   ): Promise<boolean>;
+
+  /**
+   * Find subscriptions due for redemption (nextBillingDate <= now)
+   */
+  findDueForRedemption(beforeDate: Date): Promise<Subscription[]>;
+
+  /**
+   * Find subscriptions with failed redemptions that can be retried
+   */
+  findFailedRedemptionsRetryable(
+    maxRetries: number,
+    daysOld: number,
+  ): Promise<Subscription[]>;
+
+  /**
+   * Find subscriptions stuck in activation
+   */
+  findStuckActivations(minutesOld: number): Promise<Subscription[]>;
 }
 
 /**

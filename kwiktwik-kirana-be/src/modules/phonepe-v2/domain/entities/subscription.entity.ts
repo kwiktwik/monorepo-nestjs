@@ -29,6 +29,8 @@ export class Subscription {
     private _cancelledAt: Date | null,
     public readonly createdAt: Date,
     public updatedAt: Date,
+    public nextBillingDate: Date | null,
+    public billingCycleCount: number,
   ) {}
 
   // Factory method to create new subscription
@@ -66,6 +68,8 @@ export class Subscription {
       null,
       new Date(),
       new Date(),
+      null, // nextBillingDate - will be set after activation
+      0, // billingCycleCount
     );
   }
 
@@ -225,6 +229,8 @@ export class Subscription {
     cancelledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    nextBillingDate?: Date | null;
+    billingCycleCount?: number;
   }): Subscription {
     return new Subscription(
       data.id,
@@ -244,6 +250,40 @@ export class Subscription {
       data.cancelledAt,
       data.createdAt,
       data.updatedAt,
+      data.nextBillingDate || null,
+      data.billingCycleCount || 0,
     );
+  }
+
+  /**
+   * Calculate next billing date based on frequency
+   */
+  calculateNextBillingDate(fromDate: Date = new Date()): Date {
+    switch (this.frequency) {
+      case 'DAILY':
+        return new Date(fromDate.getTime() + 24 * 60 * 60 * 1000);
+      case 'WEEKLY':
+        return new Date(fromDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      case 'FORTNIGHTLY':
+        return new Date(fromDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+      case 'MONTHLY':
+      default:
+        return new Date(fromDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      case 'QUARTERLY':
+        return new Date(fromDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+      case 'HALFYEARLY':
+        return new Date(fromDate.getTime() + 180 * 24 * 60 * 60 * 1000);
+      case 'YEARLY':
+        return new Date(fromDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  /**
+   * Schedule next billing after successful redemption
+   */
+  scheduleNextBilling(): void {
+    this.nextBillingDate = this.calculateNextBillingDate();
+    this.billingCycleCount++;
+    this.updatedAt = new Date();
   }
 }

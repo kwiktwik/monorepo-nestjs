@@ -669,6 +669,8 @@ export const phonepeSubscriptions = pgTable(
     expireAt: timestamp('expire_at'),
     activatedAt: timestamp('activated_at'),
     cancelledAt: timestamp('cancelled_at'),
+    nextBillingDate: timestamp('next_billing_date'),
+    billingCycleCount: integer('billing_cycle_count').default(0),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -683,6 +685,9 @@ export const phonepeSubscriptions = pgTable(
     phonepeSubscriptionsMerchantIdIdx: index(
       'phonepe_subscriptions_merchant_id_idx',
     ).on(table.merchantSubscriptionId),
+    phonepeSubscriptionsNextBillingDateIdx: index(
+      'phonepe_subscriptions_next_billing_date_idx',
+    ).on(table.nextBillingDate),
   }),
 ).enableRLS();
 

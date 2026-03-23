@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionRepository } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
@@ -38,6 +38,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       productType: subscription.productType,
       expireAt: subscription.expireAt,
       metadata: subscription.metadata,
+      nextBillingDate: subscription.nextBillingDate,
+      billingCycleCount: subscription.billingCycleCount,
       activatedAt: subscription.activatedAt,
       cancelledAt: subscription.cancelledAt,
       createdAt: subscription.createdAt,
@@ -114,6 +116,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
         cancelledAt: subscription.cancelledAt,
         updatedAt: subscription.updatedAt,
         metadata: subscription.metadata,
+        nextBillingDate: subscription.nextBillingDate,
+        billingCycleCount: subscription.billingCycleCount,
       })
       .where(eq(schema.phonepeSubscriptions.id, subscription.id));
 
@@ -137,6 +141,67 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
     return result.length > 0;
   }
 
+  async findDueForRedemption(beforeDate: Date): Promise<Subscription[]> {
+    const results = await this.db
+      .select()
+      .from(schema.phonepeSubscriptions)
+      .where(and(eq(schema.phonepeSubscriptions.state, 'ACTIVE')));
+
+    const due = results.filter(
+      (sub) =>
+        sub.nextBillingDate && new Date(sub.nextBillingDate) <= beforeDate,
+    );
+
+    return due.map((r) => this.toDomain(r));
+  }
+
+  async findFailedRedemptionsRetryable(
+    maxRetries: number,
+    daysOld: number,
+  ): Promise<Subscription[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    const results = await this.db
+      .select()
+      .from(schema.phonepeSubscriptions)
+      .where(and(eq(schema.phonepeSubscriptions.state, 'ACTIVE')));
+
+    const retryable = results.filter((sub: any) => {
+      const meta = sub.metadata || {};
+      const retryCount = Number(meta.retryCount) || 0;
+      const lastRedemptionStatus = meta.lastRedemptionStatus as string;
+      const lastRedemptionDate = meta.lastRedemptionDate
+        ? new Date(meta.lastRedemptionDate as string)
+        : null;
+
+      return (
+        retryCount < maxRetries &&
+        lastRedemptionStatus === 'failed' &&
+        lastRedemptionDate &&
+        lastRedemptionDate >= cutoffDate
+      );
+    });
+
+    return retryable.map((r) => this.toDomain(r));
+  }
+
+  async findStuckActivations(minutesOld: number): Promise<Subscription[]> {
+    const cutoff = new Date(Date.now() - minutesOld * 60 * 1000);
+
+    const results = await this.db
+      .select()
+      .from(schema.phonepeSubscriptions)
+      .where(
+        and(
+          eq(schema.phonepeSubscriptions.state, 'ACTIVATION_IN_PROGRESS'),
+          sql`${schema.phonepeSubscriptions.createdAt} < ${cutoff}`
+        )
+      );
+
+    return results.map((r) => this.toDomain(r));
+  }
+
   private toDomain(data: any): Subscription {
     return Subscription.reconstruct({
       id: data.id,
@@ -156,6 +221,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       cancelledAt: data.cancelledAt,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+      nextBillingDate: data.nextBillingDate,
+      billingCycleCount: data.billingCycleCount,
     });
   }
 }

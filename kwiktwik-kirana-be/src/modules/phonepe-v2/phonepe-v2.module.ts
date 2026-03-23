@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DrizzleModule } from '../../database/drizzle.module';
 
 // Infrastructure
@@ -11,6 +12,7 @@ import { PhonePeWebhookController } from './infrastructure/webhooks/webhook.cont
 
 // Application
 import { SubscriptionService } from './application/services/subscription.service';
+import { RedemptionSchedulerService } from './application/services/redemption-scheduler.service';
 
 // Presentation
 import { SubscriptionController } from './presentation/subscription.controller';
@@ -19,7 +21,7 @@ import { SubscriptionController } from './presentation/subscription.controller';
 import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from './constants';
 
 @Module({
-  imports: [ConfigModule, DrizzleModule],
+  imports: [ConfigModule, DrizzleModule, ScheduleModule.forRoot()],
   controllers: [SubscriptionController, PhonePeWebhookController],
   providers: [
     // HTTP Client
@@ -38,7 +40,8 @@ import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from './constants';
 
     // Services
     SubscriptionService,
+    RedemptionSchedulerService,
   ],
-  exports: [SubscriptionService],
+  exports: [SubscriptionService, RedemptionSchedulerService],
 })
 export class PhonePeV2Module {}

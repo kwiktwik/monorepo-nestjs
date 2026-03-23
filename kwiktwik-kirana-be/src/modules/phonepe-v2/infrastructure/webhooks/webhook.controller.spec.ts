@@ -9,6 +9,7 @@ import {
 } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
 import { Redemption } from '../../domain/entities/redemption.entity';
+import { RedemptionSchedulerService } from '../../application/services/redemption-scheduler.service';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
@@ -19,6 +20,7 @@ describe('PhonePeWebhookController', () => {
   let configService: jest.Mocked<ConfigService>;
   let subscriptionRepo: jest.Mocked<SubscriptionRepository>;
   let redemptionRepo: jest.Mocked<RedemptionRepository>;
+  let redemptionScheduler: jest.Mocked<RedemptionSchedulerService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -44,6 +46,12 @@ describe('PhonePeWebhookController', () => {
             update: jest.fn(),
           },
         },
+        {
+          provide: RedemptionSchedulerService,
+          useValue: {
+            scheduleFirstRedemption: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -51,6 +59,7 @@ describe('PhonePeWebhookController', () => {
     configService = module.get(ConfigService);
     subscriptionRepo = module.get(SUBSCRIPTION_REPOSITORY);
     redemptionRepo = module.get(REDEMPTION_REPOSITORY);
+    redemptionScheduler = module.get(RedemptionSchedulerService);
   });
 
   describe('handleWebhook', () => {
