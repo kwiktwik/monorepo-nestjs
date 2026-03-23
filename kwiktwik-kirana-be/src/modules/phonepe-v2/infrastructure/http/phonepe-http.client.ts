@@ -270,6 +270,9 @@ export class PhonePeHttpClient {
     }
 
     const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Redemption notify response: orderId=${data.orderId}, state=${data.state}`,
+    );
     return data;
   }
 

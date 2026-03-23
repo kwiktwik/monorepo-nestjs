@@ -354,12 +354,21 @@ export class SubscriptionService {
     });
 
     // Update redemption with PhonePe response
+    this.logger.log(
+      `[PhonePe] Marking redemption as notified: merchantOrderId=${merchantOrderId}, phonepeOrderId=${response.orderId}`,
+    );
     redemption.markAsNotified(
       response.orderId,
       new Date(Date.now() + 24 * 60 * 60 * 1000), // validAfter: 24 hours from now
       new Date(Date.now() + 48 * 60 * 60 * 1000), // validUpto: 48 hours from now
     );
+    this.logger.log(
+      `[PhonePe] Redemption state after markAsNotified: state=${redemption.state}, phonepeOrderId=${redemption.phonepeOrderId}`,
+    );
     await this.redemptionRepo.update(redemption);
+    this.logger.log(
+      `[PhonePe] Redemption updated in database: id=${redemption.id}`,
+    );
 
     this.logger.log(
       `Redemption notified: ${merchantOrderId} for subscription ${request.merchantSubscriptionId}`,
