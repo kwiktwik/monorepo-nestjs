@@ -40,7 +40,7 @@ class NotifyRedemptionDto {
 }
 
 @ApiTags('admin-phonepe')
-@Controller('api/admin/phonepe')
+@Controller('admin/phonepe')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PhonePeAdminController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
