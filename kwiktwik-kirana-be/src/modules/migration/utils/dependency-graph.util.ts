@@ -9,7 +9,14 @@ import { TableDependencyLevel } from '../interfaces/migration.interfaces';
  * Level 4: Logs/history with parent references
  */
 export const MIGRATION_DEPENDENCY_GRAPH: TableDependencyLevel[] = [
-  // Level 1: No dependencies (migrate first)
+  // Level 0: User table first (must exist before all others)
+  {
+    level: 0,
+    tables: ['user'],
+    description: 'User profile - must be migrated first',
+  },
+
+  // Level 1: No dependencies (can be migrated first)
   {
     level: 1,
     tables: ['user_metadata', 'accounts', 'pushTokens'],
@@ -51,6 +58,7 @@ export function getMigrationOrder(): string[] {
  */
 export function getTableWeight(tableName: string): number {
   const weights: Record<string, number> = {
+    user: 5,
     user_metadata: 5,
     accounts: 5,
     pushTokens: 5,

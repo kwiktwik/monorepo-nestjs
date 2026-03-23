@@ -11,6 +11,9 @@ export enum MigrationState {
   CHECKING_PARTIAL_DATA = 'checking_partial_data',
   CALCULATING_HASH = 'calculating_hash',
 
+  // Migration states (Level 0 - User must be first)
+  MIGRATING_USER = 'migrating_user',
+
   // Migration states (Level 1 - No dependencies)
   MIGRATING_METADATA = 'migrating_metadata',
   MIGRATING_ACCOUNTS = 'migrating_accounts',
