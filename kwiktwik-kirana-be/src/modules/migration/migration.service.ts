@@ -304,9 +304,15 @@ export class MigrationService {
           });
 
           // Get source records for this table
-          const sourceRecords = sourceData[
-            this.getTablePropertyName(tableName)
-          ] as any[];
+          const propertyName = this.getTablePropertyName(tableName);
+          let sourceRecords: any[];
+
+          // User is a single object, others are arrays
+          if (tableName === 'user') {
+            sourceRecords = sourceData.user ? [sourceData.user] : [];
+          } else {
+            sourceRecords = sourceData[propertyName] as any[];
+          }
           const sourceCount = sourceRecords?.length || 0;
 
           // Migrate table
@@ -727,10 +733,12 @@ export class MigrationService {
     }
 
     try {
+      // User table uses 'id' column, others use 'userId'
+      const column = tableName === 'user' ? table.id : table.userId;
       const result = await this.db
         .select({ count: sql<number>`count(*)::int` })
         .from(table)
-        .where(eq(table.userId, userId));
+        .where(eq(column, userId));
 
       return (result[0]?.count ?? 0) > 0;
     } catch (error) {
