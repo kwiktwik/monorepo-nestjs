@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, lt } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionRepository } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
@@ -195,7 +195,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       .where(
         and(
           eq(schema.phonepeSubscriptions.state, 'ACTIVATION_IN_PROGRESS'),
-          sql`${schema.phonepeSubscriptions.createdAt} < ${cutoff}`
+          lt(schema.phonepeSubscriptions.createdAt, cutoff)
         )
       );
 

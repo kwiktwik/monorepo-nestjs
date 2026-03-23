@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, lt, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { RedemptionRepository } from '../../application/interfaces/repository.interface';
 import { Redemption } from '../../domain/entities/redemption.entity';
@@ -87,7 +87,7 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       .where(
         and(
           eq(schema.phonepeRedemptions.merchantSubscriptionId, subscriptionId),
-          sql`${schema.phonepeRedemptions.state} IN ('NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING')`,
+          inArray(schema.phonepeRedemptions.state, ['NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING']),
         ),
       )
       .limit(1);
@@ -138,8 +138,8 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       .from(schema.phonepeRedemptions)
       .where(
         and(
-          sql`${schema.phonepeRedemptions.state} IN ('NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING')`,
-          sql`${schema.phonepeRedemptions.createdAt} < ${cutoff}`,
+          inArray(schema.phonepeRedemptions.state, ['NOTIFICATION_IN_PROGRESS', 'NOTIFIED', 'PENDING']),
+          lt(schema.phonepeRedemptions.createdAt, cutoff),
         ),
       );
 
