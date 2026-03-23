@@ -1,3 +1,5 @@
+import { IsString, IsOptional } from 'class-validator';
+
 export interface RegisterPushTokenDto {
   token: string;
   appId: string;
@@ -5,7 +7,10 @@ export interface RegisterPushTokenDto {
   osVersion?: string;
 }
 
-export interface DeletePushTokenDto {
+export class DeletePushTokenDto {
+  @IsString()
   token: string;
+
+  @IsString()
   appId: string;
 }
