@@ -125,6 +125,12 @@ export class MigrationStateMachine {
       ],
 
       [MigrationState.CALCULATING_HASH]: [
+        MigrationState.MIGRATING_USER,
+        MigrationState.FAILED,
+      ],
+
+      // Level 0 migration states - User must be first
+      [MigrationState.MIGRATING_USER]: [
         MigrationState.MIGRATING_METADATA,
         MigrationState.FAILED,
       ],
