@@ -11,6 +11,9 @@ import {
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 import { SubscriptionService } from '../phonepe-v2/application/services/subscription.service';
+import type { RedemptionRepository } from '../phonepe-v2/application/interfaces/repository.interface';
+import { Inject } from '@nestjs/common';
+import { REDEMPTION_REPOSITORY } from '../phonepe-v2/constants';
 
 class GetSubscriptionsDto {
   @IsString()
@@ -43,7 +46,11 @@ class NotifyRedemptionDto {
 @Controller('admin/phonepe')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PhonePeAdminController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    @Inject(REDEMPTION_REPOSITORY)
+    private readonly redemptionRepo: RedemptionRepository,
+  ) {}
 
   @Get('subscriptions')
   @ApiOperation({ summary: 'Get all subscriptions for a user' })
@@ -81,6 +88,80 @@ export class PhonePeAdminController {
       query.details === 'true',
     );
     return { status };
+  }
+
+  @Get('redemptions/:merchantOrderId/status')
+  @ApiOperation({ summary: 'Get redemption status from local database' })
+  @ApiQuery({
+    name: 'checkPhonePe',
+    required: false,
+    description: 'Also check PhonePe API for latest status',
+  })
+  async getRedemptionStatus(
+    @Param('merchantOrderId') merchantOrderId: string,
+    @Query('appId') appId: string = 'com.kiranaapps.app',
+    @Query('checkPhonePe') checkPhonePe?: string,
+  ) {
+    const redemption =
+      await this.redemptionRepo.findByMerchantOrderId(merchantOrderId);
+
+    if (!redemption) {
+      return {
+        error: 'Redemption not found in local database',
+        merchantOrderId,
+      };
+    }
+
+    const result: any = {
+      local: {
+        id: redemption.id,
+        merchantOrderId: redemption.merchantOrderId,
+        merchantSubscriptionId: redemption.merchantSubscriptionId,
+        userId: redemption.userId,
+        appId: redemption.appId,
+        amount: redemption.amount,
+        state: redemption.state,
+        phonepeOrderId: redemption.phonepeOrderId,
+        transactionId: redemption.transactionId,
+        autoDebit: redemption.autoDebit,
+        notifiedAt: redemption.notifiedAt,
+        validAfter: redemption.validAfter,
+        validUpto: redemption.validUpto,
+        errorCode: redemption.errorCode,
+        detailedErrorCode: redemption.detailedErrorCode,
+        createdAt: redemption.createdAt,
+        updatedAt: redemption.updatedAt,
+      },
+    };
+
+    if (checkPhonePe === 'true' && appId) {
+      try {
+        const phonePeStatus = await this.subscriptionService.getOrderStatus(
+          appId,
+          merchantOrderId,
+          true,
+        );
+        result.phonePe = phonePeStatus;
+
+        // Check for mismatches
+        if (phonePeStatus.state !== redemption.state) {
+          result.mismatch = {
+            localState: redemption.state,
+            phonePeState: phonePeStatus.state,
+            message: 'State mismatch detected between local and PhonePe',
+          };
+        }
+      } catch (error) {
+        result.phonePe = {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to fetch from PhonePe',
+        };
+      }
+    }
+
+    return result;
   }
 
   @Post('subscriptions/:merchantSubscriptionId/sync')

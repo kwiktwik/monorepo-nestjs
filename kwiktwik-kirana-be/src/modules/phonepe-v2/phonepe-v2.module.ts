@@ -48,6 +48,11 @@ import { SUBSCRIPTION_REPOSITORY, REDEMPTION_REPOSITORY } from './constants';
     SubscriptionService,
     RedemptionSchedulerService,
   ],
-  exports: [SubscriptionService, RedemptionSchedulerService],
+  exports: [
+    SubscriptionService,
+    RedemptionSchedulerService,
+    REDEMPTION_REPOSITORY,
+    SUBSCRIPTION_REPOSITORY,
+  ],
 })
 export class PhonePeV2Module {}
