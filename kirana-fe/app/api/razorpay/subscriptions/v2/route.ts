@@ -8,6 +8,8 @@ import { auth } from "@/lib/better-auth/auth";
 import { validateAppId, AppValidationError } from "@/lib/utils/app-validator";
 import { eq } from "drizzle-orm";
 
+// NOTE: db: kirana-fe
+
 interface RazorpayCustomer {
   id: string;
   name?: string;
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Razorpay notes is capped at 15 key-value pairs.
     // Merge existing notes first, then fill remaining slots with device metadata.
     const RAZORPAY_NOTES_LIMIT = 15;
-    const mergedNotes: Record<string, string> = { ...(notes ?? {}) };
+    const mergedNotes: Record<string, string> = { ...(notes ?? {}), db: "kirana-fe" };
     const remainingSlots = RAZORPAY_NOTES_LIMIT - Object.keys(mergedNotes).length;
     const deviceMetaEntries = Object.entries(deviceMeta).slice(0, remainingSlots);
     for (const [k, v] of deviceMetaEntries) {
