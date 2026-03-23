@@ -104,11 +104,19 @@ export class Subscription {
   /**
    * Called when mandate is successfully approved
    */
-  activate(phonepeSubscriptionId: string): void {
+  activate(
+    phonepeSubscriptionId: string,
+    expireAt?: Date | number | null,
+  ): void {
     this.assertStateTransition('ACTIVATION_IN_PROGRESS', 'ACTIVE');
     this._phonepeSubscriptionId = phonepeSubscriptionId;
     this._state = 'ACTIVE';
     this._activatedAt = new Date();
+    (this as any).expireAt = expireAt
+      ? expireAt instanceof Date
+        ? expireAt
+        : new Date(expireAt)
+      : this.expireAt;
     this.updatedAt = new Date();
   }
 

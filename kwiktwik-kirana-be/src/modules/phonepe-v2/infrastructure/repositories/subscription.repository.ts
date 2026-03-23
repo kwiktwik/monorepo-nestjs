@@ -114,6 +114,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
         phonepeSubscriptionId: subscription.phonepeSubscriptionId,
         activatedAt: subscription.activatedAt,
         cancelledAt: subscription.cancelledAt,
+        expireAt: subscription.expireAt,
         updatedAt: subscription.updatedAt,
         metadata: subscription.metadata,
         nextBillingDate: subscription.nextBillingDate,

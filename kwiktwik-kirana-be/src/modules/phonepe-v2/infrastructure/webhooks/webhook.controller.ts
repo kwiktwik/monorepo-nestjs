@@ -33,6 +33,7 @@ interface SubscriptionSetupPayload {
     type: 'SUBSCRIPTION_CHECKOUT_SETUP';
     merchantSubscriptionId: string;
     subscriptionId?: string;
+    expireAt?: number;
   };
   paymentDetails?: Array<{
     transactionId: string;
@@ -263,7 +264,10 @@ export class PhonePeWebhookController {
     );
 
     try {
-      subscription.activate(phonepeSubscriptionId || payload.orderId);
+      subscription.activate(
+        phonepeSubscriptionId || payload.orderId,
+        payload.paymentFlow.expireAt,
+      );
       await this.subscriptionRepo.update(subscription);
 
       this.logger.log(

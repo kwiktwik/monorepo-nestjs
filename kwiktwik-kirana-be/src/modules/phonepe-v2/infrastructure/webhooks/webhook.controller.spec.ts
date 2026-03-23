@@ -108,7 +108,10 @@ describe('PhonePeWebhookController', () => {
       );
 
       expect(result).toEqual({ received: true });
-      expect(mockSubscription.activate).toHaveBeenCalledWith('phonepe_sub_789');
+      expect(mockSubscription.activate).toHaveBeenCalledWith(
+        'phonepe_sub_789',
+        undefined,
+      );
       expect(subscriptionRepo.update).toHaveBeenCalled();
     });
 
