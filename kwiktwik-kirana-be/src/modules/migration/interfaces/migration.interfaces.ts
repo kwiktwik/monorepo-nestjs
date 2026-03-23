@@ -81,6 +81,7 @@ export interface IdMappingEntry {
 export interface MigratableUserData {
   userId: string;
   phoneNumber: string;
+  user: any;
   metadata: any[];
   accounts: any[];
   pushTokens: any[];

@@ -74,6 +74,7 @@ export class KiranaFeDataService {
       return {
         userId: data.userId,
         phoneNumber: data.phoneNumber,
+        user: data.user || null,
         metadata: data.metadata || [],
         accounts: data.accounts || [],
         pushTokens: data.pushTokens || [],
