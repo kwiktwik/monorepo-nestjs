@@ -341,45 +341,79 @@ export class SubscriptionService {
     // Save to database
     await this.redemptionRepo.create(redemption);
 
-    // Call PhonePe API
-    const response = await this.httpClient.notifyRedemption(request.appId, {
-      merchantOrderId,
-      amount: redemption.amount,
-      paymentFlow: {
-        type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
-        merchantSubscriptionId: request.merchantSubscriptionId,
-        redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
-        autoDebit: true,
-      },
-    });
+    try {
+      // Call PhonePe API
+      const response = await this.httpClient.notifyRedemption(request.appId, {
+        merchantOrderId,
+        amount: redemption.amount,
+        paymentFlow: {
+          type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
+          merchantSubscriptionId: request.merchantSubscriptionId,
+          redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
+          autoDebit: true,
+        },
+      });
 
-    // Update redemption with PhonePe response
-    this.logger.log(
-      `[PhonePe] Marking redemption as notified: merchantOrderId=${merchantOrderId}, phonepeOrderId=${response.orderId}`,
-    );
-    redemption.markAsNotified(
-      response.orderId,
-      new Date(Date.now() + 24 * 60 * 60 * 1000), // validAfter: 24 hours from now
-      new Date(Date.now() + 48 * 60 * 60 * 1000), // validUpto: 48 hours from now
-    );
-    this.logger.log(
-      `[PhonePe] Redemption state after markAsNotified: state=${redemption.state}, phonepeOrderId=${redemption.phonepeOrderId}`,
-    );
-    await this.redemptionRepo.update(redemption);
-    this.logger.log(
-      `[PhonePe] Redemption updated in database: id=${redemption.id}`,
-    );
+      // Update redemption with PhonePe response
+      this.logger.log(
+        `[PhonePe] Marking redemption as notified: merchantOrderId=${merchantOrderId}, phonepeOrderId=${response.orderId}, expireAt=${new Date(response.expireAt).toISOString()}`,
+      );
+      redemption.markAsNotified(
+        response.orderId,
+        new Date(response.expireAt), // Use PhonePe's actual expiration time
+      );
+      this.logger.log(
+        `[PhonePe] Redemption state after markAsNotified: state=${redemption.state}, phonepeOrderId=${redemption.phonepeOrderId}, expireAt=${redemption.expireAt?.toISOString()}`,
+      );
+      await this.redemptionRepo.update(redemption);
+      this.logger.log(
+        `[PhonePe] Redemption updated in database: id=${redemption.id}`,
+      );
 
-    this.logger.log(
-      `Redemption notified: ${merchantOrderId} for subscription ${request.merchantSubscriptionId}`,
-    );
+      this.logger.log(
+        `Redemption notified: ${merchantOrderId} for subscription ${request.merchantSubscriptionId}`,
+      );
 
-    return {
-      orderId: response.orderId,
-      merchantOrderId,
-      state: response.state,
-      expireAt: new Date(response.expireAt),
-    };
+      return {
+        orderId: response.orderId,
+        merchantOrderId,
+        state: response.state,
+        expireAt: new Date(response.expireAt),
+      };
+    } catch (error) {
+      // PhonePe notification failed - mark redemption as FAILED
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      const errorCode =
+        error instanceof Error && 'code' in error
+          ? (error as any).code
+          : 'NOTIFICATION_FAILED';
+
+      this.logger.error(
+        `[PhonePe] Redemption notification failed: merchantOrderId=${merchantOrderId}, error=${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      // Mark redemption as failed with error details
+      redemption.markNotificationFailed(errorCode, errorMessage);
+
+      // Update metadata with error info
+      (redemption as any).metadata = {
+        ...(redemption as any).metadata,
+        notificationFailedAt: new Date().toISOString(),
+        notificationError: errorMessage,
+        notificationErrorCode: errorCode,
+      };
+
+      await this.redemptionRepo.update(redemption);
+
+      this.logger.log(
+        `[PhonePe] Redemption marked as FAILED: merchantOrderId=${merchantOrderId}, state=${redemption.state}`,
+      );
+
+      // Re-throw the error so caller knows it failed
+      throw error;
+    }
   }
 
   /**

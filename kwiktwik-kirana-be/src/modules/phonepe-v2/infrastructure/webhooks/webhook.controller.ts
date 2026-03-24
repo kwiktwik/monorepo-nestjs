@@ -426,15 +426,14 @@ export class PhonePeWebhookController {
       return;
     }
 
-    // Mark as notified
-    redemption.markAsNotified(
-      payload.orderId,
-      new Date(Date.now() + 24 * 60 * 60 * 1000),
-      new Date(Date.now() + 48 * 60 * 60 * 1000),
-    );
+    // Mark as notified with 48 hour expiration from PhonePe
+    const expireAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    redemption.markAsNotified(payload.orderId, expireAt);
     await this.redemptionRepo.update(redemption);
 
-    this.logger.log(`Redemption notified: ${payload.merchantOrderId}`);
+    this.logger.log(
+      `Redemption notified: ${payload.merchantOrderId}, expireAt: ${expireAt.toISOString()}`,
+    );
   }
 
   private async handleNotificationFailed(payload: RedemptionPayload) {

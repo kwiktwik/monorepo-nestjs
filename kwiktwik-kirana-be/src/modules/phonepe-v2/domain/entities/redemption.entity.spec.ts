@@ -28,8 +28,7 @@ describe('Redemption Entity', () => {
       expect(redemption.phonepeOrderId).toBeNull();
       expect(redemption.transactionId).toBeNull();
       expect(redemption.notifiedAt).toBeNull();
-      expect(redemption.validAfter).toBeNull();
-      expect(redemption.validUpto).toBeNull();
+      expect(redemption.expireAt).toBeNull();
     });
 
     it('should create redemption with autoDebit set to false', () => {
@@ -55,16 +54,14 @@ describe('Redemption Entity', () => {
   describe('state transitions', () => {
     it('should transition from NOTIFICATION_IN_PROGRESS to NOTIFIED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      const validUpto = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const expireAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       expect(redemption.state).toBe('NOTIFIED');
       expect(redemption.phonepeOrderId).toBe('phonepe_order_456');
       expect(redemption.notifiedAt).toBeInstanceOf(Date);
-      expect(redemption.validAfter).toEqual(validAfter);
-      expect(redemption.validUpto).toEqual(validUpto);
+      expect(redemption.expireAt).toEqual(expireAt);
     });
 
     it('should transition from NOTIFICATION_IN_PROGRESS to FAILED on notification failure', () => {
@@ -82,9 +79,8 @@ describe('Redemption Entity', () => {
 
     it('should transition from NOTIFIED to PENDING', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       redemption.markAsPending();
 
@@ -93,9 +89,8 @@ describe('Redemption Entity', () => {
 
     it('should transition from NOTIFIED to COMPLETED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       redemption.complete('txn_789');
 
@@ -105,9 +100,8 @@ describe('Redemption Entity', () => {
 
     it('should transition from PENDING to COMPLETED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.markAsPending();
 
       redemption.complete('txn_789');
@@ -118,9 +112,8 @@ describe('Redemption Entity', () => {
 
     it('should transition from NOTIFIED to FAILED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       redemption.fail('INSUFFICIENT_FUNDS', 'User has insufficient balance');
 
@@ -133,9 +126,8 @@ describe('Redemption Entity', () => {
 
     it('should transition from PENDING to FAILED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.markAsPending();
 
       redemption.fail('BANK_ERROR', 'Bank declined the transaction');
@@ -148,21 +140,19 @@ describe('Redemption Entity', () => {
   describe('invalid state transitions', () => {
     it('should throw error when marking as notified from COMPLETED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.complete('txn_789');
 
       expect(() =>
-        redemption.markAsNotified('phonepe_order_789', validAfter, validUpto),
+        redemption.markAsNotified('phonepe_order_789', expireAt),
       ).toThrow('Cannot mark as notified from state: COMPLETED');
     });
 
     it('should throw error when marking notification failed from NOTIFIED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       expect(() =>
         redemption.markNotificationFailed('ERROR', 'Details'),
@@ -197,9 +187,8 @@ describe('Redemption Entity', () => {
   describe('helper methods', () => {
     it('should return true for isTerminal when COMPLETED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.complete('txn_789');
 
       expect(redemption.isTerminal()).toBe(true);
@@ -207,9 +196,8 @@ describe('Redemption Entity', () => {
 
     it('should return true for isTerminal when FAILED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.fail('ERROR', 'Details');
 
       expect(redemption.isTerminal()).toBe(true);
@@ -223,18 +211,16 @@ describe('Redemption Entity', () => {
 
     it('should return false for isTerminal when NOTIFIED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       expect(redemption.isTerminal()).toBe(false);
     });
 
     it('should return false for isTerminal when PENDING', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.markAsPending();
 
       expect(redemption.isTerminal()).toBe(false);
@@ -248,18 +234,16 @@ describe('Redemption Entity', () => {
 
     it('should return true for isActive when NOTIFIED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
 
       expect(redemption.isActive()).toBe(true);
     });
 
     it('should return true for isActive when PENDING', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.markAsPending();
 
       expect(redemption.isActive()).toBe(true);
@@ -267,9 +251,8 @@ describe('Redemption Entity', () => {
 
     it('should return false for isActive when COMPLETED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.complete('txn_789');
 
       expect(redemption.isActive()).toBe(false);
@@ -277,9 +260,8 @@ describe('Redemption Entity', () => {
 
     it('should return false for isActive when FAILED', () => {
       const redemption = Redemption.create(defaultParams);
-      const validAfter = new Date();
-      const validUpto = new Date();
-      redemption.markAsNotified('phonepe_order_456', validAfter, validUpto);
+      const expireAt = new Date();
+      redemption.markAsNotified('phonepe_order_456', expireAt);
       redemption.fail('ERROR', 'Details');
 
       expect(redemption.isActive()).toBe(false);
@@ -299,8 +281,7 @@ describe('Redemption Entity', () => {
         phonepeOrderId: 'phonepe_order_456',
         transactionId: 'txn_789',
         notifiedAt: new Date(),
-        validAfter: new Date(),
-        validUpto: new Date(),
+        expireAt: new Date(),
         errorCode: null as string | null,
         detailedErrorCode: null as string | null,
         autoDebit: true,

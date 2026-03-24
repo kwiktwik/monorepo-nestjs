@@ -30,8 +30,8 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       autoDebit: redemption.autoDebit,
       transactionId: redemption.transactionId,
       notifiedAt: redemption.notifiedAt,
-      validAfter: redemption.validAfter,
-      validUpto: redemption.validUpto,
+      validAfter: null, // deprecated, using expireAt instead
+      validUpto: redemption.expireAt,
       errorCode: redemption.errorCode,
       detailedErrorCode: redemption.detailedErrorCode,
       metadata: redemption.metadata,
@@ -108,8 +108,8 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
         phonepeOrderId: redemption.phonepeOrderId,
         transactionId: redemption.transactionId,
         notifiedAt: redemption.notifiedAt,
-        validAfter: redemption.validAfter,
-        validUpto: redemption.validUpto,
+        validAfter: null, // deprecated, using expireAt instead
+        validUpto: redemption.expireAt,
         errorCode: redemption.errorCode,
         detailedErrorCode: redemption.detailedErrorCode,
         updatedAt: redemption.updatedAt,
@@ -166,8 +166,7 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       phonepeOrderId: data.phonepeOrderId,
       transactionId: data.transactionId,
       notifiedAt: data.notifiedAt,
-      validAfter: data.validAfter,
-      validUpto: data.validUpto,
+      expireAt: data.validUpto, // Map validUpto to expireAt
       errorCode: data.errorCode,
       detailedErrorCode: data.detailedErrorCode,
       autoDebit: data.autoDebit,

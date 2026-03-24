@@ -126,8 +126,7 @@ export class PhonePeAdminController {
         transactionId: redemption.transactionId,
         autoDebit: redemption.autoDebit,
         notifiedAt: redemption.notifiedAt,
-        validAfter: redemption.validAfter,
-        validUpto: redemption.validUpto,
+        expireAt: redemption.expireAt,
         errorCode: redemption.errorCode,
         detailedErrorCode: redemption.detailedErrorCode,
         createdAt: redemption.createdAt,
@@ -200,5 +199,73 @@ export class PhonePeAdminController {
       metadata: body.metadata,
     });
     return { result };
+  }
+
+  @Get('redemptions/:merchantOrderId/phonepe-status')
+  @ApiOperation({
+    summary: 'Get redemption status directly from PhonePe API',
+    description:
+      'Fetches the current redemption state directly from PhonePe servers. This is useful for debugging stuck redemptions.',
+  })
+  @ApiQuery({
+    name: 'appId',
+    required: false,
+    description: 'App ID (defaults to com.kiranaapps.app)',
+  })
+  async getRedemptionStatusFromPhonePe(
+    @Param('merchantOrderId') merchantOrderId: string,
+    @Query('appId') appId: string = 'com.kiranaapps.app',
+  ) {
+    // First get local redemption details
+    const redemption =
+      await this.redemptionRepo.findByMerchantOrderId(merchantOrderId);
+
+    if (!redemption) {
+      return {
+        error: 'Redemption not found in local database',
+        merchantOrderId,
+      };
+    }
+
+    try {
+      // Fetch from PhonePe directly
+      const phonePeStatus = await this.subscriptionService.getOrderStatus(
+        appId,
+        merchantOrderId,
+        true,
+      );
+
+      return {
+        merchantOrderId,
+        localState: redemption.state,
+        phonePeState: phonePeStatus.state,
+        phonePeDetails: phonePeStatus,
+        comparison: {
+          stateMatch: phonePeStatus.state === redemption.state,
+          message:
+            phonePeStatus.state === redemption.state
+              ? 'States match'
+              : `State mismatch: local=${redemption.state}, phonepe=${phonePeStatus.state}`,
+        },
+      };
+    } catch (error) {
+      return {
+        merchantOrderId,
+        localState: redemption.state,
+        phonepeOrderId: redemption.phonepeOrderId,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch from PhonePe',
+        errorType:
+          error instanceof Error && error.message.includes('ORDER_NOT_FOUND')
+            ? 'ORDER_NOT_FOUND_AT_PHONEPE'
+            : 'API_ERROR',
+        suggestion:
+          error instanceof Error && error.message.includes('ORDER_NOT_FOUND')
+            ? 'This order does not exist at PhonePe. The notification may have failed or the order was never created.'
+            : 'Check PhonePe API connectivity and credentials.',
+      };
+    }
   }
 }

@@ -16,8 +16,7 @@ export class Redemption {
     private _phonepeOrderId: string | null,
     private _transactionId: string | null,
     private _notifiedAt: Date | null,
-    private _validAfter: Date | null,
-    private _validUpto: Date | null,
+    private _expireAt: Date | null,
     private _errorCode: string | null,
     private _detailedErrorCode: string | null,
     public readonly autoDebit: boolean,
@@ -51,7 +50,6 @@ export class Redemption {
       null,
       null,
       null,
-      null,
       params.autoDebit ?? true, // Default to auto-debit
       params.metadata || {},
       new Date(),
@@ -76,12 +74,8 @@ export class Redemption {
     return this._notifiedAt;
   }
 
-  get validAfter(): Date | null {
-    return this._validAfter;
-  }
-
-  get validUpto(): Date | null {
-    return this._validUpto;
+  get expireAt(): Date | null {
+    return this._expireAt;
   }
 
   get errorCode(): string | null {
@@ -96,20 +90,16 @@ export class Redemption {
 
   /**
    * Called when notification is successfully sent to user
+   * Uses expireAt from PhonePe API response
    */
-  markAsNotified(
-    phonepeOrderId: string,
-    validAfter: Date,
-    validUpto: Date,
-  ): void {
+  markAsNotified(phonepeOrderId: string, expireAt: Date): void {
     if (this._state !== 'NOTIFICATION_IN_PROGRESS') {
       throw new Error(`Cannot mark as notified from state: ${this._state}`);
     }
     this._phonepeOrderId = phonepeOrderId;
     this._state = 'NOTIFIED';
     this._notifiedAt = new Date();
-    this._validAfter = validAfter;
-    this._validUpto = validUpto;
+    this._expireAt = expireAt;
     this.updatedAt = new Date();
   }
 
@@ -181,6 +171,14 @@ export class Redemption {
   }
 
   /**
+   * Check if notification has expired (based on PhonePe's expireAt)
+   */
+  isExpired(): boolean {
+    if (!this._expireAt) return false;
+    return new Date() > this._expireAt;
+  }
+
+  /**
    * Reconstruct from persistence
    */
   static reconstruct(data: {
@@ -194,8 +192,7 @@ export class Redemption {
     phonepeOrderId: string | null;
     transactionId: string | null;
     notifiedAt: Date | null;
-    validAfter: Date | null;
-    validUpto: Date | null;
+    expireAt: Date | null;
     errorCode: string | null;
     detailedErrorCode: string | null;
     autoDebit: boolean;
@@ -214,8 +211,7 @@ export class Redemption {
       data.phonepeOrderId,
       data.transactionId,
       data.notifiedAt,
-      data.validAfter,
-      data.validUpto,
+      data.expireAt,
       data.errorCode,
       data.detailedErrorCode,
       data.autoDebit,
