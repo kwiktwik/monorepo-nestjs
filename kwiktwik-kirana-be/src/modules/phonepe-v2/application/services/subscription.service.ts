@@ -369,7 +369,7 @@ export class SubscriptionService {
           type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
           merchantSubscriptionId: request.merchantSubscriptionId,
           redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
-          autoDebit: true,
+          autoDebit: false, // Must be false for standard checkout per PhonePe docs
         },
       });
 

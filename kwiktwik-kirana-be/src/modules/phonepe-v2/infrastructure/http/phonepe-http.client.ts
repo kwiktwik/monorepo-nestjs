@@ -74,8 +74,8 @@ export interface NotifyRedemptionRequest {
   paymentFlow: {
     type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION';
     merchantSubscriptionId: string;
-    redemptionRetryStrategy: 'STANDARD'; // PhonePe handles retries
-    autoDebit: true; // Always true for auto-charge
+    redemptionRetryStrategy: 'STANDARD' | 'CUSTOM'; // PhonePe handles retries
+    autoDebit: boolean;
   };
 }
 
@@ -126,7 +126,7 @@ export interface GetOrderStatusResponse {
 export class PhonePeHttpClient {
   private readonly logger = new Logger(PhonePeHttpClient.name);
 
-  constructor(private readonly authManager: PhonePeAuthManager) {}
+  constructor(private readonly authManager: PhonePeAuthManager) { }
 
   /**
    * Setup a new subscription mandate (Web Checkout)
