@@ -8,7 +8,7 @@ import {
   ValidationPipe,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBasicAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 import { SubscriptionService } from '../phonepe-v2/application/services/subscription.service';
 import type { RedemptionRepository } from '../phonepe-v2/application/interfaces/repository.interface';
@@ -43,6 +43,7 @@ class NotifyRedemptionDto {
 }
 
 @ApiTags('admin-phonepe')
+@ApiBasicAuth('admin-basic')
 @Controller('admin/phonepe')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PhonePeAdminController {

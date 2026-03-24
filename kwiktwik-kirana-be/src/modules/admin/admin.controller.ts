@@ -1,15 +1,17 @@
 import { Controller, Get, Param, Sse, Req } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBasicAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { Observable } from 'rxjs';
 import type { Request } from 'express';
 
 @ApiTags('admin')
+@ApiBasicAuth('admin-basic')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('scripts')
+  @ApiOperation({ summary: 'List available admin scripts' })
   async getScripts() {
     const scripts = await this.adminService.getScripts();
     return { scripts };

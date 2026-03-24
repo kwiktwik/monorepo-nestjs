@@ -1,8 +1,9 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBasicAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 
 @ApiTags('admin/notifications')
+@ApiBasicAuth('admin-basic')
 @Controller('admin/notifications')
 export class AdminNotificationController {
   constructor(private readonly notificationService: NotificationService) {}

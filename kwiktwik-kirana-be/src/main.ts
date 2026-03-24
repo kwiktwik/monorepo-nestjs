@@ -99,6 +99,9 @@ async function bootstrap() {
     .addTag('health', 'Health Check')
     .addTag('events', 'Notification Events')
     .addTag('PhonePe Autopay', 'PhonePe Autopay Subscription and Payment APIs')
+    .addTag('admin', 'Admin Scripts & Management')
+    .addTag('admin-phonepe', 'Admin PhonePe Management')
+    .addTag('admin/notifications', 'Admin Notifications')
     .addApiKey(
       {
         type: 'apiKey',
@@ -111,6 +114,10 @@ async function bootstrap() {
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'JWT',
+    )
+    .addBasicAuth(
+      { type: 'http', scheme: 'basic' },
+      'admin-basic',
     )
     .build();
   const document = SwaggerModule.createDocument(app, config);
