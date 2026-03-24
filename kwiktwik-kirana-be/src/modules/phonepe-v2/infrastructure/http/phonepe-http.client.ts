@@ -74,7 +74,6 @@ export interface NotifyRedemptionRequest {
   paymentFlow: {
     type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION';
     merchantSubscriptionId: string;
-    subscriptionId: string; // PhonePe's subscription ID (OMS... format)
     redemptionRetryStrategy: 'STANDARD'; // PhonePe handles retries
     autoDebit: true; // Always true for auto-charge
   };
@@ -373,6 +372,57 @@ export class PhonePeHttpClient {
     const data = JSON.parse(responseText);
     this.logger.log(
       `[PhonePe API] Order status: ${data.state}, orderId: ${data.orderId}`,
+    );
+    return data;
+  }
+
+  /**
+   * Get redemption order status
+   * Uses the subscriptions/v2 path — different from setup order status!
+   * GET /subscriptions/v2/order/{merchantOrderId}/status
+   * Ref: https://developer.phonepe.com/payment-gateway/autopay/standard-checkout/redemption-order-status
+   */
+  async getRedemptionOrderStatus(
+    appId: string,
+    merchantOrderId: string,
+    details: boolean = true,
+  ): Promise<GetOrderStatusResponse> {
+    const baseUrl = this.authManager.getBaseUrl(appId);
+    const token = await this.authManager.getToken(appId);
+
+    // NOTE: redemption orders use /subscriptions/v2/order/... not /checkout/v2/order/...
+    const url = `${baseUrl}/subscriptions/v2/order/${merchantOrderId}/status?details=${details}`;
+
+    this.logger.log(
+      `[PhonePe API] Getting redemption order status for ${merchantOrderId}`,
+    );
+    this.logger.debug(`[PhonePe API] Request URL: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `O-Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const responseText = await response.text();
+    this.logger.debug(`[PhonePe API] Response: ${responseText}`);
+
+    if (!response.ok) {
+      this.logger.error(
+        `[PhonePe API] Get redemption order status failed: ${responseText}`,
+      );
+      throw new Error(
+        `PhonePe get redemption order status failed: ${response.status} - ${responseText}`,
+      );
+    }
+
+    const data = JSON.parse(responseText);
+    this.logger.log(
+      `[PhonePe API] Redemption order status: ${data.state}, orderId: ${data.orderId}`,
     );
     return data;
   }
