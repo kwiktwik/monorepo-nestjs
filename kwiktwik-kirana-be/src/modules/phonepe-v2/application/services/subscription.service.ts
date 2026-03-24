@@ -11,7 +11,7 @@ import { PhonePeAuthManager } from '../../infrastructure/http/auth-manager';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
-  SUBSCRIPTION_CHECKOUT_SETUP,
+  SUBSCRIPTION_SETUP,
 } from '../../constants';
 import type {
   SubscriptionRepository,
@@ -26,37 +26,22 @@ import type {
 } from '../../domain/enums/subscription.enum';
 import { PAYWALL_PLANS } from '../../../config/config.data';
 
-export interface SetupSubscriptionBaseRequest {
+export interface SetupSubscriptionRequest {
   userId: string;
   appId: string;
   planId: string; // Plan ID from PAYWALL_PLANS (e.g., 'plan_PHONEPE_AUTOPAY_001')
   merchantSubscriptionId?: string;
   metadata?: Record<string, unknown>;
+  deviceOS?: 'ANDROID' | 'IOS';
+  targetApp?: string; // Package name for Android or app identifier for iOS
 }
-
-export interface SetupSubscriptionMobileRequest
-  extends SetupSubscriptionBaseRequest {
-  // Mobile SDK flow — no redirectUrl needed
-}
-
-export interface SetupSubscriptionWebRequest
-  extends SetupSubscriptionBaseRequest {
-  redirectUrl: string; // Required for web checkout
-}
-
-/** @deprecated Use SetupSubscriptionMobileRequest or SetupSubscriptionWebRequest */
-export type SetupSubscriptionRequest =
-  | SetupSubscriptionMobileRequest
-  | SetupSubscriptionWebRequest;
 
 export interface SetupSubscriptionResponse {
   orderId: string;
-  token: string;
   merchantSubscriptionId: string;
   merchantOrderId: string;
-  redirectUrl: string;
+  intentUrl: string; // UPI intent URL for invoking payment app
   state: string;
-  expireAt: Date;
   merchantId: string;
 }
 
@@ -75,6 +60,21 @@ export interface NotifyRedemptionResponse {
   expireAt: Date;
 }
 
+export interface ExecuteRedemptionRequest {
+  userId: string;
+  appId: string;
+  merchantSubscriptionId: string;
+  amount: number; // Amount in rupees
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExecuteRedemptionResponse {
+  orderId: string;
+  merchantOrderId: string;
+  state: string;
+  expireAt: Date;
+}
+
 export interface GetSubscriptionStatusResponse {
   merchantSubscriptionId: string;
   phonepeSubscriptionId: string | null;
@@ -86,6 +86,7 @@ export interface GetSubscriptionStatusResponse {
 
 /**
  * Service for managing PhonePe Autopay subscriptions and redemptions
+ * Uses Custom Checkout API for direct UPI app invocation
  */
 @Injectable()
 export class SubscriptionService {
@@ -98,137 +99,97 @@ export class SubscriptionService {
     private readonly subscriptionRepo: SubscriptionRepository,
     @Inject(REDEMPTION_REPOSITORY)
     private readonly redemptionRepo: RedemptionRepository,
-  ) { }
+  ) {}
 
   /**
-   * Setup a new subscription via the Mobile SDK flow.
-   * Returns a token for the PhonePe SDK — no redirectUrl involved.
+   * Setup a new subscription via Custom Checkout (UPI Intent flow).
+   * Returns a UPI intent URL that the client should use to invoke the payment app.
    */
-  async setupSubscriptionMobile(
-    request: SetupSubscriptionMobileRequest,
+  async setupSubscription(
+    request: SetupSubscriptionRequest,
   ): Promise<SetupSubscriptionResponse> {
-    const { subscription, merchantOrderId, amount, credentials } =
-      await this.resolvePlanAndCreateSubscription(request);
+    const {
+      subscription,
+      merchantOrderId,
+      amount,
+      credentials,
+      upiPaymentMode,
+    } = await this.resolvePlanAndCreateSubscription(request);
     const merchantSubscriptionId = subscription.merchantSubscriptionId;
 
-    const mobileResponse = await this.httpClient.setupSubscriptionMobile(
-      request.appId,
-      {
-        merchantOrderId,
-        amount: Math.round(amount * 100),
-        paymentFlow: {
-          type: SUBSCRIPTION_CHECKOUT_SETUP,
-          message: request.metadata?.message as string,
-          subscriptionDetails: {
-            subscriptionType: 'RECURRING',
-            merchantSubscriptionId,
-            authWorkflowType: subscription.authWorkflowType,
-            amountType: subscription.amountType,
-            maxAmount: subscription.maxAmount,
-            frequency: subscription.frequency,
-            productType: 'UPI_MANDATE',
-            expireAt: subscription.expireAt
-              ? subscription.expireAt.getTime()
-              : undefined,
-          },
+    // Build the setup request for Custom Checkout API
+    const setupRequest = {
+      merchantOrderId,
+      amount: Math.round(amount * 100),
+      expireAt: Date.now() + 30 * 60 * 1000, // 30 minutes from now
+      paymentFlow: {
+        type: SUBSCRIPTION_SETUP as typeof SUBSCRIPTION_SETUP,
+        merchantSubscriptionId,
+        authWorkflowType: subscription.authWorkflowType,
+        amountType: subscription.amountType,
+        maxAmount: subscription.maxAmount,
+        frequency: subscription.frequency,
+        expireAt: subscription.expireAt
+          ? subscription.expireAt.getTime()
+          : undefined,
+        paymentMode: {
+          type: upiPaymentMode,
+          ...(request.targetApp && { targetApp: request.targetApp }),
         },
-        expireAfter: 1800, // 30 minutes
-        metaInfo: request.metadata as Record<string, string>,
       },
+      deviceContext: {
+        deviceOS: request.deviceOS || 'ANDROID',
+      },
+      metaInfo: request.metadata as Record<string, string>,
+    };
+
+    const setupResponse = await this.httpClient.setupSubscription(
+      request.appId,
+      setupRequest,
     );
 
     subscription.markAsActivationInProgress();
     await this.subscriptionRepo.update(subscription);
 
     this.logger.log(
-      `Subscription (mobile) setup initiated: ${merchantSubscriptionId} for user ${request.userId}`,
+      `Subscription setup initiated: ${merchantSubscriptionId} for user ${request.userId}`,
     );
 
     return {
-      orderId: mobileResponse.orderId,
-      token: mobileResponse.token,
+      orderId: setupResponse.orderId,
       merchantSubscriptionId,
       merchantOrderId,
-      redirectUrl: '',
-      state: mobileResponse.state,
-      expireAt: new Date(mobileResponse.expireAt),
+      intentUrl: setupResponse.intentUrl,
+      state: setupResponse.state,
       merchantId: credentials.merchantId,
     };
   }
 
   /**
-   * Setup a new subscription via the Web Checkout flow.
-   * Requires a redirectUrl; returns a PhonePe-hosted checkout URL.
+   * @deprecated Use setupSubscription instead. Mobile and web flows now use the same Custom Checkout API.
+   */
+  async setupSubscriptionMobile(
+    request: SetupSubscriptionRequest,
+  ): Promise<SetupSubscriptionResponse> {
+    return this.setupSubscription({ ...request, deviceOS: 'ANDROID' });
+  }
+
+  /**
+   * @deprecated Use setupSubscription instead. Mobile and web flows now use the same Custom Checkout API.
    */
   async setupSubscriptionWeb(
-    request: SetupSubscriptionWebRequest,
+    request: SetupSubscriptionRequest,
   ): Promise<SetupSubscriptionResponse> {
-    const { subscription, merchantOrderId, amount, credentials, upiPaymentMode } =
-      await this.resolvePlanAndCreateSubscription(request);
-    const merchantSubscriptionId = subscription.merchantSubscriptionId;
-
-    const webResponse = await this.httpClient.setupSubscription(
-      request.appId,
-      {
-        merchantOrderId,
-        amount: Math.round(amount * 100),
-        paymentFlow: {
-          type: SUBSCRIPTION_CHECKOUT_SETUP,
-          merchantUrls: { redirectUrl: request.redirectUrl },
-          paymentModeConfig: { type: upiPaymentMode },
-          subscriptionDetails: {
-            subscriptionType: 'RECURRING',
-            merchantSubscriptionId,
-            authWorkflowType: subscription.authWorkflowType,
-            amountType: subscription.amountType,
-            maxAmount: subscription.maxAmount,
-            frequency: subscription.frequency,
-            productType: 'UPI_MANDATE',
-            expireAt: subscription.expireAt
-              ? subscription.expireAt.getTime()
-              : undefined,
-          },
-        },
-        expireAfter: 1800, // 30 minutes
-        metaInfo: request.metadata as Record<string, string>,
-      },
-    );
-
-    // Extract SDK token from redirectUrl if caller needs it for hybrid flows
-    let sdkToken = '';
-    try {
-      const url = new URL(webResponse.redirectUrl);
-      sdkToken = url.searchParams.get('token') || '';
-    } catch (error) {
-      this.logger.warn(
-        `Failed to extract token from redirectUrl: ${error.message}`,
-      );
-    }
-
-    subscription.markAsActivationInProgress();
-    await this.subscriptionRepo.update(subscription);
-
-    this.logger.log(
-      `Subscription (web) setup initiated: ${merchantSubscriptionId} for user ${request.userId}`,
-    );
-
-    return {
-      orderId: webResponse.orderId,
-      token: sdkToken,
-      merchantSubscriptionId,
-      merchantOrderId,
-      redirectUrl: webResponse.redirectUrl,
-      state: webResponse.state,
-      expireAt: new Date(webResponse.expireAt),
-      merchantId: credentials.merchantId,
-    };
+    return this.setupSubscription(request);
   }
 
   /**
    * Resolves the plan config, checks for duplicates, creates and persists
    * the Subscription entity, and returns everything callers need.
    */
-  private async resolvePlanAndCreateSubscription(request: SetupSubscriptionBaseRequest) {
+  private async resolvePlanAndCreateSubscription(
+    request: SetupSubscriptionRequest,
+  ) {
     const merchantSubscriptionId = request.merchantSubscriptionId || nanoid(10);
     const merchantOrderId = nanoid(10);
 
@@ -295,12 +256,18 @@ export class SubscriptionService {
 
     await this.subscriptionRepo.create(subscription);
 
-    return { subscription, merchantOrderId, amount, credentials, upiPaymentMode };
+    return {
+      subscription,
+      merchantOrderId,
+      amount,
+      credentials,
+      upiPaymentMode,
+    };
   }
 
   /**
    * Notify user about upcoming redemption
-   * PhonePe will handle auto-debit after notification period
+   * PhonePe will handle auto-debit after notification period (24 hours)
    */
   async notifyRedemption(
     request: NotifyRedemptionRequest,
@@ -367,10 +334,8 @@ export class SubscriptionService {
         merchantOrderId,
         amount: redemption.amount,
         paymentFlow: {
-          type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
+          type: 'SUBSCRIPTION_REDEMPTION' as const,
           merchantSubscriptionId: request.merchantSubscriptionId,
-          redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
-          autoDebit: true,
         },
       });
 
@@ -432,6 +397,111 @@ export class SubscriptionService {
       );
 
       // Re-throw the error so caller knows it failed
+      throw error;
+    }
+  }
+
+  /**
+   * Execute redemption directly (for merchant-controlled debit)
+   * This bypasses the 24-hour notification period
+   */
+  async executeRedemption(
+    request: ExecuteRedemptionRequest,
+  ): Promise<ExecuteRedemptionResponse> {
+    // Find subscription
+    const subscription =
+      await this.subscriptionRepo.findByMerchantSubscriptionId(
+        request.merchantSubscriptionId,
+      );
+
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription ${request.merchantSubscriptionId} not found`,
+      );
+    }
+
+    // Verify subscription belongs to user and app
+    if (subscription.userId !== request.userId) {
+      throw new BadRequestException('Subscription does not belong to user');
+    }
+
+    if (subscription.appId !== request.appId) {
+      throw new BadRequestException('Subscription does not belong to app');
+    }
+
+    // Check if subscription is active
+    if (!subscription.canRedeem()) {
+      throw new BadRequestException(
+        `Cannot redeem from subscription in state: ${subscription.state}`,
+      );
+    }
+
+    // Create redemption entity
+    const merchantOrderId = nanoid(10);
+    const redemption = Redemption.create({
+      id: nanoid(10),
+      merchantOrderId,
+      merchantSubscriptionId: request.merchantSubscriptionId,
+      userId: request.userId,
+      appId: request.appId,
+      amount: Math.round(request.amount * 100), // Convert to paise
+      autoDebit: false, // Merchant-controlled direct execution
+      metadata: request.metadata || {},
+    });
+
+    // Save to database
+    await this.redemptionRepo.create(redemption);
+
+    try {
+      // Call PhonePe API for direct execution
+      const response = await this.httpClient.executeRedemption(request.appId, {
+        merchantOrderId,
+        amount: redemption.amount,
+        paymentFlow: {
+          type: 'SUBSCRIPTION_REDEMPTION' as const,
+          merchantSubscriptionId: request.merchantSubscriptionId,
+        },
+      });
+
+      // Update redemption with PhonePe response
+      redemption.markAsNotified(response.orderId, new Date(response.expireAt));
+      await this.redemptionRepo.update(redemption);
+
+      this.logger.log(
+        `Redemption executed: ${merchantOrderId} for subscription ${request.merchantSubscriptionId}`,
+      );
+
+      return {
+        orderId: response.orderId,
+        merchantOrderId,
+        state: response.state,
+        expireAt: new Date(response.expireAt),
+      };
+    } catch (error) {
+      // PhonePe execution failed - mark redemption as FAILED
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      const errorCode =
+        error instanceof Error && 'code' in error
+          ? (error as any).code
+          : 'EXECUTION_FAILED';
+
+      this.logger.error(
+        `[PhonePe] Redemption execution failed: merchantOrderId=${merchantOrderId}, error=${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      redemption.markNotificationFailed(errorCode, errorMessage);
+
+      (redemption as any).metadata = {
+        ...(redemption as any).metadata,
+        executionFailedAt: new Date().toISOString(),
+        executionError: errorMessage,
+        executionErrorCode: errorCode,
+      };
+
+      await this.redemptionRepo.update(redemption);
+
       throw error;
     }
   }
