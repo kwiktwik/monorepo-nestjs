@@ -97,7 +97,7 @@ export class SubscriptionService {
     private readonly subscriptionRepo: SubscriptionRepository,
     @Inject(REDEMPTION_REPOSITORY)
     private readonly redemptionRepo: RedemptionRepository,
-  ) {}
+  ) { }
 
   /**
    * Setup a new subscription via the Mobile SDK flow.
@@ -369,7 +369,7 @@ export class SubscriptionService {
           type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
           merchantSubscriptionId: request.merchantSubscriptionId,
           redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
-          autoDebit: false, // Must be false for standard checkout per PhonePe docs
+          autoDebit: true,
         },
       });
 
