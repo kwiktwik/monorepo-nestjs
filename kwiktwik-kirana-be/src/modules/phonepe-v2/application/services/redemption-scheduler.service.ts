@@ -126,7 +126,7 @@ export class RedemptionSchedulerService {
 
       for (const redemption of stuckRedemptions) {
         try {
-          const status = await this.httpClient.getRedemptionOrderStatus(
+          const status = await this.httpClient.getOrderStatus(
             redemption.appId,
             redemption.merchantOrderId,
             true,
