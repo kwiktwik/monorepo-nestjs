@@ -13,7 +13,6 @@ import {
   REDEMPTION_REPOSITORY,
   SUBSCRIPTION_SETUP,
 } from '../../constants';
-import { PhonePeException } from '../../infrastructure/exceptions/phonepe.exceptions';
 import type {
   SubscriptionRepository,
   RedemptionRepository,
@@ -370,13 +369,10 @@ export class SubscriptionService {
       // PhonePe notification failed - mark redemption as FAILED
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      let errorCode = 'NOTIFICATION_FAILED';
-      
-      if (error instanceof PhonePeException) {
-        errorCode = error.errorCode;
-      } else if (error instanceof Error && 'code' in error) {
-        errorCode = String((error as any).code);
-      }
+      const errorCode =
+        error instanceof Error && 'code' in error
+          ? (error as any).code
+          : 'NOTIFICATION_FAILED';
 
       this.logger.error(
         `[PhonePe] Redemption notification failed: merchantOrderId=${merchantOrderId}, error=${errorMessage}`,
@@ -485,13 +481,10 @@ export class SubscriptionService {
       // PhonePe execution failed - mark redemption as FAILED
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      let errorCode = 'EXECUTION_FAILED';
-      
-      if (error instanceof PhonePeException) {
-        errorCode = error.errorCode;
-      } else if (error instanceof Error && 'code' in error) {
-        errorCode = String((error as any).code);
-      }
+      const errorCode =
+        error instanceof Error && 'code' in error
+          ? (error as any).code
+          : 'EXECUTION_FAILED';
 
       this.logger.error(
         `[PhonePe] Redemption execution failed: merchantOrderId=${merchantOrderId}, error=${errorMessage}`,
