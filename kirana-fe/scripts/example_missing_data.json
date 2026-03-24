@@ -1,0 +1,12 @@
+{
+  "orders": [
+    "order_xxxxxxxxxxxx01",
+    "order_xxxxxxxxxxxx02",
+    "order_xxxxxxxxxxxx03"
+  ],
+  "subscriptions": [
+    "sub_xxxxxxxxxxxx01",
+    "sub_xxxxxxxxxxxx02",
+    "sub_xxxxxxxxxxxx03"
+  ]
+}
