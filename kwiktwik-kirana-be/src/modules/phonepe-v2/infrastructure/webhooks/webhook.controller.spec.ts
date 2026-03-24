@@ -13,7 +13,7 @@ import { RedemptionSchedulerService } from '../../application/services/redemptio
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
-  SUBSCRIPTION_CHECKOUT_SETUP,
+  SUBSCRIPTION_SETUP,
 } from '../../constants';
 import { DRIZZLE_TOKEN } from '../../../../database/drizzle.module';
 import { NotificationService } from '../../../../modules/notification/notification.service';
@@ -119,7 +119,7 @@ describe('PhonePeWebhookController', () => {
             orderId: 'phonepe_order_456',
             state: 'COMPLETED',
             paymentFlow: {
-              type: SUBSCRIPTION_CHECKOUT_SETUP,
+              type: SUBSCRIPTION_SETUP,
               merchantSubscriptionId: 'sub_123',
               subscriptionId: 'phonepe_sub_789',
             },
@@ -158,7 +158,7 @@ describe('PhonePeWebhookController', () => {
             orderId: 'phonepe_order_456',
             state: 'FAILED',
             paymentFlow: {
-              type: SUBSCRIPTION_CHECKOUT_SETUP,
+              type: SUBSCRIPTION_SETUP,
               merchantSubscriptionId: 'sub_123',
             },
             errorCode: 'USER_CANCELLED',
@@ -354,7 +354,7 @@ describe('PhonePeWebhookController', () => {
             orderId: 'phonepe_order_456',
             state: 'COMPLETED',
             paymentFlow: {
-              type: SUBSCRIPTION_CHECKOUT_SETUP,
+              type: SUBSCRIPTION_SETUP,
               merchantSubscriptionId: 'sub_123',
               subscriptionId: 'phonepe_sub_789',
             },
