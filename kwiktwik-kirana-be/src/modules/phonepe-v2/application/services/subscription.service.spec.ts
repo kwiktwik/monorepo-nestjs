@@ -82,7 +82,6 @@ describe('SubscriptionService', () => {
       appId: 'app123',
       planId: 'plan_PHONEPE_AUTOPAY_001',
       redirectUrl: 'https://example.com/callback',
-      mobileSdk: false,
     };
 
     it('should setup a subscription successfully', async () => {
@@ -96,7 +95,7 @@ describe('SubscriptionService', () => {
         redirectUrl: 'https://phonepe.com/checkout/123',
       });
 
-      const result = await service.setupSubscription(setupRequest);
+      const result = await service.setupSubscriptionWeb(setupRequest);
 
       expect(result).toHaveProperty('merchantSubscriptionId');
       expect(result).toHaveProperty('merchantOrderId');
@@ -123,7 +122,7 @@ describe('SubscriptionService', () => {
       subscriptionRepo.existsByMerchantSubscriptionId.mockResolvedValue(true);
 
       await expect(
-        service.setupSubscription({
+        service.setupSubscriptionWeb({
           ...setupRequest,
           merchantSubscriptionId: 'existing_sub',
         }),
@@ -141,7 +140,7 @@ describe('SubscriptionService', () => {
         redirectUrl: 'https://phonepe.com/checkout/123',
       });
 
-      const result = await service.setupSubscription({
+      const result = await service.setupSubscriptionWeb({
         ...setupRequest,
         merchantSubscriptionId: 'my_custom_sub_123',
       });
@@ -160,7 +159,7 @@ describe('SubscriptionService', () => {
         redirectUrl: 'https://phonepe.com/checkout/123',
       });
 
-      await service.setupSubscription(setupRequest);
+      await service.setupSubscriptionWeb(setupRequest);
 
       expect(httpClient.setupSubscription).toHaveBeenCalledWith(
         expect.any(String),
@@ -181,7 +180,7 @@ describe('SubscriptionService', () => {
         token: 'sdk_token_123',
       });
 
-      const result = await service.setupSubscription({
+      const result = await service.setupSubscriptionMobile({
         userId: 'user123',
         appId: 'app123',
         planId: 'plan_PHONEPE_AUTOPAY_001',
