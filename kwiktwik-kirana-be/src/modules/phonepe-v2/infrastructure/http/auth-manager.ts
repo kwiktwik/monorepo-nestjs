@@ -9,24 +9,43 @@ export interface PhonePeCredentials {
   env: 'SANDBOX' | 'PRODUCTION';
 }
 
+interface CachedToken {
+  access_token: string;
+  expires_at: number; // Unix seconds (as returned by PhonePe — NOT milliseconds)
+}
+
 /**
  * Manages OAuth2 tokens for PhonePe API.
- * Always fetches a fresh token — no caching to avoid stale-token 401s.
+ * Caches per PhonePe docs recommendation — tokens last ~7 days.
+ * IMPORTANT: expires_at from PhonePe is Unix seconds, not milliseconds.
  */
 @Injectable()
 export class PhonePeAuthManager {
   private readonly logger = new Logger(PhonePeAuthManager.name);
+  private tokenCache = new Map<string, CachedToken>();
 
   constructor(private readonly config: ConfigService) {}
 
   async getToken(appId: string): Promise<string> {
     const credentials = this.getCredentials(appId);
-    this.logger.debug(`Fetching fresh token for ${appId} (${credentials.env})`);
+    const cacheKey = `${appId}_${credentials.env}`;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const TEN_MINUTES = 10 * 60;
+
+    const cached = this.tokenCache.get(cacheKey);
+    // expires_at is Unix seconds — compare directly without * 1000
+    if (cached && cached.expires_at > nowSeconds + TEN_MINUTES) {
+      this.logger.debug(`Using cached token for ${appId} (expires in ${cached.expires_at - nowSeconds}s)`);
+      return cached.access_token;
+    }
+
+    this.logger.log(`Fetching new token for ${appId} (${credentials.env})`);
     const token = await this.fetchToken(credentials);
+    this.tokenCache.set(cacheKey, token);
     return token.access_token;
   }
 
-  private async fetchToken(credentials: PhonePeCredentials): Promise<{ access_token: string }> {
+  private async fetchToken(credentials: PhonePeCredentials): Promise<CachedToken> {
     const url =
       credentials.env === 'PRODUCTION'
         ? 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token'
@@ -54,7 +73,9 @@ export class PhonePeAuthManager {
       throw new Error(`PhonePe auth failed: ${response.status} - ${errorText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    // expires_at from PhonePe is Unix seconds — store as-is
+    return { access_token: data.access_token, expires_at: data.expires_at };
   }
 
   getCredentials(appId: string): PhonePeCredentials {
