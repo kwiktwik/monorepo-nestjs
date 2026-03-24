@@ -15,6 +15,7 @@ import { and, eq } from 'drizzle-orm';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
+  SUBSCRIPTION_CHECKOUT_SETUP,
 } from '../../constants';
 import type {
   SubscriptionRepository,
@@ -36,7 +37,7 @@ interface SubscriptionSetupPayload {
   orderId: string;
   state: 'COMPLETED' | 'FAILED';
   paymentFlow: {
-    type: 'SUBSCRIPTION_CHECKOUT_SETUP';
+    type: typeof SUBSCRIPTION_CHECKOUT_SETUP;
     merchantSubscriptionId: string;
     subscriptionId?: string;
     expireAt?: number;

@@ -12,6 +12,7 @@ import { Redemption } from '../../domain/entities/redemption.entity';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
+  SUBSCRIPTION_CHECKOUT_SETUP,
 } from '../../constants';
 
 describe('SubscriptionService', () => {
@@ -108,7 +109,7 @@ describe('SubscriptionService', () => {
           merchantOrderId: expect.any(String),
           amount: 100, // ₹1 from plan
           paymentFlow: expect.objectContaining({
-            type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+            type: SUBSCRIPTION_CHECKOUT_SETUP,
             subscriptionDetails: expect.objectContaining({
               maxAmount: 19900, // ₹199 from plan
               frequency: 'MONTHLY',
@@ -194,7 +195,7 @@ describe('SubscriptionService', () => {
           merchantOrderId: expect.any(String),
           amount: 100,
           paymentFlow: expect.objectContaining({
-            type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+            type: SUBSCRIPTION_CHECKOUT_SETUP,
             subscriptionDetails: expect.objectContaining({
               maxAmount: 19900,
               frequency: 'MONTHLY',

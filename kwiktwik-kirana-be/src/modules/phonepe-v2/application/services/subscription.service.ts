@@ -11,6 +11,7 @@ import { PhonePeAuthManager } from '../../infrastructure/http/auth-manager';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
+  SUBSCRIPTION_CHECKOUT_SETUP,
 } from '../../constants';
 import type {
   SubscriptionRepository,
@@ -116,7 +117,7 @@ export class SubscriptionService {
         merchantOrderId,
         amount: Math.round(amount * 100),
         paymentFlow: {
-          type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+          type: SUBSCRIPTION_CHECKOUT_SETUP,
           message: request.metadata?.message as string,
           subscriptionDetails: {
             subscriptionType: 'RECURRING',
@@ -172,7 +173,7 @@ export class SubscriptionService {
         merchantOrderId,
         amount: Math.round(amount * 100),
         paymentFlow: {
-          type: 'SUBSCRIPTION_CHECKOUT_SETUP',
+          type: SUBSCRIPTION_CHECKOUT_SETUP,
           merchantUrls: { redirectUrl: request.redirectUrl },
           paymentModeConfig: { type: upiPaymentMode },
           subscriptionDetails: {
