@@ -112,6 +112,7 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
         validUpto: redemption.expireAt,
         errorCode: redemption.errorCode,
         detailedErrorCode: redemption.detailedErrorCode,
+        metadata: redemption.metadata,
         updatedAt: redemption.updatedAt,
       })
       .where(eq(schema.phonepeRedemptions.id, redemption.id));
