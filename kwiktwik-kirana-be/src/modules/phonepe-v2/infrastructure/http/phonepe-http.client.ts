@@ -136,10 +136,8 @@ export class PhonePeHttpClient {
     appId: string,
     request: SetupSubscriptionRequest,
   ): Promise<SetupSubscriptionResponse> {
-    const baseUrl = this.authManager.getBaseUrl(appId);
+    const url = `${this.authManager.getBaseUrl(appId)}/checkout/v2/pay`;
     const token = await this.authManager.getToken(appId);
-
-    const url = `${baseUrl}/checkout/v2/pay`;
 
     this.logger.log(
       `[PhonePe API] Setting up subscription for ${appId}: ${request.paymentFlow.subscriptionDetails.merchantSubscriptionId}`,
@@ -162,12 +160,8 @@ export class PhonePeHttpClient {
     this.logger.debug(`[PhonePe API] Response: ${responseText}`);
 
     if (!response.ok) {
-      this.logger.error(
-        `[PhonePe API] Subscription setup failed: ${responseText}`,
-      );
-      throw new Error(
-        `PhonePe subscription setup failed: ${response.status} - ${responseText}`,
-      );
+      this.logger.error(`[PhonePe API] Subscription setup failed: ${responseText}`);
+      throw new Error(`PhonePe subscription setup failed: ${response.status} - ${responseText}`);
     }
 
     const data = JSON.parse(responseText);

@@ -9,53 +9,24 @@ export interface PhonePeCredentials {
   env: 'SANDBOX' | 'PRODUCTION';
 }
 
-export interface AuthToken {
-  access_token: string;
-  expires_at: number;
-  token_type: string;
-}
-
 /**
- * Manages OAuth2 tokens for PhonePe API
- * Handles token caching and automatic refresh
+ * Manages OAuth2 tokens for PhonePe API.
+ * Always fetches a fresh token — no caching to avoid stale-token 401s.
  */
 @Injectable()
 export class PhonePeAuthManager {
   private readonly logger = new Logger(PhonePeAuthManager.name);
-  private tokenCache = new Map<string, AuthToken>();
 
   constructor(private readonly config: ConfigService) {}
 
   async getToken(appId: string): Promise<string> {
     const credentials = this.getCredentials(appId);
-    const cacheKey = `${appId}_${credentials.env}`;
-
-    const cached = this.tokenCache.get(cacheKey);
-    const now = Date.now();
-
-    // Return cached token if still valid (with 5 min buffer)
-    if (cached && cached.expires_at > now + 5 * 60 * 1000) {
-      this.logger.debug(`Using cached token for ${appId}`);
-      return cached.access_token;
-    }
-
-    // Fetch new token
-    this.logger.log(`Fetching new auth token for ${appId}`);
+    this.logger.debug(`Fetching fresh token for ${appId} (${credentials.env})`);
     const token = await this.fetchToken(credentials);
-    this.tokenCache.set(cacheKey, token);
-
     return token.access_token;
   }
 
-  clearCache(appId: string): void {
-    const credentials = this.getCredentials(appId);
-    const cacheKey = `${appId}_${credentials.env}`;
-    this.tokenCache.delete(cacheKey);
-  }
-
-  private async fetchToken(
-    credentials: PhonePeCredentials,
-  ): Promise<AuthToken> {
+  private async fetchToken(credentials: PhonePeCredentials): Promise<{ access_token: string }> {
     const url =
       credentials.env === 'PRODUCTION'
         ? 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token'
@@ -83,13 +54,7 @@ export class PhonePeAuthManager {
       throw new Error(`PhonePe auth failed: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-
-    return {
-      access_token: data.access_token,
-      expires_at: data.expires_at * 1000, // Convert to milliseconds
-      token_type: data.token_type || 'O-Bearer',
-    };
+    return response.json();
   }
 
   getCredentials(appId: string): PhonePeCredentials {
@@ -100,18 +65,13 @@ export class PhonePeAuthManager {
 
     const isProd = env === 'PRODUCTION';
 
-    const clientId = this.config.get<string>(
-      `PHONEPE_CLIENT_ID_${normalizedAppId}`,
-    );
-    const clientSecret = this.config.get<string>(
-      `PHONEPE_CLIENT_SECRET_${normalizedAppId}`,
-    );
+    const clientId = this.config.get<string>(`PHONEPE_CLIENT_ID_${normalizedAppId}`);
+    const clientSecret = this.config.get<string>(`PHONEPE_CLIENT_SECRET_${normalizedAppId}`);
     const merchantId =
       this.config.get<string>(`PHONEPE_MERCHANT_ID_${normalizedAppId}`) ||
       (isProd ? '' : 'PGTESTPAYUAT');
     const clientVersion = parseInt(
-      this.config.get<string>(`PHONEPE_CLIENT_VERSION_${normalizedAppId}`) ||
-        '1',
+      this.config.get<string>(`PHONEPE_CLIENT_VERSION_${normalizedAppId}`) || '1',
       10,
     );
 
@@ -122,13 +82,7 @@ export class PhonePeAuthManager {
       );
     }
 
-    return {
-      clientId,
-      clientSecret,
-      clientVersion,
-      merchantId,
-      env,
-    };
+    return { clientId, clientSecret, clientVersion, merchantId, env };
   }
 
   getBaseUrl(appId: string): string {
