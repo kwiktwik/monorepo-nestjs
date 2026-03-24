@@ -170,7 +170,9 @@ export class RedemptionSchedulerService {
     );
 
     try {
-      const amount = this.getPlanAmount(subscription.metadata?.planName as string);
+      const amount = this.getPlanAmount(
+        subscription.metadata?.planName as string,
+      );
 
       await this.subscriptionService.notifyRedemption({
         userId: subscription.userId,
@@ -222,7 +224,9 @@ export class RedemptionSchedulerService {
     );
 
     try {
-      const amount = this.getPlanAmount(subscription.metadata?.planName as string);
+      const amount = this.getPlanAmount(
+        subscription.metadata?.planName as string,
+      );
 
       const response = await this.subscriptionService.notifyRedemption({
         userId: subscription.userId,
@@ -297,10 +301,9 @@ export class RedemptionSchedulerService {
       );
       return (PAYWALL_PLANS.PHONEPE_AUTOPAY as any)?.pricing?.recurringAmount
         ? parseInt(
-            (PAYWALL_PLANS.PHONEPE_AUTOPAY as any).pricing.recurringAmount.replace(
-              /[^0-9]/g,
-              '',
-            ),
+            (
+              PAYWALL_PLANS.PHONEPE_AUTOPAY as any
+            ).pricing.recurringAmount.replace(/[^0-9]/g, ''),
             10,
           ) || 199
         : 199;

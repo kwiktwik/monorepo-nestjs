@@ -35,7 +35,9 @@ export class PhonePeAuthManager {
     const cached = this.tokenCache.get(cacheKey);
     // expires_at is Unix seconds — compare directly without * 1000
     if (cached && cached.expires_at > nowSeconds + TEN_MINUTES) {
-      this.logger.debug(`Using cached token for ${appId} (expires in ${cached.expires_at - nowSeconds}s)`);
+      this.logger.debug(
+        `Using cached token for ${appId} (expires in ${cached.expires_at - nowSeconds}s)`,
+      );
       return cached.access_token;
     }
 
@@ -45,7 +47,9 @@ export class PhonePeAuthManager {
     return token.access_token;
   }
 
-  private async fetchToken(credentials: PhonePeCredentials): Promise<CachedToken> {
+  private async fetchToken(
+    credentials: PhonePeCredentials,
+  ): Promise<CachedToken> {
     const url =
       credentials.env === 'PRODUCTION'
         ? 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token'
@@ -86,13 +90,18 @@ export class PhonePeAuthManager {
 
     const isProd = env === 'PRODUCTION';
 
-    const clientId = this.config.get<string>(`PHONEPE_CLIENT_ID_${normalizedAppId}`);
-    const clientSecret = this.config.get<string>(`PHONEPE_CLIENT_SECRET_${normalizedAppId}`);
+    const clientId = this.config.get<string>(
+      `PHONEPE_CLIENT_ID_${normalizedAppId}`,
+    );
+    const clientSecret = this.config.get<string>(
+      `PHONEPE_CLIENT_SECRET_${normalizedAppId}`,
+    );
     const merchantId =
       this.config.get<string>(`PHONEPE_MERCHANT_ID_${normalizedAppId}`) ||
       (isProd ? '' : 'PGTESTPAYUAT');
     const clientVersion = parseInt(
-      this.config.get<string>(`PHONEPE_CLIENT_VERSION_${normalizedAppId}`) || '1',
+      this.config.get<string>(`PHONEPE_CLIENT_VERSION_${normalizedAppId}`) ||
+        '1',
       10,
     );
 
