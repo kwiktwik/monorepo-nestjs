@@ -13,7 +13,7 @@ if (!clientId || !clientSecret || !merchantId) {
 
 async function run() {
   console.log(`ENV: ${env}, Merchant: ${merchantId}`);
-  
+
   const tokenUrl = env === 'PRODUCTION'
     ? 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token'
     : 'https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token';
@@ -28,26 +28,39 @@ async function run() {
       grant_type: 'client_credentials'
     })
   });
-  
+
   const tokenData = await tokenRes.json();
+
   const token = tokenData.access_token;
+
+
 
   const baseUrl = env === 'PRODUCTION'
     ? 'https://api.phonepe.com/apis/pg'
     : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
-    
-  // Check the Status of the subscription
-  const statusUrl = `${baseUrl}/checkout/v2/subscriptions/${merchantSubscriptionId}/status`;
-  console.log(`\nChecking Status of ${merchantSubscriptionId}...`);
+
+  const statusUrl = `${baseUrl}/subscriptions/v2/${merchantSubscriptionId}/status?details=true`;
 
   const statusRes = await fetch(statusUrl, {
     method: 'GET',
     headers: {
       'Authorization': `O-Bearer ${token}`,
-      'X-MERCHANT-ID': merchantId,
-      'Accept': 'application/json'
+      'Content-Type': 'application/json'
     }
   });
+
+
+  // // Check the Status of the subscription
+  // const statusUrl = `${baseUrl}/checkout/v2/subscriptions/${merchantSubscriptionId}/status`;
+  // console.log(`\nChecking Status of ${merchantSubscriptionId}...`);
+
+  // const statusRes = await fetch(statusUrl, {
+  //   method: 'GET',
+  //   headers: {
+  //     'Authorization': `O-Bearer ${token}`,
+  //     'Accept': 'application/json'
+  //   }
+  // });
 
   console.log('Status Response Code:', statusRes.status);
   console.log('Status Response Body:', await statusRes.text());
