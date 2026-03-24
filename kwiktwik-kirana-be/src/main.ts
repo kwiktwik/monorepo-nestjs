@@ -181,6 +181,11 @@ async function bootstrap() {
 
   await app.listen(port);
 
+  // Notify PM2 that the app is ready (required when wait_ready: true in ecosystem config)
+  if (process.send) {
+    process.send('ready');
+  }
+
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
   logger.log(
     `🔐 JWT: ${process.env.JWT_SECRET ? 'JWT_SECRET set from env' : 'WARNING: Using default JWT secret'}`,
