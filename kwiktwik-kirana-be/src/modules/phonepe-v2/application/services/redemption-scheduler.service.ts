@@ -170,7 +170,7 @@ export class RedemptionSchedulerService {
     );
 
     try {
-      const amount = this.getPlanAmount(subscription.metadata?.planId);
+      const amount = this.getPlanAmount(subscription.metadata?.planName as string);
 
       await this.subscriptionService.notifyRedemption({
         userId: subscription.userId,
@@ -222,7 +222,7 @@ export class RedemptionSchedulerService {
     );
 
     try {
-      const amount = this.getPlanAmount(subscription.metadata?.planId);
+      const amount = this.getPlanAmount(subscription.metadata?.planName as string);
 
       const response = await this.subscriptionService.notifyRedemption({
         userId: subscription.userId,
@@ -283,18 +283,34 @@ export class RedemptionSchedulerService {
     }
   }
 
-  private getPlanAmount(planId?: string): number {
-    const planConfig = planId
-      ? PAYWALL_PLANS[planId as keyof typeof PAYWALL_PLANS]
+  private getPlanAmount(planName?: string): number {
+    // `planName` is the PAYWALL_PLANS object key (e.g. 'PHONEPE_AUTOPAY'),
+    // NOT the plan_id value (e.g. 'plan_PHONEPE_AUTOPAY_001').
+    // Both are stored in subscription.metadata — use planName for the lookup.
+    const planConfig = planName
+      ? PAYWALL_PLANS[planName as keyof typeof PAYWALL_PLANS]
       : PAYWALL_PLANS.PHONEPE_AUTOPAY;
 
     if (!planConfig) {
-      this.logger.warn('Plan not found, using default PHONEPE_AUTOPAY');
-      return 199;
+      this.logger.warn(
+        `Plan not found for planName="${planName}", falling back to PHONEPE_AUTOPAY`,
+      );
+      return (PAYWALL_PLANS.PHONEPE_AUTOPAY as any)?.pricing?.recurringAmount
+        ? parseInt(
+            (PAYWALL_PLANS.PHONEPE_AUTOPAY as any).pricing.recurringAmount.replace(
+              /[^0-9]/g,
+              '',
+            ),
+            10,
+          ) || 199
+        : 199;
     }
 
     const pricing = (planConfig as any).pricing;
     if (!pricing?.recurringAmount) {
+      this.logger.warn(
+        `Plan "${planName}" has no recurringAmount, defaulting to 199`,
+      );
       return 199;
     }
 
