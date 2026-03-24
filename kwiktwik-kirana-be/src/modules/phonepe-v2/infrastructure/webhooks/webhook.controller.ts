@@ -37,7 +37,7 @@ interface SubscriptionSetupPayload {
   orderId: string;
   state: 'COMPLETED' | 'FAILED';
   paymentFlow: {
-    type: typeof SUBSCRIPTION_CHECKOUT_SETUP;
+    type: typeof SUBSCRIPTION_SETUP;
     merchantSubscriptionId: string;
     subscriptionId?: string;
     expireAt?: number;
