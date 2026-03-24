@@ -50,9 +50,9 @@ export class SubscriptionController {
   @Post()
   @UsePipes(new ZodValidationPipe(SetupSubscriptionSchema))
   @ApiOperation({
-    summary: 'Setup a new subscription mandate',
+    summary: 'Setup a new subscription mandate (Custom Checkout)',
     description:
-      'Creates a subscription mandate. User will be redirected to PhonePe to approve.',
+      'Creates a subscription mandate using Custom Checkout API. Returns a UPI intent URL that the client should use to invoke the payment app (PhonePe, GPay, etc.).',
   })
   @ApiResponse({
     status: 201,
@@ -66,23 +66,15 @@ export class SubscriptionController {
     @AppId() appId: string,
     @Body() dto: SetupSubscriptionDto,
   ): Promise<SubscriptionResponseDto> {
-    const base = {
+    return this.subscriptionService.setupSubscription({
       userId: user.userId,
       appId,
       planId: dto.planId,
       merchantSubscriptionId: dto.merchantSubscriptionId,
       metadata: dto.metadata,
-    };
-
-    // mobileSdk defaults to true — only use web flow when explicitly disabled
-    if (dto.mobileSdk === false) {
-      return this.subscriptionService.setupSubscriptionWeb({
-        ...base,
-        redirectUrl: dto.redirectUrl || '',
-      });
-    }
-
-    return this.subscriptionService.setupSubscriptionMobile(base);
+      deviceOS: dto.deviceOS,
+      targetApp: dto.targetApp,
+    });
   }
 
   @Post('redeem')

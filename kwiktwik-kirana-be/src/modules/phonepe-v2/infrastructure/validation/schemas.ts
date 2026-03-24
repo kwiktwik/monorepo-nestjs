@@ -24,13 +24,13 @@ export const UpiPaymentModeEnum = z.enum([
 // Helper schemas
 const MetadataSchema = z.any().optional();
 
-// Setup Subscription Schema
+// Setup Subscription Schema (Custom Checkout)
 export const SetupSubscriptionSchema = z.object({
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z.string().optional(),
   merchantSubscriptionId: z.string().optional(),
+  deviceOS: z.enum(['ANDROID', 'IOS']).optional(),
+  targetApp: z.string().optional(),
   metadata: z.any().optional(),
-  mobileSdk: z.boolean().optional(),
 });
 
 export type SetupSubscriptionInput = z.infer<typeof SetupSubscriptionSchema>;
@@ -91,15 +91,15 @@ export const WebhookPayloadSchema = z.object({
 
 export type WebhookPayloadInput = z.infer<typeof WebhookPayloadSchema>;
 
-// Service Layer Validation Schemas
+// Service Layer Validation Schemas (Custom Checkout)
 export const SetupSubscriptionServiceSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   appId: z.string().min(1, 'App ID is required'),
   planId: z.string().min(1, 'Plan ID is required'),
-  redirectUrl: z.string().optional(),
   merchantSubscriptionId: z.string().optional(),
+  deviceOS: z.enum(['ANDROID', 'IOS']).optional(),
+  targetApp: z.string().optional(),
   metadata: z.any().optional(),
-  mobileSdk: z.boolean().optional(),
 });
 
 export const NotifyRedemptionServiceSchema = z.object({
@@ -110,12 +110,11 @@ export const NotifyRedemptionServiceSchema = z.object({
   metadata: z.any().optional(),
 });
 
-// Response Validation Schemas
+// Response Validation Schemas (Custom Checkout)
 export const PhonePeSetupResponseSchema = z.object({
   orderId: z.string(),
   state: z.literal('PENDING'),
-  expireAt: z.number(),
-  redirectUrl: z.string(),
+  intentUrl: z.string(),
 });
 
 export const PhonePeNotifyResponseSchema = z.object({

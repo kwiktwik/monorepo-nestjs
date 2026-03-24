@@ -12,7 +12,7 @@ import { Redemption } from '../../domain/entities/redemption.entity';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
-  SUBSCRIPTION_CHECKOUT_SETUP,
+  SUBSCRIPTION_SETUP,
 } from '../../constants';
 
 describe('SubscriptionService', () => {
@@ -29,8 +29,8 @@ describe('SubscriptionService', () => {
           provide: PhonePeHttpClient,
           useValue: {
             setupSubscription: jest.fn(),
-            setupSubscriptionMobile: jest.fn(),
             notifyRedemption: jest.fn(),
+            executeRedemption: jest.fn(),
             getSubscriptionStatus: jest.fn(),
             getOrderStatus: jest.fn(),
           },
@@ -82,7 +82,8 @@ describe('SubscriptionService', () => {
       userId: 'user123',
       appId: 'app123',
       planId: 'plan_PHONEPE_AUTOPAY_001',
-      redirectUrl: 'https://example.com/callback',
+      deviceOS: 'ANDROID' as const,
+      targetApp: 'com.phonepe.app',
     };
 
     it('should setup a subscription successfully', async () => {
@@ -92,15 +93,17 @@ describe('SubscriptionService', () => {
       httpClient.setupSubscription.mockResolvedValue({
         orderId: 'phonepe_order_123',
         state: 'PENDING',
-        expireAt: Date.now() + 1800000,
-        redirectUrl: 'https://phonepe.com/checkout/123',
+        intentUrl:
+          'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=phonepe_order_123',
       });
 
-      const result = await service.setupSubscriptionWeb(setupRequest);
+      const result = await service.setupSubscription(setupRequest);
 
       expect(result).toHaveProperty('merchantSubscriptionId');
       expect(result).toHaveProperty('merchantOrderId');
-      expect(result.redirectUrl).toBe('https://phonepe.com/checkout/123');
+      expect(result.intentUrl).toBe(
+        'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=phonepe_order_123',
+      );
       expect(result.state).toBe('PENDING');
       expect(subscriptionRepo.create).toHaveBeenCalled();
       expect(httpClient.setupSubscription).toHaveBeenCalledWith(
@@ -109,11 +112,17 @@ describe('SubscriptionService', () => {
           merchantOrderId: expect.any(String),
           amount: 100, // ₹1 from plan
           paymentFlow: expect.objectContaining({
-            type: SUBSCRIPTION_CHECKOUT_SETUP,
-            subscriptionDetails: expect.objectContaining({
-              maxAmount: 19900, // ₹199 from plan
-              frequency: 'MONTHLY',
+            type: SUBSCRIPTION_SETUP,
+            merchantSubscriptionId: expect.any(String),
+            maxAmount: 19900, // ₹199 from plan
+            frequency: 'MONTHLY',
+            paymentMode: expect.objectContaining({
+              type: 'UPI_INTENT',
+              targetApp: 'com.phonepe.app',
             }),
+          }),
+          deviceContext: expect.objectContaining({
+            deviceOS: 'ANDROID',
           }),
         }),
       );
@@ -123,7 +132,7 @@ describe('SubscriptionService', () => {
       subscriptionRepo.existsByMerchantSubscriptionId.mockResolvedValue(true);
 
       await expect(
-        service.setupSubscriptionWeb({
+        service.setupSubscription({
           ...setupRequest,
           merchantSubscriptionId: 'existing_sub',
         }),
@@ -137,11 +146,11 @@ describe('SubscriptionService', () => {
       httpClient.setupSubscription.mockResolvedValue({
         orderId: 'phonepe_order_123',
         state: 'PENDING',
-        expireAt: Date.now() + 1800000,
-        redirectUrl: 'https://phonepe.com/checkout/123',
+        intentUrl:
+          'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=phonepe_order_123',
       });
 
-      const result = await service.setupSubscriptionWeb({
+      const result = await service.setupSubscription({
         ...setupRequest,
         merchantSubscriptionId: 'my_custom_sub_123',
       });
@@ -156,11 +165,11 @@ describe('SubscriptionService', () => {
       httpClient.setupSubscription.mockResolvedValue({
         orderId: 'phonepe_order_123',
         state: 'PENDING',
-        expireAt: Date.now() + 1800000,
-        redirectUrl: 'https://phonepe.com/checkout/123',
+        intentUrl:
+          'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=phonepe_order_123',
       });
 
-      await service.setupSubscriptionWeb(setupRequest);
+      await service.setupSubscription(setupRequest);
 
       expect(httpClient.setupSubscription).toHaveBeenCalledWith(
         expect.any(String),
@@ -170,40 +179,37 @@ describe('SubscriptionService', () => {
       );
     });
 
-    it('should use mobile SDK flow by default (no redirectUrl needed)', async () => {
+    it('should use iOS defaults when deviceOS is IOS', async () => {
       subscriptionRepo.existsByMerchantSubscriptionId.mockResolvedValue(false);
       subscriptionRepo.create.mockImplementation((sub) => Promise.resolve(sub));
       subscriptionRepo.update.mockImplementation((sub) => Promise.resolve(sub));
-      httpClient.setupSubscriptionMobile.mockResolvedValue({
+      httpClient.setupSubscription.mockResolvedValue({
         orderId: 'phonepe_order_123',
         state: 'PENDING',
-        expireAt: Date.now() + 1800000,
-        token: 'sdk_token_123',
+        intentUrl:
+          'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=phonepe_order_123',
       });
 
-      const result = await service.setupSubscriptionMobile({
-        userId: 'user123',
-        appId: 'app123',
-        planId: 'plan_PHONEPE_AUTOPAY_001',
+      await service.setupSubscription({
+        ...setupRequest,
+        deviceOS: 'IOS',
+        targetApp: 'PHONEPE',
       });
 
-      expect(result).toHaveProperty('token', 'sdk_token_123');
-      expect(result).toHaveProperty('orderId', 'phonepe_order_123');
-      expect(httpClient.setupSubscriptionMobile).toHaveBeenCalledWith(
-        'app123',
+      expect(httpClient.setupSubscription).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
-          merchantOrderId: expect.any(String),
-          amount: 100,
+          deviceContext: expect.objectContaining({
+            deviceOS: 'IOS',
+          }),
           paymentFlow: expect.objectContaining({
-            type: SUBSCRIPTION_CHECKOUT_SETUP,
-            subscriptionDetails: expect.objectContaining({
-              maxAmount: 19900,
-              frequency: 'MONTHLY',
+            paymentMode: expect.objectContaining({
+              type: 'UPI_INTENT',
+              targetApp: 'PHONEPE',
             }),
           }),
         }),
       );
-      expect(httpClient.setupSubscription).not.toHaveBeenCalled();
     });
 
     it('should sync subscription from order status and activate if completed', async () => {
@@ -365,9 +371,8 @@ describe('SubscriptionService', () => {
           merchantOrderId: expect.any(String),
           amount: 10000,
           paymentFlow: expect.objectContaining({
-            type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
-            redemptionRetryStrategy: 'STANDARD',
-            autoDebit: true,
+            type: 'SUBSCRIPTION_REDEMPTION',
+            merchantSubscriptionId: 'sub_123',
           }),
         }),
       );
@@ -448,6 +453,76 @@ describe('SubscriptionService', () => {
         expect.objectContaining({
           amount: 10000, // 100 INR -> 10000 paise
         }),
+      );
+    });
+  });
+
+  describe('executeRedemption', () => {
+    const executeRequest = {
+      userId: 'user123',
+      appId: 'app123',
+      merchantSubscriptionId: 'sub_123',
+      amount: 100,
+    };
+
+    const mockSubscription = {
+      id: 'sub_id',
+      merchantSubscriptionId: 'sub_123',
+      userId: 'user123',
+      appId: 'app123',
+      state: 'ACTIVE',
+      maxAmount: 100000,
+      frequency: 'MONTHLY',
+      canRedeem: jest.fn().mockReturnValue(true),
+    } as unknown as Subscription;
+
+    it('should execute redemption directly (merchant-controlled)', async () => {
+      subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(
+        mockSubscription,
+      );
+      redemptionRepo.create.mockImplementation((red) => Promise.resolve(red));
+      redemptionRepo.update.mockImplementation((red) => Promise.resolve(red));
+      httpClient.executeRedemption.mockResolvedValue({
+        orderId: 'phonepe_order_789',
+        state: 'PENDING',
+        expireAt: Date.now() + 86400000,
+      });
+
+      const result = await service.executeRedemption(executeRequest);
+
+      expect(result).toHaveProperty('merchantOrderId');
+      expect(result.state).toBe('PENDING');
+      expect(redemptionRepo.create).toHaveBeenCalled();
+      expect(httpClient.executeRedemption).toHaveBeenCalledWith(
+        executeRequest.appId,
+        expect.objectContaining({
+          merchantOrderId: expect.any(String),
+          amount: 10000,
+          paymentFlow: expect.objectContaining({
+            type: 'SUBSCRIPTION_REDEMPTION',
+            merchantSubscriptionId: 'sub_123',
+          }),
+        }),
+      );
+    });
+
+    it('should throw NotFoundException if subscription not found', async () => {
+      subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue(null);
+
+      await expect(service.executeRedemption(executeRequest)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException if subscription is not active', async () => {
+      subscriptionRepo.findByMerchantSubscriptionId.mockResolvedValue({
+        ...mockSubscription,
+        state: 'PAUSED',
+        canRedeem: jest.fn().mockReturnValue(false),
+      } as unknown as Subscription);
+
+      await expect(service.executeRedemption(executeRequest)).rejects.toThrow(
+        BadRequestException,
       );
     });
   });
