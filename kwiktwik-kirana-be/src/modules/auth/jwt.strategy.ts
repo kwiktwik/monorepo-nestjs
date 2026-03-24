@@ -30,9 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
-    this.logger.debug(
-      `JWT validate: sub=${payload?.sub}, appId=${payload?.appId}, userType=${payload?.userType}, deeplink=${payload?.deeplink}`,
-    );
     if (!payload?.sub || !payload?.appId) {
       this.logger.warn(`Invalid token payload: ${JSON.stringify(payload)}`);
       throw new UnauthorizedException('Invalid token payload');
