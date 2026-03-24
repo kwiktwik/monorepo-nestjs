@@ -361,6 +361,12 @@ export class SubscriptionService {
     await this.redemptionRepo.create(redemption);
 
     try {
+      if (!subscription.phonepeSubscriptionId) {
+        throw new Error(
+          `Subscription ${request.merchantSubscriptionId} has no phonepeSubscriptionId — is it activated?`,
+        );
+      }
+
       // Call PhonePe API
       const response = await this.httpClient.notifyRedemption(request.appId, {
         merchantOrderId,
@@ -368,6 +374,7 @@ export class SubscriptionService {
         paymentFlow: {
           type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
           merchantSubscriptionId: request.merchantSubscriptionId,
+          subscriptionId: subscription.phonepeSubscriptionId, // PhonePe's OMS... ID
           redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries
           autoDebit: true,
         },

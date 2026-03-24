@@ -74,6 +74,7 @@ export interface NotifyRedemptionRequest {
   paymentFlow: {
     type: 'SUBSCRIPTION_CHECKOUT_REDEMPTION';
     merchantSubscriptionId: string;
+    subscriptionId: string; // PhonePe's subscription ID (OMS... format)
     redemptionRetryStrategy: 'STANDARD'; // PhonePe handles retries
     autoDebit: true; // Always true for auto-charge
   };
