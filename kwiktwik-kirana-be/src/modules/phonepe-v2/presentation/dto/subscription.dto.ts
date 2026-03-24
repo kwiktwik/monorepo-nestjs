@@ -39,6 +39,11 @@ export enum UpiPaymentMode {
   UPI_QR = 'UPI_QR',
 }
 
+export enum DeviceOS {
+  ANDROID = 'ANDROID',
+  IOS = 'IOS',
+}
+
 export class SetupSubscriptionDto {
   @ApiProperty({
     description: 'Plan ID from configuration (e.g., plan_PHONEPE_AUTOPAY_001)',
@@ -48,15 +53,6 @@ export class SetupSubscriptionDto {
   planId: string;
 
   @ApiPropertyOptional({
-    description:
-      'URL to redirect user after mandate approval (only for web checkout)',
-    example: 'https://yourapp.com/subscription/callback',
-  })
-  @IsOptional()
-  @IsString()
-  redirectUrl?: string;
-
-  @ApiPropertyOptional({
     description: 'Custom merchant subscription ID',
   })
   @IsOptional()
@@ -64,18 +60,29 @@ export class SetupSubscriptionDto {
   merchantSubscriptionId?: string;
 
   @ApiPropertyOptional({
+    description: 'Device OS for UPI intent',
+    enum: DeviceOS,
+    example: 'ANDROID',
+  })
+  @IsOptional()
+  @IsEnum(DeviceOS)
+  deviceOS?: DeviceOS;
+
+  @ApiPropertyOptional({
+    description:
+      'Target UPI app package name (Android) or app identifier (iOS). For Android: com.phonepe.app, com.google.android.apps.nbu.paisa.user, etc. For iOS: PHONEPE, GPAY, PAYTM, etc.',
+    example: 'com.phonepe.app',
+  })
+  @IsOptional()
+  @IsString()
+  targetApp?: string;
+
+  @ApiPropertyOptional({
     description: 'Additional metadata',
   })
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
-
-  @ApiPropertyOptional({
-    description: 'Use mobile SDK flow (default: true, no redirectUrl needed)',
-    example: true,
-  })
-  @IsOptional()
-  mobileSdk?: boolean;
 }
 
 export class NotifyRedemptionDto {
@@ -104,17 +111,10 @@ export class NotifyRedemptionDto {
 
 export class SubscriptionResponseDto {
   @ApiProperty({
-    description: 'PhonePe order ID - required for SDK initialization',
+    description: 'PhonePe order ID',
     example: 'OM2401241327446521266639W',
   })
   orderId: string;
-
-  @ApiProperty({
-    description:
-      'SDK Token - extracted from redirectUrl for mobile SDK initialization',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  token: string;
 
   @ApiProperty({
     description: 'Your internal merchant subscription ID',
@@ -129,10 +129,11 @@ export class SubscriptionResponseDto {
   merchantOrderId: string;
 
   @ApiProperty({
-    description: 'Redirect URL for web checkout (fallback)',
-    example: 'https://phonepe.com/checkout/...',
+    description: 'UPI intent URL to invoke payment app (e.g., PhonePe, GPay)',
+    example:
+      'ppesim://mandate?pa=VRUAT@ybl&pn=SUBSCRIBEMID&am=300&tr=OM2408072246197385675168',
   })
-  redirectUrl: string;
+  intentUrl: string;
 
   @ApiProperty({
     description: 'Current state of the order',
@@ -141,13 +142,7 @@ export class SubscriptionResponseDto {
   state: string;
 
   @ApiProperty({
-    description: 'Order expiry timestamp',
-    type: Date,
-  })
-  expireAt: Date;
-
-  @ApiProperty({
-    description: 'Merchant ID for SDK configuration',
+    description: 'Merchant ID',
     example: 'PGTESTPAYUAT',
   })
   merchantId: string;
