@@ -15,7 +15,7 @@ import { and, eq } from 'drizzle-orm';
 import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
-  SUBSCRIPTION_CHECKOUT_SETUP,
+  SUBSCRIPTION_SETUP,
 } from '../../constants';
 import type {
   SubscriptionRepository,
