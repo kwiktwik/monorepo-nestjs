@@ -66,15 +66,23 @@ export class SubscriptionController {
     @AppId() appId: string,
     @Body() dto: SetupSubscriptionDto,
   ): Promise<SubscriptionResponseDto> {
-    return this.subscriptionService.setupSubscription({
+    const base = {
       userId: user.userId,
       appId,
       planId: dto.planId,
-      redirectUrl: dto.redirectUrl,
       merchantSubscriptionId: dto.merchantSubscriptionId,
       metadata: dto.metadata,
-      mobileSdk: dto.mobileSdk,
-    });
+    };
+
+    // mobileSdk defaults to true — only use web flow when explicitly disabled
+    if (dto.mobileSdk === false) {
+      return this.subscriptionService.setupSubscriptionWeb({
+        ...base,
+        redirectUrl: dto.redirectUrl || '',
+      });
+    }
+
+    return this.subscriptionService.setupSubscriptionMobile(base);
   }
 
   @Post('redeem')

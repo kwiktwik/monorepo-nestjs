@@ -511,274 +511,83 @@ export class PhonePeWebhookController {
     this.logger.log(
       `Refund accepted: ${payload.refundId} for order ${payload.merchantOrderId}, amount: ${payload.amount}`,
     );
-
-    try {
-      // Find the redemption by merchant order ID
-      const redemption = await this.redemptionRepo.findByMerchantOrderId(
-        payload.merchantOrderId,
-      );
-
-      let userId: string | null = null;
-      let appId: string = 'alertpay-default';
-
-      if (redemption) {
-        userId = redemption.userId;
-        appId = redemption.appId;
-
-        // Update redemption metadata with refund info
-        const updatedMetadata = {
-          ...redemption.metadata,
-          refundId: payload.refundId,
-          refundStatus: 'ACCEPTED',
-          refundAmount: payload.amount,
-          refundCurrency: payload.currency,
-          refundAcceptedAt: new Date().toISOString(),
-        };
-
-        // Log to webhook_logs
-        await this.db.insert(schema.webhookLogs).values({
-          userId: redemption.userId,
-          appId: redemption.appId,
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.accepted',
-          status: 'ACCEPTED',
-          metadata: {
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            amount: payload.amount,
-            currency: payload.currency,
-            redemptionId: redemption.id,
-            ...updatedMetadata,
-          } as Record<string, unknown>,
-        });
-
-        this.logger.log(
-          `Refund acceptance logged for redemption: ${redemption.id}`,
-        );
-      } else {
-        // Log webhook even if redemption not found
-        await this.db.insert(schema.webhookLogs).values({
-          appId: 'alertpay-default',
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.accepted',
-          status: 'ACCEPTED',
-          metadata: {
-            refundId: payload.refundId,
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            amount: payload.amount,
-            currency: payload.currency,
-            note: 'Redemption not found for this order',
-          } as Record<string, unknown>,
-        });
-
-        this.logger.warn(
-          `Redemption not found for refund: ${payload.merchantOrderId}`,
-        );
-      }
-
-      // Send push notification to user
-      if (userId) {
-        await this.sendRefundNotification(userId, appId, 'accepted', payload);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error handling refund accepted: ${error.message}`,
-        error.stack,
-      );
-    }
+    await this.handleRefundEvent(payload, 'pg.refund.accepted', 'ACCEPTED');
   }
 
   private async handleRefundCompleted(payload: RefundPayload) {
     this.logger.log(
       `Refund completed: ${payload.refundId} for order ${payload.merchantOrderId}, amount: ${payload.amount}`,
     );
-
-    try {
-      // Find the redemption by merchant order ID
-      const redemption = await this.redemptionRepo.findByMerchantOrderId(
-        payload.merchantOrderId,
-      );
-
-      let userId: string | null = null;
-      let appId: string = 'alertpay-default';
-
-      if (redemption) {
-        userId = redemption.userId;
-        appId = redemption.appId;
-
-        // Update redemption metadata with refund completion info
-        const updatedMetadata = {
-          ...redemption.metadata,
-          refundId: payload.refundId,
-          refundStatus: 'COMPLETED',
-          refundAmount: payload.amount,
-          refundCurrency: payload.currency,
-          refundTransactionId: payload.transactionId,
-          refundCompletedAt: new Date().toISOString(),
-        };
-
-        // Log to webhook_logs
-        await this.db.insert(schema.webhookLogs).values({
-          userId: redemption.userId,
-          appId: redemption.appId,
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.completed',
-          status: 'COMPLETED',
-          metadata: {
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            transactionId: payload.transactionId,
-            amount: payload.amount,
-            currency: payload.currency,
-            redemptionId: redemption.id,
-            ...updatedMetadata,
-          } as Record<string, unknown>,
-        });
-
-        this.logger.log(
-          `Refund completion logged for redemption: ${redemption.id}`,
-        );
-      } else {
-        // Log webhook even if redemption not found
-        await this.db.insert(schema.webhookLogs).values({
-          appId: 'alertpay-default',
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.completed',
-          status: 'COMPLETED',
-          metadata: {
-            refundId: payload.refundId,
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            transactionId: payload.transactionId,
-            amount: payload.amount,
-            currency: payload.currency,
-            note: 'Redemption not found for this order',
-          } as Record<string, unknown>,
-        });
-
-        this.logger.warn(
-          `Redemption not found for refund completion: ${payload.merchantOrderId}`,
-        );
-      }
-
-      // Send push notification to user
-      if (userId) {
-        await this.sendRefundNotification(userId, appId, 'completed', payload);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error handling refund completed: ${error.message}`,
-        error.stack,
-      );
-    }
+    await this.handleRefundEvent(payload, 'pg.refund.completed', 'COMPLETED');
   }
 
   private async handleRefundFailed(payload: RefundPayload) {
     this.logger.warn(
       `Refund failed: ${payload.refundId} for order ${payload.merchantOrderId}, error: ${payload.errorCode || 'Unknown'}`,
     );
+    await this.handleRefundEvent(payload, 'pg.refund.failed', 'FAILED');
+  }
 
+  /**
+   * Shared helper for all refund webhook events.
+   * Throws if the redemption cannot be found — no silent defaults.
+   */
+  private async handleRefundEvent(
+    payload: RefundPayload,
+    action: 'pg.refund.accepted' | 'pg.refund.completed' | 'pg.refund.failed',
+    status: 'ACCEPTED' | 'COMPLETED' | 'FAILED',
+  ): Promise<void> {
     try {
-      // Find the redemption by merchant order ID
       const redemption = await this.redemptionRepo.findByMerchantOrderId(
         payload.merchantOrderId,
       );
 
-      let userId: string | null = null;
-      let appId: string = 'alertpay-default';
+      if (!redemption) {
+        throw new Error(
+          `Redemption not found for refund event ${action}: merchantOrderId=${payload.merchantOrderId}, refundId=${payload.refundId}`,
+        );
+      }
 
-      if (redemption) {
-        userId = redemption.userId;
-        appId = redemption.appId;
-
-        // Update redemption metadata with refund failure info
-        const updatedMetadata = {
-          ...redemption.metadata,
+      await this.db.insert(schema.webhookLogs).values({
+        userId: redemption.userId,
+        appId: redemption.appId,
+        entityType: 'refund',
+        entityId: payload.refundId,
+        orderId: payload.merchantOrderId,
+        provider: 'phonepe',
+        action,
+        status,
+        errorMessage: payload.errorCode,
+        metadata: {
+          orderId: payload.orderId,
+          merchantOrderId: payload.merchantOrderId,
+          transactionId: payload.transactionId,
+          amount: payload.amount,
+          currency: payload.currency,
+          errorCode: payload.errorCode,
+          detailedErrorCode: payload.detailedErrorCode,
           refundId: payload.refundId,
-          refundStatus: 'FAILED',
-          refundAmount: payload.amount,
-          refundCurrency: payload.currency,
-          refundErrorCode: payload.errorCode,
-          refundDetailedErrorCode: payload.detailedErrorCode,
-          refundFailedAt: new Date().toISOString(),
-        };
+          refundStatus: status,
+          redemptionId: redemption.id,
+        } as Record<string, unknown>,
+      });
 
-        // Log to webhook_logs with error details
-        await this.db.insert(schema.webhookLogs).values({
-          userId: redemption.userId,
-          appId: redemption.appId,
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.failed',
-          status: 'FAILED',
-          errorMessage: payload.errorCode || 'Refund processing failed',
-          metadata: {
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            amount: payload.amount,
-            currency: payload.currency,
-            errorCode: payload.errorCode,
-            detailedErrorCode: payload.detailedErrorCode,
-            redemptionId: redemption.id,
-            ...updatedMetadata,
-          } as Record<string, unknown>,
-        });
+      this.logger.log(
+        `Refund event logged: action=${action}, redemptionId=${redemption.id}`,
+      );
 
-        this.logger.log(
-          `Refund failure logged for redemption: ${redemption.id}`,
-        );
-      } else {
-        // Log webhook even if redemption not found
-        await this.db.insert(schema.webhookLogs).values({
-          appId: 'alertpay-default',
-          entityType: 'refund',
-          entityId: payload.refundId,
-          orderId: payload.merchantOrderId,
-          provider: 'phonepe',
-          action: 'pg.refund.failed',
-          status: 'FAILED',
-          errorMessage: payload.errorCode || 'Refund processing failed',
-          metadata: {
-            refundId: payload.refundId,
-            orderId: payload.orderId,
-            merchantOrderId: payload.merchantOrderId,
-            amount: payload.amount,
-            currency: payload.currency,
-            errorCode: payload.errorCode,
-            detailedErrorCode: payload.detailedErrorCode,
-            note: 'Redemption not found for this order',
-          } as Record<string, unknown>,
-        });
-
-        this.logger.warn(
-          `Redemption not found for refund failure: ${payload.merchantOrderId}`,
-        );
-      }
-
-      // Send push notification to user about refund failure
-      if (userId) {
-        await this.sendRefundNotification(userId, appId, 'failed', payload);
-      }
+      await this.sendRefundNotification(
+        redemption.userId,
+        redemption.appId,
+        status.toLowerCase() as 'accepted' | 'completed' | 'failed',
+        payload,
+      );
     } catch (error) {
       this.logger.error(
-        `Error handling refund failed: ${error.message}`,
+        `Error handling refund event ${action}: ${error.message}`,
         error.stack,
       );
+      throw error;
     }
   }
 
