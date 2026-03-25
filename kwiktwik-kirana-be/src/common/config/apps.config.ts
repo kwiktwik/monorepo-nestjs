@@ -80,6 +80,21 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
+  'com.dailyattendance.staffbook': {
+    id: 'com.dailyattendance.staffbook',
+    name: 'StaffBook',
+    description: 'StaffBook mobile application',
+    enabled: true,
+    rateLimit: {
+      maxRequests: 100,
+      windowMs: 15 * 60 * 1000,
+    },
+    features: {
+      otpLogin: true,
+      truecallerLogin: true,
+      googleLogin: true,
+    },
+  },
 };
 
 /**
