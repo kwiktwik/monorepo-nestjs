@@ -9,6 +9,8 @@ import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, inArray, or, gt, isNotNull, desc, sql } from 'drizzle-orm';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { SubscriptionStates } from '../phonepe-v2/domain/enums/subscription.enum';
+import { RazorpaySubscriptionStatuses } from '../../common/types/razorpay.types';
 
 @Injectable()
 export class UserService {
@@ -50,7 +52,8 @@ export class UserService {
     // Run all remaining queries in parallel for better performance
     const [
       accounts,
-      activeSubscriptions,
+      razorpaySubscriptions,
+      phonepeSubscriptions,
       userMeta,
       userImagesList,
       playStoreReview,
@@ -62,7 +65,7 @@ export class UserService {
         .where(eq(schema.account.userId, userId))
         .limit(1),
 
-      // Compute premium status (paid orders or active subscription)
+      // Check Razorpay subscriptions for premium status
       this.db
         .select()
         .from(schema.subscriptions)
@@ -71,11 +74,40 @@ export class UserService {
             eq(schema.subscriptions.userId, userId),
             inArray(schema.subscriptions.appId, equivalentAppIds),
             or(
-              eq(schema.subscriptions.status, 'active'),
+              eq(
+                schema.subscriptions.status,
+                RazorpaySubscriptionStatuses.ACTIVE,
+              ),
               and(
-                eq(schema.subscriptions.status, 'cancelled'),
+                eq(
+                  schema.subscriptions.status,
+                  RazorpaySubscriptionStatuses.CANCELLED,
+                ),
                 isNotNull(schema.subscriptions.endAt),
                 gt(schema.subscriptions.endAt, now),
+              ),
+            ),
+          ),
+        )
+        .limit(1),
+
+      // Check PhonePe subscriptions for premium status
+      this.db
+        .select()
+        .from(schema.phonepeSubscriptions)
+        .where(
+          and(
+            eq(schema.phonepeSubscriptions.userId, userId),
+            inArray(schema.phonepeSubscriptions.appId, equivalentAppIds),
+            or(
+              eq(schema.phonepeSubscriptions.state, SubscriptionStates.ACTIVE),
+              and(
+                eq(
+                  schema.phonepeSubscriptions.state,
+                  SubscriptionStates.CANCELLED,
+                ),
+                isNotNull(schema.phonepeSubscriptions.nextBillingDate),
+                gt(schema.phonepeSubscriptions.nextBillingDate, now),
               ),
             ),
           ),
@@ -125,7 +157,9 @@ export class UserService {
     ]);
 
     const accountType = accounts.length > 0 ? accounts[0].providerId : null;
-    const isPremium = activeSubscriptions.length > 0;
+    // User is premium if they have an active subscription on either Razorpay or PhonePe
+    const isPremium =
+      razorpaySubscriptions.length > 0 || phonepeSubscriptions.length > 0;
     const upiVpa = userMeta.length > 0 ? userMeta[0].upiVpa : null;
     const audioLanguage =
       userMeta.length > 0 ? userMeta[0].audioLanguage : null;

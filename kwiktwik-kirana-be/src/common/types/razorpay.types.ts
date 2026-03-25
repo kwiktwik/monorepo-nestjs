@@ -94,6 +94,21 @@ export interface RazorpaySubscriptionEntity {
   [key: string]: unknown;
 }
 
+/**
+ * Razorpay subscription status constants
+ */
+export const RazorpaySubscriptionStatuses = {
+  CREATED: 'created',
+  AUTHENTICATED: 'authenticated',
+  ACTIVE: 'active',
+  PENDING: 'pending',
+  HALTED: 'halted',
+  PAUSED: 'paused',
+  CANCELLED: 'cancelled',
+  COMPLETED: 'completed',
+  EXPIRED: 'expired',
+} as const;
+
 export interface RazorpayOrderEntity {
   id: string;
   entity: string;

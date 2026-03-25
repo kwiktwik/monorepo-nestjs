@@ -107,6 +107,7 @@ describe('UserService', () => {
         .mockResolvedValueOnce([mockUser])
         .mockResolvedValueOnce([mockAccount])
         .mockResolvedValueOnce([mockSubscription])
+        .mockResolvedValueOnce([]) // PhonePe subscriptions (empty)
         .mockResolvedValueOnce([mockUserMetadata])
         .mockResolvedValueOnce([mockUserImage])
         .mockResolvedValueOnce([]);
@@ -131,7 +132,8 @@ describe('UserService', () => {
       mockDb.limit
         .mockResolvedValueOnce([mockUser])
         .mockResolvedValueOnce([mockAccount])
-        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]) // Razorpay subscriptions (empty)
+        .mockResolvedValueOnce([]) // PhonePe subscriptions (empty)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
@@ -154,6 +156,7 @@ describe('UserService', () => {
         .mockResolvedValueOnce([mockUser])
         .mockResolvedValueOnce([mockAccount])
         .mockResolvedValueOnce([cancelledSub])
+        .mockResolvedValueOnce([]) // PhonePe subscriptions (empty)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
@@ -167,7 +170,8 @@ describe('UserService', () => {
       mockDb.limit
         .mockResolvedValueOnce([mockUser])
         .mockResolvedValueOnce([mockAccount])
-        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]) // Razorpay subscriptions (empty)
+        .mockResolvedValueOnce([]) // PhonePe subscriptions (empty)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);

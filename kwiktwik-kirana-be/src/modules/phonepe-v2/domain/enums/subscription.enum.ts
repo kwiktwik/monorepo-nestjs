@@ -14,6 +14,21 @@ export type SubscriptionState =
   | 'FAILED'; // Setup failed
 
 /**
+ * Subscription state constants for use in comparisons
+ */
+export const SubscriptionStates = {
+  CREATED: 'CREATED',
+  ACTIVATION_IN_PROGRESS: 'ACTIVATION_IN_PROGRESS',
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  CANCEL_IN_PROGRESS: 'CANCEL_IN_PROGRESS',
+  CANCELLED: 'CANCELLED',
+  REVOKED: 'REVOKED',
+  EXPIRED: 'EXPIRED',
+  FAILED: 'FAILED',
+} as const;
+
+/**
  * Frequency options for recurring payments
  */
 export type SubscriptionFrequency =
