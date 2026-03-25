@@ -92,7 +92,7 @@ export const PAYWALL_PLANS = {
   PHONEPE_AUTOPAY: {
     plan_id: 'plan_PHONEPE_AUTOPAY_001',
     pricing: {
-      initialAmount: '₹1',
+      initialAmount: '₹2',
       recurringAmount: '₹199',
       period: 'month',
     },
@@ -186,7 +186,7 @@ export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
     provider: 'PHONEPE',
     localConfig: {
       pricing: {
-        initialAmount: '₹1',
+        initialAmount: '₹2',
         recurringAmount: '₹199',
         period: 'month',
       },
