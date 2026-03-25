@@ -95,7 +95,7 @@ describe('PhonePeWebhookController', () => {
       validAuthHeader = `SHA256 ${expectedHash}`;
     });
 
-    it('should handle checkout.order.completed event', async () => {
+    it('should handle subscription.setup.order.completed event', async () => {
       const mockSubscription = {
         id: 'sub_id',
         merchantSubscriptionId: 'sub_123',
@@ -112,7 +112,7 @@ describe('PhonePeWebhookController', () => {
 
       const result = await controller.handleWebhook(
         {
-          event: 'checkout.order.completed',
+          event: 'subscription.setup.order.completed',
           payload: {
             merchantId: 'merchant_123',
             merchantOrderId: 'order_123',
@@ -136,7 +136,7 @@ describe('PhonePeWebhookController', () => {
       expect(subscriptionRepo.update).toHaveBeenCalled();
     });
 
-    it('should handle checkout.order.failed event', async () => {
+    it('should handle subscription.setup.order.failed event', async () => {
       const mockSubscription = {
         id: 'sub_id',
         merchantSubscriptionId: 'sub_123',
@@ -151,7 +151,7 @@ describe('PhonePeWebhookController', () => {
 
       const result = await controller.handleWebhook(
         {
-          event: 'checkout.order.failed',
+          event: 'subscription.setup.order.failed',
           payload: {
             merchantId: 'merchant_123',
             merchantOrderId: 'order_123',
@@ -322,7 +322,7 @@ describe('PhonePeWebhookController', () => {
       await expect(
         controller.handleWebhook(
           {
-            event: 'checkout.order.completed',
+            event: 'subscription.setup.order.completed',
             payload: {} as any,
           },
           'invalid_auth',
@@ -347,7 +347,7 @@ describe('PhonePeWebhookController', () => {
 
       const result = await controller.handleWebhook(
         {
-          event: 'checkout.order.completed',
+          event: 'subscription.setup.order.completed',
           payload: {
             merchantId: 'merchant_123',
             merchantOrderId: 'order_123',

@@ -255,7 +255,7 @@ export class PhonePeWebhookController {
 
   private async handleSetupCompleted(payload: SubscriptionSetupPayload) {
     this.logger.log(
-      `Processing checkout.order.completed for order: ${payload.orderId}, merchantOrderId: ${payload.merchantOrderId}`,
+      `Processing subscription.setup.order.completed for order: ${payload.orderId}, merchantOrderId: ${payload.merchantOrderId}`,
     );
 
     // Log full payload for debugging
