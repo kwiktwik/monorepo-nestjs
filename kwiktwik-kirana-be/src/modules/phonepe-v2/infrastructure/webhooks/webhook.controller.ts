@@ -150,12 +150,12 @@ export class PhonePeWebhookController {
     try {
       switch (body.event) {
         // Setup callbacks
-        case 'checkout.order.completed':
+        case 'subscription.setup.order.completed':
           await this.handleSetupCompleted(
             body.payload as SubscriptionSetupPayload,
           );
           break;
-        case 'checkout.order.failed':
+        case 'subscription.setup.order.failed':
           await this.handleSetupFailed(
             body.payload as SubscriptionSetupPayload,
           );

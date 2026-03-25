@@ -57,8 +57,8 @@ export type RedemptionState =
  */
 export type PhonePeWebhookEvent =
   // Setup callbacks
-  | 'checkout.order.completed'
-  | 'checkout.order.failed'
+  | 'subscription.setup.order.completed'
+  | 'subscription.setup.order.failed'
   // State change callbacks
   | 'subscription.paused'
   | 'subscription.unpaused'

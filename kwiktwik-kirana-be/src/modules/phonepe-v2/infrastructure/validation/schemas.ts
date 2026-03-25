@@ -67,8 +67,8 @@ export const GetOrderStatusSchema = z.object({
 
 // Webhook Schemas
 export const PhonePeWebhookEventEnum = z.enum([
-  'checkout.order.completed',
-  'checkout.order.failed',
+  'subscription.setup.order.completed',
+  'subscription.setup.order.failed',
   'subscription.paused',
   'subscription.unpaused',
   'subscription.revoked',
