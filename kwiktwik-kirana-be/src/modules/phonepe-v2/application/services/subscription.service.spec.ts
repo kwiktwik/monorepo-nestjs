@@ -110,7 +110,7 @@ describe('SubscriptionService', () => {
         setupRequest.appId,
         expect.objectContaining({
           merchantOrderId: expect.any(String),
-          amount: 100, // ₹1 from plan
+          amount: 200, // ₹2 from plan
           paymentFlow: expect.objectContaining({
             type: SUBSCRIPTION_SETUP,
             merchantSubscriptionId: expect.any(String),
@@ -174,7 +174,7 @@ describe('SubscriptionService', () => {
       expect(httpClient.setupSubscription).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          amount: 100, // ₹1 -> 100 paise (from plan_PHONEPE_AUTOPAY_001)
+          amount: 200, // ₹2 -> 200 paise (from plan_PHONEPE_AUTOPAY_001)
         }),
       );
     });
