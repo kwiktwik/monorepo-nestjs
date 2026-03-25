@@ -230,6 +230,31 @@ export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
       productType: 'UPI_MANDATE',
     },
   },
+  // Alias for backward compatibility
+  PHONEPE_AUTOPAY_PENNYDROP: {
+    plan_id: 'plan_PHONEPE_AUTOPAY_PENNYDROP_001',
+    provider: 'PHONEPE',
+    localConfig: {
+      pricing: {
+        initialAmount: '₹2',
+        recurringAmount: '₹199',
+        period: 'month',
+      },
+      heading: 'Never miss a payment',
+      description: 'Start your free trial for <s>₹199</s>',
+      buttonText: 'Start free trial',
+      refundText: 'REFUNDED INSTANTLY',
+      videoDescription: 'Autopay ₹199 every month, cancel anytime',
+    },
+    providerConfig: {
+      maxAmount: 19900,
+      frequency: 'MONTHLY',
+      amountType: 'VARIABLE',
+      authWorkflowType: 'PENNY_DROP',
+      upiPaymentMode: 'UPI_INTENT',
+      productType: 'UPI_MANDATE',
+    },
+  },
   // Razorpay Plans - reference external plans
   plan_S3FaBrk7sjPQEU: {
     plan_id: 'plan_S3FaBrk7sjPQEU',
