@@ -45,6 +45,14 @@ export type ProductType = 'UPI_MANDATE';
 /**
  * Redemption states for tracking auto-debit status
  */
+export const RedemptionStates = {
+  NOTIFICATION_IN_PROGRESS: 'NOTIFICATION_IN_PROGRESS',
+  NOTIFIED: 'NOTIFIED',
+  PENDING: 'PENDING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;
+
 export type RedemptionState =
   | 'NOTIFICATION_IN_PROGRESS'
   | 'NOTIFIED'

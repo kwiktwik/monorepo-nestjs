@@ -22,6 +22,7 @@ import type {
   RedemptionRepository,
 } from '../../application/interfaces/repository.interface';
 import type { PhonePeWebhookEvent } from '../../domain/enums/subscription.enum';
+import { RedemptionStates } from '../../domain/enums/subscription.enum';
 import { WebhookPayloadSchema } from '../validation/schemas';
 import { RedemptionSchedulerService } from '../../application/services/redemption-scheduler.service';
 import { DRIZZLE_TOKEN } from '../../../../database/drizzle.module';
@@ -427,6 +428,21 @@ export class PhonePeWebhookController {
       return;
     }
 
+    // Idempotency check: skip if already notified or in terminal state
+    if (redemption.state === RedemptionStates.NOTIFIED) {
+      this.logger.log(
+        `Redemption already notified: ${payload.merchantOrderId}`,
+      );
+      return;
+    }
+
+    if (redemption.isTerminal()) {
+      this.logger.warn(
+        `Redemption in terminal state ${redemption.state}, cannot mark as notified: ${payload.merchantOrderId}`,
+      );
+      return;
+    }
+
     // Mark as notified with 48 hour expiration from PhonePe
     const expireAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
     redemption.markAsNotified(payload.orderId, expireAt);
@@ -444,6 +460,14 @@ export class PhonePeWebhookController {
 
     if (!redemption) {
       this.logger.warn(`Redemption not found: ${payload.merchantOrderId}`);
+      return;
+    }
+
+    // Idempotency check: skip if already in terminal state
+    if (redemption.isTerminal()) {
+      this.logger.warn(
+        `Redemption in terminal state ${redemption.state}, cannot mark notification as failed: ${payload.merchantOrderId}`,
+      );
       return;
     }
 
@@ -468,6 +492,22 @@ export class PhonePeWebhookController {
       return;
     }
 
+    // Idempotency check: skip if already completed
+    if (redemption.state === RedemptionStates.COMPLETED) {
+      this.logger.log(
+        `Redemption already completed: ${payload.merchantOrderId}`,
+      );
+      return;
+    }
+
+    // Skip if already in FAILED state (cannot transition to COMPLETED)
+    if (redemption.state === RedemptionStates.FAILED) {
+      this.logger.warn(
+        `Redemption in FAILED state, cannot complete: ${payload.merchantOrderId}`,
+      );
+      return;
+    }
+
     // Get transaction ID from payment details
     const transactionId =
       payload.paymentDetails?.[0]?.transactionId || payload.orderId;
@@ -487,6 +527,20 @@ export class PhonePeWebhookController {
 
     if (!redemption) {
       this.logger.warn(`Redemption not found: ${payload.merchantOrderId}`);
+      return;
+    }
+
+    // Idempotency check: skip if already failed
+    if (redemption.state === RedemptionStates.FAILED) {
+      this.logger.log(`Redemption already failed: ${payload.merchantOrderId}`);
+      return;
+    }
+
+    // Skip if already completed (cannot transition to FAILED)
+    if (redemption.state === RedemptionStates.COMPLETED) {
+      this.logger.warn(
+        `Redemption already completed, cannot fail: ${payload.merchantOrderId}`,
+      );
       return;
     }
 
