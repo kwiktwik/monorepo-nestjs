@@ -572,7 +572,6 @@ describe('SubscriptionService', () => {
       expect(httpClient.getSubscriptionStatus).toHaveBeenCalledWith(
         'app123',
         'sub_123',
-        'SANDBOX',
       );
     });
 

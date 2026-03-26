@@ -371,7 +371,7 @@ export class SubscriptionService {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       let errorCode = 'NOTIFICATION_FAILED';
-      
+
       if (error instanceof PhonePeException) {
         errorCode = error.errorCode;
       } else if (error instanceof Error && 'code' in error) {
@@ -486,7 +486,7 @@ export class SubscriptionService {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       let errorCode = 'EXECUTION_FAILED';
-      
+
       if (error instanceof PhonePeException) {
         errorCode = error.errorCode;
       } else if (error instanceof Error && 'code' in error) {
@@ -534,13 +534,9 @@ export class SubscriptionService {
 
     // Try to get from PhonePe using the stored environment from metadata
     try {
-      const environment =
-        (subscription.metadata.environment as 'SANDBOX' | 'PRODUCTION') ||
-        'SANDBOX';
       const phonepeStatus = await this.httpClient.getSubscriptionStatus(
         appId,
         merchantSubscriptionId,
-        environment,
       );
 
       // Sync state if different

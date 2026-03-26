@@ -76,11 +76,9 @@ export class RedemptionSchedulerService {
 
       for (const subscription of stuckSubscriptions) {
         try {
-          const env = (subscription.metadata?.environment as any) || 'SANDBOX';
           const status = await this.httpClient.getSubscriptionStatus(
             subscription.appId,
             subscription.merchantSubscriptionId,
-            env,
           );
 
           if (status.state === 'ACTIVE') {
