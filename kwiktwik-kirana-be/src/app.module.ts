@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import {
   ConfigModule as NestConfigModule,
   ConfigService,
 } from '@nestjs/config';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { DrizzleModule } from './database/drizzle.module';
 import { DrizzleTestModule } from './database/drizzle-test.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -31,6 +33,7 @@ const dbModule =
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     NestConfigModule.forRoot({
       envFilePath: ['.env.local', '.env'],
       isGlobal: true,
@@ -62,5 +65,11 @@ const dbModule =
     AdminModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
+  ],
 })
 export class AppModule {}

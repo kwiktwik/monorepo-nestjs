@@ -1,3 +1,5 @@
+import './instrument'; // Must be first - initializes Sentry before NestJS
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -16,6 +18,9 @@ async function bootstrap() {
     // Disable default body parsing - we'll configure manually
     bodyParser: false,
   });
+
+  // Enable graceful shutdown - flushes Sentry events on SIGTERM/SIGINT
+  app.enableShutdownHooks();
 
   // Apply raw body parser FIRST for webhook routes (must be before JSON parser)
   // This ensures Razorpay webhooks get raw body for signature verification
