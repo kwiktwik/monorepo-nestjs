@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Query,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -16,6 +23,7 @@ import {
   DEEPLINK_CAMPAIGNS,
   SUPPORTED_LANGUAGES,
 } from './config.data';
+import { GetConfigV4Dto } from './dto/get-config-v4.dto';
 
 @ApiTags('config')
 @ApiBearerAuth('JWT')
@@ -86,6 +94,7 @@ export class ConfigController {
   }
 
   @Get('v4')
+  @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOperation({
     summary: 'Get app configuration with unified plan structure (v4)',
   })
@@ -106,19 +115,22 @@ export class ConfigController {
     status: 200,
     description: 'App config with unified plan structure returned',
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid plan_id or language',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Plan not found' })
   async getConfigV4(
     @AppId() appId: string,
     @CurrentUser() user: any,
-    @Query('plan_id') plan_id?: string,
-    @Query('language') language?: string,
+    @Query() query: GetConfigV4Dto,
   ) {
-    const resolvedLanguage = language || user?.language || 'en';
+    const resolvedLanguage = query.language || user?.language || 'en';
 
     const config = await this.configService.getConfigV4(
       appId,
-      plan_id,
+      query.plan_id,
       resolvedLanguage,
       user,
     );

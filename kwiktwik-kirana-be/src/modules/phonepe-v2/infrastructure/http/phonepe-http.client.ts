@@ -161,7 +161,7 @@ export class PhonePeHttpClient {
     const timeout = config.timeout || TIMEOUT_CONFIG.default;
 
     let lastError: Error | undefined;
-    
+
     for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
       try {
         if (attempt > 0) {
@@ -174,7 +174,9 @@ export class PhonePeHttpClient {
 
         this.logger.debug(`[PhonePe API] Request: ${config.method} ${url}`);
         if (config.body) {
-          this.logger.debug(`[PhonePe API] Body: ${JSON.stringify(config.body)}`);
+          this.logger.debug(
+            `[PhonePe API] Body: ${JSON.stringify(config.body)}`,
+          );
         }
 
         const response = await fetch(url, {
@@ -202,12 +204,19 @@ export class PhonePeHttpClient {
         return JSON.parse(responseText) as T;
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          lastError = new PhonePeTimeoutException(`Request timeout after ${timeout}ms`, endpoint);
+          lastError = new PhonePeTimeoutException(
+            `Request timeout after ${timeout}ms`,
+            endpoint,
+          );
           if (!config.skipRetry) continue;
           throw lastError;
         }
 
-        if (error instanceof Error && this.isRetryableError(error) && !config.skipRetry) {
+        if (
+          error instanceof Error &&
+          this.isRetryableError(error) &&
+          !config.skipRetry
+        ) {
           lastError = error;
           continue;
         }
@@ -222,14 +231,18 @@ export class PhonePeHttpClient {
       }
     }
 
-    throw new PhonePeRetryExhaustedException(RETRY_CONFIG.maxRetries, lastError!);
+    throw new PhonePeRetryExhaustedException(
+      RETRY_CONFIG.maxRetries,
+      lastError!,
+    );
   }
 
   /**
    * Calculate exponential backoff delay with jitter
    */
   private calculateBackoff(attempt: number): number {
-    const exponentialDelay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
+    const exponentialDelay =
+      RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
     const jitter = Math.random() * 1000;
     return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelayMs);
   }
@@ -252,8 +265,8 @@ export class PhonePeHttpClient {
    * Check if error is retryable (network errors)
    */
   private isRetryableError(error: Error): boolean {
-    return RETRY_CONFIG.retryableErrors.some(code => 
-      error.message.includes(code)
+    return RETRY_CONFIG.retryableErrors.some((code) =>
+      error.message.includes(code),
     );
   }
 
@@ -261,8 +274,10 @@ export class PhonePeHttpClient {
    * Check if error is already a domain exception
    */
   private isDomainException(error: Error): boolean {
-    return error.name.includes('PhonePe') || 
-           error.constructor.name.includes('PhonePe');
+    return (
+      error.name.includes('PhonePe') ||
+      error.constructor.name.includes('PhonePe')
+    );
   }
 
   /**
@@ -285,7 +300,8 @@ export class PhonePeHttpClient {
         body: request,
         timeout: TIMEOUT_CONFIG.default,
       },
-      (status, responseText) => new PhonePeSubscriptionSetupException(status, responseText),
+      (status, responseText) =>
+        new PhonePeSubscriptionSetupException(status, responseText),
     );
 
     this.logger.log(
@@ -314,7 +330,8 @@ export class PhonePeHttpClient {
         body: request,
         timeout: TIMEOUT_CONFIG.default,
       },
-      (status, responseText) => new PhonePeRedemptionNotificationException(status, responseText),
+      (status, responseText) =>
+        new PhonePeRedemptionNotificationException(status, responseText),
     );
 
     this.logger.log(
@@ -343,7 +360,8 @@ export class PhonePeHttpClient {
         body: request,
         timeout: TIMEOUT_CONFIG.default,
       },
-      (status, responseText) => new PhonePeRedemptionExecutionException(status, responseText),
+      (status, responseText) =>
+        new PhonePeRedemptionExecutionException(status, responseText),
     );
 
     this.logger.log(
@@ -359,28 +377,20 @@ export class PhonePeHttpClient {
   async getSubscriptionStatus(
     appId: string,
     merchantSubscriptionId: string,
-    environment?: 'SANDBOX' | 'PRODUCTION',
   ): Promise<GetSubscriptionStatusResponse> {
-    const baseUrl = environment
-      ? environment === 'PRODUCTION'
-        ? 'https://api.phonepe.com/apis/pg'
-        : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-      : this.authManager.getBaseUrl(appId);
-    
-    const url = `${baseUrl}/subscriptions/v2/${merchantSubscriptionId}/status`;
-
     this.logger.log(
-      `[PhonePe API] Getting subscription status for ${merchantSubscriptionId} (env: ${environment || 'default'})`,
+      `[PhonePe API] Getting subscription status for ${merchantSubscriptionId}`,
     );
 
     const response = await this.makeRequest<GetSubscriptionStatusResponse>(
       appId,
-      url.replace(baseUrl, ''),
+      `/subscriptions/v2/${merchantSubscriptionId}/status`,
       {
         method: 'GET',
         timeout: TIMEOUT_CONFIG.statusCheck,
       },
-      (status, responseText) => new PhonePeSubscriptionStatusException(status, responseText),
+      (status, responseText) =>
+        new PhonePeSubscriptionStatusException(status, responseText),
     );
 
     this.logger.log(
@@ -409,7 +419,8 @@ export class PhonePeHttpClient {
         method: 'GET',
         timeout: TIMEOUT_CONFIG.statusCheck,
       },
-      (status, responseText) => new PhonePeOrderStatusException(status, responseText),
+      (status, responseText) =>
+        new PhonePeOrderStatusException(status, responseText),
     );
 
     this.logger.log(

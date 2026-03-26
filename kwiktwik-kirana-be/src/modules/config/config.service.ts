@@ -207,6 +207,9 @@ export class ConfigService {
       const unifiedPlan = getUnifiedPlan(selectedPlanId);
 
       if (!unifiedPlan) {
+        this.logger.warn(
+          `Config v4: Invalid plan_id="${selectedPlanId}" requested for app="${appId}". Source=${planSelectionSource}. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
+        );
         throw new NotFoundException(
           `Plan "${selectedPlanId}" not found. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
         );
