@@ -148,6 +148,21 @@ export class PhonePeWebhookController {
 
     this.logger.log(`Received webhook: ${body.event}`);
 
+    // Generate a unique event ID for idempotency (PhonePe doesn't provide one in headers)
+    const eventId = this.generateEventId(body);
+
+    // Check if event was already processed
+    if (await this.isEventAlreadyProcessed(eventId)) {
+      this.logger.log(`Event ${eventId} already processed, skipping`);
+      return { received: true };
+    }
+
+    // Log all webhook events to webhook_logs table
+    await this.logWebhookEvent(body);
+
+    // Mark event as processed before handling to prevent race conditions
+    await this.markEventAsProcessed(eventId, body.event, 'unknown');
+
     try {
       switch (body.event) {
         // Setup callbacks
@@ -643,6 +658,180 @@ export class PhonePeWebhookController {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  private async logWebhookEvent(body: WebhookBody): Promise<void> {
+    try {
+      const { event, payload } = body;
+      let userId: string | null = null;
+      let appId = 'alertpay-default';
+      let entityType = 'unknown';
+      let entityId: string | null = null;
+      let subscriptionId: string | null = null;
+      let orderId: string | null = null;
+      let status: string | null = null;
+
+      // Determine entity type and extract IDs based on event type
+      if (event.startsWith('subscription.setup')) {
+        entityType = 'subscription_setup';
+        const setupPayload = payload as SubscriptionSetupPayload;
+        orderId = setupPayload.merchantOrderId;
+        entityId = setupPayload.paymentFlow?.merchantSubscriptionId;
+        subscriptionId = setupPayload.paymentFlow?.subscriptionId || null;
+        status = setupPayload.state;
+      } else if (event.startsWith('subscription.')) {
+        entityType = 'subscription';
+        const statePayload = payload as SubscriptionStateChangePayload;
+        subscriptionId = statePayload.subscriptionId;
+        entityId = statePayload.merchantSubscriptionId;
+        status = statePayload.state;
+      } else if (
+        event.startsWith('subscription.redemption') ||
+        event.startsWith('subscription.notification')
+      ) {
+        entityType = 'redemption';
+        const redemptionPayload = payload as RedemptionPayload;
+        orderId = redemptionPayload.merchantOrderId;
+        entityId = redemptionPayload.orderId;
+        subscriptionId = redemptionPayload.paymentFlow?.merchantSubscriptionId;
+        status = redemptionPayload.state;
+      } else if (event.startsWith('pg.refund')) {
+        entityType = 'refund';
+        const refundPayload = payload as RefundPayload;
+        orderId = refundPayload.merchantOrderId;
+        entityId = refundPayload.refundId;
+        status = refundPayload.state;
+      }
+
+      // Try to find user/app from subscription if available
+      if (subscriptionId) {
+        try {
+          const subscription =
+            await this.subscriptionRepo.findByMerchantSubscriptionId(
+              subscriptionId,
+            );
+          if (subscription) {
+            userId = subscription.userId;
+            appId = subscription.appId;
+          }
+        } catch (err) {
+          // Subscription not found, continue with null userId
+        }
+      }
+
+      // Try to find from redemption if we still don't have user info
+      if (!userId && orderId) {
+        try {
+          const redemption =
+            await this.redemptionRepo.findByMerchantOrderId(orderId);
+          if (redemption) {
+            userId = redemption.userId;
+            appId = redemption.appId;
+          }
+        } catch (err) {
+          // Redemption not found, continue with null userId
+        }
+      }
+
+      await this.db.insert(schema.webhookLogs).values({
+        userId,
+        appId,
+        entityType,
+        entityId,
+        subscriptionId,
+        orderId,
+        provider: 'phonepe',
+        action: event,
+        status,
+        metadata: payload as unknown as Record<string, unknown>,
+      });
+
+      this.logger.log(
+        `Webhook logged: event=${event}, entityType=${entityType}`,
+      );
+    } catch (error) {
+      // Don't throw - logging should not break webhook processing
+      this.logger.error(
+        `Failed to log webhook event: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  /**
+   * Generate a unique event ID from PhonePe webhook payload
+   * PhonePe doesn't provide a unique event ID in headers, so we create one
+   */
+  private generateEventId(body: WebhookBody): string {
+    const { event, payload } = body;
+    let uniqueId = 'unknown';
+
+    // Extract unique ID based on payload type and event
+    // State change events don't have orderId, they have subscriptionId
+    if (
+      event.startsWith('subscription.paused') ||
+      event.startsWith('subscription.unpaused') ||
+      event.startsWith('subscription.revoked') ||
+      event.startsWith('subscription.cancelled')
+    ) {
+      // State change events use subscriptionId
+      const statePayload = payload as SubscriptionStateChangePayload;
+      uniqueId =
+        statePayload.subscriptionId || statePayload.merchantSubscriptionId;
+    } else if ('merchantOrderId' in payload && payload.merchantOrderId) {
+      uniqueId = payload.merchantOrderId;
+    } else if ('orderId' in payload && payload.orderId) {
+      uniqueId = payload.orderId;
+    }
+
+    // Create unique ID from event type + unique identifier
+    return `phonepe:${event}:${uniqueId}`;
+  }
+
+  /**
+   * Check if a webhook event has already been processed
+   */
+  private async isEventAlreadyProcessed(eventId: string): Promise<boolean> {
+    try {
+      const existing = await this.db
+        .select({ id: schema.webhookEvents.id })
+        .from(schema.webhookEvents)
+        .where(eq(schema.webhookEvents.eventId, eventId))
+        .limit(1);
+
+      return existing.length > 0;
+    } catch (error) {
+      this.logger.error(
+        `Failed to check if event ${eventId} is already processed:`,
+        error,
+      );
+      // If we can't verify, we'll process it anyway (fail open is safer than fail closed for webhooks)
+      return false;
+    }
+  }
+
+  /**
+   * Mark a webhook event as processed
+   */
+  private async markEventAsProcessed(
+    eventId: string,
+    eventType: string,
+    appId: string,
+  ): Promise<void> {
+    try {
+      await this.db.insert(schema.webhookEvents).values({
+        eventId,
+        provider: 'phonepe',
+        eventType,
+        appId,
+      });
+    } catch {
+      // If it's a unique constraint violation, the event was already processed
+      // This is fine, just log it
+      this.logger.warn(
+        `Event ${eventId} was already in database (possible race condition)`,
+      );
     }
   }
 
