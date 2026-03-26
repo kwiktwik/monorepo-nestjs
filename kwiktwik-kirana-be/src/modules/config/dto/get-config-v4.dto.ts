@@ -1,4 +1,4 @@
-import { IsOptional, IsIn } from 'class-validator';
+import { IsOptional, IsIn, IsString } from 'class-validator';
 import { UNIFIED_PLANS, SUPPORTED_LANGUAGES } from '../config.data';
 
 /**
@@ -7,11 +7,12 @@ import { UNIFIED_PLANS, SUPPORTED_LANGUAGES } from '../config.data';
  */
 export class GetConfigV4Dto {
   @IsOptional()
-  @IsIn(Object.keys(UNIFIED_PLANS), {
-    message: (args) =>
-      `Invalid plan_id "${args.value}". Must be one of: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
-  })
+  @IsString()
   plan_id?: string;
+
+  @IsOptional()
+  @IsString()
+  lang?: string;
 
   @IsOptional()
   @IsIn(Object.values(SUPPORTED_LANGUAGES), {
