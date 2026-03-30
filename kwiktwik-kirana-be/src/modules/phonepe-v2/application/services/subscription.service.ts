@@ -330,13 +330,25 @@ export class SubscriptionService {
     await this.redemptionRepo.create(redemption);
 
     try {
-      // Call PhonePe API
+      // Call PhonePe API with auto-debit enabled
+      // redemptionRetryStrategy: STANDARD means PhonePe handles all retries automatically
+      // autoDebit: true allows PhonePe to execute the debit after notification period
+      const expireAt = Date.now() + 48 * 60 * 60 * 1000; // 48 hours from now
+
       const response = await this.httpClient.notifyRedemption(request.appId, {
         merchantOrderId,
         amount: redemption.amount,
+        expireAt,
         paymentFlow: {
           type: 'SUBSCRIPTION_REDEMPTION' as const,
           merchantSubscriptionId: request.merchantSubscriptionId,
+          redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries automatically
+          autoDebit: true, // Allow PhonePe to auto-debit after notification
+        },
+        metaInfo: {
+          ...((request.metadata as Record<string, string>) || {}),
+          source: 'notify_api',
+          autoDebit: 'true',
         },
       });
 
@@ -379,7 +391,7 @@ export class SubscriptionService {
       }
 
       this.logger.error(
-        `[PhonePe] Redemption notification failed: merchantOrderId=${merchantOrderId}, error=${errorMessage}`,
+        `[PhonePe] Redemption notification failed: merchantOrderId=${merchantOrderId}, errorCode=${errorCode}, error=${errorMessage}`,
         error instanceof Error ? error.stack : undefined,
       );
 
@@ -397,8 +409,28 @@ export class SubscriptionService {
       await this.redemptionRepo.update(redemption);
 
       this.logger.log(
-        `[PhonePe] Redemption marked as FAILED: merchantOrderId=${merchantOrderId}, state=${redemption.state}`,
+        `[PhonePe] Redemption marked as FAILED: merchantOrderId=${merchantOrderId}, state=${redemption.state}, errorCode=${errorCode}`,
       );
+
+      // Handle specific error codes
+      if (errorCode === 'SUBSCRIPTION_DEBIT_SKIPPED') {
+        this.logger.warn(
+          `[PhonePe] SUBSCRIPTION_DEBIT_SKIPPED: The subscription debit was skipped by PhonePe. ` +
+            `This may occur if the subscription is no longer active, has insufficient funds, ` +
+            `or was flagged by PhonePe's risk assessment. Subscription state should be synced.`,
+        );
+
+        // Trigger async subscription sync to get latest state
+        this.getSubscriptionStatus(
+          request.appId,
+          request.merchantSubscriptionId,
+        ).catch((syncError) => {
+          this.logger.error(
+            `[PhonePe] Failed to sync subscription after SUBSCRIPTION_DEBIT_SKIPPED: ${request.merchantSubscriptionId}`,
+            syncError,
+          );
+        });
+      }
 
       // Re-throw the error so caller knows it failed
       throw error;
@@ -449,7 +481,7 @@ export class SubscriptionService {
       userId: request.userId,
       appId: request.appId,
       amount: Math.round(request.amount * 100), // Convert to paise
-      autoDebit: false, // Merchant-controlled direct execution
+      autoDebit: false, // Merchant controls execution
       metadata: request.metadata || {},
     });
 

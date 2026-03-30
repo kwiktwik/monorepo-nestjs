@@ -45,8 +45,9 @@ export class PhonePeRedemptionNotificationException extends PhonePeException {
     statusCode: number,
     phonePeResponse: string,
     message: string = 'Redemption notification failed',
+    errorCode: string = 'REDEMPTION_NOTIFICATION_FAILED',
   ) {
-    super(message, 'REDEMPTION_NOTIFICATION_FAILED', statusCode, phonePeResponse);
+    super(message, errorCode, statusCode, phonePeResponse);
     this.name = 'PhonePeRedemptionNotificationException';
   }
 }
@@ -101,7 +102,12 @@ export class PhonePeAuthException extends PhonePeException {
     phonePeResponse: string,
     message: string = 'PhonePe authentication failed',
   ) {
-    super(message, 'AUTHENTICATION_FAILED', HttpStatus.UNAUTHORIZED, phonePeResponse);
+    super(
+      message,
+      'AUTHENTICATION_FAILED',
+      HttpStatus.UNAUTHORIZED,
+      phonePeResponse,
+    );
     this.name = 'PhonePeAuthException';
   }
 }
@@ -128,7 +134,12 @@ export class PhonePeRetryExhaustedException extends PhonePeException {
     public readonly lastError: Error,
     message: string = 'PhonePe request failed after maximum retry attempts',
   ) {
-    super(message, 'RETRY_EXHAUSTED', HttpStatus.SERVICE_UNAVAILABLE, lastError.message);
+    super(
+      message,
+      'RETRY_EXHAUSTED',
+      HttpStatus.SERVICE_UNAVAILABLE,
+      lastError.message,
+    );
     this.name = 'PhonePeRetryExhaustedException';
   }
 }
@@ -137,9 +148,7 @@ export class PhonePeRetryExhaustedException extends PhonePeException {
  * Exception for invalid configuration
  */
 export class PhonePeConfigurationException extends PhonePeException {
-  constructor(
-    message: string,
-  ) {
+  constructor(message: string) {
     super(message, 'CONFIGURATION_ERROR', HttpStatus.INTERNAL_SERVER_ERROR);
     this.name = 'PhonePeConfigurationException';
   }

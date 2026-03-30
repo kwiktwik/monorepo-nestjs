@@ -64,10 +64,14 @@ export interface SetupSubscriptionResponse {
 export interface NotifyRedemptionRequest {
   merchantOrderId: string;
   amount: number;
+  expireAt?: number;
   paymentFlow: {
     type: 'SUBSCRIPTION_REDEMPTION';
     merchantSubscriptionId: string;
+    redemptionRetryStrategy?: 'STANDARD' | 'CUSTOM';
+    autoDebit?: boolean;
   };
+  metaInfo?: Record<string, string>;
 }
 
 export interface NotifyRedemptionResponse {
@@ -311,6 +315,24 @@ export class PhonePeHttpClient {
   }
 
   /**
+   * Parse PhonePe error response to extract error code
+   */
+  private parsePhonePeError(responseText: string): {
+    code: string;
+    message: string;
+  } {
+    try {
+      const parsed = JSON.parse(responseText);
+      return {
+        code: parsed.errorCode || parsed.code || 'UNKNOWN_ERROR',
+        message: parsed.message || parsed.errorMessage || responseText,
+      };
+    } catch {
+      return { code: 'UNKNOWN_ERROR', message: responseText };
+    }
+  }
+
+  /**
    * Notify user about upcoming redemption (PhonePe handles execution after notification period)
    * POST /subscriptions/v2/notify
    */
@@ -330,8 +352,15 @@ export class PhonePeHttpClient {
         body: request,
         timeout: TIMEOUT_CONFIG.default,
       },
-      (status, responseText) =>
-        new PhonePeRedemptionNotificationException(status, responseText),
+      (status, responseText) => {
+        const error = this.parsePhonePeError(responseText);
+        return new PhonePeRedemptionNotificationException(
+          status,
+          responseText,
+          error.message,
+          error.code,
+        );
+      },
     );
 
     this.logger.log(
