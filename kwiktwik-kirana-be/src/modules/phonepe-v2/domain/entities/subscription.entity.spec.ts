@@ -60,6 +60,7 @@ describe('Subscription Entity', () => {
       expect(subscription.metadata).toEqual({
         ...metadata,
         environment: 'SANDBOX',
+        gracePeriodDays: 3,
       });
     });
   });
