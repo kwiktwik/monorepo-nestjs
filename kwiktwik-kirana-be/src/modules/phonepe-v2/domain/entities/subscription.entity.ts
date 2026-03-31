@@ -46,6 +46,7 @@ export class Subscription {
     expireAt?: Date;
     metadata?: Record<string, unknown>;
     environment?: 'SANDBOX' | 'PRODUCTION';
+    gracePeriodDays?: number; // Configurable grace period for payment failures
   }): Subscription {
     return new Subscription(
       params.id,
@@ -62,6 +63,7 @@ export class Subscription {
       {
         ...(params.metadata || {}),
         environment: params.environment || 'SANDBOX',
+        gracePeriodDays: params.gracePeriodDays || 3, // Default 3 days
       },
       null,
       null,
@@ -88,6 +90,10 @@ export class Subscription {
 
   get cancelledAt(): Date | null {
     return this._cancelledAt;
+  }
+
+  get gracePeriodDays(): number {
+    return (this.metadata?.gracePeriodDays as number) || 3;
   }
 
   // State transitions

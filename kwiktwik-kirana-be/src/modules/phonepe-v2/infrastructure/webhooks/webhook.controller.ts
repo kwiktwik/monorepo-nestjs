@@ -16,6 +16,7 @@ import {
   SUBSCRIPTION_REPOSITORY,
   REDEMPTION_REPOSITORY,
   SUBSCRIPTION_SETUP,
+  WEBHOOK_ACTIONS,
 } from '../../constants';
 import type {
   SubscriptionRepository,
@@ -575,6 +576,107 @@ export class PhonePeWebhookController {
     this.logger.log(
       `Redemption failed: ${payload.merchantOrderId}, error: ${errorCode}`,
     );
+
+    // Simple logic: payment not received = subscription expires
+    // Grace period can be configured via metadata for future flexibility
+    await this.handlePaymentFailure(redemption);
+  }
+
+  /**
+   * Handle payment failure with grace period support
+   * - First failure: Start grace period (configurable days)
+   * - Within grace period: Keep subscription active, notify user
+   * - After grace period: Expire subscription (user becomes non-premium)
+   */
+  private async handlePaymentFailure(redemption: any): Promise<void> {
+    try {
+      const subscription =
+        await this.subscriptionRepo.findByMerchantSubscriptionId(
+          redemption.merchantSubscriptionId,
+        );
+
+      if (!subscription) {
+        this.logger.warn(
+          `Subscription not found: ${redemption.merchantSubscriptionId}`,
+        );
+        return;
+      }
+
+      if (subscription.state !== 'ACTIVE') {
+        this.logger.log(`Subscription already ${subscription.state}, skipping`);
+        return;
+      }
+
+      const gracePeriodDays = subscription.gracePeriodDays || 3;
+      const now = new Date();
+
+      // Check if this is the first payment failure
+      const firstFailureDate = subscription.metadata?.firstPaymentFailureDate
+        ? new Date(subscription.metadata.firstPaymentFailureDate as string)
+        : null;
+
+      if (!firstFailureDate) {
+        // First failure - start grace period
+        const gracePeriodEnd = new Date(
+          now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000,
+        );
+
+        (subscription.metadata as any).firstPaymentFailureDate =
+          now.toISOString();
+        (subscription.metadata as any).gracePeriodEndDate =
+          gracePeriodEnd.toISOString();
+        (subscription.metadata as any).paymentFailureCount = 1;
+
+        await this.subscriptionRepo.update(subscription);
+
+        this.logger.log(
+          `First payment failure for subscription ${redemption.merchantSubscriptionId}. ` +
+            `Grace period started: ${gracePeriodDays} days (ends ${gracePeriodEnd.toISOString()}). ` +
+            `Subscription remains ACTIVE.`,
+        );
+
+        return;
+      }
+
+      // Not first failure - check if grace period has expired
+      const gracePeriodEnd = subscription.metadata?.gracePeriodEndDate
+        ? new Date(subscription.metadata.gracePeriodEndDate as string)
+        : null;
+
+      // Update failure count
+      const failureCount =
+        ((subscription.metadata?.paymentFailureCount as number) || 0) + 1;
+      (subscription.metadata as any).paymentFailureCount = failureCount;
+      (subscription.metadata as any).lastPaymentFailureDate = now.toISOString();
+
+      if (gracePeriodEnd && now < gracePeriodEnd) {
+        // Still within grace period - keep active
+        await this.subscriptionRepo.update(subscription);
+
+        this.logger.log(
+          `Payment failure #${failureCount} for subscription ${redemption.merchantSubscriptionId} ` +
+            `within grace period (ends ${gracePeriodEnd.toISOString()}). ` +
+            `Subscription remains ACTIVE.`,
+        );
+
+        return;
+      }
+
+      // Grace period expired - expire subscription
+      this.logger.warn(
+        `Payment failed for subscription ${redemption.merchantSubscriptionId}. ` +
+          `Grace period (${gracePeriodDays} days) expired. Expiring subscription - user loses premium access.`,
+      );
+
+      subscription.expire();
+      await this.subscriptionRepo.update(subscription);
+
+      this.logger.log(
+        `Subscription ${redemption.merchantSubscriptionId} marked EXPIRED after grace period.`,
+      );
+    } catch (error) {
+      this.logger.error(`Error handling payment failure:`, error);
+    }
   }
 
   private async handleRefundAccepted(payload: RefundPayload) {
