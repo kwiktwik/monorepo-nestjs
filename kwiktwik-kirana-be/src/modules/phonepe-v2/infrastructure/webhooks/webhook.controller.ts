@@ -531,9 +531,55 @@ export class PhonePeWebhookController {
     redemption.complete(transactionId);
     await this.redemptionRepo.update(redemption);
 
+    // Check if subscription was expired and needs reactivation
+    await this.handleSuccessfulPayment(redemption);
+
     this.logger.log(
       `Redemption completed: ${payload.merchantOrderId}, tx: ${transactionId}`,
     );
+  }
+
+  /**
+   * Handle successful payment - reactivate expired subscription if needed
+   */
+  private async handleSuccessfulPayment(redemption: any): Promise<void> {
+    try {
+      const subscription =
+        await this.subscriptionRepo.findByMerchantSubscriptionId(
+          redemption.merchantSubscriptionId,
+        );
+
+      if (!subscription) {
+        this.logger.warn(
+          `Subscription not found for successful payment: ${redemption.merchantSubscriptionId}`,
+        );
+        return;
+      }
+
+      // If subscription was EXPIRED due to previous payment failure, reactivate it
+      if (subscription.state === 'EXPIRED') {
+        this.logger.warn(
+          `Reactivating expired subscription ${redemption.merchantSubscriptionId} ` +
+            `after successful payment. User is now premium again.`,
+        );
+
+        subscription.reactivateAfterPayment();
+        subscription.nextBillingDate =
+          this.calculateNextBillingDate(subscription);
+
+        await this.subscriptionRepo.update(subscription);
+
+        this.logger.log(
+          `Subscription ${redemption.merchantSubscriptionId} reactivated to ACTIVE. ` +
+            `Next billing: ${subscription.nextBillingDate.toISOString()}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error handling successful payment for ${redemption.merchantSubscriptionId}:`,
+        error,
+      );
+    }
   }
 
   private async handleRedemptionFailed(payload: RedemptionPayload) {
@@ -583,10 +629,8 @@ export class PhonePeWebhookController {
   }
 
   /**
-   * Handle payment failure with grace period support
-   * - First failure: Start grace period (configurable days)
-   * - Within grace period: Keep subscription active, notify user
-   * - After grace period: Expire subscription (user becomes non-premium)
+   * Handle payment failure - expire subscription but schedule retry next month
+   * User loses premium access immediately, but we'll try again next billing cycle
    */
   private async handlePaymentFailure(redemption: any): Promise<void> {
     try {
@@ -602,80 +646,56 @@ export class PhonePeWebhookController {
         return;
       }
 
+      // Only process if subscription is active (not already expired/revoked/etc)
       if (subscription.state !== 'ACTIVE') {
         this.logger.log(`Subscription already ${subscription.state}, skipping`);
         return;
       }
 
-      const gracePeriodDays = subscription.gracePeriodDays || 3;
-      const now = new Date();
+      // Mark subscription as expired - user loses premium access NOW
+      // This automatically increments consecutiveFailures and sets lastFailure fields
+      subscription.expire(redemption.errorCode || 'UNKNOWN');
 
-      // Check if this is the first payment failure
-      const firstFailureDate = subscription.metadata?.firstPaymentFailureDate
-        ? new Date(subscription.metadata.firstPaymentFailureDate as string)
-        : null;
+      // Schedule next retry
+      subscription.nextBillingDate =
+        this.calculateNextBillingDate(subscription);
 
-      if (!firstFailureDate) {
-        // First failure - start grace period
-        const gracePeriodEnd = new Date(
-          now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000,
-        );
-
-        (subscription.metadata as any).firstPaymentFailureDate =
-          now.toISOString();
-        (subscription.metadata as any).gracePeriodEndDate =
-          gracePeriodEnd.toISOString();
-        (subscription.metadata as any).paymentFailureCount = 1;
-
-        await this.subscriptionRepo.update(subscription);
-
-        this.logger.log(
-          `First payment failure for subscription ${redemption.merchantSubscriptionId}. ` +
-            `Grace period started: ${gracePeriodDays} days (ends ${gracePeriodEnd.toISOString()}). ` +
-            `Subscription remains ACTIVE.`,
-        );
-
-        return;
-      }
-
-      // Not first failure - check if grace period has expired
-      const gracePeriodEnd = subscription.metadata?.gracePeriodEndDate
-        ? new Date(subscription.metadata.gracePeriodEndDate as string)
-        : null;
-
-      // Update failure count
-      const failureCount =
-        ((subscription.metadata?.paymentFailureCount as number) || 0) + 1;
-      (subscription.metadata as any).paymentFailureCount = failureCount;
-      (subscription.metadata as any).lastPaymentFailureDate = now.toISOString();
-
-      if (gracePeriodEnd && now < gracePeriodEnd) {
-        // Still within grace period - keep active
-        await this.subscriptionRepo.update(subscription);
-
-        this.logger.log(
-          `Payment failure #${failureCount} for subscription ${redemption.merchantSubscriptionId} ` +
-            `within grace period (ends ${gracePeriodEnd.toISOString()}). ` +
-            `Subscription remains ACTIVE.`,
-        );
-
-        return;
-      }
-
-      // Grace period expired - expire subscription
-      this.logger.warn(
-        `Payment failed for subscription ${redemption.merchantSubscriptionId}. ` +
-          `Grace period (${gracePeriodDays} days) expired. Expiring subscription - user loses premium access.`,
-      );
-
-      subscription.expire();
       await this.subscriptionRepo.update(subscription);
 
-      this.logger.log(
-        `Subscription ${redemption.merchantSubscriptionId} marked EXPIRED after grace period.`,
+      this.logger.warn(
+        `Payment failed for subscription ${redemption.merchantSubscriptionId}. ` +
+          `Subscription EXPIRED - user is now non-premium. ` +
+          `Failure #${subscription.consecutiveFailures}. ` +
+          `Will retry on ${subscription.nextBillingDate.toISOString()}. ` +
+          `If user pays then, they'll become premium again.`,
       );
     } catch (error) {
       this.logger.error(`Error handling payment failure:`, error);
+    }
+  }
+
+  /**
+   * Calculate next billing date based on subscription frequency
+   */
+  private calculateNextBillingDate(subscription: any): Date {
+    const now = new Date();
+
+    switch (subscription.frequency) {
+      case 'DAILY':
+        return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      case 'WEEKLY':
+        return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      case 'FORTNIGHTLY':
+        return new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      case 'MONTHLY':
+      default:
+        return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      case 'QUARTERLY':
+        return new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      case 'HALFYEARLY':
+        return new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+      case 'YEARLY':
+        return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
     }
   }
 

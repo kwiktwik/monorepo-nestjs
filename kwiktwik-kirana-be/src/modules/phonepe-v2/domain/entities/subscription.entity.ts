@@ -31,6 +31,12 @@ export class Subscription {
     public updatedAt: Date,
     public nextBillingDate: Date | null,
     public billingCycleCount: number,
+    // Payment failure tracking fields
+    public consecutiveFailures: number = 0,
+    public lastFailureAt: Date | null = null,
+    public lastFailureReason: string | null = null,
+    public gracePeriodEndAt: Date | null = null,
+    private _isPremium: boolean = false,
   ) {}
 
   // Factory method to create new subscription
@@ -96,6 +102,15 @@ export class Subscription {
     return (this.metadata?.gracePeriodDays as number) || 3;
   }
 
+  get isPremium(): boolean {
+    return this._isPremium;
+  }
+
+  set isPremium(value: boolean) {
+    this._isPremium = value;
+    this.updatedAt = new Date();
+  }
+
   // State transitions
 
   /**
@@ -118,6 +133,7 @@ export class Subscription {
     this._phonepeSubscriptionId = phonepeSubscriptionId;
     this._state = 'ACTIVE';
     this._activatedAt = new Date();
+    this._isPremium = true;
     (this as any).expireAt = expireAt
       ? expireAt instanceof Date
         ? expireAt
@@ -156,6 +172,25 @@ export class Subscription {
   }
 
   /**
+   * Reactivate subscription after successful payment (was expired due to failure)
+   */
+  reactivateAfterPayment(): void {
+    if (this._state !== 'EXPIRED') {
+      throw new Error(
+        `Cannot reactivate from state: ${this._state}. Must be EXPIRED.`,
+      );
+    }
+    this._state = 'ACTIVE';
+    this._isPremium = true;
+    this.consecutiveFailures = 0;
+    this.lastFailureAt = null;
+    this.lastFailureReason = null;
+    this.gracePeriodEndAt = null;
+    this.updatedAt = new Date();
+    (this.metadata as any).reactivatedAt = new Date().toISOString();
+  }
+
+  /**
    * Called when merchant initiates cancellation
    */
   initiateCancellation(): void {
@@ -189,11 +224,15 @@ export class Subscription {
   /**
    * Called when subscription expires
    */
-  expire(): void {
+  expire(reason?: string): void {
     if (this._state !== 'ACTIVE') {
       throw new Error(`Cannot expire from state: ${this._state}`);
     }
     this._state = 'EXPIRED';
+    this._isPremium = false;
+    this.consecutiveFailures++;
+    this.lastFailureAt = new Date();
+    this.lastFailureReason = reason || 'PAYMENT_FAILURE';
     this.updatedAt = new Date();
   }
 
@@ -245,6 +284,12 @@ export class Subscription {
     updatedAt: Date;
     nextBillingDate?: Date | null;
     billingCycleCount?: number;
+    // Payment failure tracking fields
+    consecutiveFailures?: number;
+    lastFailureAt?: Date | null;
+    lastFailureReason?: string | null;
+    gracePeriodEndAt?: Date | null;
+    isPremium?: boolean;
   }): Subscription {
     return new Subscription(
       data.id,
@@ -266,6 +311,11 @@ export class Subscription {
       data.updatedAt,
       data.nextBillingDate || null,
       data.billingCycleCount || 0,
+      data.consecutiveFailures || 0,
+      data.lastFailureAt || null,
+      data.lastFailureReason || null,
+      data.gracePeriodEndAt || null,
+      data.isPremium || false,
     );
   }
 

@@ -671,6 +671,12 @@ export const phonepeSubscriptions = pgTable(
     cancelledAt: timestamp('cancelled_at'),
     nextBillingDate: timestamp('next_billing_date'),
     billingCycleCount: integer('billing_cycle_count').default(0),
+    // Payment failure tracking columns
+    consecutiveFailures: integer('consecutive_failures').default(0),
+    lastFailureAt: timestamp('last_failure_at'),
+    lastFailureReason: varchar('last_failure_reason', { length: 100 }),
+    gracePeriodEndAt: timestamp('grace_period_end_at'),
+    isPremium: boolean('is_premium').default(false),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -688,6 +694,15 @@ export const phonepeSubscriptions = pgTable(
     phonepeSubscriptionsNextBillingDateIdx: index(
       'phonepe_subscriptions_next_billing_date_idx',
     ).on(table.nextBillingDate),
+    // New indexes for payment failure tracking
+    phonepeSubscriptionsRetryIdx: index('phonepe_subscriptions_retry_idx').on(
+      table.nextBillingDate,
+      table.state,
+      table.isPremium,
+    ),
+    phonepeSubscriptionsPremiumIdx: index(
+      'phonepe_subscriptions_premium_idx',
+    ).on(table.userId, table.isPremium),
   }),
 ).enableRLS();
 
@@ -719,6 +734,10 @@ export const phonepeRedemptions = pgTable(
     validUpto: timestamp('valid_upto'),
     errorCode: text('error_code'),
     detailedErrorCode: text('detailed_error_code'),
+    // Simple tracking columns
+    attemptCount: integer('attempt_count').default(1),
+    processedAt: timestamp('processed_at'),
+    correlationId: varchar('correlation_id', { length: 50 }),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

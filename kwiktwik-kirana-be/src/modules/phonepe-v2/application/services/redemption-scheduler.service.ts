@@ -233,12 +233,15 @@ export class RedemptionSchedulerService {
         amount: amount,
         metadata: {
           billingCycleCount: subscription.billingCycleCount + 1,
+          // Don't schedule next billing yet - wait for payment success
+          expectedBillingDate: this.calculateNextBillingDate(
+            subscription.frequency,
+          ).toISOString(),
         },
       });
 
-      subscription.nextBillingDate = this.calculateNextBillingDate(
-        subscription.frequency,
-      );
+      // Don't update nextBillingDate yet - wait for webhook confirmation
+      // This prevents scheduling next billing if current payment fails
       subscription.billingCycleCount =
         (subscription.billingCycleCount || 0) + 1;
       subscription.metadata = {
@@ -252,7 +255,8 @@ export class RedemptionSchedulerService {
       await this.subscriptionRepo.update(subscription);
 
       this.logger.log(
-        `Redemption notified successfully for: ${subscription.merchantSubscriptionId}, orderId: ${response.orderId}`,
+        `Redemption notified successfully for: ${subscription.merchantSubscriptionId}, orderId: ${response.orderId}. ` +
+          `Next billing will be scheduled only after payment success.`,
       );
     } catch (error) {
       this.logger.error(
@@ -270,10 +274,6 @@ export class RedemptionSchedulerService {
         lastRedemptionError: error.message,
         retryCount: retryCount,
       };
-
-      subscription.nextBillingDate = this.calculateNextBillingDate(
-        subscription.frequency,
-      );
 
       await this.subscriptionRepo.update(subscription);
 

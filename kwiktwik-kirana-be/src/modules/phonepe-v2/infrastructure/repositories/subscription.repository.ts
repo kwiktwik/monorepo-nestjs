@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, or } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionRepository } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
@@ -44,6 +44,12 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       cancelledAt: subscription.cancelledAt,
       createdAt: subscription.createdAt,
       updatedAt: subscription.updatedAt,
+      // Payment failure tracking fields
+      consecutiveFailures: subscription.consecutiveFailures,
+      lastFailureAt: subscription.lastFailureAt,
+      lastFailureReason: subscription.lastFailureReason,
+      gracePeriodEndAt: subscription.gracePeriodEndAt,
+      isPremium: subscription.isPremium,
     });
 
     return subscription;
@@ -119,6 +125,12 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
         metadata: subscription.metadata,
         nextBillingDate: subscription.nextBillingDate,
         billingCycleCount: subscription.billingCycleCount,
+        // Payment failure tracking fields
+        consecutiveFailures: subscription.consecutiveFailures,
+        lastFailureAt: subscription.lastFailureAt,
+        lastFailureReason: subscription.lastFailureReason,
+        gracePeriodEndAt: subscription.gracePeriodEndAt,
+        isPremium: subscription.isPremium,
       })
       .where(eq(schema.phonepeSubscriptions.id, subscription.id));
 
@@ -143,10 +155,18 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
   }
 
   async findDueForRedemption(beforeDate: Date): Promise<Subscription[]> {
+    // Find both ACTIVE subscriptions and EXPIRED subscriptions due for retry
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
-      .where(and(eq(schema.phonepeSubscriptions.state, 'ACTIVE')));
+      .where(
+        and(
+          or(
+            eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
+            eq(schema.phonepeSubscriptions.state, 'EXPIRED'),
+          ),
+        ),
+      );
 
     const due = results.filter(
       (sub) =>
@@ -224,6 +244,12 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
       updatedAt: data.updatedAt,
       nextBillingDate: data.nextBillingDate,
       billingCycleCount: data.billingCycleCount,
+      // Payment failure tracking fields
+      consecutiveFailures: data.consecutiveFailures,
+      lastFailureAt: data.lastFailureAt,
+      lastFailureReason: data.lastFailureReason,
+      gracePeriodEndAt: data.gracePeriodEndAt,
+      isPremium: data.isPremium,
     });
   }
 }
