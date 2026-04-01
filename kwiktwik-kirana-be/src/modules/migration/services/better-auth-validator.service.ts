@@ -50,12 +50,18 @@ export class BetterAuthValidator {
       );
 
       if (!response.ok) {
+        const errorBody = await response.text();
+        this.logger.error(
+          `Session validation failed: HTTP ${response.status}, Body: ${errorBody}`,
+        );
         if (response.status === 401) {
           throw new UnauthorizedException(
-            'Invalid or expired Better-Auth session',
+            `Invalid or expired Better-Auth session: ${errorBody}`,
           );
         }
-        throw new Error(`Session validation failed: ${response.status}`);
+        throw new Error(
+          `Session validation failed: ${response.status} - ${errorBody}`,
+        );
       }
 
       const data = await response.json();
@@ -69,10 +75,15 @@ export class BetterAuthValidator {
       };
     } catch (error) {
       this.logger.error(
-        'Better-Auth session validation failed:',
-        error instanceof Error ? error.message : 'Unknown error',
+        `Better-Auth session validation failed for token ${token.substring(0, 10)}...:`,
+        error instanceof Error ? error.stack : 'Unknown error',
       );
-      throw new UnauthorizedException('Failed to validate session');
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException(
+        `Failed to validate session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 }
