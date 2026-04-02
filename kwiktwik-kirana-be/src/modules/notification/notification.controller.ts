@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
-import type { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
+import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
 import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
