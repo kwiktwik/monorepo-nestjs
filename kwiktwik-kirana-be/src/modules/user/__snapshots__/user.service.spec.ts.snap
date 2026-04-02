@@ -22,7 +22,8 @@ exports[`UserService getUserProfile should return user profile successfully 1`] 
 Object {
   "accountType": "google",
   "appId": "com.test.app",
-  "audioLanguage": undefined,
+  "audioLanguage": "en-US",
+  "clientData": Object {},
   "createdAt": 2024-01-01T00:00:00.000Z,
   "currentEnd": 2025-01-01T00:00:00.000Z,
   "email": "test@example.com",

@@ -39,6 +39,31 @@ DeleteUserImageDto {
 }
 `;
 
+exports[`User DTOs - Snapshot Tests UpdateUserDto should accept clientData with nested arrays and objects 1`] = `
+UpdateUserDto {
+  "audioLanguage": undefined,
+  "clientData": Object {
+    "count": 42,
+    "flag": false,
+    "list": Array [
+      1,
+      2,
+      3,
+    ],
+    "nested": Object {
+      "deep": Object {
+        "value": "test",
+      },
+    },
+  },
+  "email": undefined,
+  "images": undefined,
+  "name": "Test User",
+  "phoneNumber": "+919876543210",
+  "upiVpa": undefined,
+}
+`;
+
 exports[`User DTOs - Snapshot Tests UpdateUserDto should fail validation for empty name 1`] = `
 Array [
   ValidationError {
@@ -50,6 +75,7 @@ Array [
     "property": "name",
     "target": UpdateUserDto {
       "audioLanguage": undefined,
+      "clientData": undefined,
       "email": undefined,
       "images": undefined,
       "name": "",
@@ -71,6 +97,7 @@ Array [
     "property": "upiVpa",
     "target": UpdateUserDto {
       "audioLanguage": undefined,
+      "clientData": undefined,
       "email": undefined,
       "images": undefined,
       "name": "Test User",
@@ -78,6 +105,28 @@ Array [
       "upiVpa": "invalid-upi",
     },
     "value": "invalid-upi",
+  },
+]
+`;
+
+exports[`User DTOs - Snapshot Tests UpdateUserDto should fail validation for invalid clientData type 1`] = `
+Array [
+  ValidationError {
+    "children": Array [],
+    "constraints": Object {
+      "isObject": "clientData must be an object",
+    },
+    "property": "clientData",
+    "target": UpdateUserDto {
+      "audioLanguage": undefined,
+      "clientData": "invalid-string",
+      "email": undefined,
+      "images": undefined,
+      "name": "Test User",
+      "phoneNumber": "+919876543210",
+      "upiVpa": undefined,
+    },
+    "value": "invalid-string",
   },
 ]
 `;
@@ -92,6 +141,7 @@ Array [
     "property": "email",
     "target": UpdateUserDto {
       "audioLanguage": undefined,
+      "clientData": undefined,
       "email": "invalid-email",
       "images": undefined,
       "name": "Test User",
@@ -113,6 +163,7 @@ Array [
     "property": "phoneNumber",
     "target": UpdateUserDto {
       "audioLanguage": undefined,
+      "clientData": undefined,
       "email": undefined,
       "images": undefined,
       "name": "Test User",
@@ -137,6 +188,7 @@ Array [
     "property": "name",
     "target": UpdateUserDto {
       "audioLanguage": undefined,
+      "clientData": undefined,
       "email": undefined,
       "images": undefined,
       "name": undefined,
@@ -151,6 +203,7 @@ Array [
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot for minimal valid data 1`] = `
 UpdateUserDto {
   "audioLanguage": undefined,
+  "clientData": undefined,
   "email": undefined,
   "images": undefined,
   "name": "Jane Doe",
@@ -162,6 +215,7 @@ UpdateUserDto {
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot for valid complete data 1`] = `
 UpdateUserDto {
   "audioLanguage": undefined,
+  "clientData": undefined,
   "email": "john@example.com",
   "images": Array [
     "https://example.com/image1.jpg",
@@ -176,6 +230,7 @@ UpdateUserDto {
 exports[`User DTOs - Snapshot Tests UpdateUserDto should match snapshot with empty images array 1`] = `
 UpdateUserDto {
   "audioLanguage": undefined,
+  "clientData": undefined,
   "email": undefined,
   "images": Array [],
   "name": "Test User",
