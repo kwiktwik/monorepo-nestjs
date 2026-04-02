@@ -53,6 +53,7 @@ describe('NotificationController', () => {
   const mockNotificationService = {
     findAll: jest.fn(),
     create: jest.fn(),
+    createV2: jest.fn(),
     createTestNotification: jest.fn(),
     pollTestNotification: jest.fn(),
     ackTestNotification: jest.fn(),
@@ -150,6 +151,127 @@ describe('NotificationController', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.data).toBeDefined();
+    });
+  });
+
+  describe('POST /notifications/v2', () => {
+    it('should create notification with pre-parsed data', async () => {
+      const mockResult: CreateNotificationResponse = {
+        data: [{ id: 1, status: 'success' }],
+        processed: 1,
+      };
+      mockNotificationService.createV2.mockResolvedValue(mockResult);
+
+      const res = await request(app.getHttpServer())
+        .post('/notifications/v2')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          notificationId: 'com.phonepe.app_1709876543210_abc123',
+          packageName: 'com.phonepe.app',
+          title: 'Payment Received',
+          content: 'You received ₹500 from John Doe',
+          timestamp: '2024-01-15T10:30:00.000Z',
+          hasTransaction: true,
+          amount: '500',
+          payerName: 'John Doe',
+          transactionType: 'RECEIVED',
+        });
+      const response = {
+        status: res.status,
+        body: res.body as CreateNotificationResponse,
+      };
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toBeDefined();
+      expect(mockNotificationService.createV2).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          notificationId: 'com.phonepe.app_1709876543210_abc123',
+          hasTransaction: true,
+          amount: '500',
+        }),
+      );
+    });
+
+    it('should validate required fields', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/notifications/v2')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          // Missing required fields
+          title: 'Test',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Validation failed');
+      expect(res.body.errors).toBeDefined();
+    });
+
+    it('should validate transaction type enum', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/notifications/v2')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          notificationId: 'test-123',
+          packageName: 'com.test.app',
+          title: 'Test',
+          content: 'Test content',
+          timestamp: '2024-01-15T10:30:00.000Z',
+          hasTransaction: false,
+          transactionType: 'INVALID_TYPE',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Validation failed');
+    });
+
+    it('should validate timestamp format', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/notifications/v2')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          notificationId: 'test-123',
+          packageName: 'com.test.app',
+          title: 'Test',
+          content: 'Test content',
+          timestamp: 'invalid-date',
+          hasTransaction: false,
+          transactionType: 'UNKNOWN',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Validation failed');
+    });
+
+    it('should accept non-transaction notification', async () => {
+      const mockResult: CreateNotificationResponse = {
+        data: [{ id: 1, status: 'success' }],
+        processed: 1,
+      };
+      mockNotificationService.createV2.mockResolvedValue(mockResult);
+
+      const res = await request(app.getHttpServer())
+        .post('/notifications/v2')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          notificationId: 'com.whatsapp_1709876543210_def456',
+          packageName: 'com.whatsapp',
+          title: 'New Message',
+          content: 'Hello! How are you?',
+          timestamp: '2024-01-15T10:30:00.000Z',
+          hasTransaction: false,
+          transactionType: 'UNKNOWN',
+          appName: 'WhatsApp',
+        });
+
+      expect(res.status).toBe(201);
+      expect(mockNotificationService.createV2).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          hasTransaction: false,
+          transactionType: 'UNKNOWN',
+        }),
+      );
     });
   });
 

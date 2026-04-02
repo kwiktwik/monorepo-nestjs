@@ -284,4 +284,194 @@ describe('NotificationService', () => {
       }
     });
   });
+
+  describe('createV2', () => {
+    const mockUserId = 'test-user-id';
+    const mockTimestamp = new Date('2024-01-01');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should save pre-parsed transaction notification', async () => {
+      mockDb.limit.mockResolvedValueOnce([]); // No duplicate
+      mockDb.returning
+        .mockResolvedValueOnce([{ id: 1 }]) // notificationLogs
+        .mockResolvedValueOnce([{ id: 100 }]); // enhancedNotifications
+
+      const dto = {
+        notificationId: 'com.phonepe.app_1709876543210_abc123',
+        packageName: 'com.phonepe.app',
+        title: 'Payment Received',
+        content: 'You received ₹500 from John Doe',
+        timestamp: mockTimestamp.toISOString(),
+        bigText: 'You received ₹500 from John Doe via UPI',
+        appName: 'PhonePe',
+        hasTransaction: true,
+        amount: '500',
+        payerName: 'John Doe',
+        transactionType: 'RECEIVED' as const,
+        processingTimeMs: 150,
+        processingMetadata: { parsedBy: 'android-v2' },
+      };
+
+      const result = await service.createV2(mockUserId, dto);
+
+      expect(result.data[0]).toMatchObject({
+        status: 'success',
+        hasTransaction: true,
+        amount: '500',
+        payerName: 'John Doe',
+        transactionType: 'RECEIVED',
+        notificationLogId: 1,
+      });
+
+      // Should insert into both tables for transaction notifications
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+    });
+
+    it('should save non-transaction notification (only to notificationLogs)', async () => {
+      mockDb.limit.mockResolvedValueOnce([]); // No duplicate
+      mockDb.returning.mockResolvedValueOnce([{ id: 2 }]); // notificationLogs only
+
+      const dto = {
+        notificationId: 'com.whatsapp_1709876543210_def456',
+        packageName: 'com.whatsapp',
+        title: 'New Message',
+        content: 'Hello! How are you?',
+        timestamp: mockTimestamp.toISOString(),
+        hasTransaction: false,
+        transactionType: 'UNKNOWN' as const,
+        appName: 'WhatsApp',
+      };
+
+      const result = await service.createV2(mockUserId, dto);
+
+      expect(result.data[0]).toMatchObject({
+        status: 'success',
+        hasTransaction: false,
+        amount: null,
+        transactionType: 'UNKNOWN',
+        notificationLogId: 2,
+      });
+
+      // Should only insert into notificationLogs
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle duplicate notificationId', async () => {
+      mockDb.limit.mockResolvedValueOnce([{ id: 1 }]); // Duplicate found
+
+      const dto = {
+        notificationId: 'duplicate-id-123',
+        packageName: 'com.phonepe.app',
+        title: 'Payment Received',
+        content: 'You received ₹500',
+        timestamp: mockTimestamp.toISOString(),
+        hasTransaction: true,
+        amount: '500',
+        transactionType: 'RECEIVED' as const,
+      };
+
+      const result = await service.createV2(mockUserId, dto);
+
+      expect(result.data[0]).toMatchObject({
+        status: 'duplicate',
+        notificationId: 'duplicate-id-123',
+      });
+
+      // Should not insert anything for duplicates
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('should derive appName from packageName if not provided', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+      mockDb.returning.mockResolvedValueOnce([{ id: 3 }]);
+
+      const dto = {
+        notificationId: 'test-123',
+        packageName: 'com.phonepe.app',
+        title: 'Test',
+        content: 'Test content',
+        timestamp: mockTimestamp.toISOString(),
+        hasTransaction: false,
+        transactionType: 'UNKNOWN' as const,
+        // appName not provided
+      };
+
+      await service.createV2(mockUserId, dto);
+
+      // Check that appName was derived
+      expect(mockDb.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appName: 'PhonePe',
+        }),
+      );
+    });
+
+    it('should handle SENT transaction type', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+      mockDb.returning
+        .mockResolvedValueOnce([{ id: 4 }])
+        .mockResolvedValueOnce([{ id: 104 }]);
+
+      const dto = {
+        notificationId: 'test-sent-123',
+        packageName: 'com.phonepe.app',
+        title: 'Payment Sent',
+        content: 'You sent ₹200 to Jane',
+        timestamp: mockTimestamp.toISOString(),
+        hasTransaction: true,
+        amount: '200',
+        payerName: 'Jane',
+        transactionType: 'SENT' as const,
+      };
+
+      const result = await service.createV2(mockUserId, dto);
+
+      expect(result.data[0]).toMatchObject({
+        transactionType: 'SENT',
+        amount: '200',
+      });
+    });
+
+    it('should handle optional metadata fields', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+      mockDb.returning
+        .mockResolvedValueOnce([{ id: 5 }])
+        .mockResolvedValueOnce([{ id: 105 }]);
+
+      const dto = {
+        notificationId: 'test-metadata-123',
+        packageName: 'com.phonepe.app',
+        title: 'Payment',
+        content: 'Test',
+        timestamp: mockTimestamp.toISOString(),
+        hasTransaction: true,
+        amount: '100',
+        transactionType: 'RECEIVED' as const,
+        ttsAnnounced: true,
+        teamNotificationSent: true,
+        processingMetadata: {
+          parsedBy: 'android-v2',
+          parseTimeMs: 50,
+          version: '1.0.0',
+        },
+      };
+
+      await service.createV2(mockUserId, dto);
+
+      expect(mockDb.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ttsAnnounced: true,
+          teamNotificationSent: true,
+          processingMetadata: {
+            parsedBy: 'android-v2',
+            parseTimeMs: 50,
+            version: '1.0.0',
+          },
+        }),
+      );
+    });
+  });
 });

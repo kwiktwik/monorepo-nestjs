@@ -7,6 +7,7 @@ import {
   UseGuards,
   BadRequestException,
   Delete,
+  UsePipes,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,8 @@ import {
 import { NotificationService } from './notification.service';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
+import { ZodValidationPipe } from '../phonepe-v2/infrastructure/validation/zod-validation.pipe';
+import { CreateNotificationV2Schema } from './dto/create-notification-v2.schema';
 import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -92,6 +95,7 @@ export class NotificationController {
     description: 'App identifier',
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
+  @UsePipes(new ZodValidationPipe(CreateNotificationV2Schema))
   @ApiOperation({
     summary: 'Create notification (v2) - Android sends pre-parsed data',
     description:
