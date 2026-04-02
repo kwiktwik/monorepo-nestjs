@@ -313,6 +313,14 @@ export class SubscriptionService {
       );
     }
 
+    // Validate minimum amount (PhonePe requires at least 100 paise = ₹1)
+    const amountInPaise = Math.round(request.amount * 100);
+    if (amountInPaise < 100) {
+      throw new BadRequestException(
+        `Amount must be at least 100 paise (₹1). Got: ${amountInPaise} paise`,
+      );
+    }
+
     // Create redemption entity
     const merchantOrderId = nanoid(10);
     const redemption = Redemption.create({
@@ -335,6 +343,14 @@ export class SubscriptionService {
       // autoDebit: true allows PhonePe to execute the debit after notification period
       const expireAt = Date.now() + 48 * 60 * 60 * 1000; // 48 hours from now
 
+      // Validate and sanitize metaInfo according to PhonePe constraints
+      // udf1-udf8: max 256 chars, udf11-udf15: max 50 chars
+      const metaInfo = this.validateMetaInfo({
+        ...((request.metadata as Record<string, string>) || {}),
+        source: 'notify_api',
+        autoDebit: 'true',
+      });
+
       const response = await this.httpClient.notifyRedemption(request.appId, {
         merchantOrderId,
         amount: redemption.amount,
@@ -345,11 +361,7 @@ export class SubscriptionService {
           redemptionRetryStrategy: 'STANDARD', // PhonePe handles retries automatically
           autoDebit: true, // Allow PhonePe to auto-debit after notification
         },
-        metaInfo: {
-          ...((request.metadata as Record<string, string>) || {}),
-          source: 'notify_api',
-          autoDebit: 'true',
-        },
+        metaInfo,
       });
 
       // Update redemption with PhonePe response
@@ -469,6 +481,14 @@ export class SubscriptionService {
     if (!subscription.canRedeem()) {
       throw new BadRequestException(
         `Cannot redeem from subscription in state: ${subscription.state}`,
+      );
+    }
+
+    // Validate minimum amount (PhonePe requires at least 100 paise = ₹1)
+    const amountInPaise = Math.round(request.amount * 100);
+    if (amountInPaise < 100) {
+      throw new BadRequestException(
+        `Amount must be at least 100 paise (₹1). Got: ${amountInPaise} paise`,
       );
     }
 
@@ -744,5 +764,40 @@ export class SubscriptionService {
         state: detail.state,
       })),
     };
+  }
+
+  /**
+   * Validate and sanitize metaInfo according to PhonePe constraints:
+   * - udf1-udf8: max 256 characters
+   * - udf11-udf15: max 50 characters
+   * - Other fields: max 256 characters (safe default)
+   */
+  private validateMetaInfo(
+    metaInfo: Record<string, string>,
+  ): Record<string, string> {
+    const validated: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(metaInfo)) {
+      // Determine max length based on field name
+      let maxLength = 256; // default
+
+      if (key.match(/^udf(11|12|13|14|15)$/)) {
+        maxLength = 50;
+      } else if (key.match(/^udf(1|2|3|4|5|6|7|8)$/)) {
+        maxLength = 256;
+      }
+
+      // Truncate if exceeds max length
+      if (value && value.length > maxLength) {
+        this.logger.warn(
+          `MetaInfo field '${key}' exceeds max length ${maxLength}, truncating. Original length: ${value.length}`,
+        );
+        validated[key] = value.substring(0, maxLength);
+      } else {
+        validated[key] = value;
+      }
+    }
+
+    return validated;
   }
 }
