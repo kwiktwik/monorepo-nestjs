@@ -9,12 +9,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
 import Razorpay from 'razorpay';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { nanoid } from 'nanoid';
 import { getConfigForAppId } from '../config/config.data';
+import { RazorpaySubscriptionStatuses } from '../../common/types/razorpay.types';
 
 interface RazorpayCredentials {
   key_id: string;
@@ -179,6 +180,29 @@ export class RazorpayService {
       throw new BadRequestException(
         "flow must be either 'intent' or 'collect'",
       );
+    }
+
+    // Check if user already has an active subscription
+    this.logger.log(
+      `[createSubscriptionV2] Checking for existing active subscription | userId=${userId} appId=${appId}`,
+    );
+    const existingActiveSubscription = await this.db
+      .select()
+      .from(schema.subscriptions)
+      .where(
+        and(
+          eq(schema.subscriptions.userId, userId),
+          eq(schema.subscriptions.appId, appId),
+          eq(schema.subscriptions.status, RazorpaySubscriptionStatuses.ACTIVE),
+        ),
+      )
+      .limit(1);
+
+    if (existingActiveSubscription.length > 0) {
+      this.logger.warn(
+        `[createSubscriptionV2] ❌ User already has an active subscription | userId=${userId} appId=${appId}`,
+      );
+      throw new BadRequestException('User already has an active subscription');
     }
 
     const razorpay = this.getRazorpayInstance(appId);

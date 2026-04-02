@@ -60,9 +60,11 @@ describe('PhonePeWebhookController', () => {
           useValue: {
             insert: jest.fn().mockReturnValue({ values: jest.fn() }),
             select: jest.fn().mockReturnValue({
-              from: jest
-                .fn()
-                .mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+              from: jest.fn().mockReturnValue({
+                where: jest.fn().mockReturnValue({
+                  limit: jest.fn().mockResolvedValue([]),
+                }),
+              }),
             }),
             update: jest.fn().mockReturnValue({
               set: jest.fn().mockReturnValue({ where: jest.fn() }),
