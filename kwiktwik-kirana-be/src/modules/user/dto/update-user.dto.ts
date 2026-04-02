@@ -8,6 +8,7 @@ import {
   IsArray,
   MinLength,
   MaxLength,
+  IsObject,
 } from 'class-validator';
 
 export class UpdateUserDto {
@@ -71,8 +72,21 @@ export class UpdateUserDto {
   })
   @IsString()
   @IsOptional()
-  @Matches(/^\+[1-9]\d{1,14}$/, {
+  @Matches(/^[+][1-9]\d{1,14}$/, {
     message: 'Phone number must be in E.164 format (e.g., +919876543210)',
   })
   phoneNumber?: string;
+
+  @ApiPropertyOptional({
+    example: {
+      theme: 'dark',
+      notifications: true,
+      preferences: { language: 'en' },
+    },
+    description:
+      'Arbitrary JSON data stored by the client application. Can contain any key-value pairs.',
+  })
+  @IsObject()
+  @IsOptional()
+  clientData?: Record<string, any>;
 }

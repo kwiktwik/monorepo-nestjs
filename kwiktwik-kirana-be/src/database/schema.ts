@@ -233,6 +233,7 @@ export const userMetadata = pgTable(
     appId: text('app_id').notNull().default('alertpay-default'),
     upiVpa: text('upi_vpa'),
     audioLanguage: text('audio_language'),
+    clientData: jsonb('client_data').$type<Record<string, any>>().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),

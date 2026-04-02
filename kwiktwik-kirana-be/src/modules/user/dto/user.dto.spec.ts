@@ -118,6 +118,73 @@ describe('User DTOs - Snapshot Tests', () => {
       expect(errors).toHaveLength(0);
       expect(dto).toMatchSnapshot();
     });
+
+    it('should accept valid clientData object', async () => {
+      const dto = plainToInstance(UpdateUserDto, {
+        name: 'Test User',
+        phoneNumber: '+919876543210',
+        clientData: {
+          theme: 'dark',
+          notifications: true,
+          preferences: {
+            language: 'en',
+            currency: 'INR',
+          },
+        },
+      });
+
+      const errors = await validate(dto);
+      expect(errors).toHaveLength(0);
+      expect(dto.clientData).toEqual({
+        theme: 'dark',
+        notifications: true,
+        preferences: {
+          language: 'en',
+          currency: 'INR',
+        },
+      });
+    });
+
+    it('should accept empty clientData object', async () => {
+      const dto = plainToInstance(UpdateUserDto, {
+        name: 'Test User',
+        phoneNumber: '+919876543210',
+        clientData: {},
+      });
+
+      const errors = await validate(dto);
+      expect(errors).toHaveLength(0);
+      expect(dto.clientData).toEqual({});
+    });
+
+    it('should fail validation for invalid clientData type', async () => {
+      const dto = plainToInstance(UpdateUserDto, {
+        name: 'Test User',
+        phoneNumber: '+919876543210',
+        clientData: 'invalid-string',
+      });
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors).toMatchSnapshot();
+    });
+
+    it('should accept clientData with nested arrays and objects', async () => {
+      const dto = plainToInstance(UpdateUserDto, {
+        name: 'Test User',
+        phoneNumber: '+919876543210',
+        clientData: {
+          list: [1, 2, 3],
+          nested: { deep: { value: 'test' } },
+          flag: false,
+          count: 42,
+        },
+      });
+
+      const errors = await validate(dto);
+      expect(errors).toHaveLength(0);
+      expect(dto).toMatchSnapshot();
+    });
   });
 
   describe('DeleteUserImageDto', () => {

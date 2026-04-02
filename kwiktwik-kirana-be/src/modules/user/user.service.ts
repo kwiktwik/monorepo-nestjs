@@ -163,6 +163,7 @@ export class UserService {
     const upiVpa = userMeta.length > 0 ? userMeta[0].upiVpa : null;
     const audioLanguage =
       userMeta.length > 0 ? userMeta[0].audioLanguage : null;
+    const clientData = userMeta.length > 0 ? userMeta[0].clientData : {};
 
     // Determine current subscription end date (current_end)
     let currentEnd: Date | null = null;
@@ -193,6 +194,7 @@ export class UserService {
       currentEnd,
       upiVpa,
       audioLanguage,
+      clientData,
       isPlayStoreReviewSubmitted: playStoreReview.length > 0,
       images,
     };
@@ -317,10 +319,11 @@ export class UserService {
       }
     }
 
-    // Update or create user metadata if upiVpa or audioLanguage provided
+    // Update or create user metadata if upiVpa, audioLanguage, or clientData provided
     if (
       updateData.upiVpa !== undefined ||
-      updateData.audioLanguage !== undefined
+      updateData.audioLanguage !== undefined ||
+      updateData.clientData !== undefined
     ) {
       const equivalentAppIds = this.getEquivalentAppIds(appId);
       const existingMeta = await this.db
@@ -346,6 +349,10 @@ export class UserService {
         metadataUpdate.audioLanguage = updateData.audioLanguage || null;
       }
 
+      if (updateData.clientData !== undefined) {
+        metadataUpdate.clientData = updateData.clientData;
+      }
+
       if (existingMeta.length > 0) {
         await this.db
           .update(schema.userMetadata)
@@ -362,6 +369,7 @@ export class UserService {
           appId,
           upiVpa: updateData.upiVpa || null,
           audioLanguage: updateData.audioLanguage || null,
+          clientData: updateData.clientData || {},
           createdAt: new Date(),
           updatedAt: new Date(),
         });

@@ -51,6 +51,8 @@ describe('UserService', () => {
     userId: 'user-123',
     appId: 'com.test.app',
     upiVpa: 'test@upi',
+    audioLanguage: 'en-US',
+    clientData: {},
   };
 
   beforeEach(async () => {
@@ -333,6 +335,60 @@ describe('UserService', () => {
       );
 
       expect(result).toBeDefined();
+    });
+
+    it('should save clientData when provided', async () => {
+      const clientData = { theme: 'dark', notifications: true };
+      // updateUserProfile: check user (1), check metadata (1), then getUserProfile (6)
+      mockDb.limit
+        .mockResolvedValueOnce([mockUser])
+        .mockResolvedValueOnce([mockUserMetadata])
+        .mockResolvedValueOnce([mockUser])
+        .mockResolvedValueOnce([mockAccount])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ ...mockUserMetadata, clientData }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.updateUserProfile(
+        'user-123',
+        'com.test.app',
+        {
+          name: 'Test',
+          phoneNumber: '+919876543210',
+          clientData,
+        },
+      );
+
+      expect(result).toBeDefined();
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should create new metadata with clientData when no existing metadata', async () => {
+      const clientData = { preferences: { lang: 'hi' } };
+      // updateUserProfile: check user (1), check metadata (1), then getUserProfile (6)
+      mockDb.limit
+        .mockResolvedValueOnce([mockUser])
+        .mockResolvedValueOnce([]) // No existing metadata
+        .mockResolvedValueOnce([mockUser])
+        .mockResolvedValueOnce([mockAccount])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.updateUserProfile(
+        'user-123',
+        'com.test.app',
+        {
+          name: 'Test',
+          phoneNumber: '+919876543210',
+          clientData,
+        },
+      );
+
+      expect(result).toBeDefined();
+      expect(mockDb.insert).toHaveBeenCalled();
     });
   });
 
