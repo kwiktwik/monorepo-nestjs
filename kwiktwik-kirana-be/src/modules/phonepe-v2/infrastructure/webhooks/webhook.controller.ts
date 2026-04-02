@@ -528,6 +528,10 @@ export class PhonePeWebhookController {
     const transactionId =
       payload.paymentDetails?.[0]?.transactionId || payload.orderId;
 
+    // Set processed timestamp and correlation ID
+    redemption.processedAt = new Date();
+    redemption.correlationId = payload.merchantOrderId;
+
     redemption.complete(transactionId);
     await this.redemptionRepo.update(redemption);
 
@@ -615,6 +619,10 @@ export class PhonePeWebhookController {
       payload.paymentDetails?.[0]?.detailedErrorCode ||
       payload.detailedErrorCode ||
       'Unknown';
+
+    // Set processed timestamp and correlation ID
+    redemption.processedAt = new Date();
+    redemption.correlationId = payload.merchantOrderId;
 
     redemption.fail(errorCode, detailedErrorCode);
     await this.redemptionRepo.update(redemption);

@@ -23,6 +23,10 @@ export class Redemption {
     public readonly metadata: Record<string, unknown>,
     public readonly createdAt: Date,
     public updatedAt: Date,
+    // Tracking fields for monitoring and debugging
+    public attemptCount: number,
+    public processedAt: Date | null,
+    public correlationId: string | null,
   ) {}
 
   // Factory method
@@ -54,6 +58,9 @@ export class Redemption {
       params.metadata || {},
       new Date(),
       new Date(),
+      1, // attemptCount
+      null, // processedAt
+      null, // correlationId
     );
   }
 
@@ -199,6 +206,10 @@ export class Redemption {
     metadata: Record<string, unknown>;
     createdAt: Date;
     updatedAt: Date;
+    // Tracking fields
+    attemptCount?: number;
+    processedAt?: Date | null;
+    correlationId?: string | null;
   }): Redemption {
     return new Redemption(
       data.id,
@@ -218,6 +229,9 @@ export class Redemption {
       data.metadata,
       data.createdAt,
       data.updatedAt,
+      data.attemptCount ?? 1,
+      data.processedAt ?? null,
+      data.correlationId ?? null,
     );
   }
 }

@@ -164,6 +164,14 @@ export class UserService {
     const audioLanguage =
       userMeta.length > 0 ? userMeta[0].audioLanguage : null;
 
+    // Determine current subscription end date (current_end)
+    let currentEnd: Date | null = null;
+    if (razorpaySubscriptions.length > 0) {
+      currentEnd = razorpaySubscriptions[0].endAt;
+    } else if (phonepeSubscriptions.length > 0) {
+      currentEnd = phonepeSubscriptions[0].nextBillingDate;
+    }
+
     const images = userImagesList.map((img) => ({
       id: img.id,
       imageUrl: img.imageUrl,
@@ -182,6 +190,7 @@ export class UserService {
       updatedAt: userData.updatedAt,
       appId,
       isPremium,
+      currentEnd,
       upiVpa,
       audioLanguage,
       isPlayStoreReviewSubmitted: playStoreReview.length > 0,

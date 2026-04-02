@@ -34,6 +34,9 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       validUpto: redemption.expireAt,
       errorCode: redemption.errorCode,
       detailedErrorCode: redemption.detailedErrorCode,
+      attemptCount: redemption.attemptCount,
+      processedAt: redemption.processedAt,
+      correlationId: redemption.correlationId,
       metadata: redemption.metadata,
       createdAt: redemption.createdAt,
       updatedAt: redemption.updatedAt,
@@ -112,6 +115,9 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
         validUpto: redemption.expireAt,
         errorCode: redemption.errorCode,
         detailedErrorCode: redemption.detailedErrorCode,
+        attemptCount: redemption.attemptCount,
+        processedAt: redemption.processedAt,
+        correlationId: redemption.correlationId,
         metadata: redemption.metadata,
         updatedAt: redemption.updatedAt,
       })
@@ -174,6 +180,9 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
       metadata: data.metadata || {},
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+      attemptCount: data.attemptCount,
+      processedAt: data.processedAt,
+      correlationId: data.correlationId,
     });
   }
 }
