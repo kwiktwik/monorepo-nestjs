@@ -83,7 +83,7 @@ export function isUpiPaymentNotification(
   packageName: string,
   title: string,
   text: string,
-  bigText: string,
+  bigText: string | null | undefined,
 ): boolean {
   const isUpi = isUpiApp(packageName);
 
@@ -104,7 +104,7 @@ export function isUpiPaymentNotification(
 
   // Normalize emoji digits before checking keywords
   const combinedText = normalizeEmojiDigits(
-    `${title} ${text} ${bigText}`,
+    `${title} ${text} ${bigText || ''}`,
   ).toLowerCase();
   const hasKeywords = keywords.some((keyword) =>
     combinedText.includes(keyword),

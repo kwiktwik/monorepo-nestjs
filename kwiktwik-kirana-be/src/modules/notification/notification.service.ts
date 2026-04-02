@@ -142,7 +142,7 @@ export class NotificationService {
 
     const title = dto.title || '';
     const content = dto.content || dto.text || '';
-    const bigText = dto.big_text || dto.bigText || '';
+    const bigText = dto.big_text || dto.bigText || null;
     const appName =
       dto.app_name || dto.appName || this.getCleanAppName(packageName);
 
@@ -168,7 +168,7 @@ export class NotificationService {
 
     const providedHasTransaction = dto.has_transaction ?? dto.hasTransaction;
     const providedAmount = dto.amount ? String(dto.amount) : null;
-    const providedPayerName = dto.payer_name || dto.payerName;
+    const providedPayerName = dto.payer_name || dto.payerName || null;
     const providedTransactionType = dto.transaction_type || dto.transactionType;
 
     // kirana-fe v1: use client-provided details, or server-side UPI parsing (enhanced notification)
