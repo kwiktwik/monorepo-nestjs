@@ -93,6 +93,7 @@ export class CreateNotificationV2Dto {
   @ApiPropertyOptional({
     description: 'Additional metadata from Android parsing',
     type: 'object',
+    additionalProperties: true,
     example: { parsedBy: 'android-v2', parseTimeMs: 50 },
   })
   processingMetadata?: Record<string, unknown>;
