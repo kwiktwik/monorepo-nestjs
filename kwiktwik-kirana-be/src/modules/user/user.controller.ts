@@ -76,7 +76,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Update user profile',
     description:
-      'Updates user profile information including name, phone, email, UPI VPA, and profile images. Performs phone number uniqueness validation and syncs images to user_images table.',
+      'Updates user profile information including name, phone, email, UPI VPA, profile images, and clientData. Performs phone number uniqueness validation and syncs images to user_images table. The clientData field allows storing arbitrary JSON data for client application use.',
   })
   @ApiResponse({
     status: 200,
@@ -98,6 +98,14 @@ export class UserController {
           appId: 'alertpay-default',
           isPremium: false,
           upiVpa: 'user@paytm',
+          audioLanguage: 'en-US',
+          clientData: {
+            theme: 'dark',
+            notifications: true,
+            preferences: {
+              language: 'en',
+            },
+          },
           images: [],
         },
       },
