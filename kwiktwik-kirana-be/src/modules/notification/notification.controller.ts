@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
+import type { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
 import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -75,12 +76,32 @@ export class NotificationController {
     description: 'App identifier',
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
-  @ApiOperation({ summary: 'Create notification (v2)' })
+  @ApiOperation({ summary: 'Create notification (v1)' })
   async create(
     @CurrentUser() user: { userId: string },
     @Body() dto: CreateNotificationDto,
   ) {
     return this.notificationService.create(user.userId, dto);
+  }
+
+  @Post('v2')
+  @ApiBearerAuth('JWT')
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Create notification (v2) - Android sends pre-parsed data',
+    description:
+      'V2 endpoint where Android sends all pre-parsed notification data. No server-side parsing is performed.',
+  })
+  async createV2(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: CreateNotificationV2Dto,
+  ) {
+    return this.notificationService.createV2(user.userId, dto);
   }
 
   @Post('test')

@@ -4,6 +4,7 @@ import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, desc, and, like, gte, lte, sql } from 'drizzle-orm';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
 import {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -283,6 +284,133 @@ export class NotificationService {
       ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
       teamNotificationSent:
         dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
+      createdAt: toIST(createdAt) as unknown as Date,
+      updatedAt: toIST(updatedAt) as unknown as Date,
+      readNotification,
+      status: 'success',
+    };
+
+    return {
+      data: [resultItem],
+      processed: 1,
+    };
+  }
+
+  /**
+   * V2: Create notification with pre-parsed data from Android.
+   * No server-side parsing - just save to database.
+   */
+  async createV2(userId: string, dto: CreateNotificationV2Dto) {
+    const timestamp = new Date(dto.timestamp);
+
+    // Check for duplicate
+    const existing = await this.db
+      .select({ id: schema.enhancedNotifications.id })
+      .from(schema.enhancedNotifications)
+      .where(eq(schema.enhancedNotifications.notificationId, dto.notificationId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return {
+        data: [
+          {
+            status: 'duplicate',
+            notificationId: dto.notificationId,
+            message: 'Notification already processed',
+          },
+        ],
+        processed: 1,
+      };
+    }
+
+    const appName = dto.appName || this.getCleanAppName(dto.packageName);
+    const hasTransaction = dto.hasTransaction;
+    const transactionType = dto.transactionType || 'UNKNOWN';
+    const processingTimeMs = dto.processingTimeMs ?? 0;
+
+    // Insert into notificationLogs (all notifications)
+    const logEntry = await this.db
+      .insert(schema.notificationLogs)
+      .values({
+        userId,
+        notificationId: dto.notificationId,
+        packageName: dto.packageName,
+        appName,
+        timestamp,
+        title: dto.title,
+        text: dto.content,
+        bigText: dto.bigText || null,
+        hasTransaction,
+        amount: dto.amount || null,
+        payerName: dto.payerName || null,
+        transactionType,
+        processingTimeMs,
+        ttsAnnounced: dto.ttsAnnounced ?? false,
+      })
+      .returning();
+
+    const notificationLogId = logEntry[0]?.id ?? null;
+    let enhancedNotificationId: number | null = null;
+
+    // Insert into enhancedNotifications only if it has a transaction
+    if (hasTransaction && notificationLogId !== null) {
+      const enhancedRows = await this.db
+        .insert(schema.enhancedNotifications)
+        .values({
+          userId,
+          notificationId: dto.notificationId,
+          originalNotificationId: null,
+          packageName: dto.packageName,
+          appName,
+          title: dto.title,
+          content: dto.content,
+          bigText: dto.bigText || null,
+          timestamp,
+          hasTransaction: true,
+          amount: dto.amount || null,
+          payerName: dto.payerName || null,
+          transactionType,
+          processingTimeMs,
+          processingMetadata: dto.processingMetadata ?? {},
+          notificationLogId,
+          ttsAnnounced: dto.ttsAnnounced ?? false,
+          teamNotificationSent: dto.teamNotificationSent ?? false,
+        })
+        .returning();
+      enhancedNotificationId = enhancedRows[0]?.id ?? null;
+    }
+
+    const createdAt = new Date();
+    const updatedAt = new Date();
+    const readNotification = this.generateTTSMessage(
+      dto.amount ?? null,
+      dto.payerName ?? null,
+      hasTransaction,
+    );
+
+    const toIST = (date: Date | null | undefined) => {
+      if (!date) return date;
+      const istTimeMs = date.getTime() + 5.5 * 60 * 60 * 1000;
+      return new Date(istTimeMs).toISOString().replace('Z', '+05:30');
+    };
+
+    const resultItem = {
+      id: enhancedNotificationId ?? notificationLogId,
+      notificationId: dto.notificationId,
+      notificationLogId,
+      packageName: dto.packageName,
+      appName,
+      title: dto.title,
+      content: dto.content,
+      bigText: dto.bigText || null,
+      timestamp: toIST(timestamp) as unknown as Date,
+      hasTransaction,
+      amount: dto.amount || null,
+      payerName: dto.payerName || null,
+      transactionType,
+      processingTimeMs,
+      ttsAnnounced: dto.ttsAnnounced ?? false,
+      teamNotificationSent: dto.teamNotificationSent ?? false,
       createdAt: toIST(createdAt) as unknown as Date,
       updatedAt: toIST(updatedAt) as unknown as Date,
       readNotification,
