@@ -10,6 +10,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MigratableUserData } from '../interfaces/migration.interfaces';
+import {
+  fetchWithTimeout,
+  FetchTiming,
+  formatTimingLog,
+  formatTimingLogs,
+  FetchTimeoutError,
+} from '../utils/fetch-with-timeout.util';
+
+// Timeout configuration for different operations
+const FETCH_USER_DATA_TIMEOUT_MS = 30000; // 30 seconds - heavy operation
+const CHECK_MIGRATION_STATUS_TIMEOUT_MS = 5000; // 5 seconds - lightweight
+const MARK_MIGRATED_TIMEOUT_MS = 10000; // 10 seconds - write operation
 
 @Injectable()
 export class KiranaFeDataService {
@@ -37,12 +49,13 @@ export class KiranaFeDataService {
   async fetchAllUserData(
     userId: string,
     phoneNumber: string,
-  ): Promise<MigratableUserData> {
+  ): Promise<MigratableUserData & { timing: FetchTiming }> {
     this.logger.log(`Fetching all data for user: ${userId}`);
+    const url = `${this.kiranaFeBaseUrl}/api/internal/user/data`;
 
     try {
-      const response = await fetch(
-        `${this.kiranaFeBaseUrl}/api/internal/user/data`,
+      const { response, timing } = await fetchWithTimeout(
+        url,
         {
           method: 'POST',
           headers: {
@@ -52,24 +65,28 @@ export class KiranaFeDataService {
           },
           body: JSON.stringify({ userId, phoneNumber }),
         },
+        FETCH_USER_DATA_TIMEOUT_MS,
+        'fetch_user_data',
       );
 
+      this.logger.log(`Fetch user data timing: ${formatTimingLog(timing)}`);
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch user data: ${response.status}`);
+        throw new Error(
+          `Failed to fetch user data: HTTP ${response.status} (${timing.durationMs}ms)`,
+        );
       }
 
       const data = await response.json();
 
-      // Debug: Log first subscription to see field names
-      if (data.subscriptions && data.subscriptions.length > 0) {
-        console.log(`[KIRANA_FE_DEBUG] First subscription from old system:`, {
-          fields: Object.keys(data.subscriptions[0]),
-          currentStart: data.subscriptions[0].currentStart,
-          currentEnd: data.subscriptions[0].currentEnd,
-          current_start: data.subscriptions[0].current_start,
-          current_end: data.subscriptions[0].current_end,
-        });
-      }
+      // Log data size for debugging
+      const dataSize = JSON.stringify(data).length;
+      this.logger.log(
+        `Fetched user data: ${dataSize} bytes, ` +
+          `subscriptions: ${(data.subscriptions || []).length}, ` +
+          `orders: ${(data.orders || []).length}, ` +
+          `accounts: ${(data.accounts || []).length}`,
+      );
 
       return {
         userId: data.userId,
@@ -88,8 +105,18 @@ export class KiranaFeDataService {
         phonepeOrders: data.phonepeOrders || [],
         phonepeSubscriptions: data.phonepeSubscriptions || [],
         enhancedNotifications: data.enhancedNotifications || [],
+        timing,
       };
     } catch (error) {
+      if (error instanceof FetchTimeoutError) {
+        const timeoutMsg =
+          `Failed to fetch user data: Timeout after ${FETCH_USER_DATA_TIMEOUT_MS}ms. ` +
+          `kirana-fe may be slow or unresponsive. ` +
+          `User has many records or kirana-fe is under heavy load.`;
+        this.logger.error(timeoutMsg);
+        throw new Error(timeoutMsg);
+      }
+
       this.logger.error(
         `Failed to fetch user data:`,
         error instanceof Error ? error.message : 'Unknown error',
@@ -105,10 +132,13 @@ export class KiranaFeDataService {
     isMigrated: boolean;
     migratedAt?: string;
     kwiktwikUserId?: string;
+    timing?: FetchTiming;
   }> {
+    const url = `${this.kiranaFeBaseUrl}/api/internal/user/${userId}/migration-status`;
+
     try {
-      const response = await fetch(
-        `${this.kiranaFeBaseUrl}/api/internal/user/${userId}/migration-status`,
+      const { response, timing } = await fetchWithTimeout(
+        url,
         {
           method: 'GET',
           headers: {
@@ -116,18 +146,28 @@ export class KiranaFeDataService {
             'X-App-ID': 'com.kiranaapps.app',
           },
         },
+        CHECK_MIGRATION_STATUS_TIMEOUT_MS,
+        'check_migration_status',
       );
 
       if (!response.ok) {
-        return { isMigrated: false };
+        return { isMigrated: false, timing };
       }
 
-      return await response.json();
+      const result = await response.json();
+      return { ...result, timing };
     } catch (error) {
-      this.logger.error(
-        `Failed to check migration status in old system:`,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      if (error instanceof FetchTimeoutError) {
+        this.logger.warn(
+          `Timeout checking migration status for ${userId} after ${CHECK_MIGRATION_STATUS_TIMEOUT_MS}ms. ` +
+            `Assuming not migrated.`,
+        );
+      } else {
+        this.logger.error(
+          `Failed to check migration status in old system:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
       return { isMigrated: false };
     }
   }
@@ -138,10 +178,12 @@ export class KiranaFeDataService {
   async markUserAsMigratedInOldSystem(
     userId: string,
     kwiktwikUserId: string,
-  ): Promise<void> {
+  ): Promise<{ success: boolean; timing?: FetchTiming }> {
+    const url = `${this.kiranaFeBaseUrl}/api/internal/user/mark-migrated`;
+
     try {
-      const response = await fetch(
-        `${this.kiranaFeBaseUrl}/api/internal/user/mark-migrated`,
+      const { response, timing } = await fetchWithTimeout(
+        url,
         {
           method: 'POST',
           headers: {
@@ -151,23 +193,42 @@ export class KiranaFeDataService {
           },
           body: JSON.stringify({ userId, kwiktwikUserId }),
         },
+        MARK_MIGRATED_TIMEOUT_MS,
+        'mark_migrated',
       );
 
       if (!response.ok) {
         this.logger.error(
-          `Failed to mark user as migrated in old system: ${response.status}`,
+          `Failed to mark user as migrated in old system: HTTP ${response.status} (${timing.durationMs}ms)`,
         );
-        // Don't throw - migration succeeded, this is just for tracking
-        return;
+        return { success: false, timing };
       }
 
-      this.logger.log(`User ${userId} marked as migrated in old system`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to mark user as migrated in old system:`,
-        error instanceof Error ? error.message : 'Unknown error',
+      this.logger.log(
+        `User ${userId} marked as migrated in old system (${timing.durationMs}ms)`,
       );
-      // Don't throw - migration succeeded, this is just for tracking
+      return { success: true, timing };
+    } catch (error) {
+      if (error instanceof FetchTimeoutError) {
+        this.logger.error(
+          `Timeout marking user ${userId} as migrated after ${MARK_MIGRATED_TIMEOUT_MS}ms. ` +
+            `Migration succeeded but old system not updated.`,
+        );
+      } else {
+        this.logger.error(
+          `Failed to mark user as migrated in old system:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+      return { success: false };
     }
+  }
+
+  /**
+   * Get formatted timing logs for all HTTP operations
+   * Useful for storing detailed timing in database
+   */
+  formatTimingLogsForStorage(timings: FetchTiming[]): string {
+    return formatTimingLogs(timings);
   }
 }

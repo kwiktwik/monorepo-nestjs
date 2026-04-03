@@ -1,5 +1,11 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  fetchWithTimeout,
+  FetchTiming,
+  formatTimingLog,
+  FetchTimeoutError,
+} from '../utils/fetch-with-timeout.util';
 
 interface BetterAuthSession {
   userId: string;
@@ -8,6 +14,9 @@ interface BetterAuthSession {
   name: string;
   expiresAt: Date;
 }
+
+// Timeout configuration for session validation
+const SESSION_VALIDATION_TIMEOUT_MS = 5000; // 5 seconds
 
 interface ValidationErrorDetails {
   tokenType: 'JWT' | 'BetterAuth' | 'Unknown';
@@ -154,7 +163,9 @@ export class BetterAuthValidator {
    * Calls kirana-fe internal API to validate session
    * Returns session data or throws UnauthorizedException with detailed error info
    */
-  async validateSession(token: string): Promise<BetterAuthSession> {
+  async validateSession(
+    token: string,
+  ): Promise<BetterAuthSession & { timing: FetchTiming }> {
     const tokenType = this.detectTokenType(token);
     this.logger.log(
       `Validating session: type=${tokenType}, preview=${token.substring(0, 20)}...`,
@@ -169,9 +180,12 @@ export class BetterAuthValidator {
       );
     }
 
+    const url = `${this.kiranaFeBaseUrl}/api/internal/session/validate`;
+    let timing: FetchTiming;
+
     try {
-      const response = await fetch(
-        `${this.kiranaFeBaseUrl}/api/internal/session/validate`,
+      const { response, timing: fetchTiming } = await fetchWithTimeout(
+        url,
         {
           method: 'POST',
           headers: {
@@ -181,7 +195,12 @@ export class BetterAuthValidator {
           },
           body: JSON.stringify({ token }),
         },
+        SESSION_VALIDATION_TIMEOUT_MS,
+        'session_validation',
       );
+
+      timing = fetchTiming;
+      this.logger.log(`Session validation timing: ${formatTimingLog(timing)}`);
 
       if (!response.ok) {
         const errorBody = await response.text();
@@ -212,12 +231,27 @@ export class BetterAuthValidator {
         email: data.email,
         name: data.name,
         expiresAt: new Date(data.expiresAt),
+        timing,
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
 
+      // Handle timeout errors specifically
+      if (error instanceof FetchTimeoutError) {
+        const timeoutError = new Error(
+          `Session validation timeout after ${SESSION_VALIDATION_TIMEOUT_MS}ms. ` +
+            `kirana-fe may be slow or unresponsive.`,
+        );
+        const errorDetails = this.buildErrorDetails(token, timeoutError);
+        const formattedError = this.formatErrorDetails(errorDetails);
+
+        this.logger.error(`Session validation timeout: ${formattedError}`);
+        throw new UnauthorizedException(formattedError);
+      }
+
+      // Handle other errors
       const errorDetails = this.buildErrorDetails(
         token,
         error instanceof Error ? error : new Error('Unknown error'),
@@ -237,19 +271,19 @@ export class BetterAuthValidator {
    * Validate session and return detailed error info without throwing
    * Use this when you need to capture error details for logging
    */
-  async validateSessionWithDetails(
-    token: string,
-  ): Promise<
-    | { success: true; session: BetterAuthSession }
+  async validateSessionWithDetails(token: string): Promise<
+    | { success: true; session: BetterAuthSession; timing: FetchTiming }
     | {
         success: false;
         errorDetails: ValidationErrorDetails;
         errorMessage: string;
+        timing?: FetchTiming;
       }
   > {
     try {
       const session = await this.validateSession(token);
-      return { success: true, session };
+      const { timing, ...sessionData } = session;
+      return { success: true, session: sessionData, timing };
     } catch (error) {
       const errorDetails = this.buildErrorDetails(
         token,

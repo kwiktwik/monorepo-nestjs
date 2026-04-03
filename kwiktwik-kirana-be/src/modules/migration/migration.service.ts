@@ -47,6 +47,7 @@ import {
 import { BetterAuthValidator } from './services/better-auth-validator.service';
 import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
+import { FetchTiming } from './utils/fetch-with-timeout.util';
 
 @Injectable()
 export class MigrationService {
@@ -70,7 +71,7 @@ export class MigrationService {
     private readonly tableMigrationService: TableMigrationService,
   ) {
     this.config = {
-      timeout: this.configService.get('MIGRATION_TIMEOUT_MS', 60000),
+      timeout: this.configService.get('MIGRATION_TIMEOUT_MS', 180000), // 3 minutes (was 60s)
       maxRetries: this.configService.get('MIGRATION_MAX_RETRIES', 3),
       heartbeatInterval: this.configService.get(
         'MIGRATION_HEARTBEAT_INTERVAL_MS',
@@ -78,9 +79,9 @@ export class MigrationService {
       ),
       staleThreshold: this.configService.get(
         'MIGRATION_STALE_THRESHOLD_MS',
-        300000,
+        400000, // 6.67 minutes (was 5min) - must be > timeout
       ),
-      lockTtl: this.configService.get('MIGRATION_LOCK_TTL_MS', 90000),
+      lockTtl: this.configService.get('MIGRATION_LOCK_TTL_MS', 200000), // 3.33 minutes (was 90s)
       safeMode: this.configService.get('MIGRATION_SAFE_MODE', true),
     };
   }
@@ -102,6 +103,7 @@ export class MigrationService {
     let userId = '';
     const migratedTables: string[] = [];
     const failedTables: string[] = [];
+    const httpTimings: FetchTiming[] = []; // Track all HTTP call timings
 
     // Non-critical tables: if these fail, migration still completes
     const nonCriticalTables = ['deviceSessions', 'pushTokens'];
@@ -193,23 +195,48 @@ export class MigrationService {
           };
         }
 
+        // Store timing from successful validation
+        if (validationResult.timing) {
+          httpTimings.push(validationResult.timing);
+        }
+
         const sessionData = validationResult.session;
 
         userId = sessionData.userId;
         const phoneNumber = sessionData.phoneNumber;
 
-        // Check for in-progress migration for this specific user
-        const inProgressMigration = await this.db
-          .select()
-          .from(schema.migrationLogs)
-          .where(
-            and(
-              eq(schema.migrationLogs.userId, userId),
-              eq(schema.migrationLogs.status, MigrationState.PENDING),
-              eq(schema.migrationLogs.isLocked, true),
-            ),
-          )
-          .limit(1);
+        // OPTIMIZATION: Run in-progress check and old system status check in parallel
+        // DB query + HTTP call can happen simultaneously
+        const parallelCheckStart = Date.now();
+
+        const [inProgressMigration, oldSystemStatus] = await Promise.all([
+          // Check for in-progress migration for this specific user (DB query)
+          this.db
+            .select()
+            .from(schema.migrationLogs)
+            .where(
+              and(
+                eq(schema.migrationLogs.userId, userId),
+                eq(schema.migrationLogs.status, MigrationState.PENDING),
+                eq(schema.migrationLogs.isLocked, true),
+              ),
+            )
+            .limit(1),
+
+          // Check if user is already migrated in old system (HTTP call)
+          this.kiranaFeDataService.checkMigrationStatusInOldSystem(userId),
+        ]);
+
+        this.logger.log(
+          `Parallel checks completed in ${Date.now() - parallelCheckStart}ms ` +
+            `(in-progress: ${inProgressMigration.length > 0 ? 'yes' : 'no'}, ` +
+            `old-system-migrated: ${oldSystemStatus.isMigrated ? 'yes' : 'no'})`,
+        );
+
+        // Store timing from migration status check
+        if (oldSystemStatus.timing) {
+          httpTimings.push(oldSystemStatus.timing);
+        }
 
         if (inProgressMigration.length > 0) {
           this.logger.warn(
@@ -230,11 +257,6 @@ export class MigrationService {
           };
         }
 
-        // Check if user is already migrated in old system
-        const oldSystemStatus =
-          await this.kiranaFeDataService.checkMigrationStatusInOldSystem(
-            userId,
-          );
         if (oldSystemStatus.isMigrated) {
           this.logger.log(
             `User ${userId} already marked as migrated in old system at ${oldSystemStatus.migratedAt}`,
@@ -734,27 +756,39 @@ export class MigrationService {
   private async fetchAllUserData(
     userId: string,
     phoneNumber: string,
-  ): Promise<MigratableUserData> {
+  ): Promise<MigratableUserData & { timing: FetchTiming }> {
     return this.kiranaFeDataService.fetchAllUserData(userId, phoneNumber);
   }
 
   /**
    * Check for partial data and clean it up if found
    * This handles cases where previous migration attempts failed mid-way
+   *
+   * OPTIMIZED: All table checks run in parallel for faster execution
    */
   private async checkPartialData(
     userId: string,
   ): Promise<PartialDataCheckResult> {
-    const tablesWithData: string[] = [];
-
     const tables = getMigrationOrder();
-    for (const tableName of tables) {
-      // Query each table for existing data
-      const hasData = await this.checkTableHasData(tableName, userId);
-      if (hasData) {
-        tablesWithData.push(tableName);
-      }
-    }
+
+    // OPTIMIZATION: Check all tables in parallel instead of sequentially
+    // Reduces time from ~130ms (13 tables × 10ms) to ~15ms
+    const checkStartTime = Date.now();
+    const tableChecks = await Promise.all(
+      tables.map(async (tableName) => {
+        const hasData = await this.checkTableHasData(tableName, userId);
+        return { tableName, hasData };
+      }),
+    );
+
+    const tablesWithData = tableChecks
+      .filter((check) => check.hasData)
+      .map((check) => check.tableName);
+
+    this.logger.log(
+      `Partial data check completed in ${Date.now() - checkStartTime}ms. ` +
+        `Tables with data: ${tablesWithData.length}`,
+    );
 
     // If partial data found, clean it up (it's from a failed previous attempt)
     if (tablesWithData.length > 0) {
