@@ -7,6 +7,7 @@ import {
   enrichMixpanelProperties,
   MixpanelEnrichmentProps,
 } from './mixpanel-helpers';
+import { getEnabledApps } from '../../common/config/apps.config';
 
 export interface UserData {
   email?: string;
@@ -45,8 +46,7 @@ export interface AnalyticsResponse {
   results: AnalyticsResult[];
 }
 
-const ACTIVE_APPS = ['com.paymentalert.app', 'com.sharekaro.kirana'] as const;
-export type ActiveAppId = (typeof ACTIVE_APPS)[number];
+export type ActiveAppId = string;
 
 const CONFIG = {
   facebook: {
@@ -84,17 +84,25 @@ export class AnalyticsService implements OnModuleInit {
   private readonly logger = new Logger(AnalyticsService.name);
   private mixpanelInstances: Map<string, Mixpanel.Mixpanel> = new Map();
 
+  private activeApps: string[] = [];
+
   constructor(
     private configService: ConfigService,
     private deviceSessionService: DeviceSessionService,
   ) {}
 
   async onModuleInit(): Promise<void> {
+    this.activeApps = this.getActiveAppsFromConfig();
     this.initMixpanel();
   }
 
+  private getActiveAppsFromConfig(): string[] {
+    // Use centralized app config to get enabled apps (single source of truth)
+    return getEnabledApps().map((app) => app.id);
+  }
+
   private initMixpanel(): void {
-    for (const appId of ACTIVE_APPS) {
+    for (const appId of this.activeApps) {
       const normalizedAppId = this.normalizeAppId(appId);
       const token = this.configService.get<string>(
         `MIXPANEL_TOKEN_${normalizedAppId}`,
@@ -134,9 +142,9 @@ export class AnalyticsService implements OnModuleInit {
     if (!input.eventName?.trim()) {
       throw new Error('eventName is required');
     }
-    if (!ACTIVE_APPS.includes(input.appId as ActiveAppId)) {
+    if (!this.activeApps.includes(input.appId)) {
       throw new Error(
-        `Invalid appId: ${input.appId}. Allowed: ${ACTIVE_APPS.join(', ')}`,
+        `Invalid appId: ${input.appId}. Allowed: ${this.activeApps.join(', ')}`,
       );
     }
   }
