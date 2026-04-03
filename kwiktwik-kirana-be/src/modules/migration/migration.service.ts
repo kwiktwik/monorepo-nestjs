@@ -140,13 +140,60 @@ export class MigrationService {
           MigrationState.VALIDATING_SESSION,
         );
 
-        const sessionData =
-          await this.validateBetterAuthSession(betterAuthToken);
-        if (!sessionData) {
-          throw new UnauthorizedException(
-            'Invalid or expired Better-Auth session',
+        // Validate session with detailed error capture
+        const validationResult =
+          await this.betterAuthValidator.validateSessionWithDetails(
+            betterAuthToken,
           );
+
+        if (!validationResult.success) {
+          const failedResult = validationResult as {
+            success: false;
+            errorDetails: {
+              extractedUserId?: string;
+            };
+            errorMessage: string;
+          };
+          const errorDetails = failedResult.errorDetails;
+          const extractedUserId = errorDetails.extractedUserId || '';
+
+          // Build comprehensive error message with all debugging info
+          const errorMessage = failedResult.errorMessage;
+
+          this.logger.error(
+            `Session validation failed for migration ${migrationId}: ${errorMessage}`,
+          );
+
+          // Update migration log with detailed error info
+          await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
+            errorCode: MigrationErrorCode.SESSION_INVALID,
+            errorMessage: errorMessage,
+          });
+
+          // Also update the migration log with userId if we could extract it from JWT
+          if (extractedUserId) {
+            await this.db
+              .update(schema.migrationLogs)
+              .set({ userId: extractedUserId })
+              .where(eq(schema.migrationLogs.id, migrationId));
+          }
+
+          // Return structured error response
+          return {
+            success: false,
+            migrationId,
+            userId: extractedUserId,
+            error: {
+              code: MigrationErrorCode.SESSION_INVALID,
+              message: errorMessage,
+            },
+            migratedTables: [],
+            recordsMigrated: 0,
+            duration: Date.now() - startTime,
+          };
         }
+
+        const sessionData = validationResult.session;
 
         userId = sessionData.userId;
         const phoneNumber = sessionData.phoneNumber;
@@ -679,24 +726,6 @@ export class MigrationService {
       .update(schema.migrationLogs)
       .set(updateData)
       .where(eq(schema.migrationLogs.id, migrationId));
-  }
-
-  /**
-   * Validate Better-Auth session using the validator service
-   */
-  private async validateBetterAuthSession(token: string): Promise<{
-    userId: string;
-    phoneNumber: string;
-    email: string;
-    name: string;
-  }> {
-    const session = await this.betterAuthValidator.validateSession(token);
-    return {
-      userId: session.userId,
-      phoneNumber: session.phoneNumber,
-      email: session.email,
-      name: session.name,
-    };
   }
 
   /**
