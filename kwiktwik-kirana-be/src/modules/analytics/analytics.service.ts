@@ -217,9 +217,18 @@ export class AnalyticsService implements OnModuleInit {
       const accessToken = credentials.accesstoken;
       const fbAppId = credentials.appid;
 
-      if (!pixelId || !accessToken) {
+      // For app events (when fbAppId is present), only accessToken is required
+      // For web events, both pixelId and accessToken are required
+      if (!accessToken) {
         this.logger.warn(
-          `Facebook Pixel ID or access token not configured for app: ${appId}`,
+          `Facebook access token not configured for app: ${appId}`,
+        );
+        return false;
+      }
+
+      if (!fbAppId && !pixelId) {
+        this.logger.warn(
+          `Facebook Pixel ID not configured for web events for app: ${appId}`,
         );
         return false;
       }
