@@ -18,10 +18,13 @@ interface BetterAuthSession {
 // Timeout configuration for session validation
 const SESSION_VALIDATION_TIMEOUT_MS = 5000; // 5 seconds
 
-interface ValidationErrorDetails {
+export interface ValidationErrorDetails {
   tokenType: 'JWT' | 'BetterAuth' | 'Unknown';
   tokenPreview: string;
   tokenLength: number;
+  kiranaFeUrl: string;
+  timeoutMs: number;
+  durationMs?: number;
   httpStatus?: number;
   responseBody?: string;
   errorType: string;
@@ -70,15 +73,10 @@ export class BetterAuthValidator {
    */
   private tryExtractUserIdFromJwt(token: string): string | undefined {
     try {
-      // JWT format: header.payload.signature
       const parts = token.split('.');
-      if (parts.length !== 3) {
-        return undefined;
-      }
-      // Decode payload (base64)
+      if (parts.length !== 3) return undefined;
       const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
       const payloadObj = JSON.parse(payload);
-      // Look for common user ID fields
       return (
         payloadObj.sub ||
         payloadObj.userId ||
@@ -90,88 +88,78 @@ export class BetterAuthValidator {
     }
   }
 
-  /**
-   * Build detailed error information
-   */
-  private buildErrorDetails(
-    token: string,
-    error: Error,
+  private getSuggestion(
+    tokenType: ValidationErrorDetails['tokenType'],
     httpStatus?: number,
-    responseBody?: string,
-  ): ValidationErrorDetails {
-    const tokenType = this.detectTokenType(token);
-    const tokenPreview = token.substring(0, 30);
-    const extractedUserId =
-      tokenType === 'JWT' ? this.tryExtractUserIdFromJwt(token) : undefined;
-
-    let suggestion: string | undefined;
+  ): string | undefined {
     if (tokenType === 'JWT') {
-      suggestion =
-        'Frontend is sending JWT token from new backend. Should send Better-Auth session token from kirana-fe (old backend).';
-    } else if (tokenType === 'BetterAuth') {
-      suggestion =
-        'Better-Auth session may be expired or invalid in kirana-fe.';
+      return 'Frontend is sending a JWT token from the NEW backend. Migration requires a Better-Auth session token from kirana-fe (OLD backend).';
     }
-
-    return {
-      tokenType,
-      tokenPreview,
-      tokenLength: token.length,
-      httpStatus,
-      responseBody: responseBody?.substring(0, 200),
-      errorType: error.constructor.name,
-      errorMessage: error.message,
-      extractedUserId,
-      suggestion,
-    };
+    if (httpStatus === 401 || httpStatus === 403) {
+      return 'Better-Auth session is expired or invalid in kirana-fe. User should re-login on the old app first.';
+    }
+    if (httpStatus === 404) {
+      return 'Session not found in kirana-fe. Token may belong to a different environment (staging vs prod).';
+    }
+    if (httpStatus && httpStatus >= 500) {
+      return 'kirana-fe is returning a server error. Check kirana-fe deployment health.';
+    }
+    if (tokenType === 'BetterAuth') {
+      return 'Better-Auth session may be expired or invalid in kirana-fe.';
+    }
+    return undefined;
   }
 
   /**
-   * Format error details as a string for database storage
+   * Format error details as a string for database storage.
+   * Each key=value pair is pipe-separated for easy reading and parsing.
    */
   formatErrorDetails(details: ValidationErrorDetails): string {
     const parts = [
-      `Token Type: ${details.tokenType}`,
-      `Token Preview: ${details.tokenPreview}...`,
-      `Token Length: ${details.tokenLength}`,
+      `tokenType=${details.tokenType}`,
+      `tokenLength=${details.tokenLength}`,
+      `tokenPreview=${details.tokenPreview}`,
+      `kiranaFeUrl=${details.kiranaFeUrl}`,
+      `timeoutMs=${details.timeoutMs}`,
     ];
 
+    if (details.durationMs !== undefined) {
+      parts.push(`durationMs=${details.durationMs}`);
+    }
     if (details.extractedUserId) {
-      parts.push(`Extracted UserId (from JWT): ${details.extractedUserId}`);
+      parts.push(`extractedUserId=${details.extractedUserId}`);
     }
-
     if (details.httpStatus) {
-      parts.push(`HTTP Status: ${details.httpStatus}`);
+      parts.push(`httpStatus=${details.httpStatus}`);
     }
-
     if (details.responseBody) {
-      parts.push(`Response: ${details.responseBody}`);
+      // Store up to 2000 chars of the response body for debugging
+      parts.push(`responseBody=${details.responseBody.substring(0, 2000)}`);
     }
-
-    parts.push(`Error Type: ${details.errorType}`);
-    parts.push(`Error: ${details.errorMessage}`);
-
+    parts.push(`errorType=${details.errorType}`);
+    parts.push(`error=${details.errorMessage}`);
     if (details.suggestion) {
-      parts.push(`Suggestion: ${details.suggestion}`);
+      parts.push(`suggestion=${details.suggestion}`);
     }
 
     return parts.join(' | ');
   }
 
   /**
-   * Validate Better-Auth session token with detailed error information
-   * Calls kirana-fe internal API to validate session
-   * Returns session data or throws UnauthorizedException with detailed error info
+   * Validate Better-Auth session token.
+   * Returns enriched session or throws with structured ValidationErrorDetails attached.
+   *
+   * IMPORTANT: throws are ALL UnauthorizedException with a `.details` property
+   * that callers can use to skip re-building error info (avoids duplicate formatting).
    */
   async validateSession(
     token: string,
-  ): Promise<BetterAuthSession & { timing: FetchTiming }> {
+  ): Promise<BetterAuthSession & { timing: FetchTiming; validationDetails: ValidationErrorDetails | null }> {
     const tokenType = this.detectTokenType(token);
     this.logger.log(
       `Validating session: type=${tokenType}, preview=${token.substring(0, 20)}...`,
     );
 
-    // Log warning if JWT is detected
     if (tokenType === 'JWT') {
       const extractedUserId = this.tryExtractUserIdFromJwt(token);
       this.logger.warn(
@@ -181,7 +169,6 @@ export class BetterAuthValidator {
     }
 
     const url = `${this.kiranaFeBaseUrl}/api/internal/session/validate`;
-    let timing: FetchTiming;
 
     try {
       const { response, timing: fetchTiming } = await fetchWithTimeout(
@@ -199,28 +186,34 @@ export class BetterAuthValidator {
         'session_validation',
       );
 
-      timing = fetchTiming;
-      this.logger.log(`Session validation timing: ${formatTimingLog(timing)}`);
+      this.logger.log(`Session validation timing: ${formatTimingLog(fetchTiming)}`);
 
       if (!response.ok) {
         const errorBody = await response.text();
-        const error = new Error(
-          `Session validation failed: HTTP ${response.status}`,
-        );
-        const errorDetails = this.buildErrorDetails(
-          token,
-          error,
-          response.status,
-          errorBody,
-        );
-        const formattedError = this.formatErrorDetails(errorDetails);
+        const details: ValidationErrorDetails = {
+          tokenType,
+          tokenPreview: token.substring(0, 30),
+          tokenLength: token.length,
+          kiranaFeUrl: url,
+          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          durationMs: fetchTiming.durationMs,
+          httpStatus: response.status,
+          responseBody: errorBody,
+          errorType: 'HttpError',
+          errorMessage: `kirana-fe returned HTTP ${response.status}`,
+          extractedUserId:
+            tokenType === 'JWT'
+              ? this.tryExtractUserIdFromJwt(token)
+              : undefined,
+          suggestion: this.getSuggestion(tokenType, response.status),
+        };
 
-        this.logger.error(`Session validation failed: ${formattedError}`);
+        const formatted = this.formatErrorDetails(details);
+        this.logger.error(`Session validation failed: ${formatted}`);
 
-        if (response.status === 401) {
-          throw new UnauthorizedException(formattedError);
-        }
-        throw new Error(formattedError);
+        const exc = new UnauthorizedException(formatted) as any;
+        exc.validationDetails = details;
+        throw exc;
       }
 
       const data = await response.json();
@@ -231,45 +224,81 @@ export class BetterAuthValidator {
         email: data.email,
         name: data.name,
         expiresAt: new Date(data.expiresAt),
-        timing,
+        timing: fetchTiming,
+        validationDetails: null,
       };
     } catch (error) {
+      // Re-throw errors we already enriched
       if (error instanceof UnauthorizedException) {
         throw error;
       }
 
-      // Handle timeout errors specifically
-      if (error instanceof FetchTimeoutError) {
-        const timeoutError = new Error(
-          `Session validation timeout after ${SESSION_VALIDATION_TIMEOUT_MS}ms. ` +
-            `kirana-fe may be slow or unresponsive.`,
-        );
-        const errorDetails = this.buildErrorDetails(token, timeoutError);
-        const formattedError = this.formatErrorDetails(errorDetails);
+      let details: ValidationErrorDetails;
 
-        this.logger.error(`Session validation timeout: ${formattedError}`);
-        throw new UnauthorizedException(formattedError);
+      if (error instanceof FetchTimeoutError) {
+        details = {
+          tokenType,
+          tokenPreview: token.substring(0, 30),
+          tokenLength: token.length,
+          kiranaFeUrl: url,
+          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          errorType: 'FetchTimeoutError',
+          errorMessage: `kirana-fe did not respond within ${SESSION_VALIDATION_TIMEOUT_MS}ms. The service may be down, cold-starting, or overloaded.`,
+          extractedUserId:
+            tokenType === 'JWT'
+              ? this.tryExtractUserIdFromJwt(token)
+              : undefined,
+          suggestion:
+            'Check kirana-fe service health. If this happens repeatedly, increase SESSION_VALIDATION_TIMEOUT_MS or check network connectivity between services.',
+        };
+      } else {
+        // Non-timeout network/parse errors — unwrap { error, timing } from fetchWithTimeout
+        const innerError =
+          error instanceof Error
+            ? error
+            : error && typeof error === 'object' && 'error' in error
+              ? ((error as any).error instanceof Error
+                  ? (error as any).error
+                  : new Error(String((error as any).error)))
+              : new Error('Unknown fetch error');
+
+        const innerTiming: FetchTiming | undefined =
+          error && typeof error === 'object' && 'timing' in error
+            ? (error as any).timing
+            : undefined;
+
+        details = {
+          tokenType,
+          tokenPreview: token.substring(0, 30),
+          tokenLength: token.length,
+          kiranaFeUrl: url,
+          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          durationMs: innerTiming?.durationMs,
+          errorType: innerError.constructor.name,
+          errorMessage: innerError.message,
+          extractedUserId:
+            tokenType === 'JWT'
+              ? this.tryExtractUserIdFromJwt(token)
+              : undefined,
+          suggestion: this.getSuggestion(tokenType),
+        };
       }
 
-      // Handle other errors
-      const errorDetails = this.buildErrorDetails(
-        token,
-        error instanceof Error ? error : new Error('Unknown error'),
-      );
-      const formattedError = this.formatErrorDetails(errorDetails);
-
+      const formatted = this.formatErrorDetails(details);
       this.logger.error(
-        `Session validation failed: ${formattedError}`,
+        `Session validation failed: ${formatted}`,
         error instanceof Error ? error.stack : undefined,
       );
 
-      throw new UnauthorizedException(formattedError);
+      const exc = new UnauthorizedException(formatted) as any;
+      exc.validationDetails = details;
+      throw exc;
     }
   }
 
   /**
-   * Validate session and return detailed error info without throwing
-   * Use this when you need to capture error details for logging
+   * Validate session and return structured result without throwing.
+   * The validationDetails object contains all raw error fields for DB storage.
    */
   async validateSessionWithDetails(token: string): Promise<
     | { success: true; session: BetterAuthSession; timing: FetchTiming }
@@ -281,16 +310,48 @@ export class BetterAuthValidator {
       }
   > {
     try {
-      const session = await this.validateSession(token);
-      const { timing, ...sessionData } = session;
+      const { timing, validationDetails: _vd, ...sessionData } = await this.validateSession(token);
       return { success: true, session: sessionData, timing };
-    } catch (error) {
-      const errorDetails = this.buildErrorDetails(
-        token,
-        error instanceof Error ? error : new Error('Unknown error'),
-      );
-      const errorMessage = this.formatErrorDetails(errorDetails);
-      return { success: false, errorDetails, errorMessage };
+    } catch (thrown) {
+      // If validateSession attached structured details, use them directly.
+      // This avoids re-processing the already-formatted UnauthorizedException message.
+      if (
+        thrown &&
+        typeof thrown === 'object' &&
+        'validationDetails' in thrown &&
+        (thrown as any).validationDetails
+      ) {
+        const details: ValidationErrorDetails = (thrown as any).validationDetails;
+        return {
+          success: false,
+          errorDetails: details,
+          errorMessage: this.formatErrorDetails(details),
+        };
+      }
+
+      // Fallback for unexpected throws — build minimal details
+      const error =
+        thrown instanceof Error ? thrown : new Error(String(thrown));
+
+      const tokenType = this.detectTokenType(token);
+      const details: ValidationErrorDetails = {
+        tokenType,
+        tokenPreview: token.substring(0, 30),
+        tokenLength: token.length,
+        kiranaFeUrl: `${this.kiranaFeBaseUrl}/api/internal/session/validate`,
+        timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+        errorType: error.constructor.name,
+        errorMessage: error.message,
+        extractedUserId:
+          tokenType === 'JWT' ? this.tryExtractUserIdFromJwt(token) : undefined,
+        suggestion: this.getSuggestion(tokenType),
+      };
+
+      return {
+        success: false,
+        errorDetails: details,
+        errorMessage: this.formatErrorDetails(details),
+      };
     }
   }
 }

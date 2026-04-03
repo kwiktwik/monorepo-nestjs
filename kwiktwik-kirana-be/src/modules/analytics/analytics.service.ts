@@ -129,7 +129,11 @@ export class AnalyticsService implements OnModuleInit {
     const credentials: Record<string, string> = {};
 
     for (const key of keys) {
-      const value = this.configService.get<string>(`${key}_${normalizedAppId}`);
+      const envKey = `${key}_${normalizedAppId}`;
+      const value = this.configService.get<string>(envKey);
+      this.logger.debug(
+        `Looking up env var: ${envKey}, found: ${value ? 'yes' : 'no'}`,
+      );
       if (value) {
         credentials[key.toLowerCase()] = value;
       }

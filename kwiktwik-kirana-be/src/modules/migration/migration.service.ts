@@ -45,6 +45,7 @@ import {
 } from './utils/dependency-graph.util';
 
 import { BetterAuthValidator } from './services/better-auth-validator.service';
+import { ValidationErrorDetails } from './services/better-auth-validator.service';
 import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
 import { FetchTiming } from './utils/fetch-with-timeout.util';
@@ -129,10 +130,23 @@ export class MigrationService {
         this.config.heartbeatInterval,
       );
 
-      // Set timeout
-      const timeoutId = setTimeout(() => {
-        this.handleTimeout(migrationId);
-      }, this.config.timeout);
+      // Build a timeout promise that REJECTS, so Promise.race will abort
+      // the migration flow when the timer fires. This is the only way to
+      // actually cancel the in-flight async chain — a plain setTimeout that
+      // only writes to the DB has no effect on the running promise chain.
+      let timeoutHandle: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(
+            Object.assign(
+              new Error(
+                `Migration timed out after ${this.config.timeout / 1000}s`,
+              ),
+              { code: MigrationErrorCode.TIMEOUT },
+            ),
+          );
+        }, this.config.timeout);
+      });
 
       try {
         // Step 3: Validate Better-Auth session
@@ -142,18 +156,18 @@ export class MigrationService {
           MigrationState.VALIDATING_SESSION,
         );
 
-        // Validate session with detailed error capture
-        const validationResult =
-          await this.betterAuthValidator.validateSessionWithDetails(
-            betterAuthToken,
-          );
+        // Validate session with detailed error capture.
+        // Wrap in Promise.race so the global timeout can abort a hanging
+        // kirana-fe API call — a missing await would otherwise stall forever.
+        const validationResult = await Promise.race([
+          timeoutPromise,
+          this.betterAuthValidator.validateSessionWithDetails(betterAuthToken),
+        ]);
 
         if (!validationResult.success) {
           const failedResult = validationResult as {
             success: false;
-            errorDetails: {
-              extractedUserId?: string;
-            };
+            errorDetails: ValidationErrorDetails;
             errorMessage: string;
           };
           const errorDetails = failedResult.errorDetails;
@@ -166,10 +180,23 @@ export class MigrationService {
             `Session validation failed for migration ${migrationId}: ${errorMessage}`,
           );
 
+          // Write full structured details to errorStack for maximum debuggability
+          const errorStack = JSON.stringify({
+            httpStatus: errorDetails.httpStatus,
+            responseBody: errorDetails.responseBody,
+            durationMs: errorDetails.durationMs,
+            kiranaFeUrl: errorDetails.kiranaFeUrl,
+            tokenType: errorDetails.tokenType,
+            tokenLength: errorDetails.tokenLength,
+            errorType: errorDetails.errorType,
+            suggestion: errorDetails.suggestion,
+          }, null, 2);
+
           // Update migration log with detailed error info
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
             errorCode: MigrationErrorCode.SESSION_INVALID,
             errorMessage: errorMessage,
+            errorStack,
           });
 
           // Also update the migration log with userId if we could extract it from JWT
@@ -542,7 +569,7 @@ export class MigrationService {
           userId,
         );
 
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutHandle!);
         clearInterval(heartbeatInterval);
 
         const duration = Date.now() - startTime;
@@ -557,7 +584,7 @@ export class MigrationService {
           duration,
         };
       } catch (error) {
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutHandle!);
         clearInterval(heartbeatInterval);
 
         // Rollback: Delete all inserted data for atomicity
@@ -664,7 +691,7 @@ export class MigrationService {
   private async handleTimeout(migrationId: string): Promise<void> {
     await this.updateMigrationStatus(migrationId, MigrationState.TIMEOUT, {
       errorCode: MigrationErrorCode.TIMEOUT,
-      errorMessage: 'Migration timed out after 60 seconds',
+      errorMessage: `Migration timed out after ${this.config.timeout / 1000}s`,
     });
   }
 
@@ -713,6 +740,7 @@ export class MigrationService {
     updates: {
       errorCode?: string;
       errorMessage?: string;
+      errorStack?: string;
       destinationHash?: string;
       tablesMigrated?: string[];
       tablesFailed?: string[];
@@ -737,6 +765,7 @@ export class MigrationService {
 
     if (updates.errorCode) updateData.errorCode = updates.errorCode;
     if (updates.errorMessage) updateData.errorMessage = updates.errorMessage;
+    if (updates.errorStack) updateData.errorStack = updates.errorStack;
     if (updates.destinationHash)
       updateData.destinationHash = updates.destinationHash;
     if (updates.tablesMigrated)
@@ -1195,8 +1224,9 @@ export class MigrationService {
         .set({
           isLocked: false,
           status: MigrationState.FAILED,
+          currentState: MigrationState.FAILED,
           errorCode: MigrationErrorCode.TIMEOUT,
-          errorMessage: 'Migration timed out - no heartbeat received',
+          errorMessage: 'Migration timed out - no heartbeat received (cleaned up by cron)',
           completedAt: new Date(),
         })
         .where(eq(schema.migrationLogs.id, migration.id));
