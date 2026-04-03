@@ -13,11 +13,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       throw err instanceof UnauthorizedException
         ? err
         : new UnauthorizedException(
-            err instanceof Error ? err.message : 'Invalid token',
-          );
+          err instanceof Error ? err.message : 'Invalid token',
+        );
     }
     if (!user) {
-      this.logger.warn('JWT auth: no user (token invalid or expired)');
       throw new UnauthorizedException('Invalid or expired token');
     }
     return user;
