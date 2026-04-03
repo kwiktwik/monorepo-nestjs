@@ -102,7 +102,9 @@ export class MigrationService {
     let userId = '';
     const migratedTables: string[] = [];
     const failedTables: string[] = [];
-    // All tables are critical - if any fail, migration fails
+
+    // Non-critical tables: if these fail, migration still completes
+    const nonCriticalTables = ['deviceSessions', 'pushTokens'];
 
     try {
       // Step 1: Create migration log
@@ -333,9 +335,15 @@ export class MigrationService {
           } else if (sourceCount > 0) {
             // Had source data but failed to migrate any
             failedTables.push(tableName);
-            this.logger.error(
-              `FAILED to migrate ${sourceCount} records from ${tableName} - all records failed`,
-            );
+            if (nonCriticalTables.includes(tableName)) {
+              this.logger.warn(
+                `Non-critical table ${tableName} failed to migrate ${sourceCount} records - migration will continue`,
+              );
+            } else {
+              this.logger.error(
+                `FAILED to migrate ${sourceCount} records from ${tableName} - all records failed`,
+              );
+            }
           } else {
             this.logger.log(`No source data for ${tableName} - skipping`);
           }
@@ -368,20 +376,39 @@ export class MigrationService {
           });
         }
 
-        // All tables are critical - if any failed, migration fails (check BEFORE hash)
-        if (failedTables.length > 0) {
+        // Check if any CRITICAL tables failed (non-critical tables can fail gracefully)
+        const criticalFailedTables = failedTables.filter(
+          (t) => !nonCriticalTables.includes(t),
+        );
+        if (criticalFailedTables.length > 0) {
           stateMachine.forceTransition(MigrationState.FAILED);
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
             errorCode: MigrationErrorCode.DATA_INTEGRITY_ERROR,
-            errorMessage: `Tables failed to migrate: ${failedTables.join(', ')}`,
+            errorMessage: `Critical tables failed to migrate: ${criticalFailedTables.join(', ')}`,
             tablesMigrated: migratedTables,
             tablesFailed: failedTables,
           });
 
           throw new InternalServerErrorException({
             code: MigrationErrorCode.DATA_INTEGRITY_ERROR,
-            message: `Migration failed: Tables could not be migrated: ${failedTables.join(', ')}`,
+            message: `Migration failed: Critical tables could not be migrated: ${criticalFailedTables.join(', ')}`,
           });
+        }
+
+        // If only non-critical tables failed, add them to migratedTables and log warning
+        const nonCriticalFailedTables = failedTables.filter((t) =>
+          nonCriticalTables.includes(t),
+        );
+        if (nonCriticalFailedTables.length > 0) {
+          this.logger.warn(
+            `Non-critical tables failed but migration will continue: ${nonCriticalFailedTables.join(', ')}`,
+          );
+          // Add non-critical failed tables to migratedTables so they're counted as "complete"
+          for (const tableName of nonCriticalFailedTables) {
+            if (!migratedTables.includes(tableName)) {
+              migratedTables.push(tableName);
+            }
+          }
         }
 
         // Verify hashes match (only if all tables migrated successfully)
@@ -410,9 +437,22 @@ export class MigrationService {
 
         // Success! (Possibly with some non-critical tables failed)
         if (failedTables.length > 0) {
-          this.logger.warn(
-            `Migration completed with warnings. Failed tables: ${failedTables.join(', ')}`,
+          const criticalFailed = failedTables.filter(
+            (t) => !nonCriticalTables.includes(t),
           );
+          const nonCriticalFailed = failedTables.filter((t) =>
+            nonCriticalTables.includes(t),
+          );
+          if (nonCriticalFailed.length > 0) {
+            this.logger.warn(
+              `Migration completed with non-critical table failures: ${nonCriticalFailed.join(', ')}`,
+            );
+          }
+          if (criticalFailed.length > 0) {
+            this.logger.error(
+              `Migration has critical table failures: ${criticalFailed.join(', ')}`,
+            );
+          }
         }
 
         stateMachine.transitionTo(MigrationState.COMPLETED);
