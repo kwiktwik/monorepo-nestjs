@@ -10,6 +10,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PhonePeAdminController } from './phonepe-admin.controller';
 import { PhonePeV2Module } from '../phonepe-v2/phonepe-v2.module';
+import { RazorpayModule } from '../razorpay/razorpay.module';
 import type { Request, Response, NextFunction } from 'express';
 
 const basicAuthMiddleware = (
@@ -50,6 +51,7 @@ const basicAuthMiddleware = (
       },
     }),
     PhonePeV2Module,
+    RazorpayModule,
   ],
   controllers: [AdminController, PhonePeAdminController],
   providers: [AdminService],
