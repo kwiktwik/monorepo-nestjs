@@ -17,6 +17,18 @@ import * as admin from 'firebase-admin';
 
 const logger = new Logger('NotificationService');
 
+/**
+ * Sanitize string by removing null bytes (\x00) which PostgreSQL doesn't accept.
+ * Also trim whitespace and return null for empty strings.
+ */
+function sanitizeString(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const sanitized = value.replace(/\x00/g, '').trim();
+  return sanitized.length > 0 ? sanitized : null;
+}
+
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   try {
@@ -141,11 +153,12 @@ export class NotificationService {
 
     const timestamp = dto.timestamp ? new Date(dto.timestamp) : new Date();
 
-    const title = dto.title || '';
-    const content = dto.content || dto.text || '';
-    const bigText = dto.big_text || dto.bigText || null;
+    const title = sanitizeString(dto.title) || '';
+    const content = sanitizeString(dto.content || dto.text) || '';
+    const bigText = sanitizeString(dto.big_text || dto.bigText);
     const appName =
-      dto.app_name || dto.appName || this.getCleanAppName(packageName);
+      sanitizeString(dto.app_name || dto.appName) ||
+      this.getCleanAppName(packageName);
 
     const existing = await this.db
       .select({ id: schema.enhancedNotifications.id })
@@ -169,7 +182,7 @@ export class NotificationService {
 
     const providedHasTransaction = dto.has_transaction ?? dto.hasTransaction;
     const providedAmount = dto.amount ? String(dto.amount) : null;
-    const providedPayerName = dto.payer_name || dto.payerName || null;
+    const providedPayerName = sanitizeString(dto.payer_name || dto.payerName);
     const providedTransactionType = dto.transaction_type || dto.transactionType;
 
     // kirana-fe v1: use client-provided details, or server-side UPI parsing (enhanced notification)
@@ -307,7 +320,9 @@ export class NotificationService {
     const existing = await this.db
       .select({ id: schema.enhancedNotifications.id })
       .from(schema.enhancedNotifications)
-      .where(eq(schema.enhancedNotifications.notificationId, dto.notificationId))
+      .where(
+        eq(schema.enhancedNotifications.notificationId, dto.notificationId),
+      )
       .limit(1);
 
     if (existing.length > 0) {
@@ -323,7 +338,8 @@ export class NotificationService {
       };
     }
 
-    const appName = dto.appName || this.getCleanAppName(dto.packageName);
+    const appName =
+      sanitizeString(dto.appName) || this.getCleanAppName(dto.packageName);
     const hasTransaction = dto.hasTransaction;
     const transactionType = dto.transactionType || 'UNKNOWN';
     const processingTimeMs = dto.processingTimeMs ?? 0;
@@ -337,12 +353,12 @@ export class NotificationService {
         packageName: dto.packageName,
         appName,
         timestamp,
-        title: dto.title,
-        text: dto.content,
-        bigText: dto.bigText || null,
+        title: sanitizeString(dto.title),
+        text: sanitizeString(dto.content),
+        bigText: sanitizeString(dto.bigText),
         hasTransaction,
         amount: dto.amount || null,
-        payerName: dto.payerName || null,
+        payerName: sanitizeString(dto.payerName),
         transactionType,
         processingTimeMs,
         ttsAnnounced: dto.ttsAnnounced ?? false,
@@ -362,13 +378,13 @@ export class NotificationService {
           originalNotificationId: null,
           packageName: dto.packageName,
           appName,
-          title: dto.title,
-          content: dto.content,
-          bigText: dto.bigText || null,
+          title: sanitizeString(dto.title),
+          content: sanitizeString(dto.content),
+          bigText: sanitizeString(dto.bigText),
           timestamp,
           hasTransaction: true,
           amount: dto.amount || null,
-          payerName: dto.payerName || null,
+          payerName: sanitizeString(dto.payerName),
           transactionType,
           processingTimeMs,
           processingMetadata: dto.processingMetadata ?? {},
