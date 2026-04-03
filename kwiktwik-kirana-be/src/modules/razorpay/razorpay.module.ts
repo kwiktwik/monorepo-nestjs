@@ -25,6 +25,6 @@ import { isMockMode } from '../../common/utils/is-mock-mode';
     RazorpayWebhookService,
     FourHourEventSchedulerService,
   ],
-  exports: [RazorpayService],
+  exports: [RazorpayService, FourHourEventSchedulerService],
 })
 export class RazorpayModule {}
