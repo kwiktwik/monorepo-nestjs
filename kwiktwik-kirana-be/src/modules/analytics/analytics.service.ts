@@ -274,7 +274,9 @@ export class AnalyticsService implements OnModuleInit {
     appId?: string,
   ): Promise<boolean> {
     try {
-      const url = `${CONFIG.facebook.baseUrl}/${pixelId}/events?access_token=${accessToken}`;
+      // For app events, use App ID in URL; for web events, use Pixel ID
+      const urlId = fbAppId || pixelId;
+      const url = `${CONFIG.facebook.baseUrl}/${urlId}/events?access_token=${accessToken}`;
 
       // Get device data if userId is available
       let deviceData: {

@@ -500,11 +500,16 @@ export class AuthService {
       .set({ verified: true })
       .where(eq(schema.otpCodes.id, otpRecord.id));
 
-    // Find or create user (check both active and deleted users by phone)
+    // Find or create user (excluding deleted users)
     let userRecord = await this.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.phoneNumber, normalized))
+      .where(
+        and(
+          eq(schema.user.phoneNumber, normalized),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     let userId: string;
