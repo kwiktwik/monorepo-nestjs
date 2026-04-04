@@ -1,9 +1,5 @@
-import { getAppWithCompany, getAllAppSlugs } from "../../../config/legal"
+import { getAppWithCompany } from "../../../config/legal"
 import { notFound } from "next/navigation"
-
-export function generateStaticParams() {
-  return getAllAppSlugs().map((app) => ({ app }))
-}
 
 export default async function CancellationRefundPage({
   params,
