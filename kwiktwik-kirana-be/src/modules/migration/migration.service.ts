@@ -107,7 +107,11 @@ export class MigrationService {
     const httpTimings: FetchTiming[] = []; // Track all HTTP call timings
 
     // Non-critical tables: if these fail, migration still completes
-    const nonCriticalTables = ['deviceSessions', 'pushTokens'];
+    const nonCriticalTables = [
+      'deviceSessions',
+      'pushTokens',
+      'enhancedNotifications',
+    ];
 
     try {
       // Step 1: Create migration log
@@ -181,16 +185,20 @@ export class MigrationService {
           );
 
           // Write full structured details to errorStack for maximum debuggability
-          const errorStack = JSON.stringify({
-            httpStatus: errorDetails.httpStatus,
-            responseBody: errorDetails.responseBody,
-            durationMs: errorDetails.durationMs,
-            kiranaFeUrl: errorDetails.kiranaFeUrl,
-            tokenType: errorDetails.tokenType,
-            tokenLength: errorDetails.tokenLength,
-            errorType: errorDetails.errorType,
-            suggestion: errorDetails.suggestion,
-          }, null, 2);
+          const errorStack = JSON.stringify(
+            {
+              httpStatus: errorDetails.httpStatus,
+              responseBody: errorDetails.responseBody,
+              durationMs: errorDetails.durationMs,
+              kiranaFeUrl: errorDetails.kiranaFeUrl,
+              tokenType: errorDetails.tokenType,
+              tokenLength: errorDetails.tokenLength,
+              errorType: errorDetails.errorType,
+              suggestion: errorDetails.suggestion,
+            },
+            null,
+            2,
+          );
 
           // Update migration log with detailed error info
           await this.updateMigrationStatus(migrationId, MigrationState.FAILED, {
@@ -1226,7 +1234,8 @@ export class MigrationService {
           status: MigrationState.FAILED,
           currentState: MigrationState.FAILED,
           errorCode: MigrationErrorCode.TIMEOUT,
-          errorMessage: 'Migration timed out - no heartbeat received (cleaned up by cron)',
+          errorMessage:
+            'Migration timed out - no heartbeat received (cleaned up by cron)',
           completedAt: new Date(),
         })
         .where(eq(schema.migrationLogs.id, migration.id));
