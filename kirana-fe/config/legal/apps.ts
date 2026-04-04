@@ -97,6 +97,13 @@ export const apps: Record<string, AppConfig> = {
     name: "Jamun",
     description: "Creator tools for content",
   },
+  "com.dailyattendance.staffbook": {
+    name: "StaffBook",
+    description: "Daily attendance and staff management",
+    features: {
+      cloudStorage: true,
+    },
+  },
 }
 
 export function getAppConfig(appSlug: string): AppConfig | undefined {
