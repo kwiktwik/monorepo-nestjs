@@ -40,6 +40,17 @@ export const USER_MAPPING: TableMapping = {
       newField: 'phoneNumber',
       oldFields: ['phoneNumber', 'phone_number'],
       defaultValue: null,
+      transform: (value) => {
+        if (!value) return null;
+        const phone = String(value).trim();
+        // Already has + prefix, keep as is
+        if (phone.startsWith('+')) return phone;
+        // Starts with 91 but missing +, add it
+        if (phone.startsWith('91') && phone.length >= 10) return '+' + phone;
+        // No country code, add +91
+        if (phone.length >= 10) return '+91' + phone.replace(/^0+/, '');
+        return phone;
+      },
     },
     {
       newField: 'phoneNumberVerified',

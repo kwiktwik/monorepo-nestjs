@@ -48,6 +48,10 @@ import { BetterAuthValidator } from './services/better-auth-validator.service';
 import { ValidationErrorDetails } from './services/better-auth-validator.service';
 import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
+import {
+  normalizePhoneNumber,
+  normalizePhoneNumberForLog,
+} from './utils/phone-number.util';
 import { FetchTiming } from './utils/fetch-with-timeout.util';
 
 @Injectable()
@@ -238,7 +242,9 @@ export class MigrationService {
         const sessionData = validationResult.session;
 
         userId = sessionData.userId;
-        const phoneNumber = sessionData.phoneNumber;
+        const phoneNumber =
+          normalizePhoneNumber(sessionData.phoneNumber) ||
+          sessionData.phoneNumber;
 
         // OPTIMIZATION: Run in-progress check and old system status check in parallel
         // DB query + HTTP call can happen simultaneously
@@ -332,15 +338,22 @@ export class MigrationService {
           };
         }
 
+        // Normalize phone number for consistency
+        const normalizedPhoneNumber =
+          normalizePhoneNumber(phoneNumber) || phoneNumber;
+
         // Step 4: Fetch source data
         stateMachine.transitionTo(MigrationState.FETCHING_SOURCE_DATA);
         await this.updateMigrationState(
           migrationId,
           MigrationState.FETCHING_SOURCE_DATA,
-          { userId, phoneNumber },
+          { userId, phoneNumber: normalizedPhoneNumber },
         );
 
-        const sourceData = await this.fetchAllUserData(userId, phoneNumber);
+        const sourceData = await this.fetchAllUserData(
+          userId,
+          normalizedPhoneNumber,
+        );
 
         // Step 5: Check for partial data
         stateMachine.transitionTo(MigrationState.CHECKING_PARTIAL_DATA);
