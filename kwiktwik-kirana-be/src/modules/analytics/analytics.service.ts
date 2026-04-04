@@ -217,9 +217,9 @@ export class AnalyticsService implements OnModuleInit {
         'FACEBOOK_APP_ID',
       ]);
 
-      const pixelId = credentials.pixelid;
-      const accessToken = credentials.accesstoken;
-      const fbAppId = credentials.appid;
+      const pixelId = credentials.facebook_pixel_id;
+      const accessToken = credentials.facebook_access_token;
+      const fbAppId = credentials.facebook_app_id;
 
       // For app events (when fbAppId is present), only accessToken is required
       // For web events, both pixelId and accessToken are required
