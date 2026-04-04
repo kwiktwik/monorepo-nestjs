@@ -37,7 +37,7 @@ export class RazorpayWebhookService {
    * Currently disabled as events are handled by a separate service
    * TODO: Re-enable when migrating to this service for analytics
    */
-  private readonly ANALYTICS_ENABLED = false;
+  private readonly ANALYTICS_ENABLED = true;
 
   constructor(
     private config: ConfigService,
