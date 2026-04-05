@@ -1,45 +1,50 @@
-import { useCallback, useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+interface ApiOptions extends RequestInit {
+  endpoint: string;
+}
 
 export function useAdminApi() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { logout } = useAuth(); // Assume we have a logout function in AuthContext
 
-  const fetchApi = useCallback(async (path: string, options: RequestInit = {}) => {
+  const fetchApi = useCallback(async <T = any>({ endpoint, ...options }: ApiOptions): Promise<T> => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(path, {
+      // Use credentials: 'include' to automatically send the HttpOnly cookie
+      const res = await fetch(`/api/admin${endpoint}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           ...options.headers,
         },
+        credentials: 'include', // <--- IMPORTANT: Sends HttpOnly cookie automatically
       });
 
-      if (response.status === 401 || response.status === 403) {
-        if (window.location.pathname !== '/admin/login') {
-          localStorage.removeItem('admin_token');
-          window.location.href = '/admin/login';
-        }
-        throw new Error('Authentication required');
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        navigate('/login');
+        throw new Error('Unauthorized');
       }
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.message || `API Error: ${res.status}`);
       }
 
-      return data;
+      return res.json();
     } catch (err: any) {
-      setError(err.message || 'Unknown error');
+      setError(err.message);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate, logout]);
 
   return { fetchApi, loading, error };
 }

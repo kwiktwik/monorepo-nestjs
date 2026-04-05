@@ -1,8 +1,11 @@
 import {
   Module,
-  MiddlewareConsumer,
   NestModule,
+  MiddlewareConsumer,
   RequestMethod,
+  Injectable,
+  NestMiddleware,
+  Inject,
 } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -13,49 +16,88 @@ import { RazorpayAdminController } from './razorpay-admin.controller';
 import { PhonePeV2Module } from '../phonepe-v2/phonepe-v2.module';
 import { RazorpayModule } from '../razorpay/razorpay.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../database/schema';
+import { eq } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
-const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  // Read token from Bearer OR cookies OR query string
-  let token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : (req.query.token as string);
-  
-  if (!token && req.headers.cookie) {
-    const cookies = req.headers.cookie.split(';').map(c => c.trim().split('='));
-    const adminTokenCookie = cookies.find(c => c[0] === 'admin_token');
-    if (adminTokenCookie) {
-      token = adminTokenCookie[1];
+@Injectable()
+export class AdminAuthMiddleware implements NestMiddleware {
+  constructor(
+    @Inject(DRIZZLE_TOKEN)
+    private readonly db: NodePgDatabase<typeof schema>,
+  ) {}
+
+  async use(req: Request, res: Response, next: NextFunction) {
+    // Read token from Bearer OR cookies OR query string
+    let token = req.headers.authorization?.startsWith('Bearer ') 
+      ? req.headers.authorization.substring(7) 
+      : (req.query.token as string);
+    
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').map(c => c.trim().split('='));
+      const adminTokenCookie = cookies.find(c => c[0] === 'admin_token');
+      if (adminTokenCookie) {
+        token = adminTokenCookie[1];
+      }
     }
-  }
 
-  // Exempt specific non-admin routes if needed
-  if (req.path === '/api/admin/login' || req.path === '/api/admin/set-cookie' || req.path === '/api/admin/logout') {
-    return next();
-  }
-
-  if (!token) {
-    if (req.path.startsWith('/api/')) {
-      return res.status(401).json({ success: false, message: 'Admin authentication required.' });
-    }
-    // Redirect UI requests to login if no token
-    return res.redirect('/admin/login');
-  }
-
-  try {
-    const jwt = require('jsonwebtoken'); // Use the globally installed jsonwebtoken
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key-change-this',
-    ) as any;
-
-    if (decoded.role === 'admin') {
+    // Exempt specific non-admin routes if needed
+    if (req.path === '/api/admin/login' || req.path === '/api/admin/set-cookie' || req.path === '/api/admin/logout') {
       return next();
     }
-  } catch (e) {
-    // ignore validation failures, will fallback to 401
-  }
 
-  res.status(401).json({ message: 'Authentication required' });
-};
+    if (!token) {
+      if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ success: false, message: 'Admin authentication required.' });
+      }
+      return res.redirect('/admin/login');
+    }
+
+    const expectedMobile = process.env.ADMIN_MOBILE_NUMBER;
+    if (!expectedMobile) {
+      return res.status(401).json({ success: false, message: 'Admin credentials not configured' });
+    }
+
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this');
+
+      // decoded.sub contains userId
+      const userId = decoded.sub;
+      if (!userId) {
+        throw new Error('Invalid token structure');
+      }
+
+      // Query database for the user's phone number
+      const userRecords = await this.db
+        .select({ phoneNumber: schema.user.phoneNumber })
+        .from(schema.user)
+        .where(eq(schema.user.id, userId))
+        .limit(1);
+
+      if (userRecords.length === 0) {
+        return res.status(401).json({ success: false, message: 'User not found' });
+      }
+
+      const cleanUserPhone = (userRecords[0].phoneNumber || '').replace(/\D/g, '');
+      const cleanAdminPhone = expectedMobile.replace(/\D/g, '');
+
+      if (!cleanUserPhone || cleanUserPhone !== cleanAdminPhone) {
+        return res.status(403).json({ success: false, message: 'Insufficient privileges' });
+      }
+
+      req['admin'] = decoded;
+      next();
+    } catch (error) {
+      if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+      }
+      return res.redirect('/admin/login');
+    }
+  }
+}
 
 @Module({
   imports: [
@@ -75,13 +117,13 @@ const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) =>
     PhonePeAdminController,
     RazorpayAdminController,
   ],
-  providers: [AdminService],
+  providers: [AdminService, AdminAuthMiddleware],
 })
 export class AdminModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Protect both the static HTML path and the backend API path
     consumer
-      .apply(adminAuthMiddleware)
+      .apply(AdminAuthMiddleware)
       .forRoutes(
         { path: '/api/admin*path', method: RequestMethod.ALL },
       );
