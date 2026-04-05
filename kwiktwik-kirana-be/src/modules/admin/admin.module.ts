@@ -15,28 +15,29 @@ import { RazorpayModule } from '../razorpay/razorpay.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import type { Request, Response, NextFunction } from 'express';
 
-const adminAuthMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  // Allow the login endpoint to be unauthenticated!
-  if (req.path === '/api/admin/login') {
+const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  // Read token from Bearer OR cookies OR query string
+  let token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : (req.query.token as string);
+  
+  if (!token && req.headers.cookie) {
+    const cookies = req.headers.cookie.split(';').map(c => c.trim().split('='));
+    const adminTokenCookie = cookies.find(c => c[0] === 'admin_token');
+    if (adminTokenCookie) {
+      token = adminTokenCookie[1];
+    }
+  }
+
+  // Exempt specific non-admin routes if needed
+  if (req.path === '/api/admin/login' || req.path === '/api/admin/set-cookie' || req.path === '/api/admin/logout') {
     return next();
   }
 
-  let token = '';
-
-  const authHeader = req.headers.authorization || '';
-  if (authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  } else if (req.query.token) {
-    token = req.query.token as string;
-  }
-
   if (!token) {
-    res.status(401).json({ message: 'Authentication required' });
-    return;
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ success: false, message: 'Admin authentication required.' });
+    }
+    // Redirect UI requests to login if no token
+    return res.redirect('/admin/login');
   }
 
   try {

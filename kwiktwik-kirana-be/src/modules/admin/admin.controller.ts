@@ -1,8 +1,8 @@
-import { Controller, Get, Param, Sse, Req, Post, Query, Body, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Param, Sse, Req, Post, Query, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiBasicAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { Observable } from 'rxjs';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { FourHourEventSchedulerService } from '../razorpay/scheduler/four-hour-event.scheduler';
 import { AnalyticsService } from '../analytics/analytics.service';
 
@@ -21,6 +21,29 @@ export class AdminController {
   async getScripts() {
     const scripts = await this.adminService.getScripts();
     return { scripts };
+  }
+
+  @Post('set-cookie')
+  @ApiOperation({ summary: 'Set HttpOnly cookie for Admin UI' })
+  async setCookie(@Body() body: { token: string }, @Res({ passthrough: true }) res: Response) {
+    // Basic structural validation; deep validation happens in the middleware.
+    if (!body.token) {
+      return { success: false };
+    }
+    res.cookie('admin_token', body.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
+    return { success: true };
+  }
+
+  @Post('logout')
+  @ApiOperation({ summary: 'Clear Admin UI HttpOnly cookie' })
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('admin_token', { path: '/' });
+    return { success: true };
   }
 
   // Standard GET using Server-Sent Events to stream terminal output
