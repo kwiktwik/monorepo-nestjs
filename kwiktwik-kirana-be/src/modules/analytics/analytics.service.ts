@@ -431,6 +431,11 @@ export class AnalyticsService implements OnModuleInit {
         distinct_id: distinctId,
       };
 
+      // Include $user_id for identified users (required for simplified ID merge)
+      if (userData.userId) {
+        eventProps.$user_id = userData.userId;
+      }
+
       if (deduplicationId) eventProps.$insert_id = deduplicationId;
 
       // Add Mixpanel enrichment properties (browser, device, os, ip, referrer, utm)
