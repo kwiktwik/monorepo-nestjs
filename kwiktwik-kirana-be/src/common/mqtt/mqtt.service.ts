@@ -20,6 +20,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   private messageHandlers: Map<string, (message: MqttMessage) => void> =
     new Map();
 
+  // Retry tracking
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 3;
+  private isDisabled = false;
+
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
@@ -40,11 +45,16 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.client.on('connect', () => {
+      this.reconnectAttempts = 0;
+      this.isDisabled = false;
       this.logger.log('✅ MQTT connected to broker');
     });
 
     this.client.on('error', (err) => {
-      this.logger.error('MQTT error:', err.message);
+      // Only log errors if not disabled to avoid spam
+      if (!this.isDisabled) {
+        this.logger.error('MQTT error:', err.message);
+      }
     });
 
     this.client.on('message', (topic: string, payload: Buffer) => {
@@ -75,11 +85,34 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.client.on('offline', () => {
-      this.logger.warn('MQTT client is offline');
+      if (!this.isDisabled) {
+        this.logger.warn('MQTT client is offline');
+      }
     });
 
     this.client.on('reconnect', () => {
-      this.logger.log('MQTT client reconnecting...');
+      this.reconnectAttempts++;
+
+      if (this.reconnectAttempts > this.maxReconnectAttempts) {
+        // Stop reconnecting after max attempts
+        this.isDisabled = true;
+        this.client.end(true); // Force close without reconnecting
+        this.logger.warn(
+          `❌ MQTT disabled after ${this.maxReconnectAttempts} failed connection attempts. ` +
+            'MQTT features will be silently skipped.',
+        );
+        return;
+      }
+
+      this.logger.log(
+        `MQTT client reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+      );
+    });
+
+    this.client.on('close', () => {
+      if (this.isDisabled) {
+        this.logger.log('MQTT client connection closed');
+      }
     });
   }
 
@@ -94,11 +127,20 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // Check if MQTT is available (connected and not disabled)
+  isAvailable(): boolean {
+    return !this.isDisabled && this.client?.connected === true;
+  }
+
   // Subscribe to a topic
   async subscribe(
     topic: string,
     handler?: (message: MqttMessage) => void,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       this.client.subscribe(topic, { qos: 1 }, (err) => {
         if (err) {
@@ -117,6 +159,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
 
   // Unsubscribe from a topic
   async unsubscribe(topic: string): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       this.client.unsubscribe(topic, (err) => {
         if (err) {
@@ -137,6 +183,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     payload: Record<string, unknown>,
     options: mqtt.IClientPublishOptions = {},
   ): Promise<void> {
+    // Silently skip if MQTT is disabled
+    if (this.isDisabled) {
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       const message = JSON.stringify({
         ...payload,
@@ -166,6 +217,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     event: string,
     data: Record<string, unknown>,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     const topic = `app/${appId}/user/${userId}/${event}`;
     await this.publish(topic, data);
   }
@@ -177,6 +232,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     event: string,
     data: Record<string, unknown>,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     const topic = `app/${appId}/conversation/${conversationId}/${event}`;
     await this.publish(topic, data);
   }
@@ -187,6 +246,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     event: string,
     data: Record<string, unknown>,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     const topic = `app/${appId}/broadcast/${event}`;
     await this.publish(topic, data);
   }
@@ -197,6 +260,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     userId: string,
     handler: (message: MqttMessage) => void,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     const topic = `app/${appId}/user/${userId}/#`;
     await this.subscribe(topic, handler);
   }
@@ -207,6 +274,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     conversationId: string,
     handler: (message: MqttMessage) => void,
   ): Promise<void> {
+    if (this.isDisabled) {
+      return;
+    }
+
     const topic = `app/${appId}/conversation/${conversationId}/#`;
     await this.subscribe(topic, handler);
   }
