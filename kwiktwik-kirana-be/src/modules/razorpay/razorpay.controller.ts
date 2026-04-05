@@ -171,4 +171,56 @@ export class RazorpayController {
       razorpayOrderId,
     );
   }
+
+  /**
+   * Fetch live subscription status from Razorpay (subscriptions.fetch).
+   *
+   * Client flow:
+   *   1. Store the razorpay_subscription_id returned from POST /razorpay/subscriptions/v2
+   *   2. After payment, if the `subscription.activated` callback is not received, call this.
+   *   3. If `isActive === true`  → subscription is live, skip creating a new one.
+   *   4. If `synced === true`    → local DB was stale and has been corrected.
+   */
+  @Get('subscriptions/:razorpaySubscriptionId/status')
+  @ApiOperation({
+    summary: 'Get live subscription status from Razorpay',
+    description:
+      'Calls Razorpay subscriptions.fetch() to get the source-of-truth status. ' +
+      'Automatically syncs the local DB if it is out of date (e.g. missed webhook). ' +
+      'Call this BEFORE creating a new subscription to check if the user is already subscribed.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Live subscription status from Razorpay.',
+    schema: {
+      example: {
+        razorpaySubscriptionId: 'sub_ABC123',
+        status: 'active',
+        localStatus: 'created',
+        synced: true,
+        planId: 'plan_XYZ',
+        paidCount: 1,
+        remainingCount: 99,
+        chargeAt: '2026-05-05T00:00:00.000Z',
+        isActive: true,
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Subscription not found on Razorpay' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getSubscriptionStatus(
+    @CurrentUser() user: { userId: string },
+    @AppId() appId: string,
+    @Param('razorpaySubscriptionId') razorpaySubscriptionId: string,
+  ) {
+    this.logger.log(
+      `[getSubscriptionStatus] userId=${user.userId} appId=${appId} razorpaySubscriptionId=${razorpaySubscriptionId}`,
+    );
+    return this.razorpayService.getSubscriptionStatus(
+      appId,
+      user.userId,
+      razorpaySubscriptionId,
+    );
+  }
 }
+

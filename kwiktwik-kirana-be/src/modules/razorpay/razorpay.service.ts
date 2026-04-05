@@ -16,7 +16,7 @@ import { orderStatusEnum } from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { nanoid } from 'nanoid';
 import { getConfigForAppId } from '../config/config.data';
-import { RazorpaySubscriptionStatuses, RazorpayOrderStatuses, type RazorpayOrderStatus } from '../../common/types/razorpay.types';
+import { RazorpaySubscriptionStatuses, RazorpayOrderStatuses, type RazorpayOrderStatus, type RazorpaySubscriptionEntity, type RazorpaySubscriptionStatus } from '../../common/types/razorpay.types';
 
 interface RazorpayCredentials {
   key_id: string;
@@ -497,6 +497,121 @@ export class RazorpayService {
   async getPlan(appId: string, planId: string) {
     const razorpay = this.getRazorpayInstance(appId);
     return razorpay.plans.fetch(planId);
+  }
+
+  /**
+   * Fetch live subscription status from Razorpay using subscriptions.fetch(id).
+   *
+   * Source of truth is always Razorpay — local DB may be stale if webhook
+   * was missed. Automatically syncs local status if Razorpay differs.
+   *
+   * Client should call this after payment when the callback was not received,
+   * instead of creating a new subscription.
+   */
+  async getSubscriptionStatus(
+    appId: string,
+    userId: string,
+    razorpaySubscriptionId: string,
+  ): Promise<{
+    razorpaySubscriptionId: string;
+    status: string;             // Live status from Razorpay
+    localStatus: string | null; // Status in our DB before sync
+    synced: boolean;            // true if we updated local DB to match Razorpay
+    planId: string | null;
+    paidCount: number;
+    remainingCount: number | null;
+    chargeAt: Date | null;      // Next billing date
+    isActive: boolean;          // shorthand: status === 'active'
+  }> {
+    const razorpay = this.getRazorpayInstance(appId);
+
+    this.logger.log(
+      `[getSubscriptionStatus] Fetching | razorpaySubId=${razorpaySubscriptionId} userId=${userId} appId=${appId}`,
+    );
+
+    // --- 1. Fetch live status from Razorpay ---
+    let razorpaySub: RazorpaySubscriptionEntity;
+    try {
+      razorpaySub = (await razorpay.subscriptions.fetch(
+        razorpaySubscriptionId,
+      )) as unknown as RazorpaySubscriptionEntity;
+    } catch (error) {
+      const err = error as { error?: { description?: string } };
+      this.logger.error(
+        `[getSubscriptionStatus] ❌ Razorpay fetch failed | subId=${razorpaySubscriptionId}`,
+        err,
+      );
+      throw new BadRequestException(
+        err?.error?.description ||
+          `Subscription ${razorpaySubscriptionId} not found on Razorpay`,
+      );
+    }
+
+    // --- 2. Look up local subscription row ---
+    const localRows = await this.db
+      .select({
+        id: schema.subscriptions.id,
+        status: schema.subscriptions.status,
+        userId: schema.subscriptions.userId,
+      })
+      .from(schema.subscriptions)
+      .where(
+        and(
+          eq(schema.subscriptions.razorpaySubscriptionId, razorpaySubscriptionId),
+          eq(schema.subscriptions.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    const localRow = localRows[0] ?? null;
+    const localStatus = localRow?.status ?? null;
+
+    // --- 3. Sync local DB if Razorpay status differs ---
+    let synced = false;
+    // razorpaySub.status is already typed as RazorpaySubscriptionStatus via the entity type
+    const razorpayStatus: RazorpaySubscriptionStatus = razorpaySub.status;
+
+    if (localRow && localRow.status !== razorpayStatus) {
+      this.logger.log(
+        `[getSubscriptionStatus] ⚠️ Status mismatch — local='${localRow.status}' razorpay='${razorpayStatus}' — syncing local DB`,
+      );
+      await this.db
+        .update(schema.subscriptions)
+        .set({
+          status: razorpayStatus,
+          ...(razorpaySub.charge_at && {
+            chargeAt: new Date(razorpaySub.charge_at * 1000),
+          }),
+          paidCount: razorpaySub.paid_count,
+          remainingCount: razorpaySub.remaining_count ?? undefined,
+          updatedAt: new Date(),
+        })
+        .where(
+          eq(
+            schema.subscriptions.razorpaySubscriptionId,
+            razorpaySubscriptionId,
+          ),
+        );
+      synced = true;
+    }
+
+    this.logger.log(
+      `[getSubscriptionStatus] ✅ Done | status=${razorpayStatus} synced=${synced}`,
+    );
+
+    return {
+      razorpaySubscriptionId: razorpaySub.id,
+      status: razorpayStatus,
+      localStatus,
+      synced,
+      planId: razorpaySub.plan_id ?? null,
+      paidCount: razorpaySub.paid_count,
+      remainingCount: razorpaySub.remaining_count ?? null,
+      chargeAt: razorpaySub.charge_at
+        ? new Date(razorpaySub.charge_at * 1000)
+        : null,
+      isActive: razorpayStatus === RazorpaySubscriptionStatuses.ACTIVE,
+    };
   }
 
   /**
