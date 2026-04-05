@@ -28,7 +28,10 @@ export default function Login() {
     try {
       const res = await fetch('/api/v1/auth/send-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-App-ID': 'com.paymentalert.app'
+        },
         body: JSON.stringify({ phoneNumber: mobileNumber, appHash }),
       });
 
@@ -57,7 +60,10 @@ export default function Login() {
     try {
       const res = await fetch('/api/v1/auth/login/otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-App-ID': 'com.paymentalert.app'
+        },
         body: JSON.stringify({ phoneNumber: mobileNumber, code: otpCode }),
       });
 
