@@ -26,7 +26,7 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await fetch('/v1/auth/send-otp', {
+      const res = await fetch('/api/v1/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: mobileNumber, appHash }),
@@ -55,7 +55,7 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await fetch('/v1/auth/login/otp', {
+      const res = await fetch('/api/v1/auth/login/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: mobileNumber, code: otpCode }),
