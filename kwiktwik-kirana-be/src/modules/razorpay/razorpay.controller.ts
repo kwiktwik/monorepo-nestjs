@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Param,
+  Query,
   UseGuards,
   Logger,
   Headers,
@@ -117,5 +118,57 @@ export class RazorpayController {
   @ApiResponse({ status: 400, description: 'Plan not found' })
   async getPlan(@AppId() appId: string, @Param('plan_id') planId: string) {
     return this.razorpayService.getPlan(appId, planId);
+  }
+
+  /**
+   * Check the live status of a Razorpay order before creating a new one.
+   *
+   * Client flow:
+   *   1. Store the razorpay_order_id locally when an order is created.
+   *   2. If the payment callback is not received, call this endpoint.
+   *   3. If `alreadyPaid === true`  → payment was successful, skip re-ordering.
+   *   4. If `alreadyPaid === false` → safe to retry / create a new order.
+   */
+  @Get('orders/:razorpayOrderId/status')
+  @ApiOperation({
+    summary: 'Check pre-existing order status (anti-duplicate guard)',
+    description:
+      'Fetches live order status from Razorpay via instance.orders.fetch(). ' +
+      'Call this BEFORE creating a new order when a previous payment callback was missed. ' +
+      'If alreadyPaid is true, the user has already been charged — do NOT create another order.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Order status returned. Check `alreadyPaid` field before proceeding.',
+    schema: {
+      example: {
+        razorpayOrderId: 'order_ABC123',
+        status: 'paid',
+        amount: 199,
+        currency: 'INR',
+        attempts: 1,
+        localStatus: 'captured',
+        subscriptionStatus: 'active',
+        alreadyPaid: true,
+        localOrderId: 'ord_x1y2',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Order not found on Razorpay' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getOrderStatus(
+    @CurrentUser() user: { userId: string },
+    @AppId() appId: string,
+    @Param('razorpayOrderId') razorpayOrderId: string,
+  ) {
+    this.logger.log(
+      `[getOrderStatus] userId=${user.userId} appId=${appId} razorpayOrderId=${razorpayOrderId}`,
+    );
+    return this.razorpayService.getOrderStatus(
+      appId,
+      user.userId,
+      razorpayOrderId,
+    );
   }
 }

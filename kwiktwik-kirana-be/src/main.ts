@@ -103,6 +103,7 @@ async function bootstrap() {
     .addTag('feed', 'Home Feed & Categories')
     .addTag('health', 'Health Check')
     .addTag('events', 'Notification Events')
+    .addTag('razorpay', 'Razorpay Payments & Subscriptions')
     .addTag('PhonePe Autopay', 'PhonePe Autopay Subscription and Payment APIs')
     .addTag('admin', 'Admin Scripts & Management')
     .addTag('admin-phonepe', 'Admin PhonePe Management')

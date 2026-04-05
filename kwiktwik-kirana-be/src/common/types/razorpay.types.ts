@@ -109,6 +109,19 @@ export const RazorpaySubscriptionStatuses = {
   EXPIRED: 'expired',
 } as const;
 
+/**
+ * Razorpay order status constants.
+ * Lifecycle: created → attempted → paid
+ */
+export const RazorpayOrderStatuses = {
+  CREATED: 'created',    // Order created, payment not attempted yet
+  ATTEMPTED: 'attempted', // Payment started but not completed
+  PAID: 'paid',          // Payment successful — DO NOT create another order
+} as const;
+
+export type RazorpayOrderStatus =
+  (typeof RazorpayOrderStatuses)[keyof typeof RazorpayOrderStatuses];
+
 export interface RazorpayOrderEntity {
   id: string;
   entity: string;

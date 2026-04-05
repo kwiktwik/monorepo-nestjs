@@ -12,10 +12,11 @@ import Razorpay from 'razorpay';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
+import { orderStatusEnum } from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { nanoid } from 'nanoid';
 import { getConfigForAppId } from '../config/config.data';
-import { RazorpaySubscriptionStatuses } from '../../common/types/razorpay.types';
+import { RazorpaySubscriptionStatuses, RazorpayOrderStatuses, type RazorpayOrderStatus } from '../../common/types/razorpay.types';
 
 interface RazorpayCredentials {
   key_id: string;
@@ -478,5 +479,118 @@ export class RazorpayService {
   async getPlan(appId: string, planId: string) {
     const razorpay = this.getRazorpayInstance(appId);
     return razorpay.plans.fetch(planId);
+  }
+
+  /**
+   * Fetch live order status from Razorpay and reconcile with local DB.
+   * Client should call this before creating a new order to detect an
+   * already-paid (but callback-missed) order and avoid duplicate charges.
+   */
+  async getOrderStatus(
+    appId: string,
+    userId: string,
+    razorpayOrderId: string,
+  ): Promise<{
+    razorpayOrderId: string;
+    status: string;          // Razorpay live status: created | attempted | paid
+    amount: number;          // in rupees
+    currency: string;
+    attempts: number;
+    localStatus: string | null;    // status stored in our DB
+    subscriptionStatus: string | null; // associated subscription status if any
+    alreadyPaid: boolean;   // true when Razorpay says 'paid' — DO NOT re-charge
+    localOrderId: string | null;   // internal order ID from our DB
+  }> {
+    const razorpay = this.getRazorpayInstance(appId);
+
+    this.logger.log(
+      `[getOrderStatus] Fetching order | razorpayOrderId=${razorpayOrderId} userId=${userId} appId=${appId}`,
+    );
+
+    // --- 1. Fetch live status from Razorpay ---
+    let razorpayOrder: {
+      id: string;
+      status: RazorpayOrderStatus;
+      amount: number;
+      currency: string;
+      attempts: number;
+    };
+    try {
+      razorpayOrder = (await razorpay.orders.fetch(razorpayOrderId)) as typeof razorpayOrder;
+    } catch (error) {
+      const err = error as { error?: { description?: string } };
+      this.logger.error(
+        `[getOrderStatus] ❌ Failed to fetch order from Razorpay | orderId=${razorpayOrderId}`,
+        err,
+      );
+      throw new BadRequestException(
+        err?.error?.description || `Order ${razorpayOrderId} not found on Razorpay`,
+      );
+    }
+
+    // --- 2. Look up our local order row ---
+    const localOrders = await this.db
+      .select({
+        id: schema.orders.id,
+        status: schema.orders.status,
+        userId: schema.orders.userId,
+      })
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.razorpayOrderId, razorpayOrderId),
+          eq(schema.orders.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    const localOrder = localOrders[0] ?? null;
+
+    // --- 3. Look up subscription linked to this user+app ---
+    const localSubs = await this.db
+      .select({ status: schema.subscriptions.status })
+      .from(schema.subscriptions)
+      .where(
+        and(
+          eq(schema.subscriptions.userId, userId),
+          eq(schema.subscriptions.appId, appId),
+        ),
+      )
+      .orderBy(schema.subscriptions.createdAt)
+      .limit(1);
+
+    const subscriptionStatus = localSubs[0]?.status ?? null;
+
+    const alreadyPaid = razorpayOrder.status === RazorpayOrderStatuses.PAID;
+
+    // --- 4. If Razorpay says paid but our local order is not captured, sync it ---
+    // Use orderStatusEnum.enumValues (from DB schema) so this stays in sync
+    // with the DB column definition — no magic strings.
+    const CAPTURED = orderStatusEnum.enumValues[2]; // 'captured'
+    if (alreadyPaid && localOrder && localOrder.status !== CAPTURED) {
+      this.logger.log(
+        `[getOrderStatus] ⚠️ Order ${razorpayOrderId} is paid on Razorpay but local status is '${localOrder.status}' — auto-syncing to ${CAPTURED}`,
+      );
+      await this.db
+        .update(schema.orders)
+        .set({ status: CAPTURED, updatedAt: new Date() })
+        .where(eq(schema.orders.razorpayOrderId, razorpayOrderId));
+    }
+
+    this.logger.log(
+      `[getOrderStatus] ✅ Done | razorpayStatus=${razorpayOrder.status} localStatus=${localOrder?.status ?? 'N/A'} alreadyPaid=${alreadyPaid}`,
+    );
+
+    return {
+      razorpayOrderId: razorpayOrder.id,
+      status: razorpayOrder.status,
+      amount: razorpayOrder.amount / 100, // convert paise → rupees
+      currency: razorpayOrder.currency,
+      attempts: razorpayOrder.attempts,
+      localStatus: localOrder?.status ?? null,
+      subscriptionStatus,
+      alreadyPaid,
+      localOrderId: localOrder?.id ?? null,
+    };
   }
 }
