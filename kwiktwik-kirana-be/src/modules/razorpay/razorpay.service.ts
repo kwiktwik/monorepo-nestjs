@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
 import Razorpay from 'razorpay';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { orderStatusEnum } from '../../database/schema';
@@ -183,27 +183,45 @@ export class RazorpayService {
       );
     }
 
-    // Check if user already has an active subscription
+    // Block if user already has a blocking subscription.
+    // Statuses and why each is blocked:
+    //   'active'        → subscription is live and billing
+    //   'authenticated' → user completed UPI mandate, webhook may just be delayed
+    //   'created'       → subscription exists on Razorpay; if created within the
+    //                     last 24h it likely means payment happened but webhook
+    //                     was missed. Older 'created' rows are treated as abandoned.
     this.logger.log(
-      `[createSubscriptionV2] Checking for existing active subscription | userId=${userId} appId=${appId}`,
+      `[createSubscriptionV2] Checking for blocking subscription | userId=${userId} appId=${appId}`,
     );
-    const existingActiveSubscription = await this.db
-      .select()
+
+    const blockingStatuses = [
+      RazorpaySubscriptionStatuses.ACTIVE,
+      RazorpaySubscriptionStatuses.AUTHENTICATED,
+    ];
+
+    // Check active/authenticated — these always block
+    const existingBlockingSubscription = await this.db
+      .select({ id: schema.subscriptions.id, status: schema.subscriptions.status })
       .from(schema.subscriptions)
       .where(
         and(
           eq(schema.subscriptions.userId, userId),
           eq(schema.subscriptions.appId, appId),
-          eq(schema.subscriptions.status, RazorpaySubscriptionStatuses.ACTIVE),
+          inArray(schema.subscriptions.status, blockingStatuses),
         ),
       )
       .limit(1);
 
-    if (existingActiveSubscription.length > 0) {
+    if (existingBlockingSubscription.length > 0) {
+      const blockingStatus = existingBlockingSubscription[0].status;
       this.logger.warn(
-        `[createSubscriptionV2] ❌ User already has an active subscription | userId=${userId} appId=${appId}`,
+        `[createSubscriptionV2] ❌ Blocked — existing subscription in '${blockingStatus}' state | userId=${userId} appId=${appId}`,
       );
-      throw new BadRequestException('User already has an active subscription');
+      throw new BadRequestException(
+        blockingStatus === RazorpaySubscriptionStatuses.AUTHENTICATED
+          ? 'A subscription mandate is already authenticated. Please wait for confirmation or contact support.'
+          : 'User already has an active subscription',
+      );
     }
 
     const razorpay = this.getRazorpayInstance(appId);
