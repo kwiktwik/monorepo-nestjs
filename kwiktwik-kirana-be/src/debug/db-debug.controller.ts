@@ -179,7 +179,7 @@ export class DbDebugController {
     this.ensureEnabled();
 
     // Check admin authentication
-    if (!this.validateBasicAuth(req)) {
+    if (!this.validateAdminAuth(req)) {
       throw new UnauthorizedException('Authentication required.');
     }
 

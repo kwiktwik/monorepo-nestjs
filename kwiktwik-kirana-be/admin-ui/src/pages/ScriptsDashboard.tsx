@@ -1,18 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Square, Search, Terminal } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdminApi';
+import { useAuth } from '../context/AuthContext';
 
 export default function ScriptsDashboard() {
   const [scripts, setScripts] = useState<string[]>([]);
   const [filteredScripts, setFilteredScripts] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [selectedScript, setSelectedScript] = useState<string | null>(null);
-  
+
   const [args, setArgs] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<{ id: string; text: string; type: 'info' | 'error' | 'stdout' | 'stderr' | 'success' }[]>([]);
+  const [logs, setLogs] = useState<
+    {
+      id: string;
+      text: string;
+      type: 'info' | 'error' | 'stdout' | 'stderr' | 'success';
+    }[]
+  >([]);
   const { fetchApi } = useAdminApi();
-  
+  const { token } = useAuth();
+
   const terminalRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -23,12 +31,20 @@ export default function ScriptsDashboard() {
         setFilteredScripts(data.scripts || []);
       })
       .catch((err) => {
-        setLogs([{ id: Math.random().toString(), text: `Error fetching scripts: ${err.message}`, type: 'error' }]);
+        setLogs([
+          {
+            id: Math.random().toString(),
+            text: `Error fetching scripts: ${err.message}`,
+            type: 'error',
+          },
+        ]);
       });
   }, [fetchApi]);
 
   useEffect(() => {
-    setFilteredScripts(scripts.filter(s => s.toLowerCase().includes(query.toLowerCase())));
+    setFilteredScripts(
+      scripts.filter((s) => s.toLowerCase().includes(query.toLowerCase())),
+    );
   }, [query, scripts]);
 
   useEffect(() => {
@@ -42,27 +58,53 @@ export default function ScriptsDashboard() {
     setArgs('');
   };
 
-  const clearTerm = () => setLogs([{ id: Math.random().toString(), text: `Ready to execute ${selectedScript}.`, type: 'info' }]);
+  const clearTerm = () =>
+    setLogs([
+      {
+        id: Math.random().toString(),
+        text: `Ready to execute ${selectedScript}.`,
+        type: 'info',
+      },
+    ]);
 
-  const logToTerm = (text: string, type: 'info' | 'error' | 'stdout' | 'stderr' | 'success' = 'info') => {
+  const logToTerm = (
+    text: string,
+    type: 'info' | 'error' | 'stdout' | 'stderr' | 'success' = 'info',
+  ) => {
     const lines = text.toString().split('\\n').filter(Boolean);
-    const newLogs = lines.map((line) => ({ id: Math.random().toString(), text: line, type }));
+    const newLogs = lines.map((line) => ({
+      id: Math.random().toString(),
+      text: line,
+      type,
+    }));
     setLogs((prev) => [...prev, ...newLogs]);
   };
 
   const runScript = () => {
     if (!selectedScript) return;
     clearTerm();
-    
-    const rawArgs = args.split(',').map(s => s.trim()).filter(Boolean);
+
+    const rawArgs = args
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const argStr = JSON.stringify(rawArgs);
-    
-    logToTerm(`$ node scripts/${selectedScript} ${rawArgs.join(' ')}\n`, 'info');
+
+    logToTerm(
+      `$ node scripts/${selectedScript} ${rawArgs.join(' ')}\n`,
+      'info',
+    );
     setIsRunning(true);
 
-    const url = new URL(`/api/admin/scripts/${selectedScript}/stream`, window.location.origin);
+    const url = new URL(
+      `/api/admin/scripts/${selectedScript}/stream`,
+      window.location.origin,
+    );
     url.searchParams.set('args', argStr);
-    url.searchParams.set('token', localStorage.getItem('admin_token') || '');
+    // Use token from AuthContext (memory) instead of localStorage for security
+    if (token) {
+      url.searchParams.set('token', token);
+    }
 
     const eventSource = new EventSource(url.href);
     eventSourceRef.current = eventSource;
@@ -71,11 +113,20 @@ export default function ScriptsDashboard() {
       try {
         const payload = JSON.parse(e.data);
         switch (payload.type) {
-          case 'stdout': logToTerm(payload.data, 'stdout'); break;
-          case 'stderr': logToTerm(payload.data, 'stderr'); break;
-          case 'error': logToTerm(`[ERROR] ${payload.data}`, 'error'); break;
+          case 'stdout':
+            logToTerm(payload.data, 'stdout');
+            break;
+          case 'stderr':
+            logToTerm(payload.data, 'stderr');
+            break;
+          case 'error':
+            logToTerm(`[ERROR] ${payload.data}`, 'error');
+            break;
           case 'done':
-            logToTerm(`\n[Process exited with code ${payload.code}]`, payload.code === 0 ? 'success' : 'error');
+            logToTerm(
+              `\n[Process exited with code ${payload.code}]`,
+              payload.code === 0 ? 'success' : 'error',
+            );
             eventSource.close();
             setIsRunning(false);
             break;
@@ -117,7 +168,11 @@ export default function ScriptsDashboard() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredScripts.length === 0 && <div className="text-center p-4 text-xs text-white/40">No scripts found.</div>}
+          {filteredScripts.length === 0 && (
+            <div className="text-center p-4 text-xs text-white/40">
+              No scripts found.
+            </div>
+          )}
           {filteredScripts.map((script) => (
             <div
               key={script}
@@ -128,7 +183,9 @@ export default function ScriptsDashboard() {
                   : 'hover:bg-white/5 border-transparent text-white/70'
               }`}
             >
-              <Terminal className={`w-4 h-4 ${selectedScript === script ? 'text-primary' : 'text-white/30'}`} />
+              <Terminal
+                className={`w-4 h-4 ${selectedScript === script ? 'text-primary' : 'text-white/30'}`}
+              />
               <span className="truncate">{script}</span>
             </div>
           ))}
@@ -140,10 +197,13 @@ export default function ScriptsDashboard() {
         <div className="px-8 py-5 border-b border-white/5 flex items-center justify-between shrink-0 h-[88px]">
           <div>
             <h2 className="text-2xl font-bold text-white/90 tracking-tight flex items-center gap-3">
-              <span className="text-white/30">/</span> {selectedScript || 'Select script'}
+              <span className="text-white/30">/</span>{' '}
+              {selectedScript || 'Select script'}
             </h2>
           </div>
-          <div className={`flex gap-3 transition-opacity duration-300 ${!selectedScript ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div
+            className={`flex gap-3 transition-opacity duration-300 ${!selectedScript ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          >
             <input
               value={args}
               onChange={(e) => setArgs(e.target.value)}
@@ -175,24 +235,36 @@ export default function ScriptsDashboard() {
             <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
             <div className="w-3 h-3 rounded-full bg-green-500/80" />
             <div className="flex-1 text-center text-xs font-mono text-white/30 truncate px-4">
-              {selectedScript ? `node scripts/${selectedScript}` : 'terminal - ksh'}
+              {selectedScript
+                ? `node scripts/${selectedScript}`
+                : 'terminal - ksh'}
             </div>
           </div>
-          <div ref={terminalRef} className="flex-1 bg-black/80 rounded-b-xl border border-white/10 p-4 pt-10 font-mono text-sm overflow-y-auto shadow-2xl space-y-1">
+          <div
+            ref={terminalRef}
+            className="flex-1 bg-black/80 rounded-b-xl border border-white/10 p-4 pt-10 font-mono text-sm overflow-y-auto shadow-2xl space-y-1"
+          >
             {logs.length === 0 && (
               <>
-                <span className="text-white/30 block mb-1">Welcome to KwikTwik Commander.</span>
-                <span className="text-white/30 block mb-1">Select a script from the sidebar and execute.</span>
+                <span className="text-white/30 block mb-1">
+                  Welcome to KwikTwik Commander.
+                </span>
+                <span className="text-white/30 block mb-1">
+                  Select a script from the sidebar and execute.
+                </span>
               </>
             )}
             {logs.map((log) => (
               <span
                 key={log.id}
                 className={`block break-all mb-0.5 ${
-                  log.type === 'error' || log.type === 'stderr' ? 'text-red-400'
-                    : log.type === 'success' ? 'text-green-400'
-                    : log.type === 'info' ? 'text-blue-300'
-                    : 'text-gray-300'
+                  log.type === 'error' || log.type === 'stderr'
+                    ? 'text-red-400'
+                    : log.type === 'success'
+                      ? 'text-green-400'
+                      : log.type === 'info'
+                        ? 'text-blue-300'
+                        : 'text-gray-300'
                 }`}
               >
                 {log.text}

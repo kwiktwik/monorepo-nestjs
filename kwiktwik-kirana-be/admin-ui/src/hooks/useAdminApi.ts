@@ -2,9 +2,6 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-interface ApiOptions extends RequestInit {
-  endpoint: string;
-}
 
 export function useAdminApi() {
   const [loading, setLoading] = useState(false);
@@ -12,12 +9,12 @@ export function useAdminApi() {
   const navigate = useNavigate();
   const { logout } = useAuth(); // Assume we have a logout function in AuthContext
 
-  const fetchApi = useCallback(async <T = any>({ endpoint, ...options }: ApiOptions): Promise<T> => {
+  const fetchApi = useCallback(async <T = any>(path: string, options: RequestInit = {}): Promise<T> => {
     setLoading(true);
     setError(null);
     try {
       // Use credentials: 'include' to automatically send the HttpOnly cookie
-      const res = await fetch(`/api/admin${endpoint}`, {
+      const res = await fetch(`${path.startsWith('/api') ? '' : '/api/admin'}${path}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
