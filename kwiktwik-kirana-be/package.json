@@ -10,6 +10,8 @@
     "pretest": "npm run test:db:setup",
     "prebuild": "npm run test",
     "build": "nest build",
+    "build:frontend": "npm --prefix admin-ui run build",
+    "build:all": "npm run build && npm run build:frontend",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

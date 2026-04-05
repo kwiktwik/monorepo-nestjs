@@ -1,8 +1,33 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { TerminalSquare, CreditCard, ShieldCheck, Activity } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  TerminalSquare,
+  CreditCard,
+  ShieldCheck,
+  Activity,
+  LogOut,
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    // Clear the HttpOnly cookie via backend
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (e) {
+      // Ignore errors - still logout client-side
+    }
+    // Clear token from React state
+    logout();
+    // Redirect to login
+    navigate('/login');
+  };
 
   const getSystemStatus = () => {
     if (location.pathname.includes('phonepe')) {
@@ -41,11 +66,21 @@ export default function Layout() {
             <h1 className="font-bold text-lg tracking-tight text-white/90">
               KwikTwik Commander
             </h1>
-            <p className="text-xs text-white/50 leading-none">Global Admin Dashboard</p>
+            <p className="text-xs text-white/50 leading-none">
+              Global Admin Dashboard
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           {getSystemStatus()}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-xs font-medium">Logout</span>
+          </button>
         </div>
       </header>
 
@@ -54,13 +89,17 @@ export default function Layout() {
         {/* Sidebar */}
         <aside className="w-72 glass-panel border-r border-white/10 flex flex-col shrink-0 relative shadow-2xl z-10">
           <div className="p-4 border-b border-white/5">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">Navigation</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">
+              Navigation
+            </h2>
             <div className="space-y-2">
               <NavLink
                 to="/"
                 className={({ isActive }) =>
                   `flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border group ${
-                    isActive ? 'bg-primary/20 border-primary/30 text-white' : 'hover:bg-white/5 border-transparent text-white/70'
+                    isActive
+                      ? 'bg-primary/20 border-primary/30 text-white'
+                      : 'hover:bg-white/5 border-transparent text-white/70'
                   }`
                 }
               >
@@ -72,7 +111,9 @@ export default function Layout() {
                 to="/phonepe"
                 className={({ isActive }) =>
                   `flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border group ${
-                    isActive ? 'bg-phonepe/20 border-phonepe/30 text-white' : 'hover:bg-white/5 border-transparent text-white/70 hover:text-phonepe-light'
+                    isActive
+                      ? 'bg-phonepe/20 border-phonepe/30 text-white'
+                      : 'hover:bg-white/5 border-transparent text-white/70 hover:text-phonepe-light'
                   }`
                 }
               >
@@ -80,7 +121,9 @@ export default function Layout() {
                   <ShieldCheck className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium text-sm block truncate">PhonePe Utilities</span>
+                  <span className="font-medium text-sm block truncate">
+                    PhonePe Utilities
+                  </span>
                 </div>
               </NavLink>
 
@@ -88,7 +131,9 @@ export default function Layout() {
                 to="/razorpay"
                 className={({ isActive }) =>
                   `flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border group ${
-                    isActive ? 'bg-razorpay/80 border-razorpay-light/50 text-white' : 'hover:bg-white/5 border-transparent text-white/70 hover:text-razorpay-accent'
+                    isActive
+                      ? 'bg-razorpay/80 border-razorpay-light/50 text-white'
+                      : 'hover:bg-white/5 border-transparent text-white/70 hover:text-razorpay-accent'
                   }`
                 }
               >
@@ -96,10 +141,23 @@ export default function Layout() {
                   <CreditCard className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium text-sm block truncate">Razorpay Utilities</span>
+                  <span className="font-medium text-sm block truncate">
+                    Razorpay Utilities
+                  </span>
                 </div>
               </NavLink>
             </div>
+          </div>
+
+          {/* Logout at bottom of sidebar */}
+          <div className="mt-auto p-4 border-t border-white/5">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium text-sm">Logout</span>
+            </button>
           </div>
         </aside>
 
