@@ -630,7 +630,6 @@ export class RazorpayService {
     currency: string;
     attempts: number;
     localStatus: string | null;    // status stored in our DB
-    subscriptionStatus: string | null; // associated subscription status if any
     alreadyPaid: boolean;   // true when Razorpay says 'paid' — DO NOT re-charge
     localOrderId: string | null;   // internal order ID from our DB
   }> {
@@ -679,24 +678,9 @@ export class RazorpayService {
 
     const localOrder = localOrders[0] ?? null;
 
-    // --- 3. Look up subscription linked to this user+app ---
-    const localSubs = await this.db
-      .select({ status: schema.subscriptions.status })
-      .from(schema.subscriptions)
-      .where(
-        and(
-          eq(schema.subscriptions.userId, userId),
-          eq(schema.subscriptions.appId, appId),
-        ),
-      )
-      .orderBy(schema.subscriptions.createdAt)
-      .limit(1);
-
-    const subscriptionStatus = localSubs[0]?.status ?? null;
-
     const alreadyPaid = razorpayOrder.status === RazorpayOrderStatuses.PAID;
 
-    // --- 4. If Razorpay says paid but our local order is not captured, sync it ---
+    // --- 3. If Razorpay says paid but our local order is not captured, sync it ---
     // Use orderStatusEnum.enumValues (from DB schema) so this stays in sync
     // with the DB column definition — no magic strings.
     const CAPTURED = orderStatusEnum.enumValues[2]; // 'captured'
@@ -721,7 +705,6 @@ export class RazorpayService {
       currency: razorpayOrder.currency,
       attempts: razorpayOrder.attempts,
       localStatus: localOrder?.status ?? null,
-      subscriptionStatus,
       alreadyPaid,
       localOrderId: localOrder?.id ?? null,
     };

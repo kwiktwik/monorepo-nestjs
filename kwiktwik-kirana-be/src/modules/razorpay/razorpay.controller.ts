@@ -149,7 +149,6 @@ export class RazorpayController {
         currency: 'INR',
         attempts: 1,
         localStatus: 'captured',
-        subscriptionStatus: 'active',
         alreadyPaid: true,
         localOrderId: 'ord_x1y2',
       },
