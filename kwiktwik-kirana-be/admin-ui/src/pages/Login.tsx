@@ -1,23 +1,53 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mobileNumber) {
       setError('Mobile number is required');
       return;
     }
 
-    // Save mobile number as raw token for simplicity,
-    // assuming backend uses Bearer token with this value.
-    localStorage.setItem('admin_token', mobileNumber);
-    navigate('/');
+    setLoading(true);
+    setError('');
+
+    try {
+      // Backend prefix relies on standard Nest JS setup under /api
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mobileNumber }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const data = await res.json();
+      
+      if (data.token) {
+        // Securely keep token in memory ONLY via context
+        login(data.token);
+        navigate('/');
+      } else {
+        throw new Error('No token returned');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

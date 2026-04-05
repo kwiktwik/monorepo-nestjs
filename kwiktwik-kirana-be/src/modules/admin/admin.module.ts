@@ -20,6 +20,11 @@ const adminAuthMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
+  // Allow the login endpoint to be unauthenticated!
+  if (req.path === '/api/admin/login') {
+    return next();
+  }
+
   let token = '';
 
   const authHeader = req.headers.authorization || '';
@@ -29,20 +34,23 @@ const adminAuthMiddleware = (
     token = req.query.token as string;
   }
 
-  const expectedMobile = process.env.ADMIN_MOBILE_NUMBER;
-
-  if (!expectedMobile) {
-    console.error(
-      '[Security] Admin credentials not configured. Set ADMIN_MOBILE_NUMBER environment variable.',
-    );
-    res
-      .status(503)
-      .json({ message: 'Service Unavailable - Admin authentication not configured.' });
+  if (!token) {
+    res.status(401).json({ message: 'Authentication required' });
     return;
   }
 
-  if (token && token === expectedMobile) {
-    return next();
+  try {
+    const jwt = require('jsonwebtoken'); // Use the globally installed jsonwebtoken
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key-change-this',
+    ) as any;
+
+    if (decoded.role === 'admin') {
+      return next();
+    }
+  } catch (e) {
+    // ignore validation failures, will fallback to 401
   }
 
   res.status(401).json({ message: 'Authentication required' });
