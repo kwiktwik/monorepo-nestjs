@@ -9,6 +9,7 @@ import { join } from 'path';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PhonePeAdminController } from './phonepe-admin.controller';
+import { RazorpayAdminController } from './razorpay-admin.controller';
 import { PhonePeV2Module } from '../phonepe-v2/phonepe-v2.module';
 import { RazorpayModule } from '../razorpay/razorpay.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
@@ -55,7 +56,11 @@ const basicAuthMiddleware = (
     RazorpayModule,
     AnalyticsModule,
   ],
-  controllers: [AdminController, PhonePeAdminController],
+  controllers: [
+    AdminController,
+    PhonePeAdminController,
+    RazorpayAdminController,
+  ],
   providers: [AdminService],
 })
 export class AdminModule implements NestModule {

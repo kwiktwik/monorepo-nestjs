@@ -7,7 +7,7 @@ import {
   ExecutionContext,
   NotFoundException,
 } from '@nestjs/common';
-import request, { App } from 'supertest';
+import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
@@ -76,7 +76,7 @@ describe('UserController', () => {
       };
       mockUserService.getUserProfile.mockResolvedValue(mockUser);
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .get('/user/v1')
         .set('X-App-ID', 'com.test.app');
       const response = { status: res.status, body: res.body as UserResponse };
@@ -91,7 +91,7 @@ describe('UserController', () => {
         new NotFoundException('User not found'),
       );
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .get('/user/v1')
         .set('X-App-ID', 'com.test.app');
 
@@ -107,7 +107,7 @@ describe('UserController', () => {
       ];
       mockUserService.getUserImages.mockResolvedValue(mockImages);
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .get('/user/image/v1')
         .set('X-App-ID', 'com.test.app');
       const response = { status: res.status, body: res.body as UserResponse };
@@ -122,7 +122,7 @@ describe('UserController', () => {
     it('should delete user image', async () => {
       mockUserService.deleteUserImage.mockResolvedValue(undefined);
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .delete('/user/image/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ imageId: 1 });
@@ -137,7 +137,7 @@ describe('UserController', () => {
         new NotFoundException('Image not found'),
       );
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .delete('/user/image/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ imageId: 999 });
@@ -155,7 +155,7 @@ describe('UserController', () => {
       };
       mockUserService.updateUserProfile.mockResolvedValue(updatedUser);
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .post('/user/v1')
         .set('X-App-ID', 'com.test.app')
         .send({ name: 'Updated Name' });
@@ -176,7 +176,7 @@ describe('UserController', () => {
         message: 'User deleted',
       });
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .delete('/user/v1')
         .set('X-App-ID', 'com.test.app');
       const response = { status: res.status, body: res.body as UserResponse };
@@ -190,7 +190,7 @@ describe('UserController', () => {
         new NotFoundException('User not found'),
       );
 
-      const res = await request(app.getHttpServer() as App)
+      const res = await request(app.getHttpServer())
         .delete('/user/v1')
         .set('X-App-ID', 'com.test.app');
 

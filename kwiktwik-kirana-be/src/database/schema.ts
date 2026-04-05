@@ -76,6 +76,26 @@ export const teamNotificationStatusEnum = pgEnum('team_notification_status', [
   'FAILED',
 ]);
 
+// Feature Toggle / Experiment Enums
+export const experimentStatusEnum = pgEnum('experiment_status', [
+  'draft',
+  'running',
+  'paused',
+  'concluded',
+]);
+
+export const identityTypeEnum = pgEnum('identity_type', [
+  'firebaseInstallationId',
+  'deviceId',
+  'userId',
+]);
+
+export const experimentEventTypeEnum = pgEnum('experiment_event_type', [
+  'exposure',
+  'conversion',
+  'custom',
+]);
+
 // Apps table - master list of applications
 export const apps = pgTable(
   'apps',
@@ -1389,6 +1409,219 @@ export const scheduledMessagesRelations = relations(
     }),
   }),
 );
+
+// ============================================================================
+// FEATURE TOGGLE / EXPERIMENT TABLES
+// ============================================================================
+
+/**
+ * Feature Flags - simple on/off toggles per app
+ * Used for simple feature toggles without A/B testing
+ */
+export const featureFlags = pgTable(
+  'feature_flags',
+  {
+    id: serial('id').primaryKey(),
+    key: varchar('key', { length: 100 }).notNull(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    description: text('description'),
+    defaultValue: jsonb('default_value')
+      .$type<{ enabled: boolean; value?: unknown }>()
+      .notNull()
+      .default({ enabled: false }),
+    isEnabled: boolean('is_enabled').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    keyAppIdx: unique('feature_flags_key_app_unique').on(table.key, table.appId),
+    appIdx: index('feature_flags_app_idx').on(table.appId),
+  }),
+).enableRLS();
+
+export const featureFlagsRelations = relations(featureFlags, ({ one }) => ({
+  app: one(apps, {
+    fields: [featureFlags.appId],
+    references: [apps.id],
+  }),
+}));
+
+/**
+ * Experiments - A/B tests with cohorts
+ */
+export const experiments = pgTable(
+  'experiments',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    appId: text('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    featureFlagId: integer('feature_flag_id').references(() => featureFlags.id),
+    status: experimentStatusEnum('status').notNull().default('draft'),
+    trafficAllocation: integer('traffic_allocation').default(100).notNull(), // 0-100%
+    startDate: timestamp('start_date'),
+    endDate: timestamp('end_date'),
+    metadata: jsonb('metadata')
+      .$type<{
+        description?: string;
+        hypothesis?: string;
+        successMetric?: string;
+      }>()
+      .default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    appIdx: index('experiments_app_idx').on(table.appId),
+    statusIdx: index('experiments_status_idx').on(table.status),
+    appStatusIdx: index('experiments_app_status_idx').on(
+      table.appId,
+      table.status,
+    ),
+  }),
+).enableRLS();
+
+export const experimentsRelations = relations(experiments, ({ one, many }) => ({
+  app: one(apps, {
+    fields: [experiments.appId],
+    references: [apps.id],
+  }),
+  featureFlag: one(featureFlags, {
+    fields: [experiments.featureFlagId],
+    references: [featureFlags.id],
+  }),
+  cohorts: many(experimentCohorts),
+  assignments: many(userExperimentAssignments),
+  events: many(experimentEvents),
+}));
+
+/**
+ * Experiment Cohorts - variants within an experiment (control, variant_a, etc.)
+ */
+export const experimentCohorts = pgTable(
+  'experiment_cohorts',
+  {
+    id: serial('id').primaryKey(),
+    experimentId: integer('experiment_id')
+      .notNull()
+      .references(() => experiments.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 100 }).notNull(), // 'control', 'variant_a'
+    weight: integer('weight').notNull().default(50), // traffic split weight
+    config: jsonb('config')
+      .$type<Record<string, unknown>>()
+      .default({}), // variant-specific config
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    experimentIdx: index('experiment_cohorts_experiment_idx').on(
+      table.experimentId,
+    ),
+  }),
+).enableRLS();
+
+export const experimentCohortsRelations = relations(
+  experimentCohorts,
+  ({ one, many }) => ({
+    experiment: one(experiments, {
+      fields: [experimentCohorts.experimentId],
+      references: [experiments.id],
+    }),
+    assignments: many(userExperimentAssignments),
+  }),
+);
+
+/**
+ * User/Device Experiment Assignments - persistent cohort assignment
+ * Uses subjectId (firebaseInstallationId, deviceId, or userId) for identity
+ */
+export const userExperimentAssignments = pgTable(
+  'user_experiment_assignments',
+  {
+    id: serial('id').primaryKey(),
+    subjectId: text('subject_id').notNull(), // firebaseInstallationId | deviceId | userId
+    subjectType: identityTypeEnum('subject_type').notNull(),
+    appId: text('app_id').notNull(),
+    experimentId: integer('experiment_id')
+      .notNull()
+      .references(() => experiments.id, { onDelete: 'cascade' }),
+    cohortId: integer('cohort_id')
+      .notNull()
+      .references(() => experimentCohorts.id, { onDelete: 'cascade' }),
+    assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    subjectExperimentIdx: unique(
+      'uea_subject_experiment_unique',
+    ).on(table.subjectId, table.experimentId),
+    subjectIdx: index('uea_subject_idx').on(table.subjectId),
+    subjectAppIdx: index('uea_subject_app_idx').on(
+      table.subjectId,
+      table.appId,
+    ),
+    experimentIdx: index('uea_experiment_idx').on(table.experimentId),
+  }),
+).enableRLS();
+
+export const userExperimentAssignmentsRelations = relations(
+  userExperimentAssignments,
+  ({ one }) => ({
+    experiment: one(experiments, {
+      fields: [userExperimentAssignments.experimentId],
+      references: [experiments.id],
+    }),
+    cohort: one(experimentCohorts, {
+      fields: [userExperimentAssignments.cohortId],
+      references: [experimentCohorts.id],
+    }),
+  }),
+);
+
+/**
+ * Experiment Events - for analytics and post-experiment analysis
+ */
+export const experimentEvents = pgTable(
+  'experiment_events',
+  {
+    id: bigserial('id', { mode: 'bigint' }).primaryKey(),
+    experimentId: integer('experiment_id')
+      .notNull()
+      .references(() => experiments.id, { onDelete: 'cascade' }),
+    subjectId: text('subject_id').notNull(),
+    appId: text('app_id').notNull(),
+    cohortId: integer('cohort_id')
+      .notNull()
+      .references(() => experimentCohorts.id, { onDelete: 'cascade' }),
+    eventType: experimentEventTypeEnum('event_type').notNull(), // 'exposure', 'conversion', 'custom'
+    eventName: varchar('event_name', { length: 100 }),
+    properties: jsonb('properties')
+      .$type<Record<string, unknown>>()
+      .default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    experimentIdx: index('exp_events_experiment_idx').on(table.experimentId),
+    subjectIdx: index('exp_events_subject_idx').on(table.subjectId),
+    createdIdx: index('exp_events_created_idx').on(table.createdAt),
+    experimentTypeIdx: index('exp_events_experiment_type_idx').on(
+      table.experimentId,
+      table.eventType,
+    ),
+  }),
+).enableRLS();
+
+export const experimentEventsRelations = relations(experimentEvents, ({ one }) => ({
+  experiment: one(experiments, {
+    fields: [experimentEvents.experimentId],
+    references: [experiments.id],
+  }),
+  cohort: one(experimentCohorts, {
+    fields: [experimentEvents.cohortId],
+    references: [experimentCohorts.id],
+  }),
+}));
 
 // Migration logs (for tracking user migrations from kirana-fe)
 export { migrationLogs } from './schema/migration-logs.schema';
