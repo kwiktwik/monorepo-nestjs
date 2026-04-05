@@ -221,18 +221,23 @@ export class AnalyticsService implements OnModuleInit {
       const accessToken = credentials.facebook_access_token;
       const fbAppId = credentials.facebook_app_id;
 
-      // For app events (when fbAppId is present), only accessToken is required
-      // For web events, both pixelId and accessToken are required
-      if (!accessToken) {
+      // For Conversions API, both pixelId and accessToken are required
+      // fbAppId is optional and only used for action_source and app_data
+      if (!accessToken || (!pixelId && !fbAppId)) {
         this.logger.warn(
-          `Facebook access token not configured for app: ${appId}`,
+          `Facebook not configured for app: ${appId}. Missing:`,
+          {
+            hasAccessToken: !!accessToken,
+            hasPixelId: !!pixelId,
+            hasAppId: !!fbAppId,
+          },
         );
         return false;
       }
 
-      if (!fbAppId && !pixelId) {
+      if (!pixelId) {
         this.logger.warn(
-          `Facebook Pixel ID not configured for web events for app: ${appId}`,
+          `Facebook Pixel ID not configured for app: ${appId}. Conversions API requires a Pixel ID.`,
         );
         return false;
       }
@@ -278,9 +283,8 @@ export class AnalyticsService implements OnModuleInit {
     appId?: string,
   ): Promise<boolean> {
     try {
-      // For app events, use App ID in URL; for web events, use Pixel ID
-      const urlId = fbAppId || pixelId;
-      const url = `${CONFIG.facebook.baseUrl}/${urlId}/events?access_token=${accessToken}`;
+      // Conversions API requires Pixel ID - App ID cannot be used as URL parameter
+      const url = `${CONFIG.facebook.baseUrl}/${pixelId}/events?access_token=${accessToken}`;
 
       // Get device data if userId is available
       let deviceData: {
