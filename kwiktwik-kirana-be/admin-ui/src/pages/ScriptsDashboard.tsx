@@ -62,6 +62,7 @@ export default function ScriptsDashboard() {
 
     const url = new URL(`/api/admin/scripts/${selectedScript}/stream`, window.location.origin);
     url.searchParams.set('args', argStr);
+    url.searchParams.set('token', localStorage.getItem('admin_token') || '');
 
     const eventSource = new EventSource(url.href);
     eventSourceRef.current = eventSource;

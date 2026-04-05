@@ -26,28 +26,31 @@ export class DbDebugController {
   ) {}
 
   /**
-   * Validates Basic Auth credentials for admin access
+   * Validates credentials for admin access
    */
-  private validateBasicAuth(req: Request): boolean {
-    const expectedUser = process.env.ADMIN_USER;
-    const expectedPass = process.env.ADMIN_PASSWORD;
+  private validateAdminAuth(req: Request): boolean {
+    const expectedMobile = process.env.ADMIN_MOBILE_NUMBER;
 
-    // Require explicit environment variables for admin credentials
-    if (!expectedUser || !expectedPass) {
+    // Require explicit environment variable for admin credentials
+    if (!expectedMobile) {
       return false;
     }
 
-    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-    const [login, password] = Buffer.from(b64auth, 'base64')
-      .toString()
-      .split(':');
+    let token = '';
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else {
+      // Compatibility with native Basic Auth popup inside the Debug UI browser prompt
+      // If the user inputs their mobile number in the password field, we can extract it.
+      const b64auth = authHeader.split(' ')[1] || '';
+      const [, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+      if (password) {
+        token = password;
+      }
+    }
 
-    return !!(
-      login &&
-      password &&
-      login === expectedUser &&
-      password === expectedPass
-    );
+    return !!(token && token === expectedMobile);
   }
 
   private isEnabled() {
@@ -75,8 +78,8 @@ export class DbDebugController {
     this.ensureEnabled();
 
     // Check admin authentication
-    if (!this.validateBasicAuth(req)) {
-      res.set('WWW-Authenticate', 'Basic realm="Debug DB Access"');
+    if (!this.validateAdminAuth(req)) {
+      res.set('WWW-Authenticate', 'Basic realm="Debug DB Access (Use mobile as password)"');
       res.status(401).send('Authentication required.');
       return;
     }
@@ -203,7 +206,7 @@ export class DbDebugController {
     this.ensureEnabled();
 
     // Check admin authentication
-    if (!req || !this.validateBasicAuth(req)) {
+    if (!req || !this.validateAdminAuth(req)) {
       throw new UnauthorizedException('Authentication required.');
     }
 

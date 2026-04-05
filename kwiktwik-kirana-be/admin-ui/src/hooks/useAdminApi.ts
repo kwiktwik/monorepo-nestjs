@@ -8,17 +8,21 @@ export function useAdminApi() {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(path, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           ...options.headers,
         },
       });
 
-      if (response.status === 401) {
-        // Native basic auth prompt trigger
-        window.location.reload();
+      if (response.status === 401 || response.status === 403) {
+        if (window.location.pathname !== '/admin/login') {
+          localStorage.removeItem('admin_token');
+          window.location.href = '/admin/login';
+        }
         throw new Error('Authentication required');
       }
 

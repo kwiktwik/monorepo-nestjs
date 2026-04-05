@@ -15,42 +15,37 @@ import { RazorpayModule } from '../razorpay/razorpay.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import type { Request, Response, NextFunction } from 'express';
 
-const basicAuthMiddleware = (
+const adminAuthMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  // Simple Basic Auth for internal scripts dashboard
-  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-  const [login, password] = Buffer.from(b64auth, 'base64')
-    .toString()
-    .split(':');
+  let token = '';
 
-  const expectedUser = process.env.ADMIN_USER;
-  const expectedPass = process.env.ADMIN_PASSWORD;
+  const authHeader = req.headers.authorization || '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.query.token) {
+    token = req.query.token as string;
+  }
 
-  // Require explicit environment variables for admin credentials
-  if (!expectedUser || !expectedPass) {
+  const expectedMobile = process.env.ADMIN_MOBILE_NUMBER;
+
+  if (!expectedMobile) {
     console.error(
-      '[Security] Admin credentials not configured. Set ADMIN_USER and ADMIN_PASSWORD environment variables.',
+      '[Security] Admin credentials not configured. Set ADMIN_MOBILE_NUMBER environment variable.',
     );
     res
       .status(503)
-      .send('Service Unavailable - Admin authentication not configured.');
+      .json({ message: 'Service Unavailable - Admin authentication not configured.' });
     return;
   }
 
-  if (
-    login &&
-    password &&
-    login === expectedUser &&
-    password === expectedPass
-  ) {
+  if (token && token === expectedMobile) {
     return next();
   }
 
-  res.set('WWW-Authenticate', 'Basic realm="Admin Scripts Access"');
-  res.status(401).send('Authentication required.');
+  res.status(401).json({ message: 'Authentication required' });
 };
 
 @Module({
@@ -77,9 +72,8 @@ export class AdminModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Protect both the static HTML path and the backend API path
     consumer
-      .apply(basicAuthMiddleware)
+      .apply(adminAuthMiddleware)
       .forRoutes(
-        { path: '/admin*path', method: RequestMethod.ALL },
         { path: '/api/admin*path', method: RequestMethod.ALL },
       );
   }

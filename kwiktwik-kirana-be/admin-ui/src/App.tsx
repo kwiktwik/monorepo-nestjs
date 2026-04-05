@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import ScriptsDashboard from './pages/ScriptsDashboard';
 import PhonePe from './pages/PhonePe';
 import Razorpay from './pages/Razorpay';
+import Login from './pages/Login';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="phonepe" element={<PhonePe />} />
         <Route path="razorpay" element={<Razorpay />} />
       </Route>
+      <Route path="/login" element={<Login />} />
     </Routes>
   );
 }
