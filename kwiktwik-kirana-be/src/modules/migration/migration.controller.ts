@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MigrationService } from './migration.service';
 import {
@@ -26,6 +27,7 @@ import {
 } from './dto/migrate-session.dto';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MigrationProgress } from './interfaces/migration.interfaces';
 
 /**
@@ -34,7 +36,8 @@ import { MigrationProgress } from './interfaces/migration.interfaces';
  * Supports Server-Sent Events for real-time progress updates
  */
 @ApiTags('migration')
-@UseGuards(AppIdGuard)
+@ApiBearerAuth()
+@UseGuards(AppIdGuard, JwtAuthGuard)
 @Controller('v1/migration')
 export class MigrationController {
   constructor(private readonly migrationService: MigrationService) {}

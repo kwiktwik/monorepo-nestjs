@@ -26,9 +26,19 @@ const basicAuthMiddleware = (
     .toString()
     .split(':');
 
-  const expectedUser = process.env.ADMIN_USER || 'admin';
-  const expectedPass =
-    process.env.ADMIN_PASSWORD || 'K!r@nA$Admin_2026_#Secur3'; // Complex default
+  const expectedUser = process.env.ADMIN_USER;
+  const expectedPass = process.env.ADMIN_PASSWORD;
+
+  // Require explicit environment variables for admin credentials
+  if (!expectedUser || !expectedPass) {
+    console.error(
+      '[Security] Admin credentials not configured. Set ADMIN_USER and ADMIN_PASSWORD environment variables.',
+    );
+    res
+      .status(503)
+      .send('Service Unavailable - Admin authentication not configured.');
+    return;
+  }
 
   if (
     login &&

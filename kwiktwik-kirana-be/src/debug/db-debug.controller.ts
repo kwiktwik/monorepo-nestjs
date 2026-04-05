@@ -6,10 +6,14 @@ import {
   NotFoundException,
   Param,
   Query,
+  Req,
+  Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Request, Response } from 'express';
 import { DRIZZLE_TOKEN } from '../database/drizzle.module';
 import * as schema from '../database/schema';
 
@@ -20,6 +24,31 @@ export class DbDebugController {
     @Inject(DRIZZLE_TOKEN)
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
+
+  /**
+   * Validates Basic Auth credentials for admin access
+   */
+  private validateBasicAuth(req: Request): boolean {
+    const expectedUser = process.env.ADMIN_USER;
+    const expectedPass = process.env.ADMIN_PASSWORD;
+
+    // Require explicit environment variables for admin credentials
+    if (!expectedUser || !expectedPass) {
+      return false;
+    }
+
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64')
+      .toString()
+      .split(':');
+
+    return !!(
+      login &&
+      password &&
+      login === expectedUser &&
+      password === expectedPass
+    );
+  }
 
   private isEnabled() {
     return (
@@ -42,10 +71,17 @@ export class DbDebugController {
 
   @Get()
   @Header('content-type', 'text/html; charset=utf-8')
-  ui() {
+  ui(@Req() req: Request, @Res() res: Response) {
     this.ensureEnabled();
+
+    // Check admin authentication
+    if (!this.validateBasicAuth(req)) {
+      res.set('WWW-Authenticate', 'Basic realm="Debug DB Access"');
+      res.status(401).send('Authentication required.');
+      return;
+    }
     // Minimal UI: lists tables and lets you click to preview rows.
-    return `<!doctype html>
+    res.send(`<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -132,12 +168,17 @@ export class DbDebugController {
       loadTables();
     </script>
   </body>
-</html>`;
+</html>`);
   }
 
   @Get('tables')
-  async tables() {
+  async tables(@Req() req: Request) {
     this.ensureEnabled();
+
+    // Check admin authentication
+    if (!this.validateBasicAuth(req)) {
+      throw new UnauthorizedException('Authentication required.');
+    }
 
     const result = await this.db.execute(sql`
       select table_name as name
@@ -157,8 +198,14 @@ export class DbDebugController {
   async tablePreview(
     @Param('name') name: string,
     @Query('limit') limit?: string,
+    @Req() req?: Request,
   ) {
     this.ensureEnabled();
+
+    // Check admin authentication
+    if (!req || !this.validateBasicAuth(req)) {
+      throw new UnauthorizedException('Authentication required.');
+    }
 
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
       throw new NotFoundException();
