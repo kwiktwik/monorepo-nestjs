@@ -27,6 +27,7 @@
     "db:inspect-otp": "node scripts/inspect-otp.mjs",
     "db:push": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
     "db:push:rds": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
+    "db:migrate": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit migrate",
     "db:studio:tunnel": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "db:copy-quotes": "node scripts/copy-quotes-from-kirana-fe.mjs",
