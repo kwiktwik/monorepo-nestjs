@@ -37,7 +37,6 @@ import { MigrationProgress } from './interfaces/migration.interfaces';
  */
 @ApiTags('migration')
 @ApiBearerAuth()
-@UseGuards(AppIdGuard, JwtAuthGuard)
 @Controller('v1/migration')
 export class MigrationController {
   constructor(private readonly migrationService: MigrationService) {}
@@ -45,8 +44,11 @@ export class MigrationController {
   /**
    * Migrate user session from kirana-fe to kwiktwik-kirana-be
    * POST /v1/migration/migrate-session
+   * Note: This endpoint does NOT require JWT auth as the user is migrating from old system
+   * Authentication is done via betterAuthToken in the request body
    */
   @Post('migrate-session')
+  @UseGuards(AppIdGuard)
   @ApiOperation({
     summary: 'Migrate user session from kirana-fe to kwiktwik-kirana-be',
     description: `Migrates all user data from the legacy kirana-fe system to the new kwiktwik-kirana-be backend.
@@ -173,6 +175,7 @@ The migration is atomic - either all data is migrated successfully or nothing is
    * GET /v1/migration/status/:migrationId
    */
   @Get('status/:migrationId')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({
     summary: 'Get migration status by ID',
     description:
@@ -260,6 +263,7 @@ The migration is atomic - either all data is migrated successfully or nothing is
    * };
    */
   @Sse('progress/:migrationId')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({
     summary: 'Stream real-time migration progress (SSE)',
     description: `Server-Sent Events endpoint that streams migration progress updates in real-time.
