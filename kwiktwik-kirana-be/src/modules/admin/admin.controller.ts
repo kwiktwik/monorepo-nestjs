@@ -124,7 +124,31 @@ export class AdminController {
       if (!jwtSecret) {
         return { authenticated: false };
       }
+
       const decoded = jwt.verify(token, jwtSecret);
+      const userId = decoded.sub;
+
+      if (!userId) {
+        return { authenticated: false };
+      }
+
+      // Check if user exists and has admin privileges
+      const userRecords = await this.adminService.getUserById(userId);
+      if (!userRecords) {
+        return { authenticated: false };
+      }
+
+      const cleanUserPhone = (userRecords.phoneNumber || '').replace(/\D/g, '');
+      const expectedMobile = process.env.ADMIN_MOBILE_NUMBER || '';
+      const allowedAdminPhones = expectedMobile
+        .split(',')
+        .map((phone) => phone.trim().replace(/\D/g, ''))
+        .filter((phone) => phone.length > 0);
+
+      if (!cleanUserPhone || !allowedAdminPhones.includes(cleanUserPhone)) {
+        return { authenticated: false };
+      }
+
       return { authenticated: true, user: decoded };
     } catch (error) {
       return { authenticated: false };

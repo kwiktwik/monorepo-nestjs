@@ -61,9 +61,12 @@ export class AdminAuthMiddleware implements NestMiddleware {
   constructor(private readonly adminService: AdminService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    res.setHeader('X-Debug-Path', req.path || '');
-    res.setHeader('X-Debug-Original-Url', req.originalUrl || '');
-    // Read token from Bearer OR cookies OR query string
+    // 1. Determine if this is an API request
+    const isApiRequest =
+      req.path.startsWith('/api/') ||
+      req.headers.accept?.includes('application/json');
+
+    // 2. Extract token from Bearer OR cookies OR query string
     let token = req.headers.authorization?.startsWith('Bearer ')
       ? req.headers.authorization.substring(7)
       : (req.query.token as string);
@@ -78,20 +81,18 @@ export class AdminAuthMiddleware implements NestMiddleware {
       }
     }
 
-    // check-session is exempt so it can return { authenticated: false } instead of 401
-    // set-cookie is exempt but performs its own validation
-    // logout is naturally exempt
-    if (
-      req.path.endsWith('/login') ||
-      req.path.endsWith('/set-cookie') ||
-      req.path.endsWith('/logout') ||
-      req.path.endsWith('/check-session')
-    ) {
+    // 3. Handle Exemptions
+    // check-session: returns { authenticated: false } instead of 401
+    // set-cookie: performs its own validation
+    // logout: clearing cookies is safe
+    const exemptedPaths = ['/set-cookie', '/logout', '/check-session'];
+    if (exemptedPaths.some((p) => req.path.endsWith(p))) {
       return next();
     }
 
+    // 4. Validate Token Existence
     if (!token) {
-      if (req.path.startsWith('/api/')) {
+      if (isApiRequest) {
         return res
           .status(401)
           .json({ success: false, message: 'Admin authentication required.' });
@@ -99,18 +100,19 @@ export class AdminAuthMiddleware implements NestMiddleware {
       return res.redirect('/admin/login');
     }
 
+    // 5. Verify Admin Credentials
     const expectedMobile = process.env.ADMIN_MOBILE_NUMBER;
     if (!expectedMobile) {
+      this.logger.error('ADMIN_MOBILE_NUMBER not configured');
       return res
-        .status(401)
-        .json({ success: false, message: 'Admin credentials not configured' });
+        .status(500)
+        .json({ success: false, message: 'Server configuration error' });
     }
 
     try {
-      // Ensure JWT_SECRET is configured
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
-        this.logger.error('JWT_SECRET environment variable is not configured');
+        this.logger.error('JWT_SECRET not configured');
         return res
           .status(500)
           .json({ success: false, message: 'Server configuration error' });
@@ -119,20 +121,13 @@ export class AdminAuthMiddleware implements NestMiddleware {
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, jwtSecret);
 
-      // decoded.sub contains userId
       const userId = decoded.sub;
       if (!userId) {
         throw new Error('Invalid token structure');
       }
 
-      // Check token expiration explicitly
-      if (decoded.exp && Date.now() >= decoded.exp * 1000) {
-        throw new Error('Token has expired');
-      }
-
-      // Query database for the user's phone number
+      // Check database for admin privileges
       const userRecords = await this.adminService.getUserById(userId);
-
       if (!userRecords) {
         return res
           .status(401)
@@ -143,7 +138,6 @@ export class AdminAuthMiddleware implements NestMiddleware {
         /\D/g,
         '',
       );
-      // Support comma-separated list of admin mobile numbers
       const allowedAdminPhones = expectedMobile
         .split(',')
         .map((phone) => phone.trim().replace(/\D/g, ''))
@@ -158,7 +152,8 @@ export class AdminAuthMiddleware implements NestMiddleware {
       req['admin'] = decoded;
       next();
     } catch (error) {
-      if (req.path.startsWith('/api/')) {
+      this.logger.warn(`Admin auth failed for ${req.path}: ${error.message}`);
+      if (isApiRequest) {
         return res
           .status(401)
           .json({ success: false, message: 'Invalid or expired token' });
@@ -212,8 +207,10 @@ export class AdminModule implements NestModule {
     consumer
       .apply(AdminAuthMiddleware)
       .forRoutes(
-        'admin/(.*)', // Matches routes nested under admin due to RouterModule + prefix
-        'admin',
+        AdminController,
+        PhonePeAdminController,
+        RazorpayAdminController,
+        FeatureToggleAdminController,
       );
   }
 }
