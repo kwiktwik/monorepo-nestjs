@@ -14,18 +14,7 @@ export default function Layout() {
   const { logout } = useAuth();
 
   const handleLogout = async () => {
-    // Clear the HttpOnly cookie via backend
-    try {
-      await fetch('/api/admin/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (e) {
-      // Ignore errors - still logout client-side
-    }
-    // Clear token from React state
-    logout();
-    // Redirect to login
+    await logout();
     navigate('/login');
   };
 

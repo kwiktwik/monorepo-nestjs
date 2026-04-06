@@ -11,13 +11,25 @@ interface PrivateRouteProps {
  * Redirects to login if user is not authenticated.
  */
 export function PrivateRoute({ children }: PrivateRouteProps) {
-  const { token } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // If no token, redirect to login page
-  if (!token) {
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black/40">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-white/60 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, redirect to login page
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Token exists, render the protected content
+  // User is authenticated, render the protected content
   return <>{children}</>;
 }

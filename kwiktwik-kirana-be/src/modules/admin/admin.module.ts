@@ -25,6 +25,34 @@ import * as schema from '../../database/schema';
 import { eq } from 'drizzle-orm';
 import type { Request, Response, NextFunction } from 'express';
 
+/**
+ * Middleware to serve index.html for SPA routes
+ * This handles client-side routing refresh for the admin UI
+ */
+@Injectable()
+export class AdminSpaFallbackMiddleware implements NestMiddleware {
+  private readonly indexPath = join(
+    process.cwd(),
+    'public',
+    'admin',
+    'index.html',
+  );
+
+  use(req: Request, res: Response, next: NextFunction) {
+    // Skip API routes and file requests with extensions
+    if (req.path.startsWith('/api/') || req.path.match(/\.[^/]+$/)) {
+      return next();
+    }
+
+    // For all other routes under /admin, serve index.html
+    res.sendFile(this.indexPath, (err) => {
+      if (err) {
+        next(err);
+      }
+    });
+  }
+}
+
 @Injectable()
 export class AdminAuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(AdminAuthMiddleware.name);
@@ -51,10 +79,12 @@ export class AdminAuthMiddleware implements NestMiddleware {
     }
 
     // Exempt specific non-admin routes if needed
+    // check-session is exempt so it can return { authenticated: false } instead of 401
     if (
       req.path === '/api/admin/login' ||
       req.path === '/api/admin/set-cookie' ||
-      req.path === '/api/admin/logout'
+      req.path === '/api/admin/logout' ||
+      req.path === '/api/admin/check-session'
     ) {
       return next();
     }
@@ -156,10 +186,21 @@ export class AdminAuthMiddleware implements NestMiddleware {
     RazorpayAdminController,
     FeatureToggleAdminController,
   ],
-  providers: [AdminService, AdminAuthMiddleware, FeatureToggleAdminService],
+  providers: [
+    AdminService,
+    AdminAuthMiddleware,
+    AdminSpaFallbackMiddleware,
+    FeatureToggleAdminService,
+  ],
 })
 export class AdminModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Apply SPA fallback middleware for admin routes (must be before auth middleware)
+    // This handles client-side routing refresh for React Router
+    consumer
+      .apply(AdminSpaFallbackMiddleware)
+      .forRoutes({ path: '/admin*path', method: RequestMethod.ALL });
+
     // Protect both the static HTML path and the backend API path
     consumer
       .apply(AdminAuthMiddleware)

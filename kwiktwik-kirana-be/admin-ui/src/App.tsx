@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ScriptsDashboard from './pages/ScriptsDashboard';
 import PhonePe from './pages/PhonePe';
@@ -9,6 +9,9 @@ import { PrivateRoute } from './components/PrivateRoute';
 function App() {
   return (
     <Routes>
+      {/* Redirect /admin to /admin/ */}
+      <Route path="" element={<Navigate to="/" replace />} />
+
       {/* Protected admin routes - require authentication */}
       <Route
         path="/"

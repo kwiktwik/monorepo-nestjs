@@ -11,7 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  
+
   // App Hash commonly required by mobile, but we can pass a dummy or undefined string.
   const appHash = 'admin-ui';
 
@@ -30,7 +30,7 @@ export default function Login() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-ID': 'com.paymentalert.app'
+          'X-App-ID': 'com.paymentalert.app',
         },
         body: JSON.stringify({ phoneNumber: mobileNumber, appHash }),
       });
@@ -62,7 +62,7 @@ export default function Login() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-ID': 'com.paymentalert.app'
+          'X-App-ID': 'com.paymentalert.app',
         },
         body: JSON.stringify({ phoneNumber: mobileNumber, code: otpCode }),
       });
@@ -72,17 +72,18 @@ export default function Login() {
       }
 
       const data = await res.json();
-      
+
       if (data.token) {
         // Now set the cookie securely utilizing our admin utility route
         const cookieRes = await fetch('/api/admin/set-cookie', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ token: data.token }),
         });
 
         if (!cookieRes.ok) throw new Error('Failed to set secure session');
-        
+
         login(data.token);
         navigate('/');
       } else {
@@ -105,18 +106,24 @@ export default function Login() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center shadow-lg shadow-primary/20 mb-6">
             <ShieldCheck className="w-8 h-8 text-white" />
           </div>
-          
-          <h1 className="text-2xl font-bold text-white/90 mb-2">Admin Portal</h1>
+
+          <h1 className="text-2xl font-bold text-white/90 mb-2">
+            Admin Portal
+          </h1>
           <p className="text-sm text-white/50 text-center mb-8">
-            {step === 'phone' ? 'Enter your authorized mobile number to receive an OTP.' : 'Enter the OTP sent to your phone.'}
+            {step === 'phone'
+              ? 'Enter your authorized mobile number to receive an OTP.'
+              : 'Enter the OTP sent to your phone.'}
           </p>
 
           {step === 'phone' ? (
             <form onSubmit={handleSendOtp} className="w-full space-y-5">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-white/60 mb-2 font-medium">Mobile Number</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs uppercase tracking-wider text-white/60 mb-2 font-medium">
+                  Mobile Number
+                </label>
+                <input
+                  type="text"
                   value={mobileNumber}
                   onChange={(e) => {
                     setMobileNumber(e.target.value);
@@ -130,21 +137,25 @@ export default function Login() {
 
               {error && <div className="text-red-400 text-sm">{error}</div>}
 
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2 group disabled:opacity-50"
               >
                 {loading ? 'Sending OTP...' : 'Send OTP'}
-                {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                {!loading && (
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                )}
               </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="w-full space-y-5">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-white/60 mb-2 font-medium">OTP Code</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs uppercase tracking-wider text-white/60 mb-2 font-medium">
+                  OTP Code
+                </label>
+                <input
+                  type="text"
                   value={otpCode}
                   onChange={(e) => {
                     setOtpCode(e.target.value);
@@ -158,16 +169,18 @@ export default function Login() {
 
               {error && <div className="text-red-400 text-sm">{error}</div>}
 
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2 group disabled:opacity-50"
               >
                 {loading ? 'Verifying...' : 'Verify OTP'}
-                {!loading && <ShieldCheck className="w-4 h-4 transition-transform" />}
+                {!loading && (
+                  <ShieldCheck className="w-4 h-4 transition-transform" />
+                )}
               </button>
-              
-              <button 
+
+              <button
                 type="button"
                 onClick={() => {
                   setStep('phone');
