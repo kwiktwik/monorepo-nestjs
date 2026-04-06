@@ -17,6 +17,7 @@ import {
   AlertCircle,
   TestTube,
   Info,
+  Code,
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdminApi';
 import { AppIdSelect } from '../components/AppIdSelect';
@@ -1334,6 +1335,73 @@ function Modal({
                   >
                     <Plus className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* Client API Documentation */}
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Code className="w-4 h-4 text-white/50" />
+                    <label className="block text-sm text-white/70">
+                      Client API Usage
+                    </label>
+                  </div>
+                  <p className="text-xs text-white/50 mb-2">
+                    Use this endpoint in your app to check if a user should see
+                    the feature:
+                  </p>
+
+                  {/* API Endpoint */}
+                  <div className="bg-black/40 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+                    <div className="text-green-400 mb-1">
+                      POST /api/feature-toggle/evaluate
+                    </div>
+                    <div className="text-white/40 mb-2"># Headers required</div>
+                    <div className="text-white/60">
+                      X-App-ID: your.app.package
+                    </div>
+                    <div className="text-white/60">
+                      X-Firebase-Installation-ID: user_device_id
+                    </div>
+                    <div className="text-white/40 mt-2 mb-1">
+                      # Request body
+                    </div>
+                    <div className="text-white/80">{'{'}</div>
+                    <div className="text-blue-300 ml-2">
+                      &quot;featureKey&quot;: &quot;
+                      {formData.featureKey || 'your_feature_key'}&quot;
+                    </div>
+                    <div className="text-white/80">{'}'}</div>
+                  </div>
+
+                  {/* 5% Rollout Example */}
+                  <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded">
+                    <div className="text-xs font-medium text-blue-300 mb-1">
+                      Example: 5% Rollout
+                    </div>
+                    <div className="text-xs text-white/60">
+                      For a safe 5% rollout, set cohorts to:
+                    </div>
+                    <div className="mt-1 flex gap-4 text-xs">
+                      <span className="text-green-400">Control: 95%</span>
+                      <span className="text-white/40">(no feature)</span>
+                    </div>
+                    <div className="flex gap-4 text-xs">
+                      <span className="text-blue-400">Variant: 5%</span>
+                      <span className="text-white/40">(gets feature)</span>
+                    </div>
+                    <div className="mt-2 text-xs text-white/50">
+                      Response for users in Variant cohort:
+                    </div>
+                    <div className="bg-black/40 rounded p-2 mt-1 font-mono text-xs text-green-300">
+                      {`{ "enabled": true, "cohort": "Variant" }`}
+                    </div>
+                    <div className="mt-1 text-xs text-white/50">
+                      Response for users in Control cohort:
+                    </div>
+                    <div className="bg-black/40 rounded p-2 mt-1 font-mono text-xs text-red-300">
+                      {`{ "enabled": false, "cohort": "Control" }`}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
