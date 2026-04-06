@@ -35,7 +35,7 @@ import {
 
 @ApiTags('admin')
 @ApiBasicAuth('admin-basic')
-@Controller('admin/feature-toggle')
+@Controller('feature-toggle')
 export class FeatureToggleAdminController {
   constructor(private readonly adminService: FeatureToggleAdminService) {}
 

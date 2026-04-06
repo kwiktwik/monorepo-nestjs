@@ -58,10 +58,7 @@ export class AdminSpaFallbackMiddleware implements NestMiddleware {
 export class AdminAuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(AdminAuthMiddleware.name);
 
-  constructor(
-    @Inject(DRIZZLE_TOKEN)
-    private readonly db: NodePgDatabase<typeof schema>,
-  ) {}
+  constructor(private readonly adminService: AdminService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
     res.setHeader('X-Debug-Path', req.path || '');
@@ -134,19 +131,15 @@ export class AdminAuthMiddleware implements NestMiddleware {
       }
 
       // Query database for the user's phone number
-      const userRecords = await this.db
-        .select({ phoneNumber: schema.user.phoneNumber })
-        .from(schema.user)
-        .where(eq(schema.user.id, userId))
-        .limit(1);
+      const userRecords = await this.adminService.getUserById(userId);
 
-      if (userRecords.length === 0) {
+      if (!userRecords) {
         return res
           .status(401)
           .json({ success: false, message: 'User not found' });
       }
 
-      const cleanUserPhone = (userRecords[0].phoneNumber || '').replace(
+      const cleanUserPhone = (userRecords.phoneNumber || '').replace(
         /\D/g,
         '',
       );

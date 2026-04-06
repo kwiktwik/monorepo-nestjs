@@ -87,7 +87,7 @@ class CreateSubscriptionDto {
 
 @ApiTags('admin-razorpay')
 @ApiBasicAuth('admin-basic')
-@Controller('admin/razorpay')
+@Controller('razorpay')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class RazorpayAdminController {
   constructor(
