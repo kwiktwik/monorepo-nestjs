@@ -63,6 +63,8 @@ export class AdminAuthMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
+    res.setHeader('X-Debug-Path', req.path || '');
+    res.setHeader('X-Debug-Original-Url', req.originalUrl || '');
     // Read token from Bearer OR cookies OR query string
     let token = req.headers.authorization?.startsWith('Bearer ')
       ? req.headers.authorization.substring(7)
@@ -205,15 +207,17 @@ export class AdminModule implements NestModule {
       .apply(AdminSpaFallbackMiddleware)
       .forRoutes({ path: '/admin*path', method: RequestMethod.ALL });
 
-    // Protect both the static HTML path and the backend API path
     consumer
       .apply(AdminAuthMiddleware)
       .forRoutes(
-        { path: '/api/admin*path', method: RequestMethod.ALL },
-        { path: '/api/admin/docs', method: RequestMethod.ALL },
-        { path: '/api/admin/docs/*path', method: RequestMethod.ALL },
-        { path: '/api/admin/mock-docs', method: RequestMethod.ALL },
-        { path: '/api/admin/mock-docs/*path', method: RequestMethod.ALL },
+        AdminController,
+        PhonePeAdminController,
+        RazorpayAdminController,
+        FeatureToggleAdminController,
+        { path: 'admin/docs', method: RequestMethod.ALL },
+        { path: 'admin/docs/(.*)', method: RequestMethod.ALL },
+        { path: 'admin/mock-docs', method: RequestMethod.ALL },
+        { path: 'admin/mock-docs/(.*)', method: RequestMethod.ALL },
       );
   }
 }
