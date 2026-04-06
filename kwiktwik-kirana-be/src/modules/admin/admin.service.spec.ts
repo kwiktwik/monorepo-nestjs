@@ -3,6 +3,7 @@ import { AdminService } from './admin.service';
 import * as fs from 'fs/promises';
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
+import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -21,7 +22,19 @@ describe('AdminService', () => {
     mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AdminService],
+      providers: [
+        AdminService,
+        {
+          provide: DRIZZLE_TOKEN,
+          useValue: {
+            select: jest.fn().mockReturnThis(),
+            from: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            execute: jest.fn().mockResolvedValue([]),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<AdminService>(AdminService);
