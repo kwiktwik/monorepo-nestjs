@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Square, Search, Terminal } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdminApi';
-import { useAuth } from '../context/AuthContext';
 
 export default function ScriptsDashboard() {
   const [scripts, setScripts] = useState<string[]>([]);
@@ -19,7 +18,6 @@ export default function ScriptsDashboard() {
     }[]
   >([]);
   const { fetchApi } = useAdminApi();
-  const { token } = useAuth();
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -101,10 +99,7 @@ export default function ScriptsDashboard() {
       window.location.origin,
     );
     url.searchParams.set('args', argStr);
-    // Use token from AuthContext (memory) instead of localStorage for security
-    if (token) {
-      url.searchParams.set('token', token);
-    }
+    // Cookie is automatically sent with EventSource same-origin requests
 
     const eventSource = new EventSource(url.href);
     eventSourceRef.current = eventSource;

@@ -84,7 +84,7 @@ export default function Login() {
 
         if (!cookieRes.ok) throw new Error('Failed to set secure session');
 
-        login(data.token);
+        login();
         navigate('/');
       } else {
         throw new Error('No token returned');
