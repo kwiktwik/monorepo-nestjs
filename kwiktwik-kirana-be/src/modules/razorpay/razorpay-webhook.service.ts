@@ -1394,7 +1394,7 @@ export class RazorpayWebhookService {
       try {
         // Check current status
         const existingOrder = await this.db
-          .select({ status: schema.orders.status })
+          .select({ id: schema.orders.id, status: schema.orders.status })
           .from(schema.orders)
           .where(eq(schema.orders.razorpayOrderId, order.id))
           .limit(1);
@@ -1429,6 +1429,21 @@ export class RazorpayWebhookService {
         } else {
           this.logger.log(
             `[WEBHOOK ${requestId}] ✅ Order ${order.id} updated to CAPTURED`,
+          );
+
+          // Track analytics for order paid event
+          await this.trackOrderAnalytics(
+            requestId,
+            order.id,
+            ANALYTICS_EVENTS.ORDER_PAID,
+            {
+              order_id: order.id,
+              amount: (order.amount || 0) / 100,
+              amount_paid: (order.amount_paid || 0) / 100,
+              currency: order.currency || 'INR',
+              status: order.status,
+              attempts: order.attempts,
+            },
           );
         }
       } catch (error) {
@@ -1508,11 +1523,20 @@ export class RazorpayWebhookService {
       );
     }
 
-    // Track analytics for the refund event
-    const analyticsEvent =
-      event.event === 'refund.failed'
-        ? ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED
-        : ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+    // Track analytics for the refund event - separate events for each webhook type
+    let analyticsEvent: string;
+    switch (event.event) {
+      case 'refund.created':
+        analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUND_CREATED;
+        break;
+      case 'refund.failed':
+        analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED;
+        break;
+      case 'refund.processed':
+      default:
+        analyticsEvent = ANALYTICS_EVENTS.PAYMENT_REFUNDED;
+        break;
+    }
 
     await this.trackOrderAnalytics(requestId, orderId, analyticsEvent, {
       refund_id: refundEntity.id,

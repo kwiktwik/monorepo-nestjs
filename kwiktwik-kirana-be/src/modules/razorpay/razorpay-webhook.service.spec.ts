@@ -456,7 +456,7 @@ describe('RazorpayWebhookService', () => {
         'subscription.completed': ANALYTICS_EVENTS.SUBSCRIPTION_COMPLETED,
         'subscription.authenticated':
           ANALYTICS_EVENTS.SUBSCRIPTION_AUTHENTICATED,
-        'refund.created': ANALYTICS_EVENTS.PAYMENT_REFUNDED,
+        'refund.created': ANALYTICS_EVENTS.PAYMENT_REFUND_CREATED,
         'refund.processed': ANALYTICS_EVENTS.PAYMENT_REFUNDED,
         'refund.failed': ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED,
       };
@@ -579,6 +579,7 @@ describe('RazorpayWebhookService', () => {
         ANALYTICS_EVENTS.PAYMENT_CAPTURED,
         ANALYTICS_EVENTS.PAYMENT_FAILED,
         ANALYTICS_EVENTS.PAYMENT_REFUNDED,
+        ANALYTICS_EVENTS.PAYMENT_REFUND_CREATED,
         ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED,
       ];
 
@@ -623,6 +624,7 @@ describe('RazorpayWebhookService', () => {
         ANALYTICS_EVENTS.PAYMENT_CAPTURED,
         ANALYTICS_EVENTS.PAYMENT_FAILED,
         ANALYTICS_EVENTS.PAYMENT_REFUNDED,
+        ANALYTICS_EVENTS.PAYMENT_REFUND_CREATED,
         ANALYTICS_EVENTS.PAYMENT_REFUND_FAILED,
         ANALYTICS_EVENTS.SUBSCRIPTION_ACTIVATED,
         ANALYTICS_EVENTS.SUBSCRIPTION_CHARGED,
@@ -634,6 +636,7 @@ describe('RazorpayWebhookService', () => {
         ANALYTICS_EVENTS.SUBSCRIPTION_COMPLETED,
         ANALYTICS_EVENTS.SUBSCRIPTION_AUTHENTICATED,
         ANALYTICS_EVENTS.TOKEN_CONFIRMED,
+        ANALYTICS_EVENTS.ORDER_PAID,
       ];
 
       console.log('\n📊 DEPLOYMENT CHECKLIST - Analytics Events:');
@@ -646,7 +649,7 @@ describe('RazorpayWebhookService', () => {
       );
       console.log('=====================================\n');
 
-      expect(allTrackedEvents.length).toBe(15);
+      expect(allTrackedEvents.length).toBe(17);
     });
   });
 });
