@@ -1,5 +1,5 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Logger, Inject } from '@nestjs/common';
+import { Logger, Inject, OnModuleDestroy } from '@nestjs/common';
 import { Job } from 'bullmq';
 import {
   ScheduledMessagesService,
@@ -15,8 +15,12 @@ import { eq, and } from 'drizzle-orm';
 @Processor(SCHEDULED_MESSAGES_QUEUE, {
   concurrency: 5,
 })
-export class ScheduledMessagesProcessor extends WorkerHost {
+export class ScheduledMessagesProcessor
+  extends WorkerHost
+  implements OnModuleDestroy
+{
   private readonly logger = new Logger(ScheduledMessagesProcessor.name);
+  private isShuttingDown = false;
 
   constructor(
     private readonly scheduledMessagesService: ScheduledMessagesService,
@@ -26,7 +30,41 @@ export class ScheduledMessagesProcessor extends WorkerHost {
     super();
   }
 
+  /**
+   * Graceful shutdown handler - closes the worker properly before app shutdown
+   * This prevents ECONNRESET errors when Redis connection is closed
+   */
+  async onModuleDestroy(): Promise<void> {
+    this.isShuttingDown = true;
+    this.logger.log(
+      '🛑 [SHUTDOWN] Scheduled messages processor shutting down gracefully...',
+    );
+
+    if (this.worker) {
+      try {
+        // Close the worker gracefully - waits for active jobs to complete
+        // with a 5 second timeout for forceful close
+        await this.worker.close(true);
+        this.logger.log(
+          '✅ [SHUTDOWN] Scheduled messages worker closed gracefully',
+        );
+      } catch (error) {
+        this.logger.error(
+          `❌ [SHUTDOWN] Error closing scheduled messages worker: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
+
   async process(job: Job<ScheduledMessageJobData>): Promise<void> {
+    // Skip processing if shutting down
+    if (this.isShuttingDown) {
+      this.logger.warn(
+        `⚠️ [SKIPPED] Job ${job.id} skipped - processor is shutting down`,
+      );
+      return;
+    }
+
     const { scheduledMessageId } = job.data;
 
     this.logger.log(`Processing scheduled message ${scheduledMessageId}`);
@@ -87,6 +125,33 @@ export class ScheduledMessagesProcessor extends WorkerHost {
 
   @OnWorkerEvent('failed')
   onFailed(job: Job<ScheduledMessageJobData>, error: Error) {
+    // Skip logging connection errors during shutdown (expected behavior)
+    if (
+      this.isShuttingDown &&
+      (error.message.includes('ECONNRESET') ||
+        error.message.includes('Connection is closed'))
+    ) {
+      this.logger.debug(
+        `[WORKER] Expected connection error during shutdown: ${error.message}`,
+      );
+      return;
+    }
     this.logger.error(`Job ${job.id} failed: ${error.message}`);
+  }
+
+  @OnWorkerEvent('error')
+  onError(error: Error) {
+    // Skip logging connection errors during shutdown (expected behavior)
+    if (
+      this.isShuttingDown &&
+      (error.message.includes('ECONNRESET') ||
+        error.message.includes('Connection is closed'))
+    ) {
+      this.logger.debug(
+        `[WORKER] Expected connection error during shutdown: ${error.message}`,
+      );
+      return;
+    }
+    this.logger.error(`🔥 [WORKER] Worker error: ${error.message}`);
   }
 }

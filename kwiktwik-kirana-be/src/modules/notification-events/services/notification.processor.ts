@@ -1,5 +1,5 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Logger, Inject, Optional } from '@nestjs/common';
+import { Logger, Inject, Optional, OnModuleDestroy } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InMemoryEventBus } from './in-memory-event-bus';
 import { EventHandlerRegistry, HandlerResult } from './event-handler.registry';
@@ -58,8 +58,12 @@ export const NOTIFICATION_QUEUE_NAME = 'notification-events';
     duration: 1000,
   },
 })
-export class NotificationProcessor extends WorkerHost {
+export class NotificationProcessor
+  extends WorkerHost
+  implements OnModuleDestroy
+{
   private readonly logger = new Logger(NotificationProcessor.name);
+  private isShuttingDown = false;
 
   constructor(
     private readonly eventBus: InMemoryEventBus,
@@ -71,6 +75,30 @@ export class NotificationProcessor extends WorkerHost {
     private readonly db?: NodePgDatabase<typeof schema>,
   ) {
     super();
+  }
+
+  /**
+   * Graceful shutdown handler - closes the worker properly before app shutdown
+   * This prevents ECONNRESET errors when Redis connection is closed
+   */
+  async onModuleDestroy(): Promise<void> {
+    this.isShuttingDown = true;
+    this.logger.log(
+      '🛑 [SHUTDOWN] Notification processor shutting down gracefully...',
+    );
+
+    if (this.worker) {
+      try {
+        // Close the worker gracefully - waits for active jobs to complete
+        // with a 5 second timeout for forceful close
+        await this.worker.close(true);
+        this.logger.log('✅ [SHUTDOWN] Notification worker closed gracefully');
+      } catch (error) {
+        this.logger.error(
+          `❌ [SHUTDOWN] Error closing notification worker: ${(error as Error).message}`,
+        );
+      }
+    }
   }
 
   // Simple in-memory metrics (can be replaced with Prometheus later)
@@ -85,6 +113,14 @@ export class NotificationProcessor extends WorkerHost {
    * Main job processor method - called by BullMQ for each job
    */
   async process(job: Job<NotificationJobData>): Promise<void> {
+    // Skip processing if shutting down
+    if (this.isShuttingDown) {
+      this.logger.warn(
+        `⚠️ [SKIPPED] Job ${job.id} skipped - processor is shutting down`,
+      );
+      return;
+    }
+
     const data = job.data;
     const startTime = Date.now();
 
@@ -329,7 +365,9 @@ export class NotificationProcessor extends WorkerHost {
   ): Promise<boolean> {
     // If no DB available, skip premium check (assume not premium)
     if (!this.db) {
-      this.logger.debug(`DB not available - skipping premium check for user ${userId}`);
+      this.logger.debug(
+        `DB not available - skipping premium check for user ${userId}`,
+      );
       return false;
     }
 
@@ -377,11 +415,16 @@ export class NotificationProcessor extends WorkerHost {
 
     try {
       // Convert unknown values to string | number | boolean | undefined for EventProperties
-      const eventProps: Record<string, string | number | boolean | undefined> = {};
+      const eventProps: Record<string, string | number | boolean | undefined> =
+        {};
       for (const [key, value] of Object.entries(properties)) {
         if (value === undefined || value === null) {
           eventProps[key] = undefined;
-        } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        } else if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
           eventProps[key] = value;
         } else {
           eventProps[key] = JSON.stringify(value);
@@ -398,7 +441,9 @@ export class NotificationProcessor extends WorkerHost {
           eventProperties: eventProps,
         })
         .catch((err) => {
-          this.logger.debug(`Mixpanel track failed (non-critical): ${err.message}`);
+          this.logger.debug(
+            `Mixpanel track failed (non-critical): ${err.message}`,
+          );
         });
     } catch (error) {
       this.logger.debug(`Mixpanel track error: ${(error as Error).message}`);
@@ -424,6 +469,17 @@ export class NotificationProcessor extends WorkerHost {
 
   @OnWorkerEvent('error')
   onError(error: Error) {
+    // Skip logging connection errors during shutdown (expected behavior)
+    if (
+      this.isShuttingDown &&
+      (error.message.includes('ECONNRESET') ||
+        error.message.includes('Connection is closed'))
+    ) {
+      this.logger.debug(
+        `[WORKER] Expected connection error during shutdown: ${error.message}`,
+      );
+      return;
+    }
     this.logger.error(`🔥 [WORKER] Worker error: ${error.message}`);
   }
 
