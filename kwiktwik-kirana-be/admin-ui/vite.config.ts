@@ -9,5 +9,13 @@ export default defineConfig({
   build: {
     outDir: '../public/admin',
     emptyOutDir: true
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3002',
+        changeOrigin: true
+      }
+    }
   }
 })
