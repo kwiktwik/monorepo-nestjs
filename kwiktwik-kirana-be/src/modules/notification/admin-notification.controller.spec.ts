@@ -79,10 +79,15 @@ describe('AdminNotificationController', () => {
       expect(response.body.notification).toEqual(mockNotification);
       expect(
         mockNotificationService.sendTestNotificationByPhone,
-      ).toHaveBeenCalledWith('+919876543210', undefined, {
-        message: 'Test notification',
-        amount: 100,
-      });
+      ).toHaveBeenCalledWith(
+        '+919876543210',
+        undefined,
+        {
+          message: 'Test notification',
+          amount: 100,
+        },
+        undefined,
+      );
     });
 
     it('should return error for non-existing user', async () => {
@@ -133,7 +138,7 @@ describe('AdminNotificationController', () => {
       expect(response.body.success).toBe(true);
       expect(
         mockNotificationService.sendTestNotificationByPhone,
-      ).toHaveBeenCalledWith('+919876543210', undefined, undefined);
+      ).toHaveBeenCalledWith('+919876543210', undefined, undefined, undefined);
     });
 
     it('should handle empty phone number', async () => {
@@ -189,7 +194,12 @@ describe('AdminNotificationController', () => {
       expect(response.body.success).toBe(true);
       expect(
         mockNotificationService.sendTestNotificationByPhone,
-      ).toHaveBeenCalledWith('+919876543210', undefined, complexPayload);
+      ).toHaveBeenCalledWith(
+        '+919876543210',
+        undefined,
+        complexPayload,
+        undefined,
+      );
     });
   });
 });
