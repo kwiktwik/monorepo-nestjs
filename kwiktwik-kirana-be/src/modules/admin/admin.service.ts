@@ -3,11 +3,31 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { Observable } from 'rxjs';
+import { Inject } from '@nestjs/common';
+import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../database/schema';
+import { eq } from 'drizzle-orm';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly scriptsDir = path.join(process.cwd(), 'scripts');
+
+  constructor(
+    @Inject(DRIZZLE_TOKEN)
+    private readonly db: NodePgDatabase<typeof schema>,
+  ) {}
+
+  async getUserById(userId: string) {
+    const userRecords = await this.db
+      .select({ phoneNumber: schema.user.phoneNumber })
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
+
+    return userRecords.length > 0 ? userRecords[0] : null;
+  }
 
   async getScripts(): Promise<string[]> {
     try {

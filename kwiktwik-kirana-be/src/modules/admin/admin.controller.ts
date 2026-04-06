@@ -25,7 +25,7 @@ declare module 'express' {
 
 @ApiTags('admin')
 @ApiBasicAuth('admin-basic')
-@Controller('admin')
+@Controller('')
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
@@ -46,17 +46,50 @@ export class AdminController {
     @Body() body: { token: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    // Basic structural validation; deep validation happens in the middleware.
     if (!body.token) {
-      return { success: false };
+      return { success: false, message: 'Token required' };
     }
-    res.cookie('admin_token', body.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-    });
-    return { success: true };
+
+    // Validate if the token belongs to an admin before setting the cookie
+    try {
+      const jwt = require('jsonwebtoken');
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        throw new Error('JWT_SECRET not configured');
+      }
+
+      const decoded = jwt.verify(body.token, jwtSecret);
+      const userId = decoded.sub;
+
+      const userRecords = await this.adminService.getUserById(userId);
+      if (!userRecords) {
+        return { success: false, message: 'User not found' };
+      }
+
+      const cleanUserPhone = (userRecords.phoneNumber || '').replace(/\D/g, '');
+      const expectedMobile = process.env.ADMIN_MOBILE_NUMBER || '';
+      const allowedAdminPhones = expectedMobile
+        .split(',')
+        .map((phone) => phone.trim().replace(/\D/g, ''))
+        .filter((phone) => phone.length > 0);
+
+      if (!cleanUserPhone || !allowedAdminPhones.includes(cleanUserPhone)) {
+        return { success: false, message: 'Insufficient privileges' };
+      }
+
+      res.cookie('admin_token', body.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+      });
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Invalid token or server configuration error',
+      };
+    }
   }
 
   @Post('logout')

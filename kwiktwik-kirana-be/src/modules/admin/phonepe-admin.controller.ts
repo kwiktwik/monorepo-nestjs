@@ -44,7 +44,7 @@ class NotifyRedemptionDto {
 
 @ApiTags('admin-phonepe')
 @ApiBasicAuth('admin-basic')
-@Controller('admin/phonepe')
+@Controller('phonepe')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PhonePeAdminController {
   constructor(

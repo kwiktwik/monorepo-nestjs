@@ -8,6 +8,7 @@ import {
   Inject,
   Logger,
 } from '@nestjs/common';
+import { RouterModule } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AdminController } from './admin.controller';
@@ -80,13 +81,14 @@ export class AdminAuthMiddleware implements NestMiddleware {
       }
     }
 
-    // Exempt specific non-admin routes if needed
     // check-session is exempt so it can return { authenticated: false } instead of 401
+    // set-cookie is exempt but performs its own validation
+    // logout is naturally exempt
     if (
-      req.path === '/api/admin/login' ||
-      req.path === '/api/admin/set-cookie' ||
-      req.path === '/api/admin/logout' ||
-      req.path === '/api/admin/check-session'
+      req.path.endsWith('/login') ||
+      req.path.endsWith('/set-cookie') ||
+      req.path.endsWith('/logout') ||
+      req.path.endsWith('/check-session')
     ) {
       return next();
     }
@@ -175,6 +177,12 @@ export class AdminAuthMiddleware implements NestMiddleware {
 
 @Module({
   imports: [
+    RouterModule.register([
+      {
+        path: 'admin',
+        module: AdminModule,
+      },
+    ]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public', 'admin'),
       serveRoot: '/admin',
@@ -207,17 +215,12 @@ export class AdminModule implements NestModule {
       .apply(AdminSpaFallbackMiddleware)
       .forRoutes({ path: '/admin*path', method: RequestMethod.ALL });
 
+    // Protect all API routes under the admin context
     consumer
       .apply(AdminAuthMiddleware)
       .forRoutes(
-        AdminController,
-        PhonePeAdminController,
-        RazorpayAdminController,
-        FeatureToggleAdminController,
-        { path: 'admin/docs', method: RequestMethod.ALL },
-        { path: 'admin/docs/(.*)', method: RequestMethod.ALL },
-        { path: 'admin/mock-docs', method: RequestMethod.ALL },
-        { path: 'admin/mock-docs/(.*)', method: RequestMethod.ALL },
+        'admin/(.*)', // Matches routes nested under admin due to RouterModule + prefix
+        'admin',
       );
   }
 }
