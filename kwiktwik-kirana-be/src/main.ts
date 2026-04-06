@@ -5,7 +5,6 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
-import type { Request, Response, NextFunction } from 'express';
 import { validateAppConfigSyncOrThrow } from './common/config/config-validator';
 
 async function bootstrap() {

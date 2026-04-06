@@ -7,6 +7,7 @@ import {
   LogOut,
   Flag,
   Bell,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
