@@ -605,20 +605,24 @@ export class NotificationService {
     payload?: Record<string, unknown>,
     fcmToken?: string,
   ) {
-    let user = null;
+    let user: { id: string; name: string; phoneNumber: string | null } | null =
+      null;
     if (phoneNumber) {
       user = await this.findUserByPhone(phoneNumber);
     }
 
     if (!user && !fcmToken) {
-      return { success: false, error: 'Provide either a user phone number or an FCM token' };
+      return {
+        success: false,
+        error: 'Provide either a user phone number or an FCM token',
+      };
     }
 
     let fcmResult:
       | { success: true; count: number }
       | { success: false; error: string }
       | null = null;
-      
+
     try {
       let tokens: string[] = [];
       if (fcmToken) {
@@ -638,8 +642,7 @@ export class NotificationService {
         if (payload) {
           for (const [key, value] of Object.entries(payload)) {
             if (value !== null && value !== undefined) {
-              fcmData[key] =
-                typeof value === 'string' ? value : String(value);
+              fcmData[key] = typeof value === 'string' ? value : String(value);
             }
           }
         }
@@ -695,7 +698,9 @@ export class NotificationService {
       } else if (!fcmResult) {
         fcmResult = {
           success: false,
-          error: fcmToken ? 'Provided FCM token is invalid' : 'No active push tokens found for this app',
+          error: fcmToken
+            ? 'Provided FCM token is invalid'
+            : 'No active push tokens found for this app',
         };
       }
     } catch (err) {
@@ -704,7 +709,9 @@ export class NotificationService {
     }
 
     // Always create the polling notification if user is found
-    const notification = user ? await this.createTestNotification(user.id, payload) : null;
+    const notification = user
+      ? await this.createTestNotification(user.id, payload)
+      : null;
     return { success: true, user, notification, fcmResult };
   }
 }
