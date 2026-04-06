@@ -33,7 +33,7 @@ import {
   ListExperimentsQueryDto,
 } from './dto/feature-toggle-admin.dto';
 
-@ApiTags('admin-feature-toggle')
+@ApiTags('admin')
 @ApiBasicAuth('admin-basic')
 @Controller('admin/feature-toggle')
 export class FeatureToggleAdminController {
@@ -68,7 +68,11 @@ export class FeatureToggleAdminController {
   @Get('flags/:id')
   @ApiOperation({ summary: 'Get a single feature flag by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Feature flag ID' })
-  @ApiResponse({ status: 200, description: 'Feature flag details', type: FeatureFlagResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Feature flag details',
+    type: FeatureFlagResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Feature flag not found' })
   async getFeatureFlag(
     @Param('id', ParseIntPipe) id: number,
@@ -80,7 +84,11 @@ export class FeatureToggleAdminController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new feature flag' })
   @ApiBody({ type: CreateFeatureFlagDto })
-  @ApiResponse({ status: 201, description: 'Feature flag created', type: FeatureFlagResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Feature flag created',
+    type: FeatureFlagResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input or duplicate key' })
   async createFeatureFlag(
     @Body() dto: CreateFeatureFlagDto,
@@ -92,7 +100,11 @@ export class FeatureToggleAdminController {
   @ApiOperation({ summary: 'Update a feature flag' })
   @ApiParam({ name: 'id', type: Number, description: 'Feature flag ID' })
   @ApiBody({ type: UpdateFeatureFlagDto })
-  @ApiResponse({ status: 200, description: 'Updated feature flag', type: FeatureFlagResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated feature flag',
+    type: FeatureFlagResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Feature flag not found' })
   async updateFeatureFlag(
     @Param('id', ParseIntPipe) id: number,
@@ -120,7 +132,8 @@ export class FeatureToggleAdminController {
   @Get('experiments')
   @ApiOperation({
     summary: 'List experiments',
-    description: 'Get all experiments, optionally filtered by appId and/or status',
+    description:
+      'Get all experiments, optionally filtered by appId and/or status',
   })
   @ApiQuery({
     name: 'appId',
@@ -148,7 +161,11 @@ export class FeatureToggleAdminController {
   @Get('experiments/:id')
   @ApiOperation({ summary: 'Get a single experiment by ID (includes cohorts)' })
   @ApiParam({ name: 'id', type: Number, description: 'Experiment ID' })
-  @ApiResponse({ status: 200, description: 'Experiment details with cohorts', type: ExperimentResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Experiment details with cohorts',
+    type: ExperimentResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Experiment not found' })
   async getExperiment(
     @Param('id', ParseIntPipe) id: number,
@@ -163,7 +180,11 @@ export class FeatureToggleAdminController {
     description: 'Creates experiment and associated cohorts in one call',
   })
   @ApiBody({ type: CreateExperimentDto })
-  @ApiResponse({ status: 201, description: 'Experiment created', type: ExperimentResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Experiment created',
+    type: ExperimentResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   async createExperiment(
     @Body() dto: CreateExperimentDto,
@@ -174,11 +195,16 @@ export class FeatureToggleAdminController {
   @Patch('experiments/:id')
   @ApiOperation({
     summary: 'Update an experiment',
-    description: 'Can be used to change status (start/pause/conclude), traffic allocation, dates, etc.',
+    description:
+      'Can be used to change status (start/pause/conclude), traffic allocation, dates, etc.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Experiment ID' })
   @ApiBody({ type: UpdateExperimentDto })
-  @ApiResponse({ status: 200, description: 'Updated experiment', type: ExperimentResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated experiment',
+    type: ExperimentResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Experiment not found' })
   async updateExperiment(
     @Param('id', ParseIntPipe) id: number,
@@ -206,7 +232,8 @@ export class FeatureToggleAdminController {
   @Get('experiments/:id/results')
   @ApiOperation({
     summary: 'Get experiment results and analysis',
-    description: 'Returns per-cohort exposure/conversion stats and identifies winner',
+    description:
+      'Returns per-cohort exposure/conversion stats and identifies winner',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Experiment ID' })
   @ApiResponse({
