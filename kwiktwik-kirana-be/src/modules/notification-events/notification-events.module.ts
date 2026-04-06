@@ -12,15 +12,29 @@ import { MockInAppChannel } from './services/mock-in-app.channel';
 import { MockPushChannel } from './services/mock-push.channel';
 import { MockSmsChannel } from './services/mock-sms.channel';
 import { NotificationQueueService } from './services/notification-queue.service';
-import { NOTIFICATION_QUEUE_NAME } from './services/notification.processor';
+import {
+  NOTIFICATION_QUEUE_NAME,
+  NotificationProcessor,
+} from './services/notification.processor';
+import { EventHandlerRegistry } from './services/event-handler.registry';
+import { DefaultEventHandler } from './services/handlers/default.handler';
+import { PaymentReceivedHandler } from './services/handlers/payment-received.handler';
+import { OrderCompletedHandler } from './services/handlers/order-completed.handler';
 import { QueueModule, isRedisAvailable } from '../../queue/queue.module';
+import { RedisModule } from '../../common/redis/redis.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({})
 export class NotificationEventsModule {
   static forRoot(config: ConfigService): DynamicModule {
     const redisAvailable = isRedisAvailable(config);
 
-    const imports: DynamicModule['imports'] = [];
+    const imports: DynamicModule['imports'] = [
+      // Redis for idempotency (queue-first, high-scale)
+      RedisModule,
+      // Analytics for Mixpanel tracking
+      AnalyticsModule,
+    ];
     const controllers: DynamicModule['controllers'] = [];
     const providers: DynamicModule['providers'] = [
       NotificationEventsService,
@@ -28,6 +42,7 @@ export class NotificationEventsModule {
       MockInAppChannel,
       MockPushChannel,
       MockSmsChannel,
+      EventHandlerRegistry,
     ];
 
     if (redisAvailable) {
@@ -39,10 +54,25 @@ export class NotificationEventsModule {
         }),
       );
       controllers.push(NotificationEventsController);
-      providers.push(NotificationQueueService);
-      // DISABLED for now due to other issues
-      // NotificationEventsConsumer,
-      // NotificationProcessor,
+      providers.push(
+        NotificationQueueService,
+        // Enable queue-based processor with event-type routing
+        NotificationProcessor,
+      );
+
+      // Register event handlers - add more handlers here as needed
+      // This enables different processing logic per event type
+      providers.push({
+        provide: 'EVENT_HANDLERS',
+        useFactory: (registry: EventHandlerRegistry) => {
+          // Register all handlers
+          registry.register(new PaymentReceivedHandler());
+          registry.register(new OrderCompletedHandler());
+          registry.setDefaultHandler(new DefaultEventHandler());
+          return registry;
+        },
+        inject: [EventHandlerRegistry],
+      });
     } else {
       // Minimal module - stub implementations
       imports.push(QueueModule.forRootIfAvailable());
@@ -83,7 +113,11 @@ export class NotificationEventsModule {
       imports,
       controllers,
       providers,
-      exports: [NotificationQueueService, NotificationEventsService],
+      exports: [
+        NotificationQueueService,
+        NotificationEventsService,
+        EventHandlerRegistry,
+      ],
     };
   }
 }

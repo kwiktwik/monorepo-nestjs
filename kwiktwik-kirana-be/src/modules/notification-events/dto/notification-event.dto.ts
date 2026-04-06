@@ -27,14 +27,8 @@ export class NotificationEventDto {
   @IsNotEmpty()
   eventType!: string;
 
-  @ApiProperty({
-    example: 'com.sharekaro.kirana',
-    required: false,
-    description: 'App ID override (defaults to X-App-ID header)',
-  })
-  @IsString()
-  @IsOptional()
-  appId?: string;
+  // NOTE: appId is NOT accepted from request body for security reasons.
+  // It is always taken from the X-App-ID header (validated by AppIdGuard).
 
   @ApiProperty({
     example: {

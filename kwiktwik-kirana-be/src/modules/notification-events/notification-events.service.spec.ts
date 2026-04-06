@@ -1,22 +1,41 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationEventsService } from './notification-events.service';
-import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NotificationChannelType } from './types/notification-event.types';
+import { NotificationQueueService } from './services/notification-queue.service';
+import { RedisService } from '../../common/redis/redis.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 describe('NotificationEventsService', () => {
   let service: NotificationEventsService;
-  let mockDb: any;
+  let mockQueueService: any;
+  let mockRedisService: any;
+  let mockAnalyticsService: any;
 
   beforeEach(async () => {
-    mockDb = {
-      insert: jest.fn().mockReturnThis(),
-      values: jest.fn().mockResolvedValue(undefined),
+    mockQueueService = {
+      scheduleDelayedEvent: jest.fn().mockResolvedValue('job-123'),
+    };
+
+    // Mock RedisService for idempotency
+    mockRedisService = {
+      isRedisEnabled: jest.fn().mockReturnValue(true),
+      getClient: jest.fn().mockReturnValue({
+        setnx: jest.fn().mockResolvedValue(1), // 1 = new key set (not duplicate)
+        expire: jest.fn().mockResolvedValue(1),
+      }),
+    };
+
+    // Mock AnalyticsService for Mixpanel tracking
+    mockAnalyticsService = {
+      sendEvent: jest.fn().mockResolvedValue({ overallSuccess: true, results: [] }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationEventsService,
-        { provide: DRIZZLE_TOKEN, useValue: mockDb },
+        { provide: NotificationQueueService, useValue: mockQueueService },
+        { provide: RedisService, useValue: mockRedisService },
+        { provide: AnalyticsService, useValue: mockAnalyticsService },
       ],
     }).compile();
 
@@ -39,16 +58,8 @@ describe('NotificationEventsService', () => {
 
       const result = await service.ingestEvent('user-123', 'com.test.app', dto);
 
-      expect(mockDb.insert).toHaveBeenCalled();
-      expect(mockDb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          appId: 'com.test.app',
-          eventName: 'user_signup',
-          userId: 'user-123',
-          status: 'PENDING',
-          retryCount: 0,
-        }),
-      );
+      // Queue-first: No DB insert - should enqueue to queue
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalled();
       expect(result.accepted).toBe(true);
       expect(result.eventId).toBeDefined();
       expect(result.enqueuedAt).toBeDefined();
@@ -66,19 +77,21 @@ describe('NotificationEventsService', () => {
       expect(result.eventId).toBe('custom-event-id');
     });
 
-    it('should use dto appId when provided', async () => {
+    it('should ignore appId from body and use header appId (security)', async () => {
       const dto = {
         eventType: 'user_signup',
         payload: {},
-        appId: 'custom.app.id',
+        // appId in body should be ignored - security fix
       };
 
       await service.ingestEvent('user-123', 'com.test.app', dto);
 
-      expect(mockDb.values).toHaveBeenCalledWith(
+      // Queue-first: Should enqueue to queue with header appId
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          appId: 'custom.app.id',
+          appId: 'com.test.app',
         }),
+        0,
       );
     });
 
@@ -90,12 +103,14 @@ describe('NotificationEventsService', () => {
 
       await service.ingestEvent('user-123', 'com.test.app', dto);
 
-      expect(mockDb.values).toHaveBeenCalledWith(
+      // Queue-first: check queue receives channels in payload
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           payload: expect.objectContaining({
             _channels: [NotificationChannelType.InApp],
           }),
         }),
+        0,
       );
     });
 
@@ -108,7 +123,8 @@ describe('NotificationEventsService', () => {
 
       await service.ingestEvent('user-123', 'com.test.app', dto);
 
-      expect(mockDb.values).toHaveBeenCalledWith(
+      // Queue-first: check queue receives metadata
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           payload: expect.objectContaining({
             data: 'value',
@@ -116,7 +132,63 @@ describe('NotificationEventsService', () => {
             _metadata: { key: 'meta' },
           }),
         }),
+        0,
       );
+    });
+
+    it('should return duplicate status for existing eventId (idempotency via Redis)', async () => {
+      // Simulate duplicate - Redis SETNX returns 0 (key already exists)
+      mockRedisService.getClient.mockReturnValueOnce({
+        setnx: jest.fn().mockResolvedValue(0), // 0 = already exists (duplicate)
+      });
+
+      const dto = {
+        eventType: 'user_signup',
+        payload: {},
+        eventId: 'existing-event-id',
+      };
+
+      const result = await service.ingestEvent('user-123', 'com.test.app', dto);
+
+      expect(result.isDuplicate).toBe(true);
+      // Queue should not be called for duplicates
+      expect(mockQueueService.scheduleDelayedEvent).not.toHaveBeenCalled();
+    });
+
+    it('should reject payment event without amount (schema validation)', async () => {
+      const dto = {
+        eventType: 'payment.received',
+        payload: { currency: 'INR' }, // missing amount
+      };
+
+      await expect(
+        service.ingestEvent('user-123', 'com.test.app', dto),
+      ).rejects.toThrow('Event validation failed');
+    });
+
+    it('should reject order event without orderId (schema validation)', async () => {
+      const dto = {
+        eventType: 'order.completed',
+        payload: { status: 'done' }, // missing orderId
+      };
+
+      await expect(
+        service.ingestEvent('user-123', 'com.test.app', dto),
+      ).rejects.toThrow('Event validation failed');
+    });
+
+    it('should accept valid payment event (queue-first)', async () => {
+      const dto = {
+        eventType: 'payment.received',
+        payload: { amount: 100, currency: 'INR' },
+      };
+
+      const result = await service.ingestEvent('user-123', 'com.test.app', dto);
+
+      expect(result.accepted).toBe(true);
+      expect(result.eventId).toBeDefined();
+      // Queue-first: should enqueue to queue, not DB
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalled();
     });
   });
 });

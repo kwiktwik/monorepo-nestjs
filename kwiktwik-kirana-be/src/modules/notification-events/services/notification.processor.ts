@@ -1,11 +1,13 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Logger, Inject } from '@nestjs/common';
+import { Logger, Inject, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InMemoryEventBus } from './in-memory-event-bus';
+import { EventHandlerRegistry, HandlerResult } from './event-handler.registry';
 import {
   EventEnvelope,
   NotificationChannelType,
 } from '../types/notification-event.types';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, sql } from 'drizzle-orm';
@@ -43,10 +45,11 @@ export const NOTIFICATION_QUEUE_NAME = 'notification-events';
 /**
  * Notification Processor using @nestjs/bullmq WorkerHost pattern
  *
- * This processor handles delayed notification events, including:
- * - Checkout abandoned checks
- * - Subscription reminders
- * - Any other delayed notification events
+ * QUEUE-FIRST, HIGH-SCALE optimized:
+ * - Event-type based routing via EventHandlerRegistry
+ * - Special handling for delayed events (checkout-abandoned, etc.)
+ * - Retry via BullMQ, DLQ tracking via Mixpanel
+ * - NO DB writes - tracking via Mixpanel instead
  */
 @Processor(NOTIFICATION_QUEUE_NAME, {
   concurrency: 5,
@@ -60,48 +63,162 @@ export class NotificationProcessor extends WorkerHost {
 
   constructor(
     private readonly eventBus: InMemoryEventBus,
+    private readonly handlerRegistry: EventHandlerRegistry,
+    @Optional()
+    private readonly analyticsService?: AnalyticsService,
+    @Optional()
     @Inject(DRIZZLE_TOKEN)
-    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly db?: NodePgDatabase<typeof schema>,
   ) {
     super();
   }
+
+  // Simple in-memory metrics (can be replaced with Prometheus later)
+  private metrics = {
+    processed: 0,
+    failed: 0,
+    deadLetter: 0,
+    byEventType: new Map<string, number>(),
+  };
 
   /**
    * Main job processor method - called by BullMQ for each job
    */
   async process(job: Job<NotificationJobData>): Promise<void> {
     const data = job.data;
+    const startTime = Date.now();
 
     this.logger.log(
       `🔄 [PROCESSING] Job ${job.id} | Type: ${data.eventType} | User: ${data.userId}`,
     );
     this.logger.debug(`   Job data: ${JSON.stringify(data, null, 2)}`);
 
-    // Update event status in database (if exists)
-    await this.updateEventStatus(data.eventId, 'PROCESSING');
+    // Check retry count - route to DLQ if max retries exceeded
+    const MAX_RETRIES = 3;
+    if (job.attemptsMade > MAX_RETRIES) {
+      this.logger.error(
+        `💀 [DLQ] Max retries (${MAX_RETRIES}) exceeded for event ${data.eventId}`,
+      );
+      this.trackToMixpanel(data.appId, 'notification_event_dlq', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        reason: `Max retries exceeded after ${job.attemptsMade} attempts`,
+      });
+      this.metrics.deadLetter++;
+      return; // Don't throw - don't retry anymore
+    }
+
+    // Track processing start to Mixpanel
+    this.trackToMixpanel(data.appId, 'notification_event_processing', {
+      eventId: data.eventId,
+      eventType: data.eventType,
+      userId: data.userId,
+      attempt: job.attemptsMade + 1,
+    });
 
     try {
-      // Special handling for checkout-abandoned events
+      // Special handling for checkout-abandoned events (premium check)
       if (
         data.eventType === (NotificationJobType.CHECKOUT_ABANDONED as string)
       ) {
         await this.handleCheckoutAbandoned(job);
-        return;
+      } else {
+        // All other events go through the handler registry
+        await this.handleEventWithRegistry(job);
       }
 
-      // Default handling for other event types
-      await this.sendNotification(job);
+      // Success metrics
+      this.metrics.processed++;
+      const count = this.metrics.byEventType.get(data.eventType) || 0;
+      this.metrics.byEventType.set(data.eventType, count + 1);
+
+      // Track success to Mixpanel
+      this.trackToMixpanel(data.appId, 'notification_event_completed', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        durationMs: Date.now() - startTime,
+        channels: data.channels,
+      });
+
+      this.logger.log(
+        `✅ [SUCCESS] Job ${job.id} processed in ${Date.now() - startTime}ms`,
+      );
     } catch (error) {
+      this.metrics.failed++;
       this.logger.error(
         `❌ [FAILED] Job ${job.id} failed: ${(error as Error).message}`,
       );
-      await this.updateEventStatus(
-        data.eventId,
-        'FAILED',
-        (error as Error).message,
-      );
-      throw error;
+
+      // Track failure to Mixpanel
+      this.trackToMixpanel(data.appId, 'notification_event_failed', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        error: (error as Error).message,
+        attempt: job.attemptsMade + 1,
+      });
+
+      // Check if we should route to DLQ
+      if (job.attemptsMade >= MAX_RETRIES) {
+        this.trackToMixpanel(data.appId, 'notification_event_dlq', {
+          eventId: data.eventId,
+          eventType: data.eventType,
+          userId: data.userId,
+          reason: `Failed after ${job.attemptsMade} attempts: ${(error as Error).message}`,
+        });
+        this.metrics.deadLetter++;
+      }
+
+      throw error; // Let BullMQ handle retry
     }
+  }
+
+  /**
+   * Handle event using the EventHandlerRegistry
+   * This enables different processing logic per event type
+   */
+  private async handleEventWithRegistry(
+    job: Job<NotificationJobData>,
+  ): Promise<void> {
+    const data = job.data;
+
+    // Build event envelope
+    const envelope: EventEnvelope = {
+      eventId: data.eventId,
+      appId: data.appId,
+      userId: data.userId,
+      eventType: data.eventType,
+      payload: data.payload,
+      channels: data.channels,
+      createdAt: new Date(data.createdAt),
+      metadata: {
+        ...data.metadata,
+        processedAt: new Date().toISOString(),
+        delayed: true,
+        scheduledFor: data.scheduledFor,
+        jobId: job.id,
+      },
+    };
+
+    // Process through handler registry (custom logic per event type)
+    const handlerResult: HandlerResult =
+      await this.handlerRegistry.processEvent(envelope);
+
+    if (!handlerResult.success) {
+      this.logger.warn(
+        `⚠️  [HANDLER] Event ${data.eventId} handler returned failure: ${handlerResult.detail}`,
+      );
+
+      if (handlerResult.shouldRetry) {
+        throw new Error(handlerResult.detail || 'Handler failed with retry');
+      }
+      // Non-retryable failure - still try to send notification
+    }
+
+    // Send through notification channels
+    await this.sendNotification(job);
   }
 
   /**
@@ -126,11 +243,12 @@ export class NotificationProcessor extends WorkerHost {
       this.logger.log(
         `⏭️  [SKIPPED] User ${data.userId} is already premium - skipping notification`,
       );
-      await this.updateEventStatus(
-        data.eventId,
-        'COMPLETED',
-        'User is premium, skipped',
-      );
+      this.trackToMixpanel(data.appId, 'notification_event_skipped', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        reason: 'User is premium',
+      });
       return;
     }
 
@@ -179,16 +297,22 @@ export class NotificationProcessor extends WorkerHost {
       .map((r) => r.channel);
 
     if (allSucceeded) {
-      await this.updateEventStatus(data.eventId, 'COMPLETED');
+      this.trackToMixpanel(data.appId, 'notification_event_delivered', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        channels: data.channels,
+      });
       this.logger.log(
         `✅ [COMPLETED] Event ${data.eventId} delivered to all channels`,
       );
     } else {
-      await this.updateEventStatus(
-        data.eventId,
-        'COMPLETED',
-        `Partial delivery - failed: ${failedChannels.join(', ')}`,
-      );
+      this.trackToMixpanel(data.appId, 'notification_event_partial', {
+        eventId: data.eventId,
+        eventType: data.eventType,
+        userId: data.userId,
+        failedChannels,
+      });
       this.logger.warn(
         `⚠️  [PARTIAL] Event ${data.eventId} completed with failures: ${failedChannels.join(', ')}`,
       );
@@ -197,11 +321,18 @@ export class NotificationProcessor extends WorkerHost {
 
   /**
    * Check if user has premium/active subscription
+   * Returns false if DB not available or on error (fail-safe)
    */
   private async checkUserPremiumStatus(
     userId: string,
     appId: string,
   ): Promise<boolean> {
+    // If no DB available, skip premium check (assume not premium)
+    if (!this.db) {
+      this.logger.debug(`DB not available - skipping premium check for user ${userId}`);
+      return false;
+    }
+
     try {
       const subscriptions = await this.db
         .select()
@@ -234,35 +365,43 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   /**
-   * Update event status in database (optional - event may not exist for delayed jobs)
+   * Track event to Mixpanel (non-blocking, fire-and-forget)
+   * Used instead of DB writes for high-scale tracking
    */
-  private async updateEventStatus(
-    eventId: string,
-    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _detail?: string,
-  ): Promise<void> {
-    try {
-      const updateData: Record<string, unknown> = {
-        status,
-        processedAt: new Date(),
-      };
+  private trackToMixpanel(
+    appId: string,
+    eventName: string,
+    properties: Record<string, unknown>,
+  ): void {
+    if (!this.analyticsService) return;
 
-      if (status === 'FAILED') {
-        updateData.retryCount = sql`${schema.notificationEvents.retryCount} + 1`;
+    try {
+      // Convert unknown values to string | number | boolean | undefined for EventProperties
+      const eventProps: Record<string, string | number | boolean | undefined> = {};
+      for (const [key, value] of Object.entries(properties)) {
+        if (value === undefined || value === null) {
+          eventProps[key] = undefined;
+        } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          eventProps[key] = value;
+        } else {
+          eventProps[key] = JSON.stringify(value);
+        }
       }
 
-      await this.db
-        .update(schema.notificationEvents)
-        .set(updateData)
-        .where(eq(schema.notificationEvents.id, eventId));
-
-      this.logger.debug(`Updated event ${eventId} status to ${status}`);
+      this.analyticsService
+        .sendEvent({
+          eventName,
+          appId,
+          userData: {
+            userId: properties.userId as string | undefined,
+          },
+          eventProperties: eventProps,
+        })
+        .catch((err) => {
+          this.logger.debug(`Mixpanel track failed (non-critical): ${err.message}`);
+        });
     } catch (error) {
-      // Event might not exist in DB for delayed jobs, that's okay
-      this.logger.debug(
-        `Could not update event ${eventId} status: ${(error as Error).message}`,
-      );
+      this.logger.debug(`Mixpanel track error: ${(error as Error).message}`);
     }
   }
 
@@ -296,5 +435,17 @@ export class NotificationProcessor extends WorkerHost {
   @OnWorkerEvent('progress')
   onProgress(job: Job<NotificationJobData>, progress: number) {
     this.logger.debug(`📊 [WORKER] Job ${job.id} progress: ${progress}%`);
+  }
+
+  /**
+   * Get processor metrics (for monitoring/debugging)
+   */
+  getMetrics() {
+    return {
+      processed: this.metrics.processed,
+      failed: this.metrics.failed,
+      deadLetter: this.metrics.deadLetter,
+      byEventType: Object.fromEntries(this.metrics.byEventType),
+    };
   }
 }
