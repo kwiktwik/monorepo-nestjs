@@ -96,7 +96,7 @@ describe('AdminService', () => {
   });
 
   describe('runScriptStream', () => {
-    function createMockChildProcess(): EventEmitter & Partial<ChildProcess> {
+    function createMockChildProcess(): any {
       const emitter = new EventEmitter();
       return Object.assign(emitter, {
         stdout: new EventEmitter(),
@@ -104,12 +104,12 @@ describe('AdminService', () => {
         pid: 12345,
         killed: false,
         kill: jest.fn(),
-      }) as EventEmitter & Partial<ChildProcess>;
+      });
     }
 
     it('should stream stdout data', (done) => {
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const messages: any[] = [];
@@ -136,7 +136,7 @@ describe('AdminService', () => {
 
     it('should stream stderr data', (done) => {
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const messages: any[] = [];
@@ -163,7 +163,7 @@ describe('AdminService', () => {
 
     it('should handle process errors', (done) => {
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const messages: any[] = [];
@@ -190,7 +190,7 @@ describe('AdminService', () => {
 
     it('should include exit code on close', (done) => {
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const messages: any[] = [];
@@ -260,7 +260,7 @@ describe('AdminService', () => {
 
     it('should pass arguments to script', (done) => {
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs', ['arg1', 'arg2']);
 
@@ -284,7 +284,7 @@ describe('AdminService', () => {
     it('should kill process on unsubscribe', (done) => {
       const mockKill = jest.spyOn(process, 'kill').mockImplementation(() => true);
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const subscription = observable.subscribe({
@@ -305,7 +305,7 @@ describe('AdminService', () => {
         throw new Error('Process already exited');
       });
       const mockChild = createMockChildProcess();
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const subscription = observable.subscribe({
@@ -324,7 +324,7 @@ describe('AdminService', () => {
       const mockKill = jest.spyOn(process, 'kill').mockImplementation(() => true);
       const mockChild = createMockChildProcess();
       mockChild.killed = true;
-      mockSpawn.mockReturnValue(mockChild as ChildProcess);
+      mockSpawn.mockReturnValue(mockChild as any);
 
       const observable = service.runScriptStream('test.mjs');
       const subscription = observable.subscribe({

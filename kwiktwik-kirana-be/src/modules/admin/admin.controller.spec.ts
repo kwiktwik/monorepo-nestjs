@@ -3,6 +3,9 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { FourHourEventSchedulerService } from '../razorpay/scheduler/four-hour-event.scheduler';
 import { AnalyticsService } from '../analytics/analytics.service';
+import * as jwt from 'jsonwebtoken';
+
+jest.mock('jsonwebtoken');
 
 describe('AdminController', () => {
   let controller: AdminController;
@@ -10,6 +13,7 @@ describe('AdminController', () => {
   const mockAdminService = {
     getScripts: jest.fn(),
     runScriptStream: jest.fn(),
+    getUserById: jest.fn(),
   };
 
   const mockFourHourScheduler = {
@@ -59,13 +63,23 @@ describe('AdminController', () => {
   });
 
   describe('setCookie', () => {
-    it('should set cookie successfully', async () => {
+    it('should set cookie successfully for valid admin', async () => {
       const res = mockResponse();
-      const result = await controller.setCookie({ token: 'test-token' }, res);
+      const testToken = 'valid-jwt-token';
+      const decoded = { sub: 'user-123' };
+      const adminPhone = '9999999999';
+      
+      process.env.JWT_SECRET = 'test-secret';
+      process.env.ADMIN_MOBILE_NUMBER = adminPhone;
+      
+      (jwt.verify as jest.Mock).mockReturnValue(decoded);
+      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: adminPhone });
+
+      const result = await controller.setCookie({ token: testToken }, res);
 
       expect(res.cookie).toHaveBeenCalledWith(
         'admin_token',
-        'test-token',
+        testToken,
         expect.objectContaining({
           httpOnly: true,
           sameSite: 'strict',
@@ -75,12 +89,29 @@ describe('AdminController', () => {
       expect(result).toEqual({ success: true });
     });
 
+    it('should return false when phone number is not in admin list', async () => {
+      const res = mockResponse();
+      const testToken = 'valid-jwt-token';
+      const decoded = { sub: 'user-123' };
+      
+      process.env.JWT_SECRET = 'test-secret';
+      process.env.ADMIN_MOBILE_NUMBER = '1234567890'; // different phone
+      
+      (jwt.verify as jest.Mock).mockReturnValue(decoded);
+      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: '9999999999' });
+
+      const result = await controller.setCookie({ token: testToken }, res);
+
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(result).toEqual({ success: false, message: 'Insufficient privileges' });
+    });
+
     it('should return false when token is missing', async () => {
       const res = mockResponse();
       const result = await controller.setCookie({ token: '' }, res);
 
       expect(res.cookie).not.toHaveBeenCalled();
-      expect(result).toEqual({ success: false });
+      expect(result).toEqual({ success: false, message: 'Token required' });
     });
   });
 
