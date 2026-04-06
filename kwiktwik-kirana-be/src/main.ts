@@ -42,47 +42,6 @@ async function bootstrap() {
   // Swagger API documentation
   const port = process.env.PORT || 3002;
 
-  // Basic Auth Middleware for Swagger
-  const swaggerAuthMiddleware = (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
-    // Prevent Cloudflare from caching the swagger-ui-init.js file
-    // which contains the inlined Swagger JSON spec
-    res.setHeader(
-      'Cache-Control',
-      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
-    );
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('CDN-Cache-Control', 'no-store');
-    res.setHeader('Cloudflare-CDN-Cache-Control', 'no-store');
-
-    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-    const [login, password] = Buffer.from(b64auth, 'base64')
-      .toString()
-      .split(':');
-
-    const expectedUser = process.env.SWAGGER_USER || 'kirana';
-    const expectedPass = process.env.SWAGGER_PASSWORD || 'kirana@kwiktwik';
-
-    if (
-      login &&
-      password &&
-      login === expectedUser &&
-      password === expectedPass
-    ) {
-      return next();
-    }
-
-    res.set('WWW-Authenticate', 'Basic realm="Swagger API Docs"');
-    res.status(401).send('Authentication required.');
-  };
-
-  // Protect swagger endpoints
-  app.use(['/docs', '/docs-json', '/api/docs-json'], swaggerAuthMiddleware);
-
   const config = new DocumentBuilder()
     .setTitle('KwikTwik Kirana API')
     .setDescription(
@@ -124,7 +83,9 @@ async function bootstrap() {
     .addBasicAuth({ type: 'http', scheme: 'basic' }, 'admin-basic')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document, {
+
+  // Setup Swagger at /api/admin/docs - protected by AdminAuthMiddleware
+  SwaggerModule.setup('admin/docs', app, document, {
     useGlobalPrefix: true,
     swaggerOptions: {
       persistAuthorization: true,
@@ -138,7 +99,7 @@ async function bootstrap() {
     },
   });
 
-  // Mock Data Swagger Instance
+  // Mock Data Swagger Instance - also under admin for protection
   if (
     process.env.USE_MOCK_DB === 'true' ||
     process.env.NODE_ENV !== 'production'
@@ -157,8 +118,12 @@ async function bootstrap() {
       )
       .build();
     const mockDocument = SwaggerModule.createDocument(app, mockConfig);
-    SwaggerModule.setup('mock-docs', app, mockDocument);
-    logger.log(`📖 Mock Swagger docs: http://localhost:${port}/mock-docs`);
+    SwaggerModule.setup('admin/mock-docs', app, mockDocument, {
+      useGlobalPrefix: true,
+    });
+    logger.log(
+      `📖 Mock Swagger docs: http://localhost:${port}/api/admin/mock-docs`,
+    );
   }
 
   // Enable CORS
@@ -201,7 +166,9 @@ async function bootstrap() {
     `🔐 JWT: ${process.env.JWT_SECRET ? 'JWT_SECRET set from env' : 'WARNING: Using default JWT secret'}`,
   );
   logger.log(`📋 Health check: http://localhost:${port}/health`);
-  logger.log(`📖 Swagger docs: http://localhost:${port}/docs`);
+  logger.log(
+    `📖 Swagger docs (admin protected): http://localhost:${port}/api/admin/docs`,
+  );
   logger.log(`📱 Default X-App-ID: com.paymentalert.app`);
 
   if (

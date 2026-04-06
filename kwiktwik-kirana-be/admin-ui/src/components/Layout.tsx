@@ -5,6 +5,8 @@ import {
   ShieldCheck,
   Activity,
   LogOut,
+  Flag,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,6 +34,22 @@ export default function Layout() {
         <div className="text-xs font-mono px-3 py-1.5 rounded-full bg-razorpay/10 border border-razorpay/20 text-razorpay-accent flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-razorpay-accent animate-pulse"></span>
           Razorpay Ready
+        </div>
+      );
+    }
+    if (location.pathname.includes('feature-toggle')) {
+      return (
+        <div className="text-xs font-mono px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+          Feature Management
+        </div>
+      );
+    }
+    if (location.pathname.includes('notifications')) {
+      return (
+        <div className="text-xs font-mono px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          Notifications Ready
         </div>
       );
     }
@@ -132,6 +150,46 @@ export default function Layout() {
                 <div className="flex-1 min-w-0">
                   <span className="font-medium text-sm block truncate">
                     Razorpay Utilities
+                  </span>
+                </div>
+              </NavLink>
+
+              <NavLink
+                to="/feature-toggle"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border group ${
+                    isActive
+                      ? 'bg-purple-500/20 border-purple-500/30 text-white'
+                      : 'hover:bg-white/5 border-transparent text-white/70 hover:text-purple-300'
+                  }`
+                }
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
+                  <Flag className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-sm block truncate">
+                    Feature Toggle
+                  </span>
+                </div>
+              </NavLink>
+
+              <NavLink
+                to="/notifications"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border group ${
+                    isActive
+                      ? 'bg-blue-500/20 border-blue-500/30 text-white'
+                      : 'hover:bg-white/5 border-transparent text-white/70 hover:text-blue-400'
+                  }`
+                }
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <Bell className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-sm block truncate">
+                    Push Notifications
                   </span>
                 </div>
               </NavLink>
