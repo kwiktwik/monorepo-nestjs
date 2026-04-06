@@ -204,6 +204,12 @@ export class AdminModule implements NestModule {
     // Protect both the static HTML path and the backend API path
     consumer
       .apply(AdminAuthMiddleware)
-      .forRoutes({ path: '/api/admin*path', method: RequestMethod.ALL });
+      .forRoutes(
+        { path: '/api/admin*path', method: RequestMethod.ALL },
+        { path: '/api/admin/docs', method: RequestMethod.ALL },
+        { path: '/api/admin/docs/*path', method: RequestMethod.ALL },
+        { path: '/api/admin/mock-docs', method: RequestMethod.ALL },
+        { path: '/api/admin/mock-docs/*path', method: RequestMethod.ALL },
+      );
   }
 }

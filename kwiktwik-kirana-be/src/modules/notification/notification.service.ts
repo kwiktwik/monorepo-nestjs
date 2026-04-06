@@ -600,101 +600,111 @@ export class NotificationService {
   }
 
   async sendTestNotificationByPhone(
-    phoneNumber: string,
+    phoneNumber?: string,
     appId?: string,
     payload?: Record<string, unknown>,
+    fcmToken?: string,
   ) {
-    const user = await this.findUserByPhone(phoneNumber);
-    if (!user) {
-      return { success: false, error: 'User not found' };
+    let user = null;
+    if (phoneNumber) {
+      user = await this.findUserByPhone(phoneNumber);
+    }
+
+    if (!user && !fcmToken) {
+      return { success: false, error: 'Provide either a user phone number or an FCM token' };
     }
 
     let fcmResult:
       | { success: true; count: number }
       | { success: false; error: string }
       | null = null;
-    if (appId) {
-      try {
-        const tokens = await this.getPushTokens(user.id, appId);
-        if (tokens.length > 0) {
-          // Convert data to string values for FCM compatibility
-          const fcmData: Record<string, string> = {};
-          if (payload) {
-            for (const [key, value] of Object.entries(payload)) {
-              if (value !== null && value !== undefined) {
-                fcmData[key] =
-                  typeof value === 'string' ? value : String(value);
-              }
-            }
-          }
-
-          const title =
-            payload && typeof payload.title === 'string'
-              ? payload.title
-              : 'Notification';
-          const body =
-            payload && typeof payload.body === 'string' ? payload.body : '';
-
-          const response = await admin.messaging().sendEachForMulticast({
-            tokens,
-            notification: {
-              title,
-              body,
-            },
-            data: fcmData,
-            android: {
-              priority: 'high',
-              notification: {
-                channelId: 'high_importance_channel',
-                priority: 'high',
-              },
-            },
-          });
-          fcmResult = { success: true, count: response.successCount };
-
-          // Handle invalid tokens
-          if (response.failureCount > 0) {
-            const invalidTokens: string[] = [];
-            response.responses.forEach((resp, idx) => {
-              if (!resp.success) {
-                const code = resp.error?.code;
-                if (
-                  code === 'messaging/invalid-registration-token' ||
-                  code === 'messaging/registration-token-not-registered'
-                ) {
-                  invalidTokens.push(tokens[idx]);
-                }
-              }
-            });
-
-            if (invalidTokens.length > 0) {
-              for (const token of invalidTokens) {
-                await this.db
-                  .update(schema.pushTokens)
-                  .set({ isActive: false, updatedAt: new Date() })
-                  .where(eq(schema.pushTokens.token, token));
-              }
-            }
-          }
-        } else {
-          fcmResult = {
-            success: false,
-            error: 'No active push tokens found for this app',
-          };
-        }
-      } catch (err) {
-        logger.error('FCM sending failed:', err);
-        fcmResult = { success: false, error: String(err) };
+      
+    try {
+      let tokens: string[] = [];
+      if (fcmToken) {
+        tokens = [fcmToken];
+      } else if (user && appId) {
+        tokens = await this.getPushTokens(user.id, appId);
+      } else if (user && !appId) {
+        fcmResult = {
+          success: false,
+          error: 'appId is required to send FCM push notification',
+        };
       }
-    } else {
-      fcmResult = {
-        success: false,
-        error: 'appId is required to send FCM push notification',
-      };
+
+      if (tokens.length > 0) {
+        // Convert data to string values for FCM compatibility
+        const fcmData: Record<string, string> = {};
+        if (payload) {
+          for (const [key, value] of Object.entries(payload)) {
+            if (value !== null && value !== undefined) {
+              fcmData[key] =
+                typeof value === 'string' ? value : String(value);
+            }
+          }
+        }
+
+        const title =
+          payload && typeof payload.title === 'string'
+            ? payload.title
+            : 'Notification';
+        const body =
+          payload && typeof payload.body === 'string' ? payload.body : '';
+
+        const response = await admin.messaging().sendEachForMulticast({
+          tokens,
+          notification: {
+            title,
+            body,
+          },
+          data: fcmData,
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'high_importance_channel',
+              priority: 'high',
+            },
+          },
+        });
+        fcmResult = { success: true, count: response.successCount };
+
+        // Handle invalid tokens
+        if (response.failureCount > 0) {
+          const invalidTokens: string[] = [];
+          response.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              const code = resp.error?.code;
+              if (
+                code === 'messaging/invalid-registration-token' ||
+                code === 'messaging/registration-token-not-registered'
+              ) {
+                invalidTokens.push(tokens[idx]);
+              }
+            }
+          });
+
+          if (invalidTokens.length > 0 && user) {
+            for (const token of invalidTokens) {
+              await this.db
+                .update(schema.pushTokens)
+                .set({ isActive: false, updatedAt: new Date() })
+                .where(eq(schema.pushTokens.token, token));
+            }
+          }
+        }
+      } else if (!fcmResult) {
+        fcmResult = {
+          success: false,
+          error: fcmToken ? 'Provided FCM token is invalid' : 'No active push tokens found for this app',
+        };
+      }
+    } catch (err) {
+      logger.error('FCM sending failed:', err);
+      fcmResult = { success: false, error: String(err) };
     }
 
-    // Always create the polling notification
-    const notification = await this.createTestNotification(user.id, payload);
+    // Always create the polling notification if user is found
+    const notification = user ? await this.createTestNotification(user.id, payload) : null;
     return { success: true, user, notification, fcmResult };
   }
 }

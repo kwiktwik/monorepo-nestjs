@@ -21,15 +21,17 @@ export class AdminNotificationController {
   async sendTestNotification(
     @Body()
     body: {
-      phoneNumber: string;
+      phoneNumber?: string;
       appId?: string;
       payload?: Record<string, unknown>;
+      fcmToken?: string;
     },
   ) {
     return this.notificationService.sendTestNotificationByPhone(
       body.phoneNumber,
       body.appId,
       body.payload,
+      body.fcmToken,
     );
   }
 }

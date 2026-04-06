@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Send, Smartphone, Hash, AlertCircle, Bell, FileJson } from 'lucide-react';
+import { Send, Smartphone, Hash, AlertCircle, Bell, FileJson, Key } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdminApi';
 
 export default function Notifications() {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [fcmToken, setFcmToken] = useState('');
   const [appId, setAppId] = useState('');
   const [payloadText, setPayloadText] = useState('{\n  "title": "Test Push",\n  "body": "This is a test notification."\n}');
   
@@ -17,7 +18,11 @@ export default function Notifications() {
     e.preventDefault();
     setIsLoading(true);
     setResult(null);
-    setError(null);
+    if (!phoneNumber.trim() && !fcmToken.trim()) {
+      setError('Please provide either a phone number or an FCM Token.');
+      setIsLoading(false);
+      return;
+    }
 
     let parsedPayload;
     try {
@@ -35,7 +40,8 @@ export default function Notifications() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phoneNumber,
+          phoneNumber: phoneNumber || undefined,
+          fcmToken: fcmToken || undefined,
           appId: appId || undefined,
           payload: parsedPayload,
         }),
@@ -71,19 +77,41 @@ export default function Notifications() {
             </h3>
 
             <form onSubmit={handleSend} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-white/40" />
-                  Phone Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+919876543210"
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-white/40" />
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+919876543210"
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-4 text-white/30 text-xs font-medium uppercase min-w-0">
+                  <div className="h-px bg-white/10 flex-1"></div>
+                  <span>OR / AND</span>
+                  <div className="h-px bg-white/10 flex-1"></div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                    <Key className="w-4 h-4 text-white/40" />
+                    FCM Token (Direct Push)
+                  </label>
+                  <input
+                    type="text"
+                    value={fcmToken}
+                    onChange={(e) => setFcmToken(e.target.value)}
+                    placeholder="Enter device FCM token..."
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
+                  />
+                  <p className="text-xs text-white/40 mt-1">If provided, notification will route to this device directly.</p>
+                </div>
               </div>
 
               <div className="space-y-2">
