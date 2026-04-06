@@ -163,7 +163,7 @@ export class UserService {
     const upiVpa = userMeta.length > 0 ? userMeta[0].upiVpa : null;
     const audioLanguage =
       userMeta.length > 0 ? userMeta[0].audioLanguage : null;
-    const clientData = userMeta.length > 0 ? userMeta[0].clientData : {};
+    const clientData = userMeta.length > 0 ? userMeta[0].clientData : null;
 
     // Determine current subscription end date (current_end)
     let currentEnd: Date | null = null;
