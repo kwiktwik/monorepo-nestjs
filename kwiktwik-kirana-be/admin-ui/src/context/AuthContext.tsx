@@ -2,24 +2,15 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 interface AuthContextType {
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: () => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Store token in sessionStorage for persistence across refreshes
-  // sessionStorage is cleared when the tab/browser is closed, which is appropriate for admin sessions
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('admin_token');
-    }
-    return null;
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -35,17 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data.authenticated) {
             setIsAuthenticated(true);
           } else {
-            // Session invalid, clear token
-            setToken(null);
-            sessionStorage.removeItem('admin_token');
+            setIsAuthenticated(false);
           }
         } else {
-          // Session check failed, clear token
-          setToken(null);
-          sessionStorage.removeItem('admin_token');
+          setIsAuthenticated(false);
         }
       } catch (error) {
-        // Network error or other issue, keep current state
+        // Network error or other issue, assume not authenticated
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -54,14 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
-  // Update isAuthenticated when token changes
-  useEffect(() => {
-    setIsAuthenticated(!!token);
-  }, [token]);
-
-  const login = (newToken: string) => {
-    setToken(newToken);
-    sessionStorage.setItem('admin_token', newToken);
+  const login = () => {
     setIsAuthenticated(true);
   };
 
@@ -74,15 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       // Ignore errors during logout
     }
-    setToken(null);
-    sessionStorage.removeItem('admin_token');
     setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider
-      value={{ token, isLoading, isAuthenticated, login, logout }}
-    >
+    <AuthContext.Provider value={{ isLoading, isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
