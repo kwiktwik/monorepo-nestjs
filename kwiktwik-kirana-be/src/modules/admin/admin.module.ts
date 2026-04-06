@@ -146,9 +146,13 @@ export class AdminAuthMiddleware implements NestMiddleware {
         /\D/g,
         '',
       );
-      const cleanAdminPhone = expectedMobile.replace(/\D/g, '');
+      // Support comma-separated list of admin mobile numbers
+      const allowedAdminPhones = expectedMobile
+        .split(',')
+        .map((phone) => phone.trim().replace(/\D/g, ''))
+        .filter((phone) => phone.length > 0);
 
-      if (!cleanUserPhone || cleanUserPhone !== cleanAdminPhone) {
+      if (!cleanUserPhone || !allowedAdminPhones.includes(cleanUserPhone)) {
         return res
           .status(403)
           .json({ success: false, message: 'Insufficient privileges' });

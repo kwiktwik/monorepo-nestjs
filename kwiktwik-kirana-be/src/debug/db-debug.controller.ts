@@ -50,7 +50,13 @@ export class DbDebugController {
       }
     }
 
-    return !!(token && token === expectedMobile);
+    // Support comma-separated list of admin mobile numbers
+    const allowedAdminPhones = expectedMobile
+      .split(',')
+      .map((phone) => phone.trim())
+      .filter((phone) => phone.length > 0);
+
+    return !!(token && allowedAdminPhones.includes(token));
   }
 
   private isEnabled() {
@@ -79,7 +85,10 @@ export class DbDebugController {
 
     // Check admin authentication
     if (!this.validateAdminAuth(req)) {
-      res.set('WWW-Authenticate', 'Basic realm="Debug DB Access (Use mobile as password)"');
+      res.set(
+        'WWW-Authenticate',
+        'Basic realm="Debug DB Access (Use mobile as password)"',
+      );
       res.status(401).send('Authentication required.');
       return;
     }

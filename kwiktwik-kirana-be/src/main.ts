@@ -5,61 +5,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
-import type { Request, Response, NextFunction } from 'express';
 import { validateAppConfigSyncOrThrow } from './common/config/config-validator';
-
-// Admin auth middleware for Swagger routes (applied before Swagger setup)
-const createSwaggerAuthMiddleware = () => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Read token from cookies
-    let token: string | undefined;
-    if (req.headers.cookie) {
-      const cookies = req.headers.cookie
-        .split(';')
-        .map((c) => c.trim().split('='));
-      const adminTokenCookie = cookies.find((c) => c[0] === 'admin_token');
-      if (adminTokenCookie) {
-        token = adminTokenCookie[1];
-      }
-    }
-
-    // Also check Bearer header
-    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
-      token = req.headers.authorization.substring(7);
-    }
-
-    if (!token) {
-      // For browser requests, redirect to login
-      if (req.headers.accept?.includes('text/html')) {
-        return res.redirect('/admin/login');
-      }
-      return res
-        .status(401)
-        .json({ success: false, message: 'Admin authentication required.' });
-    }
-
-    try {
-      const jwt = require('jsonwebtoken');
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
-        return res
-          .status(500)
-          .json({ success: false, message: 'Server configuration error' });
-      }
-
-      const decoded = jwt.verify(token, jwtSecret);
-      (req as any).admin = decoded;
-      next();
-    } catch (error) {
-      if (req.headers.accept?.includes('text/html')) {
-        return res.redirect('/admin/login');
-      }
-      return res
-        .status(401)
-        .json({ success: false, message: 'Invalid or expired token' });
-    }
-  };
-};
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -91,18 +37,6 @@ async function bootstrap() {
 
   // All API routes under /api (health excluded for load balancers)
   app.setGlobalPrefix('api', { exclude: ['health'] });
-
-  // Apply auth middleware to Swagger routes BEFORE setting up Swagger
-  const swaggerAuthMiddleware = createSwaggerAuthMiddleware();
-  app.use('/api/admin/docs', swaggerAuthMiddleware);
-  app.use('/api/admin/docs-json', swaggerAuthMiddleware);
-  if (
-    process.env.USE_MOCK_DB === 'true' ||
-    process.env.NODE_ENV !== 'production'
-  ) {
-    app.use('/api/admin/mock-docs', swaggerAuthMiddleware);
-    app.use('/api/admin/mock-docs-json', swaggerAuthMiddleware);
-  }
 
   // Swagger API documentation
   const port = process.env.PORT || 3002;
