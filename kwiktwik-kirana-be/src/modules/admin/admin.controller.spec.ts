@@ -125,6 +125,60 @@ describe('AdminController', () => {
     });
   });
 
+  describe('checkSession', () => {
+    it('should return authenticated true for valid admin token in cookie', async () => {
+      const adminPhone = '9999999999';
+      const decoded = { sub: 'user-123' };
+      process.env.JWT_SECRET = 'test-secret';
+      process.env.ADMIN_MOBILE_NUMBER = adminPhone;
+
+      (jwt.verify as jest.Mock).mockReturnValue(decoded);
+      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: adminPhone });
+
+      const mockReq = { 
+        headers: { 
+          cookie: 'admin_token=valid-token' 
+        } 
+      };
+      
+      const result = await controller.checkSession(mockReq as any);
+
+      expect(result).toEqual({ authenticated: true, user: decoded });
+    });
+
+    it('should return authenticated false if no token in cookie', async () => {
+      const mockReq = { headers: { cookie: '' } };
+      const result = await controller.checkSession(mockReq as any);
+
+      expect(result).toEqual({ authenticated: false });
+    });
+
+    it('should return authenticated false for non-admin user', async () => {
+      const decoded = { sub: 'user-123' };
+      process.env.JWT_SECRET = 'test-secret';
+      process.env.ADMIN_MOBILE_NUMBER = '9999999999';
+
+      (jwt.verify as jest.Mock).mockReturnValue(decoded);
+      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: '1234567890' });
+
+      const mockReq = { headers: { cookie: 'admin_token=non-admin-token' } };
+      const result = await controller.checkSession(mockReq as any);
+
+      expect(result).toEqual({ authenticated: false });
+    });
+
+    it('should return authenticated false if token verification fails', async () => {
+      (jwt.verify as jest.Mock).mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      const mockReq = { headers: { cookie: 'admin_token=invalid-token' } };
+      const result = await controller.checkSession(mockReq as any);
+
+      expect(result).toEqual({ authenticated: false });
+    });
+  });
+
   describe('streamScript', () => {
     it('should stream script output', () => {
       const mockObservable = { subscribe: jest.fn() };
