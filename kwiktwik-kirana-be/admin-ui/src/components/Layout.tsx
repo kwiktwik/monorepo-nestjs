@@ -194,6 +194,22 @@ export default function Layout() {
                   </span>
                 </div>
               </NavLink>
+
+              <a
+                href="/api/admin/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border border-transparent hover:bg-white/5 text-white/70 hover:text-orange-300 group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
+                  <FileText className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-sm block truncate">
+                    API Docs
+                  </span>
+                </div>
+              </a>
             </div>
           </div>
 
