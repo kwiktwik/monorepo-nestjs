@@ -92,6 +92,18 @@ async function bootstrap() {
   // All API routes under /api (health excluded for load balancers)
   app.setGlobalPrefix('api', { exclude: ['health'] });
 
+  // Apply auth middleware to Swagger routes BEFORE setting up Swagger
+  const swaggerAuthMiddleware = createSwaggerAuthMiddleware();
+  app.use('/api/admin/docs', swaggerAuthMiddleware);
+  app.use('/api/admin/docs-json', swaggerAuthMiddleware);
+  if (
+    process.env.USE_MOCK_DB === 'true' ||
+    process.env.NODE_ENV !== 'production'
+  ) {
+    app.use('/api/admin/mock-docs', swaggerAuthMiddleware);
+    app.use('/api/admin/mock-docs-json', swaggerAuthMiddleware);
+  }
+
   // Swagger API documentation
   const port = process.env.PORT || 3002;
 
