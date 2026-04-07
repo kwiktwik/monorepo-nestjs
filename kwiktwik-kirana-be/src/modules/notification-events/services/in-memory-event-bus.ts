@@ -5,7 +5,7 @@ import {
   NotificationChannelResult,
   NotificationChannelType,
 } from '../types/notification-event.types';
-import { MockInAppChannel } from './mock-in-app.channel';
+import { InAppChannel } from './in-app.channel';
 import { MockPushChannel } from './mock-push.channel';
 import { MockSmsChannel } from './mock-sms.channel';
 
@@ -23,12 +23,12 @@ export class InMemoryEventBus {
   constructor(
     mockSmsChannel: MockSmsChannel,
     mockPushChannel: MockPushChannel,
-    mockInAppChannel: MockInAppChannel,
+    inAppChannel: InAppChannel,
   ) {
     this.channelMap = {
       [NotificationChannelType.Sms]: mockSmsChannel,
       [NotificationChannelType.Push]: mockPushChannel,
-      [NotificationChannelType.InApp]: mockInAppChannel,
+      [NotificationChannelType.InApp]: inAppChannel,
     };
   }
 

@@ -643,6 +643,48 @@ export const pushTokens = pgTable(
   }),
 ).enableRLS();
 
+// User In-App Notifications table
+export const userNotifications = pgTable(
+  'user_notifications',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    appId: text('app_id').notNull(),
+    notificationId: text('notification_id').notNull().unique(),
+    eventType: text('event_type').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    data: jsonb('data').$type<Record<string, unknown>>().default({}),
+    isRead: boolean('is_read').notNull().default(false),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    userNotificationsUserIdIdx: index('user_notifications_userId_idx').on(
+      table.userId,
+    ),
+    userNotificationsAppIdIdx: index('user_notifications_appId_idx').on(
+      table.appId,
+    ),
+    userNotificationsEventTypeIdx: index('user_notifications_eventType_idx').on(
+      table.eventType,
+    ),
+    userNotificationsIsReadIdx: index('user_notifications_isRead_idx').on(
+      table.isRead,
+    ),
+    userNotificationsCreatedAtIdx: index('user_notifications_createdAt_idx').on(
+      table.createdAt,
+    ),
+  }),
+).enableRLS();
+
 export const phonepeOrders = pgTable(
   'phonepe_orders',
   {
@@ -1256,7 +1298,18 @@ export const userRelations = relations(user, ({ many }) => ({
   messages: many(messages),
   conversations: many(conversationParticipants),
   reads: many(messageReads),
+  notifications: many(userNotifications),
 }));
+
+export const userNotificationsRelations = relations(
+  userNotifications,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userNotifications.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const conversationsRelations = relations(
   conversations,
@@ -1436,7 +1489,10 @@ export const featureFlags = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
-    keyAppIdx: unique('feature_flags_key_app_unique').on(table.key, table.appId),
+    keyAppIdx: unique('feature_flags_key_app_unique').on(
+      table.key,
+      table.appId,
+    ),
     appIdx: index('feature_flags_app_idx').on(table.appId),
   }),
 ).enableRLS();
@@ -1510,9 +1566,7 @@ export const experimentCohorts = pgTable(
       .references(() => experiments.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 100 }).notNull(), // 'control', 'variant_a'
     weight: integer('weight').notNull().default(50), // traffic split weight
-    config: jsonb('config')
-      .$type<Record<string, unknown>>()
-      .default({}), // variant-specific config
+    config: jsonb('config').$type<Record<string, unknown>>().default({}), // variant-specific config
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
@@ -1553,9 +1607,10 @@ export const userExperimentAssignments = pgTable(
     assignedAt: timestamp('assigned_at').defaultNow().notNull(),
   },
   (table) => ({
-    subjectExperimentIdx: unique(
-      'uea_subject_experiment_unique',
-    ).on(table.subjectId, table.experimentId),
+    subjectExperimentIdx: unique('uea_subject_experiment_unique').on(
+      table.subjectId,
+      table.experimentId,
+    ),
     subjectIdx: index('uea_subject_idx').on(table.subjectId),
     subjectAppIdx: index('uea_subject_app_idx').on(
       table.subjectId,
@@ -1612,16 +1667,19 @@ export const experimentEvents = pgTable(
   }),
 ).enableRLS();
 
-export const experimentEventsRelations = relations(experimentEvents, ({ one }) => ({
-  experiment: one(experiments, {
-    fields: [experimentEvents.experimentId],
-    references: [experiments.id],
+export const experimentEventsRelations = relations(
+  experimentEvents,
+  ({ one }) => ({
+    experiment: one(experiments, {
+      fields: [experimentEvents.experimentId],
+      references: [experiments.id],
+    }),
+    cohort: one(experimentCohorts, {
+      fields: [experimentEvents.cohortId],
+      references: [experimentCohorts.id],
+    }),
   }),
-  cohort: one(experimentCohorts, {
-    fields: [experimentEvents.cohortId],
-    references: [experimentCohorts.id],
-  }),
-}));
+);
 
 // Migration logs (for tracking user migrations from kirana-fe)
 export { migrationLogs } from './schema/migration-logs.schema';

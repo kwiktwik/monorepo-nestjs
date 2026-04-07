@@ -253,8 +253,8 @@ export class NotificationProcessor
       // Non-retryable failure - still try to send notification
     }
 
-    // Send through notification channels
-    await this.sendNotification(job);
+    // Send through notification channels with handler metadata
+    await this.sendNotification(job, handlerResult.metadata);
   }
 
   /**
@@ -298,7 +298,10 @@ export class NotificationProcessor
   /**
    * Send notification through configured channels
    */
-  private async sendNotification(job: Job<NotificationJobData>): Promise<void> {
+  private async sendNotification(
+    job: Job<NotificationJobData>,
+    handlerMetadata?: Record<string, unknown>,
+  ): Promise<void> {
     const data = job.data;
 
     // Build event envelope
@@ -312,6 +315,7 @@ export class NotificationProcessor
       createdAt: new Date(data.createdAt),
       metadata: {
         ...data.metadata,
+        ...handlerMetadata,
         processedAt: new Date().toISOString(),
         delayed: true,
         scheduledFor: data.scheduledFor,

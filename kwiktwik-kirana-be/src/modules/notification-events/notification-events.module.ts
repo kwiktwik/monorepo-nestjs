@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { NotificationEventsController } from './notification-events.controller';
 import { NotificationEventsService } from './notification-events.service';
 import { InMemoryEventBus } from './services/in-memory-event-bus';
-import { MockInAppChannel } from './services/mock-in-app.channel';
+import { InAppChannel } from './services/in-app.channel';
 import { MockPushChannel } from './services/mock-push.channel';
 import { MockSmsChannel } from './services/mock-sms.channel';
 import { NotificationQueueService } from './services/notification-queue.service';
@@ -26,6 +26,7 @@ import { SubscriptionPausedHandler } from './services/handlers/subscription-paus
 import { QueueModule, isRedisAvailable } from '../../queue/queue.module';
 import { RedisModule } from '../../common/redis/redis.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { DrizzleModule } from '../../database/drizzle.module';
 
 @Global()
 @Module({})
@@ -38,12 +39,14 @@ export class NotificationEventsModule {
       RedisModule,
       // Analytics for Mixpanel tracking
       AnalyticsModule,
+      // Database for in-app notifications
+      DrizzleModule,
     ];
     const controllers: DynamicModule['controllers'] = [];
     const providers: DynamicModule['providers'] = [
       NotificationEventsService,
       InMemoryEventBus,
-      MockInAppChannel,
+      InAppChannel,
       MockPushChannel,
       MockSmsChannel,
       EventHandlerRegistry,

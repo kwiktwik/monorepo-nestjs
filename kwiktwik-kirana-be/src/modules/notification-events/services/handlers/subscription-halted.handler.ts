@@ -10,6 +10,11 @@ export class SubscriptionHaltedHandler implements EventHandler {
   readonly eventType = 'subscription.halted';
   private readonly logger = new Logger(SubscriptionHaltedHandler.name);
 
+  // Notification copy for halted subscriptions
+  private readonly NOTIFICATION_TITLE = '⚠️ Subscription Halted';
+  private readonly NOTIFICATION_BODY =
+    'Your subscription has been paused due to payment issues. Please update your payment method to continue using our services.';
+
   async handle(envelope: EventEnvelope): Promise<HandlerResult> {
     this.logger.log(
       `⏸️ [SUBSCRIPTION] Handling subscription.halted for user ${envelope.userId}`,
@@ -27,6 +32,11 @@ export class SubscriptionHaltedHandler implements EventHandler {
       metadata: {
         processedBy: 'SubscriptionHaltedHandler',
         subscriptionId,
+        // Include notification copy for in-app channel
+        notification: {
+          title: this.NOTIFICATION_TITLE,
+          body: this.NOTIFICATION_BODY,
+        },
       },
     };
   }
