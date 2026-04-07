@@ -27,7 +27,6 @@
     "test:e2e:mock": "USE_MOCK_DB=true jest --config ./test/jest-e2e.json",
     "db:check": "node scripts/check-db.mjs",
     "db:inspect-otp": "node scripts/inspect-otp.mjs",
-    "db:push": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
     "db:push:rds": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
     "db:migrate": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit migrate",
     "db:studio:tunnel": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit studio",

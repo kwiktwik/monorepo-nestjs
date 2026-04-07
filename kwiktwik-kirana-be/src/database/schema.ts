@@ -1625,3 +1625,13 @@ export const experimentEventsRelations = relations(experimentEvents, ({ one }) =
 
 // Migration logs (for tracking user migrations from kirana-fe)
 export { migrationLogs } from './schema/migration-logs.schema';
+
+// API Crawler tables
+export {
+  crawlJobStatusEnum,
+  crawlPriorityEnum,
+  crawlEndpoints,
+  crawlJobs,
+  crawlResults,
+  crawlJobHistory,
+} from '../modules/api-crawler/infrastructure/persistence/crawler.schema';
