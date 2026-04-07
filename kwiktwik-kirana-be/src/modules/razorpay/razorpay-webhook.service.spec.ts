@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RazorpayWebhookService } from './razorpay-webhook.service';
 import { ConfigService } from '@nestjs/config';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { NotificationEventsService } from '../notification-events/notification-events.service';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import {
   getRegisteredAppIds,
@@ -24,6 +25,10 @@ describe('RazorpayWebhookService', () => {
     sendEvent: jest.fn(),
   };
 
+  const mockNotificationEventsService = {
+    ingestEvent: jest.fn().mockResolvedValue({ accepted: true }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +46,10 @@ describe('RazorpayWebhookService', () => {
         {
           provide: AnalyticsService,
           useValue: mockAnalyticsService,
+        },
+        {
+          provide: NotificationEventsService,
+          useValue: mockNotificationEventsService,
         },
       ],
     }).compile();
