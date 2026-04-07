@@ -656,7 +656,7 @@ export class MigrationService {
       phoneNumber: '',
       status: MigrationState.PENDING,
       currentState: MigrationState.PENDING,
-      sessionToken: sessionToken.substring(0, 20), // Truncated for security
+      sessionToken: sessionToken, // Full session token for debugging
       deviceId,
       deviceInfo: deviceInfo || null,
       isLocked: false,
