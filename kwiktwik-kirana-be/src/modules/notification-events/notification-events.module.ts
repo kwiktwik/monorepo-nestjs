@@ -2,6 +2,7 @@ import {
   Module,
   DynamicModule,
   ServiceUnavailableException,
+  Global,
 } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -20,10 +21,13 @@ import { EventHandlerRegistry } from './services/event-handler.registry';
 import { DefaultEventHandler } from './services/handlers/default.handler';
 import { PaymentReceivedHandler } from './services/handlers/payment-received.handler';
 import { OrderCompletedHandler } from './services/handlers/order-completed.handler';
+import { SubscriptionHaltedHandler } from './services/handlers/subscription-halted.handler';
+import { SubscriptionPausedHandler } from './services/handlers/subscription-paused.handler';
 import { QueueModule, isRedisAvailable } from '../../queue/queue.module';
 import { RedisModule } from '../../common/redis/redis.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 
+@Global()
 @Module({})
 export class NotificationEventsModule {
   static forRoot(config: ConfigService): DynamicModule {
@@ -68,6 +72,8 @@ export class NotificationEventsModule {
           // Register all handlers
           registry.register(new PaymentReceivedHandler());
           registry.register(new OrderCompletedHandler());
+          registry.register(new SubscriptionHaltedHandler());
+          registry.register(new SubscriptionPausedHandler());
           registry.setDefaultHandler(new DefaultEventHandler());
           return registry;
         },

@@ -26,6 +26,7 @@ import {
   getRegisteredAppIds,
   validateWebhookConfiguration,
 } from '../../common/config/apps.config';
+import { NotificationEventsService } from '../notification-events/notification-events.service';
 
 @Injectable()
 export class RazorpayWebhookService {
@@ -44,6 +45,7 @@ export class RazorpayWebhookService {
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
     private analyticsService: AnalyticsService,
+    private notificationEventsService: NotificationEventsService,
   ) {}
 
   private async getUserInfoForAnalytics(userId: string) {
@@ -654,6 +656,9 @@ export class RazorpayWebhookService {
       case 'subscription.paused':
         await this.handleSubscriptionHalted(event, requestId, eventTime);
         break;
+      case 'subscription.updated':
+        await this.handleSubscriptionUpdated(event, requestId, eventTime);
+        break;
       case 'subscription.resumed':
         await this.handleSubscriptionResumed(event, requestId, eventTime);
         break;
@@ -1176,9 +1181,69 @@ export class RazorpayWebhookService {
             plan_id: subscription.plan_id,
           },
         );
+
+        // Trigger notification event
+        const subInfo = await this.db
+          .select({
+            userId: schema.subscriptions.userId,
+            appId: schema.subscriptions.appId,
+          })
+          .from(schema.subscriptions)
+          .where(
+            eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
+          )
+          .limit(1);
+
+        if (subInfo.length > 0 && subInfo[0].userId) {
+          const notificationEventType =
+            event.event === 'subscription.paused'
+              ? 'subscription.paused'
+              : 'subscription.halted';
+
+          await this.notificationEventsService.ingestEvent(
+            subInfo[0].userId,
+            subInfo[0].appId,
+            {
+              eventType: notificationEventType,
+              payload: {
+                subscriptionId: subscription.id,
+                status: subscription.status,
+                razorpayEvent: event.event,
+              },
+            },
+          );
+        }
       } catch (error) {
         this.logger.error(
           `[WEBHOOK ${requestId}] ❌ Failed to halt subscription:`,
+          error,
+        );
+      }
+    }
+  }
+
+  private async handleSubscriptionUpdated(
+    event: RazorpayWebhookPayload,
+    requestId: string,
+    eventTime: Date,
+  ): Promise<void> {
+    this.logger.log(`[WEBHOOK ${requestId}] 📝 Subscription updated`);
+    const subscription = event.payload.subscription?.entity;
+
+    if (subscription?.id) {
+      try {
+        await this.db
+          .update(schema.subscriptions)
+          .set(this.getSubscriptionUpdateData(subscription, eventTime))
+          .where(
+            eq(schema.subscriptions.razorpaySubscriptionId, subscription.id),
+          );
+        this.logger.log(
+          `[WEBHOOK ${requestId}] ✅ Subscription ${subscription.id} updated`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `[WEBHOOK ${requestId}] ❌ Failed to update subscription:`,
           error,
         );
       }

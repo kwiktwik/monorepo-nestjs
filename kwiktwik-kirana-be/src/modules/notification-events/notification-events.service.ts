@@ -30,6 +30,14 @@ const EVENT_SCHEMAS: Record<string, (payload: Record<string, unknown>) => string
     // orderId is optional for checkout abandoned
     return null;
   },
+  'subscription.halted': (payload) => {
+    if (!payload.subscriptionId) return 'Missing required field: subscriptionId';
+    return null;
+  },
+  'subscription.paused': (payload) => {
+    if (!payload.subscriptionId) return 'Missing required field: subscriptionId';
+    return null;
+  },
 };
 
 /**
