@@ -182,26 +182,29 @@ export class RazorpayController {
    */
   @Get('subscriptions/:razorpaySubscriptionId/status')
   @ApiOperation({
-    summary: 'Get live subscription status from Razorpay',
+    summary: 'Get subscription status (DB first, then Razorpay if needed)',
     description:
-      'Calls Razorpay subscriptions.fetch() to get the source-of-truth status. ' +
-      'Automatically syncs the local DB if it is out of date (e.g. missed webhook). ' +
+      'Checks local DB first — if subscription is already active, returns immediately without calling Razorpay. ' +
+      'This reduces latency and avoids unnecessary API calls for confirmed premium users. ' +
+      'If not found or not active in DB, fetches from Razorpay subscriptions.fetch() as source-of-truth ' +
+      'and syncs local DB if needed. ' +
       'Call this BEFORE creating a new subscription to check if the user is already subscribed.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Live subscription status from Razorpay.',
+    description: 'Subscription status (from DB if active, else from Razorpay).',
     schema: {
       example: {
         razorpaySubscriptionId: 'sub_ABC123',
         status: 'active',
-        localStatus: 'created',
-        synced: true,
+        localStatus: 'active',
+        synced: false,
         planId: 'plan_XYZ',
         paidCount: 1,
         remainingCount: 99,
         chargeAt: '2026-05-05T00:00:00.000Z',
         isActive: true,
+        source: 'db',
       },
     },
   })

@@ -500,10 +500,13 @@ export class RazorpayService {
   }
 
   /**
-   * Fetch live subscription status from Razorpay using subscriptions.fetch(id).
+   * Fetch subscription status - checks DB first for premium users.
    *
-   * Source of truth is always Razorpay — local DB may be stale if webhook
-   * was missed. Automatically syncs local status if Razorpay differs.
+   * If the subscription is already active in the DB, returns immediately
+   * without calling Razorpay API (reduces latency and API calls).
+   *
+   * If not found or not active in DB, fetches from Razorpay as source-of-truth
+   * and syncs local DB if needed.
    *
    * Client should call this after payment when the callback was not received,
    * instead of creating a new subscription.
@@ -514,22 +517,69 @@ export class RazorpayService {
     razorpaySubscriptionId: string,
   ): Promise<{
     razorpaySubscriptionId: string;
-    status: string;             // Live status from Razorpay
-    localStatus: string | null; // Status in our DB before sync
+    status: string;             // Current status (from DB if active, else from Razorpay)
+    localStatus: string | null; // Status in our DB
     synced: boolean;            // true if we updated local DB to match Razorpay
     planId: string | null;
     paidCount: number;
     remainingCount: number | null;
     chargeAt: Date | null;      // Next billing date
     isActive: boolean;          // shorthand: status === 'active'
+    source: 'db' | 'razorpay';  // indicates where the status came from
   }> {
+    this.logger.log(
+      `[getSubscriptionStatus] Checking DB first | razorpaySubId=${razorpaySubscriptionId} userId=${userId} appId=${appId}`,
+    );
+
+    // --- 1. Look up local subscription row FIRST ---
+    const localRows = await this.db
+      .select({
+        id: schema.subscriptions.id,
+        status: schema.subscriptions.status,
+        userId: schema.subscriptions.userId,
+        razorpayPlanId: schema.subscriptions.razorpayPlanId,
+        paidCount: schema.subscriptions.paidCount,
+        remainingCount: schema.subscriptions.remainingCount,
+        chargeAt: schema.subscriptions.chargeAt,
+      })
+      .from(schema.subscriptions)
+      .where(
+        and(
+          eq(schema.subscriptions.razorpaySubscriptionId, razorpaySubscriptionId),
+          eq(schema.subscriptions.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    const localRow = localRows[0] ?? null;
+    const localStatus = localRow?.status ?? null;
+
+    // --- 2. If subscription is already active in DB, return immediately ---
+    if (localRow && localRow.status === RazorpaySubscriptionStatuses.ACTIVE) {
+      this.logger.log(
+        `[getSubscriptionStatus] ✅ Subscription already active in DB — returning cached status | subId=${razorpaySubscriptionId}`,
+      );
+      return {
+        razorpaySubscriptionId,
+        status: localRow.status,
+        localStatus,
+        synced: false,
+        planId: localRow.razorpayPlanId,
+        paidCount: localRow.paidCount ?? 0,
+        remainingCount: localRow.remainingCount ?? null,
+        chargeAt: localRow.chargeAt ?? null,
+        isActive: true,
+        source: 'db',
+      };
+    }
+
+    // --- 3. Not active in DB — fetch live status from Razorpay ---
     const razorpay = this.getRazorpayInstance(appId);
 
     this.logger.log(
-      `[getSubscriptionStatus] Fetching | razorpaySubId=${razorpaySubscriptionId} userId=${userId} appId=${appId}`,
+      `[getSubscriptionStatus] Not active in DB, fetching from Razorpay | razorpaySubId=${razorpaySubscriptionId}`,
     );
 
-    // --- 1. Fetch live status from Razorpay ---
     let razorpaySub: RazorpaySubscriptionEntity;
     try {
       razorpaySub = (await razorpay.subscriptions.fetch(
@@ -547,29 +597,11 @@ export class RazorpayService {
       );
     }
 
-    // --- 2. Look up local subscription row ---
-    const localRows = await this.db
-      .select({
-        id: schema.subscriptions.id,
-        status: schema.subscriptions.status,
-        userId: schema.subscriptions.userId,
-      })
-      .from(schema.subscriptions)
-      .where(
-        and(
-          eq(schema.subscriptions.razorpaySubscriptionId, razorpaySubscriptionId),
-          eq(schema.subscriptions.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    const localRow = localRows[0] ?? null;
-    const localStatus = localRow?.status ?? null;
-
-    // --- 3. Sync local DB if Razorpay status differs ---
-    let synced = false;
     // razorpaySub.status is already typed as RazorpaySubscriptionStatus via the entity type
     const razorpayStatus: RazorpaySubscriptionStatus = razorpaySub.status;
+
+    // --- 4. Sync local DB if Razorpay status differs or if we need to create the record ---
+    let synced = false;
 
     if (localRow && localRow.status !== razorpayStatus) {
       this.logger.log(
@@ -611,6 +643,7 @@ export class RazorpayService {
         ? new Date(razorpaySub.charge_at * 1000)
         : null,
       isActive: razorpayStatus === RazorpaySubscriptionStatuses.ACTIVE,
+      source: 'razorpay',
     };
   }
 
