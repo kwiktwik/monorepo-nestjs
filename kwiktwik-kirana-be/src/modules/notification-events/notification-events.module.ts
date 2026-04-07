@@ -10,7 +10,7 @@ import { NotificationEventsController } from './notification-events.controller';
 import { NotificationEventsService } from './notification-events.service';
 import { InMemoryEventBus } from './services/in-memory-event-bus';
 import { InAppChannel } from './services/in-app.channel';
-import { MockPushChannel } from './services/mock-push.channel';
+import { PushChannel } from './services/push.channel';
 import { MockSmsChannel } from './services/mock-sms.channel';
 import { NotificationQueueService } from './services/notification-queue.service';
 import {
@@ -47,7 +47,7 @@ export class NotificationEventsModule {
       NotificationEventsService,
       InMemoryEventBus,
       InAppChannel,
-      MockPushChannel,
+      PushChannel,
       MockSmsChannel,
       EventHandlerRegistry,
     ];
