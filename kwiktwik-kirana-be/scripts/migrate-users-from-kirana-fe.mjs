@@ -169,8 +169,13 @@ async function fetchCandidateUserIds(src, opts) {
   const p = [];
   let pi = 1;
 
-  p.push(ACTIVE_RAZORPAY_STATUSES); const $razStatuses = `$${pi++}`; // $1
-  p.push(ACTIVE_PHONEPE_STATES); const $ppStatuses = `$${pi++}`; // $2
+  // Bind subscription status arrays only for queries that use them.
+  let $razStatuses = null;
+  let $ppStatuses = null;
+  if (opts.filter !== 'all') {
+    p.push(ACTIVE_RAZORPAY_STATUSES); $razStatuses = `$${pi++}`;
+    p.push(ACTIVE_PHONEPE_STATES); $ppStatuses = `$${pi++}`;
+  }
 
   // app_id is optional — only add filter when explicitly provided
   let $appId = null;
