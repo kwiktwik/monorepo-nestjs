@@ -53,12 +53,6 @@ export class RazorpayWebhookController {
       // Keep as unknown if parsing fails
     }
 
-    this.logger.log(
-      `[WEBHOOK] Incoming Razorpay webhook | accountId=${accountId || 'N/A'} | eventId=${eventId || 'N/A'} | eventType=${eventType} | signature=${signature ? 'present' : 'missing'} | content-type=${
-        (req.headers['content-type'] as string) || 'N/A'
-      }`,
-    );
-
     if (!accountId) {
       this.logger.warn(
         `[WEBHOOK] Rejected webhook due to missing account_id in payload | URL=${req.originalUrl || req.url}`,

@@ -148,15 +148,7 @@ export class RazorpayService {
     const email = notes.email;
     const contact = notes.contact;
 
-    this.logger.log(
-      `[createSubscriptionV2] START | userId=${userId} appId=${appId} flow=${flow} plan_id=${dto.plan_id ?? 'auto'} is_trial=${dto.plan_id ?? '-'} user_segment=${dto.plan_id ?? '-'}`,
-    );
-    this.logger.log(
-      `[createSubscriptionV2] DTO notes: email=${email} contact=${contact} name=${notes.name ?? '-'}`,
-    );
-
     const plan_id = dto.plan_id || this.getDefaultPlanId(appId);
-    this.logger.log(`[createSubscriptionV2] Resolved plan_id=${plan_id}`);
 
     if (!email || !contact) {
       this.logger.warn(
@@ -190,9 +182,6 @@ export class RazorpayService {
     //   'created'       → subscription exists on Razorpay; if created within the
     //                     last 24h it likely means payment happened but webhook
     //                     was missed. Older 'created' rows are treated as abandoned.
-    this.logger.log(
-      `[createSubscriptionV2] Checking for blocking subscription | userId=${userId} appId=${appId}`,
-    );
 
     const blockingStatuses = [
       RazorpaySubscriptionStatuses.ACTIVE,
