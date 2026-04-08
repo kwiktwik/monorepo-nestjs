@@ -16,7 +16,6 @@ import {
   userImages,
   pushTokens,
   phonepeSubscriptions,
-  phonepeOrders,
 } from "@/db/schema";
 import { eq, and, or, gt, inArray, isNotNull } from "drizzle-orm";
 import { ORDER_STATUS } from "@/lib/constants/order-status";
@@ -135,6 +134,7 @@ export async function GET(req: NextRequest) {
       appId = validateAppId(req);
     } catch (error) {
       if (error instanceof AppValidationError) {
+        console.warn(`[GET /api/user/v1] App validation failed: ${error.message}`);
         return NextResponse.json(
           { error: error.message },
           { status: error.statusCode || 401 }
@@ -149,6 +149,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!session || !session.user) {
+      console.warn(`[GET /api/user/v1] Unauthorized request for appId: ${appId}`);
       return NextResponse.json(
         { error: "Unauthorized - no valid session" },
         { status: 401 }
@@ -156,6 +157,7 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    console.log(`[GET /api/user/v1] Request received for userId: ${userId}, appId: ${appId}`);
     const appFeatures = getAppFeatures(appId);
 
     // Fetch user data (always needed)
@@ -256,6 +258,9 @@ export async function GET(req: NextRequest) {
     responseData.isPlayStoreReviewSubmitted = !!submittedReview;
 
     // Return user data with app-specific features
+    console.log(
+      `[GET /api/user/v1] User fetched successfully for userId: ${userId}, appId: ${appId}, isPremium: ${isPremium}`
+    );
     return NextResponse.json(
       {
         success: true,
@@ -313,6 +318,7 @@ export async function POST(req: NextRequest) {
       appId = validateAppId(req);
     } catch (error) {
       if (error instanceof AppValidationError) {
+        console.warn(`[POST /api/user/v1] App validation failed: ${error.message}`);
         return NextResponse.json(
           { error: error.message },
           { status: error.statusCode || 401 }
@@ -327,6 +333,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!session || !session.user) {
+      console.warn(`[POST /api/user/v1] Unauthorized request for appId: ${appId}`);
       return NextResponse.json(
         { error: "Unauthorized - no valid session" },
         { status: 401 }
@@ -334,6 +341,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    console.log(`[POST /api/user/v1] Request received for userId: ${userId}, appId: ${appId}`);
     const appFeatures = getAppFeatures(appId);
     const body = await req.json();
     const {
@@ -665,6 +673,7 @@ export async function POST(req: NextRequest) {
         )
       );
 
+    console.log(`[POST /api/user/v1] User updated successfully for userId: ${userId}, appId: ${appId}`);
     return NextResponse.json(
       {
         success: true,
@@ -742,6 +751,7 @@ export async function DELETE(req: NextRequest) {
       appId = validateAppId(req);
     } catch (error) {
       if (error instanceof AppValidationError) {
+        console.warn(`[DELETE /api/user/v1] App validation failed: ${error.message}`);
         return NextResponse.json(
           { error: error.message },
           { status: error.statusCode || 401 }
@@ -756,6 +766,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     if (!session || !session.user) {
+      console.warn(`[DELETE /api/user/v1] Unauthorized request for appId: ${appId}`);
       return NextResponse.json(
         { error: "Unauthorized - no valid session" },
         { status: 401 }
@@ -763,6 +774,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const sessionUserId = session.user.id;
+    console.log(`[DELETE /api/user/v1] Request received from sessionUserId: ${sessionUserId}, appId: ${appId}`);
 
     // Get phoneNumber or userId from query params or body
     const { searchParams } = new URL(req.url);
