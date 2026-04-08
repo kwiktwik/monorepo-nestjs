@@ -13,15 +13,41 @@ import {
 import { getAdvancedNotificationProcessor } from "@/lib/services/advanced-notification-processor";
 
 /**
- * Parse UTC date string to Date object.
+ * Parse date filter string to Date boundaries.
+ *
+ * Supports two patterns:
+ * 1. Date-only: "2026-04-07" -> Returns start/end of day in UTC (00:00:00.000 to 23:59:59.999)
+ * 2. ISO datetime with timezone: "2026-04-07T00:00:00.000+05:30" -> Returns exact boundary in UTC
+ *
+ * @param dateString - The date string from query params
+ * @param type - 'start' or 'end' to determine boundary logic
+ * @returns Date object in UTC, or null if invalid
  */
-function parseUTCDate(dateString: string): Date | null {
+function parseDateFilter(
+  dateString: string,
+  type: "start" | "end",
+): Date | null {
   if (!dateString) return null;
+
   const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString);
-  const date = isDateOnly
-    ? new Date(dateString + "T00:00:00.000Z")
-    : new Date(dateString);
-  return isNaN(date.getTime()) ? null : date;
+
+  if (isDateOnly) {
+    // Date-only format: interpret as full day in UTC
+    const date = new Date(dateString + "T00:00:00.000Z");
+    if (isNaN(date.getTime())) return null;
+
+    if (type === "end") {
+      date.setUTCHours(23, 59, 59, 999);
+    }
+    return date;
+  }
+
+  // ISO datetime with timezone (e.g., "2026-04-07T00:00:00.000+05:30")
+  // Parse and convert to UTC
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return null;
+
+  return date;
 }
 
 /**
@@ -36,14 +62,17 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized - no valid session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const userId = session.user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10")));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "10")),
+    );
     const offset = (page - 1) * limit;
 
     const startDate = searchParams.get("startDate");
@@ -55,21 +84,27 @@ export async function GET(request: NextRequest) {
     const conditions: SQL[] = [eq(enhancedNotifications.userId, userId)];
 
     if (startDate) {
-      const start = parseUTCDate(startDate);
+      const start = parseDateFilter(startDate, "start");
       if (start) {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) start.setUTCHours(0, 0, 0, 0);
         conditions.push(gte(enhancedNotifications.timestamp, start));
       }
     }
     if (endDate) {
-      const end = parseUTCDate(endDate);
+      const end = parseDateFilter(endDate, "end");
       if (end) {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) end.setUTCHours(23, 59, 59, 999);
         conditions.push(lte(enhancedNotifications.timestamp, end));
       }
     }
-    if (transactionType && ["RECEIVED", "SENT", "UNKNOWN"].includes(transactionType)) {
-      conditions.push(eq(enhancedNotifications.transactionType, transactionType as "RECEIVED" | "SENT" | "UNKNOWN"));
+    if (
+      transactionType &&
+      ["RECEIVED", "SENT", "UNKNOWN"].includes(transactionType)
+    ) {
+      conditions.push(
+        eq(
+          enhancedNotifications.transactionType,
+          transactionType as "RECEIVED" | "SENT" | "UNKNOWN",
+        ),
+      );
     }
     if (packageName) {
       conditions.push(eq(enhancedNotifications.packageName, packageName));
@@ -99,7 +134,11 @@ export async function GET(request: NextRequest) {
 
     const data = rows.map((row) => {
       const amount = row.amount ? parseFloat(row.amount) : 0;
-      const readNotification = generateTTSMessage(amount, row.payerName, row.hasTransaction);
+      const readNotification = generateTTSMessage(
+        amount,
+        row.payerName,
+        row.hasTransaction,
+      );
       return {
         id: row.id,
         notificationId: row.notificationId,
@@ -135,7 +174,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[GET /api/notifications/v1] Error:", error);
-    const message = error instanceof Error ? error.message : "Failed to fetch notifications";
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch notifications";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -154,7 +194,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized - no valid session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const userId = session.user.id;
@@ -183,11 +223,15 @@ export async function POST(request: NextRequest) {
 
         if (item.userId && item.userId !== userId) {
           // Skip items for other users if mistakenly sent
-          results.push({ error: "Forbidden user", id: item.notification_id || item.notificationId });
+          results.push({
+            error: "Forbidden user",
+            id: item.notification_id || item.notificationId,
+          });
           continue;
         }
 
-        const providedNotificationId = item.notification_id || item.notificationId || item.id;
+        const providedNotificationId =
+          item.notification_id || item.notificationId || item.id;
         const notificationId = providedNotificationId
           ? providedNotificationId.toString()
           : `${packageName}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -205,7 +249,8 @@ export async function POST(request: NextRequest) {
         const title = item.title || "";
         const content = item.content || item.text || "";
         const bigText = item.big_text || item.bigText || "";
-        const appName = item.app_name || item.appName || getCleanAppName(packageName);
+        const appName =
+          item.app_name || item.appName || getCleanAppName(packageName);
 
         // Check duplication in enhancedNotifications (unique constraint)
         // Check for existing notificationId in enhancedNotifications
@@ -227,17 +272,20 @@ export async function POST(request: NextRequest) {
 
         // Transaction parsing logic
         // If the user provided detailed transaction info, use it.
-        const providedHasTransaction = item.has_transaction ?? item.hasTransaction;
+        const providedHasTransaction =
+          item.has_transaction ?? item.hasTransaction;
         const providedAmount = item.amount ? String(item.amount) : null;
         const providedPayerName = item.payer_name || item.payerName;
-        const providedTransactionType = item.transaction_type || item.transactionType;
+        const providedTransactionType =
+          item.transaction_type || item.transactionType;
 
         // processing_metadata might be a JSON string in the payload
-        let processingMetadata = item.processing_metadata || item.processingMetadata || {};
+        let processingMetadata =
+          item.processing_metadata || item.processingMetadata || {};
         if (typeof processingMetadata === "string") {
           try {
             processingMetadata = JSON.parse(processingMetadata);
-          } catch { }
+          } catch {}
         }
 
         let paymentDetails: ReturnType<typeof parsePaymentDetails> = null;
@@ -247,7 +295,9 @@ export async function POST(request: NextRequest) {
           paymentDetails = {
             amount: providedAmount || null,
             payerName: providedPayerName,
-            transactionType: (providedTransactionType as TransactionType) || TransactionType.UNKNOWN,
+            transactionType:
+              (providedTransactionType as TransactionType) ||
+              TransactionType.UNKNOWN,
             // Mocking other fields if needed, or we just utilize extraction below
           };
           // Also mark as processed in the advanced processor to keep state processing consistent
@@ -260,7 +310,7 @@ export async function POST(request: NextRequest) {
             packageName,
             title,
             content,
-            bigText
+            bigText,
           );
 
           paymentDetails = {
@@ -273,14 +323,20 @@ export async function POST(request: NextRequest) {
         // --- Logic matches original POST but inside loop ---
 
         let notificationLogId: number | null = null;
-        let transactionType: TransactionType = paymentDetails?.transactionType ?? TransactionType.UNKNOWN;
-        if (providedTransactionType && ["RECEIVED", "SENT", "UNKNOWN"].includes(providedTransactionType)) {
+        let transactionType: TransactionType =
+          paymentDetails?.transactionType ?? TransactionType.UNKNOWN;
+        if (
+          providedTransactionType &&
+          ["RECEIVED", "SENT", "UNKNOWN"].includes(providedTransactionType)
+        ) {
           transactionType = providedTransactionType as TransactionType;
         }
 
-        const processingTimeMs = item.processing_time_ms ?? (Date.now() - startTime);
+        const processingTimeMs =
+          item.processing_time_ms ?? Date.now() - startTime;
 
-        const hasTransaction = Boolean(paymentDetails?.amount) || providedHasTransaction === true;
+        const hasTransaction =
+          Boolean(paymentDetails?.amount) || providedHasTransaction === true;
 
         // Insert into notificationLogs
         const logEntry = await db
@@ -309,7 +365,11 @@ export async function POST(request: NextRequest) {
         let enhancedNotificationId: number | null = null;
         // Only insert if it's a transaction (based on original logic: "if (hasTransaction ...)")
         // OR if user explicitly says hasTransaction
-        if (hasTransaction && notificationLogId !== null && (paymentDetails?.amount || providedAmount)) {
+        if (
+          hasTransaction &&
+          notificationLogId !== null &&
+          (paymentDetails?.amount || providedAmount)
+        ) {
           const finalAmount = paymentDetails?.amount || providedAmount || "0";
           const finalPayer = paymentDetails?.payerName || providedPayerName;
 
@@ -336,7 +396,10 @@ export async function POST(request: NextRequest) {
               },
               notificationLogId,
               ttsAnnounced: item.tts_announced ?? item.ttsAnnounced ?? false,
-              teamNotificationSent: item.team_notification_sent ?? item.teamNotificationSent ?? false,
+              teamNotificationSent:
+                item.team_notification_sent ??
+                item.teamNotificationSent ??
+                false,
             })
             .returning();
           enhancedNotificationId = enhancedRows[0]?.id ?? null;
@@ -344,7 +407,8 @@ export async function POST(request: NextRequest) {
 
         // Analytics & Team Notify (Optimistic, fire and forget)
         try {
-          const { AnalyticsService } = await import("@/lib/services/analytics-service");
+          const { AnalyticsService } =
+            await import("@/lib/services/analytics-service");
           if (notificationLogId) {
             AnalyticsService.logNotificationEvent("created", {
               notification_log_id: notificationLogId,
@@ -373,28 +437,38 @@ export async function POST(request: NextRequest) {
         ) {
           const finalAmount = paymentDetails?.amount || providedAmount;
           if (finalAmount) {
-            fetch(`${getInternalBaseUrl(request.nextUrl.origin)}/api/notifications/team-notify`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...Object.fromEntries(
-                  [...request.headers.entries()].filter(
-                    ([name]) =>
-                      !["connection", "keep-alive", "content-length", "host", "content-type"].includes(
-                        name.toLowerCase()
-                      )
-                  )
-                ),
+            fetch(
+              `${getInternalBaseUrl(request.nextUrl.origin)}/api/notifications/team-notify`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...Object.fromEntries(
+                    [...request.headers.entries()].filter(
+                      ([name]) =>
+                        ![
+                          "connection",
+                          "keep-alive",
+                          "content-length",
+                          "host",
+                          "content-type",
+                        ].includes(name.toLowerCase()),
+                    ),
+                  ),
+                },
+                body: JSON.stringify({
+                  notificationLogId,
+                  amount: finalAmount,
+                  payerName: paymentDetails?.payerName || providedPayerName,
+                  appName,
+                  teamMemberCount: 0,
+                }),
               },
-              body: JSON.stringify({
-                notificationLogId,
-                amount: finalAmount,
-                payerName: paymentDetails?.payerName || providedPayerName,
-                appName,
-                teamMemberCount: 0,
-              }),
-            }).catch((err) =>
-              console.warn("[POST /api/notifications/v1] Team notify failed:", err)
+            ).catch((err) =>
+              console.warn(
+                "[POST /api/notifications/v1] Team notify failed:",
+                err,
+              ),
             );
           }
         }
@@ -416,13 +490,14 @@ export async function POST(request: NextRequest) {
           transactionType,
           processingTimeMs: Number(processingTimeMs) || 0,
           ttsAnnounced: item.tts_announced ?? item.ttsAnnounced ?? false,
-          teamNotificationSent: item.team_notification_sent ?? item.teamNotificationSent ?? false,
+          teamNotificationSent:
+            item.team_notification_sent ?? item.teamNotificationSent ?? false,
           createdAt: new Date(), // Approximation
           updatedAt: new Date(),
           readNotification: generateTTSMessage(
             paymentDetails?.amount || providedAmount,
             paymentDetails?.payerName || providedPayerName,
-            hasTransaction
+            hasTransaction,
           ),
           status: "success",
         };
@@ -443,11 +518,12 @@ export async function POST(request: NextRequest) {
         data: results,
         processed: results.length,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("[POST /api/notifications/v1] Error:", error);
-    const message = error instanceof Error ? error.message : "Failed to create notification";
+    const message =
+      error instanceof Error ? error.message : "Failed to create notification";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
