@@ -38,17 +38,62 @@ export class UserController {
 
   constructor(private readonly userService: UserService) {}
 
+  private logRequestStart(
+    endpoint: string,
+    userId: string,
+    appId?: string,
+  ): number {
+    this.logger.log(
+      `[${endpoint}] Request started - userId: ${userId}${appId ? `, appId: ${appId}` : ''}`,
+    );
+    return Date.now();
+  }
+
+  private logRequestSuccess(
+    endpoint: string,
+    userId: string,
+    startTime: number,
+  ): void {
+    const duration = Date.now() - startTime;
+    this.logger.log(
+      `[${endpoint}] Success - userId: ${userId}, duration: ${duration}ms`,
+    );
+  }
+
+  private logRequestFailure(
+    endpoint: string,
+    userId: string,
+    startTime: number,
+    error: unknown,
+  ): void {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    this.logger.error(
+      `[${endpoint}] Failed - userId: ${userId}, duration: ${duration}ms, error: ${errorMessage}`,
+    );
+  }
+
   @Get('v1')
   @ApiOperation({ summary: 'Get user profile' })
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUser(@CurrentUser() user: AuthUser, @AppId() appId: string) {
-    const userData = await this.userService.getUserProfile(user.userId, appId);
-
-    return {
-      success: true,
-      data: userData,
-    };
+    const endpoint = 'GET /v1/user';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
+    try {
+      const userData = await this.userService.getUserProfile(
+        user.userId,
+        appId,
+      );
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return {
+        success: true,
+        data: userData,
+      };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 
   @Get()
@@ -57,23 +102,17 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserV2(@CurrentUser() user: AuthUser, @AppId() appId: string) {
-    this.logger.log(`[GET /v2/user] Request started - userId: ${user.userId}`);
-    const startTime = Date.now();
+    const endpoint = 'GET /v2/user';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
     try {
       const userData = await this.userService.getUserProfileV2(
         user.userId,
         appId,
       );
-      const duration = Date.now() - startTime;
-      this.logger.log(
-        `[GET /v2/user] Success - userId: ${user.userId}, duration: ${duration}ms`,
-      );
+      this.logRequestSuccess(endpoint, user.userId, startTime);
       return { success: true, data: userData };
     } catch (error) {
-      const duration = Date.now() - startTime;
-      this.logger.error(
-        `[GET /v2/user] Failed - userId: ${user.userId}, duration: ${duration}ms, error: ${error.message}`,
-      );
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
       throw error;
     }
   }
@@ -83,8 +122,16 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User images list' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getImages(@CurrentUser() user: AuthUser, @AppId() appId: string) {
-    const data = await this.userService.getUserImages(user.userId, appId);
-    return { success: true, data };
+    const endpoint = 'GET /v1/user/image';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
+    try {
+      const data = await this.userService.getUserImages(user.userId, appId);
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return { success: true, data };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 
   @Delete('image/v1')
@@ -98,8 +145,16 @@ export class UserController {
     @AppId() appId: string,
     @Body() dto: DeleteUserImageDto,
   ) {
-    await this.userService.deleteUserImage(user.userId, appId, dto.imageId);
-    return { success: true, message: 'Image deleted successfully' };
+    const endpoint = 'DELETE /v1/user/image';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
+    try {
+      await this.userService.deleteUserImage(user.userId, appId, dto.imageId);
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return { success: true, message: 'Image deleted successfully' };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 
   @Post('v1')
@@ -157,17 +212,25 @@ export class UserController {
     @AppId() appId: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    const userData = await this.userService.updateUserProfile(
-      user.userId,
-      appId,
-      updateUserDto,
-    );
+    const endpoint = 'POST /v1/user';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
+    try {
+      const userData = await this.userService.updateUserProfile(
+        user.userId,
+        appId,
+        updateUserDto,
+      );
 
-    return {
-      success: true,
-      message: 'User updated successfully',
-      data: userData,
-    };
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return {
+        success: true,
+        message: 'User updated successfully',
+        data: userData,
+      };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 
   @Delete('v1')
@@ -176,9 +239,16 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Account deleted' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async deleteUser(@CurrentUser() user: AuthUser) {
-    const result = await this.userService.deleteUser(user.userId);
-
-    return result;
+    const endpoint = 'DELETE /v1/user';
+    const startTime = this.logRequestStart(endpoint, user.userId);
+    try {
+      const result = await this.userService.deleteUser(user.userId);
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return result;
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 
   @Get('migration-status/v1')
@@ -224,7 +294,15 @@ export class UserController {
     description: 'Unauthorized - Invalid or missing JWT token',
   })
   async checkMigrationStatus(@CurrentUser() user: AuthUser) {
-    const data = await this.userService.checkMigrationStatus(user.userId);
-    return { success: true, data };
+    const endpoint = 'GET /v1/user/migration-status';
+    const startTime = this.logRequestStart(endpoint, user.userId);
+    try {
+      const data = await this.userService.checkMigrationStatus(user.userId);
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return { success: true, data };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
   }
 }
