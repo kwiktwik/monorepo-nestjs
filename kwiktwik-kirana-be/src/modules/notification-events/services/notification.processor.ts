@@ -39,8 +39,10 @@ export enum NotificationJobType {
 
 /**
  * Queue name constant
+ * Using Redis hash tag {} to ensure all queue keys hash to the same slot
+ * This fixes the CROSSSLOT error in Redis Cluster mode
  */
-export const NOTIFICATION_QUEUE_NAME = 'notification-events';
+export const NOTIFICATION_QUEUE_NAME = '{notification-events}';
 
 /**
  * Notification Processor using @nestjs/bullmq WorkerHost pattern

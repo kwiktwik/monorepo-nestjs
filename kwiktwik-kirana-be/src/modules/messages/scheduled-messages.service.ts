@@ -15,7 +15,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 const { scheduledMessages, messages, conversations } = schema;
 
-export const SCHEDULED_MESSAGES_QUEUE = 'scheduled-messages';
+/**
+ * Using Redis hash tag {} to ensure all queue keys hash to the same slot
+ * This fixes the CROSSSLOT error in Redis Cluster mode
+ */
+export const SCHEDULED_MESSAGES_QUEUE = '{scheduled-messages}';
 
 export interface ScheduledMessageJobData {
   scheduledMessageId: string;
