@@ -70,20 +70,13 @@ service postgresql start
 
 echo "🔐 Setting up database..."
 
-su - postgres -c "psql <<EOF
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USER') THEN
-    CREATE ROLE \"$DB_USER\" LOGIN PASSWORD '$DB_PASS';
-  ELSE
-    ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS';
-  END IF;
-END
-\$\$;
-SELECT 'CREATE DATABASE \"$DB_NAME\"'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')\gexec
-GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";
-EOF"
+echo "🔐 Setting up database..."
+
+su - postgres -c "psql -c \"ALTER USER postgres WITH PASSWORD 'postgress';\""
+
+su - postgres -c "psql -c \"CREATE DATABASE kiranaapps;\""
+
+su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE kiranaapps TO postgres;\""
 
 echo "⚙️ Enabling password authentication..."
 
