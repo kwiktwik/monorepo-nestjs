@@ -7,6 +7,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
+  Version,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -32,6 +34,8 @@ interface AuthUser {
 @Controller('user')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
+
   constructor(private readonly userService: UserService) {}
 
   @Get('v1')
@@ -45,6 +49,33 @@ export class UserController {
       success: true,
       data: userData,
     };
+  }
+
+  @Get()
+  @Version('2')
+  @ApiOperation({ summary: 'Get user profile with logging' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUserV2(@CurrentUser() user: AuthUser, @AppId() appId: string) {
+    this.logger.log(`[GET /v2/user] Request started - userId: ${user.userId}`);
+    const startTime = Date.now();
+    try {
+      const userData = await this.userService.getUserProfileV2(
+        user.userId,
+        appId,
+      );
+      const duration = Date.now() - startTime;
+      this.logger.log(
+        `[GET /v2/user] Success - userId: ${user.userId}, duration: ${duration}ms`,
+      );
+      return { success: true, data: userData };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.logger.error(
+        `[GET /v2/user] Failed - userId: ${user.userId}, duration: ${duration}ms, error: ${error.message}`,
+      );
+      throw error;
+    }
   }
 
   @Get('image/v1')

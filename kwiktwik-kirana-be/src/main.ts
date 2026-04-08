@@ -1,7 +1,7 @@
 import './instrument'; // Must be first - initializes Sentry before NestJS
 
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
@@ -37,6 +37,12 @@ async function bootstrap() {
 
   // All API routes under /api (health excluded for load balancers)
   app.setGlobalPrefix('api', { exclude: ['health'] });
+
+  // Enable URI versioning for v2 endpoints
+  app.enableVersioning({
+    type: VersioningType.URI,
+    prefix: 'v',
+  });
 
   // Swagger API documentation
   const port = process.env.PORT || 3002;

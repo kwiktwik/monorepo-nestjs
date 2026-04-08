@@ -3,6 +3,7 @@ import {
   Inject,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
@@ -14,6 +15,8 @@ import { RazorpaySubscriptionStatuses } from '../../common/types/razorpay.types'
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
@@ -198,6 +201,235 @@ export class UserService {
       isPlayStoreReviewSubmitted: playStoreReview.length > 0,
       images,
     };
+  }
+
+  /**
+   * Get user profile with premium status - V2 with detailed logging
+   */
+  async getUserProfileV2(userId: string, appId: string) {
+    this.logger.log(`[getUserProfileV2] Starting - userId: ${userId}`);
+    const totalStart = Date.now();
+
+    try {
+      this.logger.log(
+        `[getUserProfileV2] Querying user table - userId: ${userId}`,
+      );
+      const q1Start = Date.now();
+      const userRecord = await this.db
+        .select()
+        .from(schema.user)
+        .where(
+          and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)),
+        )
+        .limit(1);
+      this.logger.log(
+        `[getUserProfileV2] User table query done - userId: ${userId}, duration: ${Date.now() - q1Start}ms`,
+      );
+
+      if (userRecord.length === 0) {
+        this.logger.warn(
+          `[getUserProfileV2] User not found - userId: ${userId}`,
+        );
+        throw new NotFoundException('User not found');
+      }
+
+      const userData = userRecord[0];
+      const equivalentAppIds = this.getEquivalentAppIds(appId);
+      const now = new Date();
+
+      this.logger.log(
+        `[getUserProfileV2] Starting parallel queries - userId: ${userId}`,
+      );
+      const parallelStart = Date.now();
+
+      const [
+        accounts,
+        razorpaySubscriptions,
+        phonepeSubscriptions,
+        userMeta,
+        userImagesList,
+        playStoreReview,
+      ] = await Promise.all([
+        this.db
+          .select()
+          .from(schema.account)
+          .where(eq(schema.account.userId, userId))
+          .limit(1)
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] Account query done - userId: ${userId}`,
+            );
+            return r;
+          }),
+        this.db
+          .select()
+          .from(schema.subscriptions)
+          .where(
+            and(
+              eq(schema.subscriptions.userId, userId),
+              inArray(schema.subscriptions.appId, equivalentAppIds),
+              or(
+                eq(
+                  schema.subscriptions.status,
+                  RazorpaySubscriptionStatuses.ACTIVE,
+                ),
+                and(
+                  eq(
+                    schema.subscriptions.status,
+                    RazorpaySubscriptionStatuses.CANCELLED,
+                  ),
+                  isNotNull(schema.subscriptions.endAt),
+                  gt(schema.subscriptions.endAt, now),
+                ),
+              ),
+            ),
+          )
+          .limit(1)
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] Razorpay query done - userId: ${userId}`,
+            );
+            return r;
+          }),
+        this.db
+          .select()
+          .from(schema.phonepeSubscriptions)
+          .where(
+            and(
+              eq(schema.phonepeSubscriptions.userId, userId),
+              inArray(schema.phonepeSubscriptions.appId, equivalentAppIds),
+              or(
+                eq(
+                  schema.phonepeSubscriptions.state,
+                  SubscriptionStates.ACTIVE,
+                ),
+                and(
+                  eq(
+                    schema.phonepeSubscriptions.state,
+                    SubscriptionStates.CANCELLED,
+                  ),
+                  isNotNull(schema.phonepeSubscriptions.nextBillingDate),
+                  gt(schema.phonepeSubscriptions.nextBillingDate, now),
+                ),
+              ),
+            ),
+          )
+          .limit(1)
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] PhonePe query done - userId: ${userId}`,
+            );
+            return r;
+          }),
+        this.db
+          .select()
+          .from(schema.userMetadata)
+          .where(
+            and(
+              eq(schema.userMetadata.userId, userId),
+              inArray(schema.userMetadata.appId, equivalentAppIds),
+            ),
+          )
+          .limit(1)
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] Metadata query done - userId: ${userId}`,
+            );
+            return r;
+          }),
+        this.db
+          .select({
+            id: schema.userImages.id,
+            imageUrl: schema.userImages.imageUrl,
+            removedBgImageUrl: schema.userImages.removedBgImageUrl,
+          })
+          .from(schema.userImages)
+          .where(
+            and(
+              eq(schema.userImages.userId, userId),
+              inArray(schema.userImages.appId, equivalentAppIds),
+            ),
+          )
+          .orderBy(desc(schema.userImages.createdAt))
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] Images query done - userId: ${userId}, count: ${r.length}`,
+            );
+            return r;
+          }),
+        this.db
+          .select({ id: schema.playStoreRatings.id })
+          .from(schema.playStoreRatings)
+          .where(
+            and(
+              eq(schema.playStoreRatings.userId, userId),
+              inArray(schema.playStoreRatings.appId, equivalentAppIds),
+              isNotNull(schema.playStoreRatings.submittedToPlayStoreAt),
+            ),
+          )
+          .limit(1)
+          .then((r) => {
+            this.logger.log(
+              `[getUserProfileV2] PlayStore query done - userId: ${userId}`,
+            );
+            return r;
+          }),
+      ]);
+
+      this.logger.log(
+        `[getUserProfileV2] Parallel queries done - userId: ${userId}, duration: ${Date.now() - parallelStart}ms`,
+      );
+
+      const accountType = accounts.length > 0 ? accounts[0].providerId : null;
+      const isPremium =
+        razorpaySubscriptions.length > 0 || phonepeSubscriptions.length > 0;
+      const upiVpa = userMeta.length > 0 ? userMeta[0].upiVpa : null;
+      const audioLanguage =
+        userMeta.length > 0 ? userMeta[0].audioLanguage : null;
+      const clientData = userMeta.length > 0 ? userMeta[0].clientData : null;
+
+      let currentEnd: Date | null = null;
+      if (razorpaySubscriptions.length > 0) {
+        currentEnd = razorpaySubscriptions[0].endAt;
+      } else if (phonepeSubscriptions.length > 0) {
+        currentEnd = phonepeSubscriptions[0].nextBillingDate;
+      }
+
+      const images = userImagesList.map((img) => ({
+        id: img.id,
+        imageUrl: img.imageUrl,
+        removedBgImageUrl: img.removedBgImageUrl ?? '',
+      }));
+
+      this.logger.log(
+        `[getUserProfileV2] Completed - userId: ${userId}, totalDuration: ${Date.now() - totalStart}ms`,
+      );
+
+      return {
+        id: userData.id,
+        name: userData.name,
+        phoneNumber: userData.phoneNumber,
+        email: userData.email,
+        accountType,
+        emailVerified: userData.emailVerified,
+        phoneNumberVerified: userData.phoneNumberVerified,
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt,
+        appId,
+        isPremium,
+        currentEnd,
+        upiVpa,
+        audioLanguage,
+        clientData,
+        isPlayStoreReviewSubmitted: playStoreReview.length > 0,
+        images,
+      };
+    } catch (error) {
+      this.logger.error(
+        `[getUserProfileV2] Error - userId: ${userId}, totalDuration: ${Date.now() - totalStart}ms, error: ${error.message}`,
+      );
+      throw error;
+    }
   }
 
   /**

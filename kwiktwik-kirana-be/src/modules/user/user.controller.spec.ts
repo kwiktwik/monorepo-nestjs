@@ -6,6 +6,7 @@ import {
   CanActivate,
   ExecutionContext,
   NotFoundException,
+  VersioningType,
 } from '@nestjs/common';
 import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
@@ -34,6 +35,7 @@ describe('UserController', () => {
 
   const mockUserService = {
     getUserProfile: jest.fn(),
+    getUserProfileV2: jest.fn(),
     getUserImages: jest.fn(),
     deleteUserImage: jest.fn(),
     updateUserProfile: jest.fn(),
@@ -57,6 +59,10 @@ describe('UserController', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableVersioning({
+      type: VersioningType.URI,
+      prefix: 'v',
+    });
     await app.init();
   });
 
