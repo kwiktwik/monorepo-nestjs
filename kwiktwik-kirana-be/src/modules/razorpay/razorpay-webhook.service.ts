@@ -27,6 +27,7 @@ import {
   validateWebhookConfiguration,
 } from '../../common/config/apps.config';
 import { NotificationEventsService } from '../notification-events/notification-events.service';
+import { NotificationChannelType } from '../notification-events/types/notification-event.types';
 
 @Injectable()
 export class RazorpayWebhookService {
@@ -1210,6 +1211,10 @@ export class RazorpayWebhookService {
                 status: subscription.status,
                 razorpayEvent: event.event,
               },
+              channels: [
+                NotificationChannelType.InApp,
+                NotificationChannelType.Push,
+              ],
             },
           );
         }
