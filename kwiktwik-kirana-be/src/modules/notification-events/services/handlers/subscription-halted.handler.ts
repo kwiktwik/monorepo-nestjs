@@ -10,10 +10,29 @@ export class SubscriptionHaltedHandler implements EventHandler {
   readonly eventType = 'subscription.halted';
   private readonly logger = new Logger(SubscriptionHaltedHandler.name);
 
-  // Notification copy for halted subscriptions
-  private readonly NOTIFICATION_TITLE = '⚠️ Subscription Halted';
-  private readonly NOTIFICATION_BODY =
-    'Your subscription has been paused due to payment issues. Please update your payment method to continue using our services.';
+  private readonly NOTIFICATION_TITLE = '⚠️ Soundbox Paused';
+
+  // Multiple message variants for A/B testing and freshness
+  private readonly MESSAGE_VARIANTS = [
+    // Option 1 — Loss-aversion
+    'Aapka Soundbox band ho gaya. Aaj kitne payments aaye — pata hai? Ek tap mein wapas shuru karo.',
+    // Option 2 — Value Reminder
+    'Awaaz band, payment miss? Trial mein har UPI payment bolti thi — ab nahi bolti. Wapas on karo, 60 seconds mein.',
+    // Option 3 — Social Proof
+    'Hazaron dukandaar sun rahe hain — aap nahi. Kirana se lekar pharmacy tak, sabka Soundbox bol raha hai. Aapka paused hai. Abhi restart karo.',
+    // Option 4 — Urgency
+    'Har payment check karne ja rahe ho phone pe? Soundbox hota toh bolti. Plan paused hai — ek tap mein wapas shuru karo.',
+  ];
+
+  /**
+   * Get a random message variant
+   */
+  private getRandomMessage(): string {
+    const randomIndex = Math.floor(
+      Math.random() * this.MESSAGE_VARIANTS.length,
+    );
+    return this.MESSAGE_VARIANTS[randomIndex];
+  }
 
   async handle(envelope: EventEnvelope): Promise<HandlerResult> {
     this.logger.log(
@@ -23,8 +42,9 @@ export class SubscriptionHaltedHandler implements EventHandler {
     const payload = envelope.payload as Record<string, unknown>;
     const subscriptionId = payload.subscriptionId as string;
 
-    // Custom logic: we could check if this is the first or subsequent failure
-    // For now, we'll just prepare for notification dispatch
+    // Pick a random message variant
+    const messageBody = this.getRandomMessage();
+    this.logger.debug(`Selected message variant for user ${envelope.userId}`);
 
     return {
       success: true,
@@ -35,7 +55,7 @@ export class SubscriptionHaltedHandler implements EventHandler {
         // Include notification copy for in-app channel
         notification: {
           title: this.NOTIFICATION_TITLE,
-          body: this.NOTIFICATION_BODY,
+          body: messageBody,
         },
       },
     };

@@ -262,7 +262,7 @@ export class PushChannel implements NotificationChannel {
 
     switch (event.eventType) {
       case 'subscription.halted':
-        return `Your subscription has been paused due to payment issues. Please update your payment method to continue using our services.`;
+        return `Hazaron dukandaar sun rahe hain — aap nahi. Kirana se lekar pharmacy tak, sabka Soundbox bol raha hai. Aapka paused hai. Abhi restart karo.`;
 
       case 'subscription.paused':
         return `Your subscription has been paused. You can resume it anytime from your account settings.`;
