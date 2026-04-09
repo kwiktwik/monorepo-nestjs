@@ -10,6 +10,7 @@ import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, inArray, or, gt, isNotNull, desc, sql } from 'drizzle-orm';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { SubmitPlayStoreRatingDto } from './dto/submit-play-store-rating.dto';
 import { SubscriptionStates } from '../phonepe-v2/domain/enums/subscription.enum';
 import { RazorpaySubscriptionStatuses } from '../../common/types/razorpay.types';
 
@@ -735,5 +736,54 @@ export class UserService {
             }
           : null,
     };
+  }
+
+  async submitPlayStoreRating(
+    userId: string,
+    appId: string,
+    dto: SubmitPlayStoreRatingDto,
+  ) {
+    const existingRating = await this.db
+      .select({ id: schema.playStoreRatings.id })
+      .from(schema.playStoreRatings)
+      .where(
+        and(
+          eq(schema.playStoreRatings.userId, userId),
+          eq(schema.playStoreRatings.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    if (existingRating.length > 0) {
+      await this.db
+        .update(schema.playStoreRatings)
+        .set({
+          rating: dto.rating,
+          reviewTitle: dto.reviewTitle ?? null,
+          review: dto.review ?? null,
+          appVersion: dto.appVersion ?? null,
+          deviceModel: dto.deviceModel ?? null,
+          osVersion: dto.osVersion ?? null,
+          language: dto.language ?? null,
+          packageName: dto.packageName ?? null,
+          submittedToPlayStoreAt: dto.submittedToPlayStore ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.playStoreRatings.id, existingRating[0].id));
+    } else {
+      await this.db.insert(schema.playStoreRatings).values({
+        userId,
+        appId,
+        rating: dto.rating,
+        reviewTitle: dto.reviewTitle ?? null,
+        review: dto.review ?? null,
+        appVersion: dto.appVersion ?? null,
+        deviceModel: dto.deviceModel ?? null,
+        osVersion: dto.osVersion ?? null,
+        language: dto.language ?? null,
+        packageName: dto.packageName ?? null,
+        submittedToPlayStoreAt: dto.submittedToPlayStore ? new Date() : null,
+      });
+    }
   }
 }

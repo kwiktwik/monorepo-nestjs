@@ -35,7 +35,8 @@ export class CreateNotificationV2Dto {
   // Optional fields
   @ApiPropertyOptional({
     description: 'Expanded text for big text notifications',
-    example: 'You received ₹500 from John Doe via UPI. Transaction ID: 1234567890',
+    example:
+      'You received ₹500 from John Doe via UPI. Transaction ID: 1234567890',
   })
   bigText?: string;
 

@@ -36,7 +36,10 @@ describe('AdminController', () => {
       controllers: [AdminController],
       providers: [
         { provide: AdminService, useValue: mockAdminService },
-        { provide: FourHourEventSchedulerService, useValue: mockFourHourScheduler },
+        {
+          provide: FourHourEventSchedulerService,
+          useValue: mockFourHourScheduler,
+        },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
       ],
     }).compile();
@@ -54,7 +57,10 @@ describe('AdminController', () => {
 
   describe('getScripts', () => {
     it('should return scripts list', async () => {
-      mockAdminService.getScripts.mockResolvedValue(['script1.mjs', 'script2.mjs']);
+      mockAdminService.getScripts.mockResolvedValue([
+        'script1.mjs',
+        'script2.mjs',
+      ]);
 
       const result = await controller.getScripts();
 
@@ -68,12 +74,14 @@ describe('AdminController', () => {
       const testToken = 'valid-jwt-token';
       const decoded = { sub: 'user-123' };
       const adminPhone = '9999999999';
-      
+
       process.env.JWT_SECRET = 'test-secret';
       process.env.ADMIN_MOBILE_NUMBER = adminPhone;
-      
+
       (jwt.verify as jest.Mock).mockReturnValue(decoded);
-      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: adminPhone });
+      mockAdminService.getUserById.mockResolvedValue({
+        phoneNumber: adminPhone,
+      });
 
       const result = await controller.setCookie({ token: testToken }, res);
 
@@ -93,17 +101,22 @@ describe('AdminController', () => {
       const res = mockResponse();
       const testToken = 'valid-jwt-token';
       const decoded = { sub: 'user-123' };
-      
+
       process.env.JWT_SECRET = 'test-secret';
       process.env.ADMIN_MOBILE_NUMBER = '1234567890'; // different phone
-      
+
       (jwt.verify as jest.Mock).mockReturnValue(decoded);
-      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: '9999999999' });
+      mockAdminService.getUserById.mockResolvedValue({
+        phoneNumber: '9999999999',
+      });
 
       const result = await controller.setCookie({ token: testToken }, res);
 
       expect(res.cookie).not.toHaveBeenCalled();
-      expect(result).toEqual({ success: false, message: 'Insufficient privileges' });
+      expect(result).toEqual({
+        success: false,
+        message: 'Insufficient privileges',
+      });
     });
 
     it('should return false when token is missing', async () => {
@@ -120,7 +133,9 @@ describe('AdminController', () => {
       const res = mockResponse();
       const result = await controller.logout(res);
 
-      expect(res.clearCookie).toHaveBeenCalledWith('admin_token', { path: '/' });
+      expect(res.clearCookie).toHaveBeenCalledWith('admin_token', {
+        path: '/',
+      });
       expect(result).toEqual({ success: true });
     });
   });
@@ -133,14 +148,16 @@ describe('AdminController', () => {
       process.env.ADMIN_MOBILE_NUMBER = adminPhone;
 
       (jwt.verify as jest.Mock).mockReturnValue(decoded);
-      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: adminPhone });
+      mockAdminService.getUserById.mockResolvedValue({
+        phoneNumber: adminPhone,
+      });
 
-      const mockReq = { 
-        headers: { 
-          cookie: 'admin_token=valid-token' 
-        } 
+      const mockReq = {
+        headers: {
+          cookie: 'admin_token=valid-token',
+        },
       };
-      
+
       const result = await controller.checkSession(mockReq as any);
 
       expect(result).toEqual({ authenticated: true, user: decoded });
@@ -159,7 +176,9 @@ describe('AdminController', () => {
       process.env.ADMIN_MOBILE_NUMBER = '9999999999';
 
       (jwt.verify as jest.Mock).mockReturnValue(decoded);
-      mockAdminService.getUserById.mockResolvedValue({ phoneNumber: '1234567890' });
+      mockAdminService.getUserById.mockResolvedValue({
+        phoneNumber: '1234567890',
+      });
 
       const mockReq = { headers: { cookie: 'admin_token=non-admin-token' } };
       const result = await controller.checkSession(mockReq as any);
@@ -187,7 +206,10 @@ describe('AdminController', () => {
       const mockReq = { query: {} };
       const result = controller.streamScript('test.mjs', mockReq as any);
 
-      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith('test.mjs', []);
+      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith(
+        'test.mjs',
+        [],
+      );
       expect(result).toBe(mockObservable);
     });
 
@@ -198,7 +220,10 @@ describe('AdminController', () => {
       const mockReq = { query: { args: '["arg1", "arg2"]' } };
       const result = controller.streamScript('test.mjs', mockReq as any);
 
-      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith('test.mjs', ['arg1', 'arg2']);
+      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith(
+        'test.mjs',
+        ['arg1', 'arg2'],
+      );
     });
 
     it('should handle invalid args JSON', () => {
@@ -208,7 +233,10 @@ describe('AdminController', () => {
       const mockReq = { query: { args: 'invalid json' } };
       const result = controller.streamScript('test.mjs', mockReq as any);
 
-      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith('test.mjs', []);
+      expect(mockAdminService.runScriptStream).toHaveBeenCalledWith(
+        'test.mjs',
+        [],
+      );
     });
   });
 
@@ -219,7 +247,9 @@ describe('AdminController', () => {
       const result = await controller.triggerFourHourCron();
 
       expect(mockFourHourScheduler.processFourHourEvents).toHaveBeenCalled();
-      expect(result).toEqual({ message: 'Four hour cron triggered successfully' });
+      expect(result).toEqual({
+        message: 'Four hour cron triggered successfully',
+      });
     });
   });
 

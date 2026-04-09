@@ -5,7 +5,11 @@
  * Loosely coupled: Only depends on pg-sdk-node.
  */
 
-import { StandardCheckoutClient, Env, CreateSdkOrderRequest } from 'pg-sdk-node';
+import {
+  StandardCheckoutClient,
+  Env,
+  CreateSdkOrderRequest,
+} from 'pg-sdk-node';
 
 import type { PaymentProvider } from '../types/payment-provider.interface';
 import type {
@@ -19,7 +23,10 @@ import type {
   WebhookResult,
 } from '../types/common.types';
 import type { PhonePeConfig } from '../types/payment-config.types';
-import { PaymentError, UnsupportedOperationError } from '../types/payment-provider.interface';
+import {
+  PaymentError,
+  UnsupportedOperationError,
+} from '../types/payment-provider.interface';
 
 export class PhonePeProvider implements PaymentProvider {
   readonly providerType = 'phonepe';
@@ -29,7 +36,8 @@ export class PhonePeProvider implements PaymentProvider {
 
   constructor(config: PhonePeConfig) {
     this.config = config;
-    const sdkEnv = config.environment === 'production' ? Env.PRODUCTION : Env.SANDBOX;
+    const sdkEnv =
+      config.environment === 'production' ? Env.PRODUCTION : Env.SANDBOX;
     this.client = StandardCheckoutClient.getInstance(
       config.clientId,
       config.clientSecret,
@@ -57,7 +65,12 @@ export class PhonePeProvider implements PaymentProvider {
         providerData: { state: response.state },
       };
     } catch (error: any) {
-      throw new PaymentError(`PhonePe order creation failed: ${error.message}`, 'ORDER_CREATION_FAILED', 'phonepe', error);
+      throw new PaymentError(
+        `PhonePe order creation failed: ${error.message}`,
+        'ORDER_CREATION_FAILED',
+        'phonepe',
+        error,
+      );
     }
   }
 
@@ -66,31 +79,62 @@ export class PhonePeProvider implements PaymentProvider {
       const statusResponse = await this.client.getOrderStatus(params.orderId);
       const paymentDetails = statusResponse.paymentDetails?.[0];
       return {
-        isValid: statusResponse.state === 'COMPLETED' || statusResponse.state === 'PAID',
+        isValid:
+          statusResponse.state === 'COMPLETED' ||
+          statusResponse.state === 'PAID',
         paymentId: paymentDetails?.transactionId,
         orderId: params.orderId,
-        status: this.mapPhonePeState(statusResponse.state) as import('../types/common.types').PaymentStatus,
+        status: this.mapPhonePeState(
+          statusResponse.state,
+        ) as import('../types/common.types').PaymentStatus,
         amount: statusResponse.amount,
         provider: 'phonepe',
-        providerData: { state: statusResponse.state, paymentMode: paymentDetails?.paymentMode },
+        providerData: {
+          state: statusResponse.state,
+          paymentMode: paymentDetails?.paymentMode,
+        },
       };
     } catch (error: any) {
-      throw new PaymentError(`PhonePe verification failed: ${error.message}`, 'VERIFICATION_FAILED', 'phonepe', error);
+      throw new PaymentError(
+        `PhonePe verification failed: ${error.message}`,
+        'VERIFICATION_FAILED',
+        'phonepe',
+        error,
+      );
     }
   }
 
-  async createSubscription(params: CreateSubscriptionParams): Promise<SubscriptionResult> {
+  async createSubscription(
+    params: CreateSubscriptionParams,
+  ): Promise<SubscriptionResult> {
     throw new UnsupportedOperationError('phonepe', 'createSubscription');
   }
 
   async handleWebhook(params: HandleWebhookParams): Promise<WebhookResult> {
     try {
-      const payload = typeof params.payload === 'string' ? JSON.parse(params.payload) : params.payload;
-      const eventType = (payload as any).event || (payload as any).type || 'unknown';
-      const orderId = (payload as any).payload?.orderId || (payload as any).payload?.merchantOrderId || (payload as any).orderId;
-      return { isValid: true, eventType, orderId, payload, provider: 'phonepe' };
+      const payload =
+        typeof params.payload === 'string'
+          ? JSON.parse(params.payload)
+          : params.payload;
+      const eventType = payload.event || payload.type || 'unknown';
+      const orderId =
+        payload.payload?.orderId ||
+        payload.payload?.merchantOrderId ||
+        payload.orderId;
+      return {
+        isValid: true,
+        eventType,
+        orderId,
+        payload,
+        provider: 'phonepe',
+      };
     } catch (error: any) {
-      throw new PaymentError(`PhonePe webhook failed: ${error.message}`, 'WEBHOOK_ERROR', 'phonepe', error);
+      throw new PaymentError(
+        `PhonePe webhook failed: ${error.message}`,
+        'WEBHOOK_ERROR',
+        'phonepe',
+        error,
+      );
     }
   }
 
@@ -101,17 +145,31 @@ export class PhonePeProvider implements PaymentProvider {
         orderId,
         amount: statusResponse.amount,
         currency: 'INR',
-        status: this.mapPhonePeState(statusResponse.state) as import('../types/common.types').OrderStatus,
+        status: this.mapPhonePeState(
+          statusResponse.state,
+        ) as import('../types/common.types').OrderStatus,
         provider: 'phonepe',
-        providerData: { state: statusResponse.state, paymentDetails: statusResponse.paymentDetails },
+        providerData: {
+          state: statusResponse.state,
+          paymentDetails: statusResponse.paymentDetails,
+        },
       };
     } catch (error: any) {
-      throw new PaymentError(`PhonePe order status check failed: ${error.message}`, 'STATUS_CHECK_FAILED', 'phonepe', error);
+      throw new PaymentError(
+        `PhonePe order status check failed: ${error.message}`,
+        'STATUS_CHECK_FAILED',
+        'phonepe',
+        error,
+      );
     }
   }
 
   getPublicConfig(): Record<string, unknown> {
-    return { provider: 'phonepe', environment: this.config.environment, merchantId: this.config.merchantId };
+    return {
+      provider: 'phonepe',
+      environment: this.config.environment,
+      merchantId: this.config.merchantId,
+    };
   }
 
   async healthCheck(): Promise<{ healthy: boolean; message?: string }> {
@@ -122,7 +180,11 @@ export class PhonePeProvider implements PaymentProvider {
     return `PP_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  private mapPhonePeState(state: string): import('../types/common.types').OrderStatus | import('../types/common.types').PaymentStatus {
+  private mapPhonePeState(
+    state: string,
+  ):
+    | import('../types/common.types').OrderStatus
+    | import('../types/common.types').PaymentStatus {
     const map: Record<string, import('../types/common.types').PaymentStatus> = {
       CREATED: 'pending',
       COMPLETED: 'completed',

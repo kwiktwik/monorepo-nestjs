@@ -21,7 +21,9 @@ export interface PaymentProvider {
 
   createOrder(params: CreateOrderParams): Promise<OrderResult>;
   verifyPayment(params: VerifyPaymentParams): Promise<VerifyResult>;
-  createSubscription?(params: CreateSubscriptionParams): Promise<SubscriptionResult>;
+  createSubscription?(
+    params: CreateSubscriptionParams,
+  ): Promise<SubscriptionResult>;
   handleWebhook(params: HandleWebhookParams): Promise<WebhookResult>;
   refund?(orderId: string, amount?: number): Promise<RefundResult>;
   checkOrderStatus?(orderId: string): Promise<OrderResult>;
@@ -43,13 +45,21 @@ export class PaymentError extends Error {
 
 export class UnsupportedOperationError extends PaymentError {
   constructor(provider: string, operation: string) {
-    super(`${operation} is not supported by provider: ${provider}`, 'UNSUPPORTED_OPERATION', provider);
+    super(
+      `${operation} is not supported by provider: ${provider}`,
+      'UNSUPPORTED_OPERATION',
+      provider,
+    );
     this.name = 'UnsupportedOperationError';
   }
 }
 
 export class ConfigError extends Error {
-  constructor(message: string, public readonly configId: string, public readonly provider: string) {
+  constructor(
+    message: string,
+    public readonly configId: string,
+    public readonly provider: string,
+  ) {
     super(message);
     this.name = 'ConfigError';
   }

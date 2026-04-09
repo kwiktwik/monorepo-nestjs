@@ -15,7 +15,7 @@ export class OrderCompletedHandler implements EventHandler {
       `📦 [ORDER] Handling order.completed event ${envelope.eventId}`,
     );
 
-    const payload = envelope.payload as Record<string, unknown>;
+    const payload = envelope.payload;
 
     // Validate required fields
     if (!payload.orderId) {

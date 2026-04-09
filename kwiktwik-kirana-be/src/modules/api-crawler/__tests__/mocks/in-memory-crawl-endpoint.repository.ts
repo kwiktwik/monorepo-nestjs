@@ -22,7 +22,7 @@ export class InMemoryCrawlEndpointRepository implements ICrawlEndpointRepository
 
   async create(input: CreateCrawlEndpointInput): Promise<CrawlEndpoint> {
     const id = this.nextId++;
-    
+
     // Build pagination config with proper defaults
     const paginationConfig: PaginationConfig = input.pagination.config || {
       pageParam: 'page',
@@ -30,10 +30,10 @@ export class InMemoryCrawlEndpointRepository implements ICrawlEndpointRepository
       perPageValue: 10,
       startPage: 1,
     };
-    
+
     // Build auth config with proper defaults
     const authConfig: AuthConfig = input.auth.config || { headers: {} };
-    
+
     // Build response config with proper defaults
     const responseConfig: ResponseConfig = {
       contentHandling: input.response?.contentHandling || 'json',
@@ -41,7 +41,7 @@ export class InMemoryCrawlEndpointRepository implements ICrawlEndpointRepository
       maxDbSizeBytes: input.response?.maxDbSizeBytes || 102400,
       storage: input.response?.storage || 'hybrid',
     };
-    
+
     // Build schedule config with proper defaults
     const scheduleConfig: ScheduleConfig = {
       enabled: input.schedule?.enabled ?? true,
@@ -49,36 +49,49 @@ export class InMemoryCrawlEndpointRepository implements ICrawlEndpointRepository
       intervalMinutes: input.schedule?.intervalMinutes,
       runOnStart: input.schedule?.runOnStart ?? false,
     };
-    
+
     // Build rate limit config with proper defaults
     const rateLimitConfig: RateLimitConfig = {
       requestsPerMinute: input.rateLimit?.requestsPerMinute || 60,
       maxConcurrent: input.rateLimit?.maxConcurrent || 1,
       delayBetweenRequestsMs: input.rateLimit?.delayBetweenRequestsMs || 1000,
     };
-    
+
     // Build retry config with proper defaults
     const retryConfig: RetryConfig = {
       maxAttempts: input.retry?.maxAttempts || 3,
       backoffMultiplier: input.retry?.backoffMultiplier || 2,
       initialDelayMs: input.retry?.initialDelayMs || 1000,
-      retryOnStatusCodes: input.retry?.retryOnStatusCodes || [429, 500, 502, 503, 504],
+      retryOnStatusCodes: input.retry?.retryOnStatusCodes || [
+        429, 500, 502, 503, 504,
+      ],
     };
-    
+
     // Build dedup config with proper defaults
     const dedupConfig: DedupConfig = {
       enabled: input.deduplication?.enabled ?? true,
-      keyFields: (input.deduplication?.keyFields as ('url' | 'method' | 'query_params' | 'body' | 'headers')[]) || ['url', 'method', 'query_params'],
+      keyFields: (input.deduplication?.keyFields as (
+        | 'url'
+        | 'method'
+        | 'query_params'
+        | 'body'
+        | 'headers'
+      )[]) || ['url', 'method', 'query_params'],
       ttlMinutes: input.deduplication?.ttlMinutes || 60,
     };
-    
+
     const endpoint: CrawlEndpoint = {
       id,
       name: input.name,
       description: input.description,
       tags: input.tags,
       baseUrl: input.baseUrl,
-      method: (input.method || 'GET') as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+      method: (input.method || 'GET') as
+        | 'GET'
+        | 'POST'
+        | 'PUT'
+        | 'DELETE'
+        | 'PATCH',
       headers: input.headers || {},
       timeoutMs: input.timeoutMs || 30000,
       auth: {
@@ -120,25 +133,31 @@ export class InMemoryCrawlEndpointRepository implements ICrawlEndpointRepository
     return null;
   }
 
-  async findAll(filters?: { active?: boolean; tag?: string }): Promise<CrawlEndpoint[]> {
+  async findAll(filters?: {
+    active?: boolean;
+    tag?: string;
+  }): Promise<CrawlEndpoint[]> {
     let results = Array.from(this.endpoints.values());
     if (filters?.active !== undefined) {
-      results = results.filter(e => e.isActive === filters.active);
+      results = results.filter((e) => e.isActive === filters.active);
     }
     if (filters?.tag) {
-      results = results.filter(e => e.tags?.includes(filters.tag!));
+      results = results.filter((e) => e.tags?.includes(filters.tag!));
     }
     return results;
   }
 
-  async update(id: number, input: UpdateCrawlEndpointInput): Promise<CrawlEndpoint> {
+  async update(
+    id: number,
+    input: UpdateCrawlEndpointInput,
+  ): Promise<CrawlEndpoint> {
     const existing = this.endpoints.get(id);
     if (!existing) throw new Error(`Endpoint ${id} not found`);
 
-    const updated: CrawlEndpoint = { 
-      ...existing, 
-      ...input as Partial<CrawlEndpoint>, 
-      updatedAt: new Date() 
+    const updated: CrawlEndpoint = {
+      ...existing,
+      ...(input as Partial<CrawlEndpoint>),
+      updatedAt: new Date(),
     };
     this.endpoints.set(id, updated);
     return updated;

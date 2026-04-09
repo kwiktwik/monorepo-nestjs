@@ -1,8 +1,8 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsEnum, 
-  IsObject, 
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsObject,
   IsNumber,
   IsBoolean,
   IsArray,

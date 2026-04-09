@@ -24,7 +24,7 @@ interface EligibleSubscription {
 /**
  * Scheduler service that sends analytics events for subscriptions
  * that have not been cancelled within 4 hours of creation.
- * 
+ *
  * This service runs every hour and processes eligible subscriptions
  * that meet the following criteria:
  * - Status is 'active'
@@ -32,7 +32,7 @@ interface EligibleSubscription {
  * - Created no more than 24 hours ago (to avoid historical data spike)
  * - fourHourEventSent flag is false (event not yet sent)
  * - Has a valid Razorpay subscription ID
- * 
+ *
  * Each subscription is processed only once (lifetime) using the
  * fourHourEventSent flag as an idempotency check.
  */
@@ -50,7 +50,7 @@ export class FourHourEventSchedulerService {
   /**
    * Cron job that runs every hour to check for eligible subscriptions
    * and send the trial_not_cancel_in_4_hour analytics event.
-   * 
+   *
    * Eligibility criteria:
    * - Status = 'active'
    * - Created at least 4 hours ago
@@ -84,7 +84,9 @@ export class FourHourEventSchedulerService {
       for (let i = 0; i < eligibleSubscriptions.length; i += this.BATCH_SIZE) {
         const batch = eligibleSubscriptions.slice(i, i + this.BATCH_SIZE);
         const batchNumber = Math.floor(i / this.BATCH_SIZE) + 1;
-        const totalBatches = Math.ceil(eligibleSubscriptions.length / this.BATCH_SIZE);
+        const totalBatches = Math.ceil(
+          eligibleSubscriptions.length / this.BATCH_SIZE,
+        );
 
         this.logger.log(
           `[${requestId}] 🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} subscriptions)`,
@@ -125,7 +127,7 @@ export class FourHourEventSchedulerService {
 
   /**
    * Find eligible subscriptions for the 4-hour event.
-   * 
+   *
    * Criteria:
    * - Status is 'active'
    * - Created at least 4 hours ago (lte comparison)
@@ -179,7 +181,7 @@ export class FourHourEventSchedulerService {
 
   /**
    * Process a single subscription and send the analytics event.
-   * 
+   *
    * Steps:
    * 1. Validate user data exists
    * 2. Prepare user info and event properties
@@ -233,12 +235,16 @@ export class FourHourEventSchedulerService {
     };
 
     // Use razorpaySubscriptionId as deduplication key
-    const deduplicationId = subscription.razorpaySubscriptionId || `sub-4h-${subscription.id}`;
+    const deduplicationId =
+      subscription.razorpaySubscriptionId || `sub-4h-${subscription.id}`;
 
-    this.logger.debug(`[${requestId}] 📤 Sending ${ANALYTICS_EVENTS.SUBSCRIPTION_NOT_CANCELLED_4H} event`, {
-      subscriptionId: subId,
-      userId: subscription.userId,
-    });
+    this.logger.debug(
+      `[${requestId}] 📤 Sending ${ANALYTICS_EVENTS.SUBSCRIPTION_NOT_CANCELLED_4H} event`,
+      {
+        subscriptionId: subId,
+        userId: subscription.userId,
+      },
+    );
 
     // Send analytics event
     const response = await this.analyticsService.sendEvent({
@@ -276,7 +282,9 @@ export class FourHourEventSchedulerService {
    * Mark the subscription as having the 4-hour event sent.
    * This ensures the event is only sent once per subscription (lifetime).
    */
-  private async markEventAsSent(subscription: EligibleSubscription): Promise<void> {
+  private async markEventAsSent(
+    subscription: EligibleSubscription,
+  ): Promise<void> {
     if (!subscription.razorpaySubscriptionId) {
       this.logger.warn('Missing razorpaySubscriptionId - skipping DB update');
       return;

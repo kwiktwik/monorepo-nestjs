@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotificationProcessor, NotificationJobData } from './notification.processor';
+import {
+  NotificationProcessor,
+  NotificationJobData,
+} from './notification.processor';
 import { InMemoryEventBus } from './in-memory-event-bus';
 import { EventHandlerRegistry } from './event-handler.registry';
 import { NotificationChannelType } from '../types/notification-event.types';
@@ -16,13 +19,19 @@ describe('NotificationProcessor', () => {
   beforeEach(async () => {
     mockEventBus = {
       publish: jest.fn().mockResolvedValue([
-        { channel: NotificationChannelType.InApp, delivered: true, deliveredAt: new Date() },
+        {
+          channel: NotificationChannelType.InApp,
+          delivered: true,
+          deliveredAt: new Date(),
+        },
       ]),
     };
 
     // Mock AnalyticsService for Mixpanel tracking (queue-first, no DB)
     mockAnalyticsService = {
-      sendEvent: jest.fn().mockResolvedValue({ overallSuccess: true, results: [] }),
+      sendEvent: jest
+        .fn()
+        .mockResolvedValue({ overallSuccess: true, results: [] }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -47,22 +56,23 @@ describe('NotificationProcessor', () => {
   });
 
   describe('process', () => {
-    const createJob = (overrides: Partial<NotificationJobData> = {}) => ({
-      id: 'job-123',
-      name: 'test-event',
-      data: {
-        eventId: 'event-123',
-        appId: 'com.test.app',
-        userId: 'user-123',
-        eventType: 'payment.received',
-        payload: { amount: 100 },
-        channels: [NotificationChannelType.InApp],
-        scheduledFor: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        ...overrides,
-      } as NotificationJobData,
-      attemptsMade: 0,
-    } as any);
+    const createJob = (overrides: Partial<NotificationJobData> = {}) =>
+      ({
+        id: 'job-123',
+        name: 'test-event',
+        data: {
+          eventId: 'event-123',
+          appId: 'com.test.app',
+          userId: 'user-123',
+          eventType: 'payment.received',
+          payload: { amount: 100 },
+          channels: [NotificationChannelType.InApp],
+          scheduledFor: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          ...overrides,
+        } as NotificationJobData,
+        attemptsMade: 0,
+      }) as any;
 
     it('should process event using handler registry', async () => {
       const job = createJob({

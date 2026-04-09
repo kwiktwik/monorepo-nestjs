@@ -1,6 +1,6 @@
 /**
  * Tests for RazorpayProvider
- * 
+ *
  * Note: We mock the razorpay SDK to avoid real API calls.
  */
 import { RazorpayProvider } from './razorpay.provider';
@@ -26,7 +26,9 @@ jest.mock('razorpay', () => {
         status: 'paid',
       }),
       fetchPayments: jest.fn().mockResolvedValue({
-        items: [{ id: 'pay_123', status: 'captured', amount: 10000, method: 'upi' }],
+        items: [
+          { id: 'pay_123', status: 'captured', amount: 10000, method: 'upi' },
+        ],
       }),
     },
     subscriptions: {

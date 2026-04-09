@@ -15,7 +15,9 @@ export class CrawlEndpointService {
     private repository: ICrawlEndpointRepository,
   ) {}
 
-  async create(input: CreateCrawlEndpointDto | CreateCrawlEndpointInput): Promise<CrawlEndpoint> {
+  async create(
+    input: CreateCrawlEndpointDto | CreateCrawlEndpointInput,
+  ): Promise<CrawlEndpoint> {
     // Validate name uniqueness
     const existing = await this.repository.findByName(input.name);
     if (existing) {
@@ -52,11 +54,17 @@ export class CrawlEndpointService {
     return this.repository.findByName(name);
   }
 
-  async findAll(filters?: { active?: boolean; tag?: string }): Promise<CrawlEndpoint[]> {
+  async findAll(filters?: {
+    active?: boolean;
+    tag?: string;
+  }): Promise<CrawlEndpoint[]> {
     return this.repository.findAll(filters);
   }
 
-  async update(id: number, input: UpdateCrawlEndpointInput): Promise<CrawlEndpoint> {
+  async update(
+    id: number,
+    input: UpdateCrawlEndpointInput,
+  ): Promise<CrawlEndpoint> {
     return this.repository.update(id, input);
   }
 

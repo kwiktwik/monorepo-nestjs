@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Patch, 
-  Delete, 
-  Body, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
   Query,
   NotFoundException,
   BadRequestException,
@@ -40,10 +40,12 @@ export class ApiCrawlerController {
   ) {}
 
   @Post()
-  async registerEndpoint(@Body() dto: CreateCrawlEndpointDto): Promise<CrawlEndpointResponse> {
+  async registerEndpoint(
+    @Body() dto: CreateCrawlEndpointDto,
+  ): Promise<CrawlEndpointResponse> {
     try {
       const endpoint = await this.endpointService.create(dto);
-      
+
       // Schedule if enabled
       if (endpoint.schedule.enabled) {
         this.schedulerService.scheduleEndpoint(endpoint);
@@ -51,7 +53,7 @@ export class ApiCrawlerController {
 
       // Trigger immediate crawl if requested
       if (dto.schedule?.runOnStart) {
-        this.crawlerService.triggerImmediateCrawl(endpoint.id).catch(err => {
+        this.crawlerService.triggerImmediateCrawl(endpoint.id).catch((err) => {
           console.error('Immediate crawl failed:', err);
         });
       }
@@ -72,7 +74,7 @@ export class ApiCrawlerController {
     if (tag) filters.tag = tag;
 
     const endpoints = await this.endpointService.findAll(filters);
-    return endpoints.map(e => this.mapToResponse(e));
+    return endpoints.map((e) => this.mapToResponse(e));
   }
 
   @Get(':id')
@@ -99,9 +101,14 @@ export class ApiCrawlerController {
   }
 
   @Post(':id/trigger')
-  async triggerCrawl(@Param('id') id: string): Promise<{ jobIds: string[]; message: string }> {
+  async triggerCrawl(
+    @Param('id') id: string,
+  ): Promise<{ jobIds: string[]; message: string }> {
     const jobIds = await this.crawlerService.crawlEndpoint(Number(id));
-    return { jobIds, message: `Crawl triggered successfully: ${jobIds.length} jobs` };
+    return {
+      jobIds,
+      message: `Crawl triggered successfully: ${jobIds.length} jobs`,
+    };
   }
 
   @Post(':id/pause')
@@ -113,7 +120,9 @@ export class ApiCrawlerController {
 
   @Post(':id/resume')
   async resumeEndpoint(@Param('id') id: string): Promise<{ message: string }> {
-    const endpoint = await this.endpointService.update(Number(id), { isActive: true });
+    const endpoint = await this.endpointService.update(Number(id), {
+      isActive: true,
+    });
     this.schedulerService.scheduleEndpoint(endpoint);
     return { message: 'Endpoint resumed' };
   }

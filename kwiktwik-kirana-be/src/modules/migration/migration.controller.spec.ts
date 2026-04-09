@@ -126,7 +126,10 @@ describe('MigrationController', () => {
       mockMigrationService.getMigrationStatus.mockResolvedValue(null);
 
       await expect(
-        controller.getMigrationStatus({ migrationId: 'mig-123' }, 'com.kiranaapps.app'),
+        controller.getMigrationStatus(
+          { migrationId: 'mig-123' },
+          'com.kiranaapps.app',
+        ),
       ).rejects.toThrow('Migration not found');
     });
   });
@@ -136,7 +139,7 @@ describe('MigrationController', () => {
       const result = controller.migrationProgress({ migrationId: 'mig-123' });
 
       expect(result).toBeDefined();
-      
+
       // Subscribe to get first value
       const subscription = result.subscribe({
         next: (event) => {

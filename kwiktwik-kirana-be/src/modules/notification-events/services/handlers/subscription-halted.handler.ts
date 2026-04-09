@@ -39,7 +39,7 @@ export class SubscriptionHaltedHandler implements EventHandler {
       `⏸️ [SUBSCRIPTION] Handling subscription.halted for user ${envelope.userId}`,
     );
 
-    const payload = envelope.payload as Record<string, unknown>;
+    const payload = envelope.payload;
     const subscriptionId = payload.subscriptionId as string;
 
     // Pick a random message variant

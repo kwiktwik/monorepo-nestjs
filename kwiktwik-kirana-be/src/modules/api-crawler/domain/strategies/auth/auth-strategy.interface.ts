@@ -10,6 +10,6 @@ export interface AuthStrategy {
   applyAuth(
     config: CrawlRequest,
     authConfig: any,
-    context?: AuthContext
+    context?: AuthContext,
   ): CrawlRequest | Promise<CrawlRequest>;
 }

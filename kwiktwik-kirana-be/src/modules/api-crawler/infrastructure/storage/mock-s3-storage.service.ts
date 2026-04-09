@@ -23,7 +23,7 @@ export class MockS3StorageStrategy implements StorageStrategy {
   ): Promise<StorageResult> {
     const key = this.generateKey(jobId, metadata);
     const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
-    
+
     // Check for content deduplication
     const existingKey = this.findByHash(metadata.checksum);
     if (existingKey) {

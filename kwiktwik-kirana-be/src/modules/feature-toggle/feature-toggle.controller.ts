@@ -97,7 +97,8 @@ If any required field is missing, the request fails with 400 Bad Request.
           type: 'firebaseInstallationId',
         },
         enabled: false,
-        reason: 'Feature toggle not yet implemented in database - default disabled',
+        reason:
+          'Feature toggle not yet implemented in database - default disabled',
       },
     },
   })
@@ -226,9 +227,16 @@ Each flag includes its key, description, enabled status, and default value.
       },
     },
   })
-  async getFlags(
-    @AppId() appId: string,
-  ): Promise<{ success: boolean; appId: string; flags: Array<{ key: string; description: string | null; isEnabled: boolean; defaultValue: { enabled: boolean; value?: unknown } | null }> }> {
+  async getFlags(@AppId() appId: string): Promise<{
+    success: boolean;
+    appId: string;
+    flags: Array<{
+      key: string;
+      description: string | null;
+      isEnabled: boolean;
+      defaultValue: { enabled: boolean; value?: unknown } | null;
+    }>;
+  }> {
     const flags = await this.featureToggleService.getAllFlags(appId);
     return {
       success: true,

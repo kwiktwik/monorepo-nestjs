@@ -24,14 +24,24 @@ describe('NotificationEventsController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [NotificationEventsController],
       providers: [
-        { provide: NotificationEventsService, useValue: mockNotificationEventsService },
-        { provide: NotificationQueueService, useValue: mockNotificationQueueService },
+        {
+          provide: NotificationEventsService,
+          useValue: mockNotificationEventsService,
+        },
+        {
+          provide: NotificationQueueService,
+          useValue: mockNotificationQueueService,
+        },
       ],
     }).compile();
 
-    controller = module.get<NotificationEventsController>(NotificationEventsController);
+    controller = module.get<NotificationEventsController>(
+      NotificationEventsController,
+    );
     service = module.get<NotificationEventsService>(NotificationEventsService);
-    queueService = module.get<NotificationQueueService>(NotificationQueueService);
+    queueService = module.get<NotificationQueueService>(
+      NotificationQueueService,
+    );
   });
 
   afterEach(() => {
@@ -77,9 +87,15 @@ describe('NotificationEventsController', () => {
         planName: 'Premium',
       };
 
-      mockNotificationQueueService.scheduleCheckoutAbandonedCheck.mockResolvedValue('job-123');
+      mockNotificationQueueService.scheduleCheckoutAbandonedCheck.mockResolvedValue(
+        'job-123',
+      );
 
-      const result = await controller.scheduleCheckoutAbandoned(mockUser, appId, body);
+      const result = await controller.scheduleCheckoutAbandoned(
+        mockUser,
+        appId,
+        body,
+      );
 
       expect(queueService.scheduleCheckoutAbandonedCheck).toHaveBeenCalled();
       expect(result.accepted).toBe(true);
@@ -89,9 +105,15 @@ describe('NotificationEventsController', () => {
     it('should use default delay when not provided', async () => {
       const body = {};
 
-      mockNotificationQueueService.scheduleCheckoutAbandonedCheck.mockResolvedValue('job-123');
+      mockNotificationQueueService.scheduleCheckoutAbandonedCheck.mockResolvedValue(
+        'job-123',
+      );
 
-      const result = await controller.scheduleCheckoutAbandoned(mockUser, appId, body);
+      const result = await controller.scheduleCheckoutAbandoned(
+        mockUser,
+        appId,
+        body,
+      );
 
       expect(result.message).toContain('30 minutes');
     });

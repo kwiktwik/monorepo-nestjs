@@ -15,7 +15,7 @@ export class PaymentReceivedHandler implements EventHandler {
       `💰 [PAYMENT] Handling payment.received event ${envelope.eventId}`,
     );
 
-    const payload = envelope.payload as Record<string, unknown>;
+    const payload = envelope.payload;
 
     // Validate required payment fields
     if (!payload.amount) {

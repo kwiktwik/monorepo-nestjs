@@ -16,7 +16,13 @@ import { orderStatusEnum } from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { nanoid } from 'nanoid';
 import { getConfigForAppId } from '../config/config.data';
-import { RazorpaySubscriptionStatuses, RazorpayOrderStatuses, type RazorpayOrderStatus, type RazorpaySubscriptionEntity, type RazorpaySubscriptionStatus } from '../../common/types/razorpay.types';
+import {
+  RazorpaySubscriptionStatuses,
+  RazorpayOrderStatuses,
+  type RazorpayOrderStatus,
+  type RazorpaySubscriptionEntity,
+  type RazorpaySubscriptionStatus,
+} from '../../common/types/razorpay.types';
 
 interface RazorpayCredentials {
   key_id: string;
@@ -190,7 +196,10 @@ export class RazorpayService {
 
     // Check active/authenticated — these always block
     const existingBlockingSubscription = await this.db
-      .select({ id: schema.subscriptions.id, status: schema.subscriptions.status })
+      .select({
+        id: schema.subscriptions.id,
+        status: schema.subscriptions.status,
+      })
       .from(schema.subscriptions)
       .where(
         and(
@@ -506,15 +515,15 @@ export class RazorpayService {
     razorpaySubscriptionId: string,
   ): Promise<{
     razorpaySubscriptionId: string;
-    status: string;             // Current status (from DB if active, else from Razorpay)
+    status: string; // Current status (from DB if active, else from Razorpay)
     localStatus: string | null; // Status in our DB
-    synced: boolean;            // true if we updated local DB to match Razorpay
+    synced: boolean; // true if we updated local DB to match Razorpay
     planId: string | null;
     paidCount: number;
     remainingCount: number | null;
-    chargeAt: Date | null;      // Next billing date
-    isActive: boolean;          // shorthand: status === 'active'
-    source: 'db' | 'razorpay';  // indicates where the status came from
+    chargeAt: Date | null; // Next billing date
+    isActive: boolean; // shorthand: status === 'active'
+    source: 'db' | 'razorpay'; // indicates where the status came from
   }> {
     this.logger.log(
       `[getSubscriptionStatus] Checking DB first | razorpaySubId=${razorpaySubscriptionId} userId=${userId} appId=${appId}`,
@@ -534,7 +543,10 @@ export class RazorpayService {
       .from(schema.subscriptions)
       .where(
         and(
-          eq(schema.subscriptions.razorpaySubscriptionId, razorpaySubscriptionId),
+          eq(
+            schema.subscriptions.razorpaySubscriptionId,
+            razorpaySubscriptionId,
+          ),
           eq(schema.subscriptions.userId, userId),
         ),
       )
@@ -647,13 +659,13 @@ export class RazorpayService {
     razorpayOrderId: string,
   ): Promise<{
     razorpayOrderId: string;
-    status: string;          // Razorpay live status: created | attempted | paid
-    amount: number;          // in rupees
+    status: string; // Razorpay live status: created | attempted | paid
+    amount: number; // in rupees
     currency: string;
     attempts: number;
-    localStatus: string | null;    // status stored in our DB
-    alreadyPaid: boolean;   // true when Razorpay says 'paid' — DO NOT re-charge
-    localOrderId: string | null;   // internal order ID from our DB
+    localStatus: string | null; // status stored in our DB
+    alreadyPaid: boolean; // true when Razorpay says 'paid' — DO NOT re-charge
+    localOrderId: string | null; // internal order ID from our DB
   }> {
     const razorpay = this.getRazorpayInstance(appId);
 
@@ -670,7 +682,9 @@ export class RazorpayService {
       attempts: number;
     };
     try {
-      razorpayOrder = (await razorpay.orders.fetch(razorpayOrderId)) as typeof razorpayOrder;
+      razorpayOrder = (await razorpay.orders.fetch(
+        razorpayOrderId,
+      )) as typeof razorpayOrder;
     } catch (error) {
       const err = error as { error?: { description?: string } };
       this.logger.error(
@@ -678,7 +692,8 @@ export class RazorpayService {
         err,
       );
       throw new BadRequestException(
-        err?.error?.description || `Order ${razorpayOrderId} not found on Razorpay`,
+        err?.error?.description ||
+          `Order ${razorpayOrderId} not found on Razorpay`,
       );
     }
 

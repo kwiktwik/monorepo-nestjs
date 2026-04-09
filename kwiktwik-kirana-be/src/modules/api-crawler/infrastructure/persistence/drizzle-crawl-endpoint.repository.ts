@@ -16,79 +16,103 @@ import {
 
 @Injectable()
 export class DrizzleCrawlEndpointRepository implements ICrawlEndpointRepository {
-  constructor(
-    @Inject('DRIZZLE_DB') private db: NodePgDatabase,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private db: NodePgDatabase) {}
 
   async create(input: CreateCrawlEndpointInput): Promise<CrawlEndpoint> {
-    const result = await this.db.insert(crawlEndpoints).values({
-      name: input.name,
-      description: input.description,
-      tags: input.tags,
-      baseUrl: input.baseUrl,
-      method: input.method || 'GET',
-      headers: input.headers || {},
-      timeoutMs: input.timeoutMs || 30000,
-      authType: input.auth.type,
-      authConfig: input.auth.config,
-      paginationType: input.pagination.type,
-      paginationConfig: input.pagination.config,
-      paginationMaxPages: input.pagination.maxPages,
-      paginationStopOnEmpty: input.pagination.stopOnEmpty ?? true,
-      requestBodyTemplate: input.request?.bodyTemplate,
-      requestDynamicParams: input.request?.dynamicParams,
-      requestStaticQueryParams: input.request?.staticQueryParams || {},
-      responseContentHandling: input.response.contentHandling || 'auto',
-      responseExtractFields: input.response.extractFields,
-      responseMaxDbSizeBytes: input.response.maxDbSizeBytes || 102400,
-      responseStorage: input.response.storage || 'hybrid',
-      scheduleEnabled: input.schedule.enabled ?? true,
-      scheduleCron: input.schedule.cron,
-      scheduleIntervalMinutes: input.schedule.intervalMinutes,
-      scheduleRunOnStart: input.schedule.runOnStart ?? false,
-      rateLimitRequestsPerMinute: input.rateLimit.requestsPerMinute,
-      rateLimitMaxConcurrent: input.rateLimit.maxConcurrent || 1,
-      rateLimitDelayBetweenRequestsMs: input.rateLimit.delayBetweenRequestsMs || 1000,
-      retryMaxAttempts: input.retry?.maxAttempts || 3,
-      retryBackoffMultiplier: input.retry?.backoffMultiplier || 2,
-      retryInitialDelayMs: input.retry?.initialDelayMs || 1000,
-      retryOnStatusCodes: input.retry?.retryOnStatusCodes || [429, 500, 502, 503, 504],
-      dedupEnabled: input.deduplication?.enabled ?? true,
-      dedupKeyFields: input.deduplication?.keyFields || ['url', 'method', 'query_params'],
-      dedupTtlMinutes: input.deduplication?.ttlMinutes || 60,
-    }).returning();
+    const result = await this.db
+      .insert(crawlEndpoints)
+      .values({
+        name: input.name,
+        description: input.description,
+        tags: input.tags,
+        baseUrl: input.baseUrl,
+        method: input.method || 'GET',
+        headers: input.headers || {},
+        timeoutMs: input.timeoutMs || 30000,
+        authType: input.auth.type,
+        authConfig: input.auth.config,
+        paginationType: input.pagination.type,
+        paginationConfig: input.pagination.config,
+        paginationMaxPages: input.pagination.maxPages,
+        paginationStopOnEmpty: input.pagination.stopOnEmpty ?? true,
+        requestBodyTemplate: input.request?.bodyTemplate,
+        requestDynamicParams: input.request?.dynamicParams,
+        requestStaticQueryParams: input.request?.staticQueryParams || {},
+        responseContentHandling: input.response.contentHandling || 'auto',
+        responseExtractFields: input.response.extractFields,
+        responseMaxDbSizeBytes: input.response.maxDbSizeBytes || 102400,
+        responseStorage: input.response.storage || 'hybrid',
+        scheduleEnabled: input.schedule.enabled ?? true,
+        scheduleCron: input.schedule.cron,
+        scheduleIntervalMinutes: input.schedule.intervalMinutes,
+        scheduleRunOnStart: input.schedule.runOnStart ?? false,
+        rateLimitRequestsPerMinute: input.rateLimit.requestsPerMinute,
+        rateLimitMaxConcurrent: input.rateLimit.maxConcurrent || 1,
+        rateLimitDelayBetweenRequestsMs:
+          input.rateLimit.delayBetweenRequestsMs || 1000,
+        retryMaxAttempts: input.retry?.maxAttempts || 3,
+        retryBackoffMultiplier: input.retry?.backoffMultiplier || 2,
+        retryInitialDelayMs: input.retry?.initialDelayMs || 1000,
+        retryOnStatusCodes: input.retry?.retryOnStatusCodes || [
+          429, 500, 502, 503, 504,
+        ],
+        dedupEnabled: input.deduplication?.enabled ?? true,
+        dedupKeyFields: input.deduplication?.keyFields || [
+          'url',
+          'method',
+          'query_params',
+        ],
+        dedupTtlMinutes: input.deduplication?.ttlMinutes || 60,
+      })
+      .returning();
 
     return this.mapToEntity(result[0]);
   }
 
   async findById(id: number): Promise<CrawlEndpoint | null> {
-    const result = await this.db.select().from(crawlEndpoints).where(eq(crawlEndpoints.id, id)).limit(1);
+    const result = await this.db
+      .select()
+      .from(crawlEndpoints)
+      .where(eq(crawlEndpoints.id, id))
+      .limit(1);
     return result.length > 0 ? this.mapToEntity(result[0]) : null;
   }
 
   async findByName(name: string): Promise<CrawlEndpoint | null> {
-    const result = await this.db.select().from(crawlEndpoints).where(eq(crawlEndpoints.name, name)).limit(1);
+    const result = await this.db
+      .select()
+      .from(crawlEndpoints)
+      .where(eq(crawlEndpoints.name, name))
+      .limit(1);
     return result.length > 0 ? this.mapToEntity(result[0]) : null;
   }
 
-  async findAll(filters?: { active?: boolean; tag?: string }): Promise<CrawlEndpoint[]> {
+  async findAll(filters?: {
+    active?: boolean;
+    tag?: string;
+  }): Promise<CrawlEndpoint[]> {
     let query = this.db.select().from(crawlEndpoints);
-    
+
     if (filters?.active !== undefined) {
       query = query.where(eq(crawlEndpoints.isActive, filters.active)) as any;
     }
-    
+
     if (filters?.tag) {
-      query = query.where(sql`${crawlEndpoints.tags} @> ARRAY[${filters.tag}]::text[]`) as any;
+      query = query.where(
+        sql`${crawlEndpoints.tags} @> ARRAY[${filters.tag}]::text[]`,
+      ) as any;
     }
-    
+
     const results = await query;
-    return results.map(r => this.mapToEntity(r));
+    return results.map((r) => this.mapToEntity(r));
   }
 
-  async update(id: number, input: UpdateCrawlEndpointInput): Promise<CrawlEndpoint> {
+  async update(
+    id: number,
+    input: UpdateCrawlEndpointInput,
+  ): Promise<CrawlEndpoint> {
     const updates: any = { updatedAt: new Date() };
-    
+
     if (input.name) updates.name = input.name;
     if (input.description) updates.description = input.description;
     if (input.tags) updates.tags = input.tags;
@@ -103,12 +127,15 @@ export class DrizzleCrawlEndpointRepository implements ICrawlEndpointRepository 
     if (input.pagination) {
       updates.paginationType = input.pagination.type;
       updates.paginationConfig = input.pagination.config;
-      if (input.pagination.maxPages) updates.paginationMaxPages = input.pagination.maxPages;
-      if (input.pagination.stopOnEmpty !== undefined) updates.paginationStopOnEmpty = input.pagination.stopOnEmpty;
+      if (input.pagination.maxPages)
+        updates.paginationMaxPages = input.pagination.maxPages;
+      if (input.pagination.stopOnEmpty !== undefined)
+        updates.paginationStopOnEmpty = input.pagination.stopOnEmpty;
     }
     if (input.isActive !== undefined) updates.isActive = input.isActive;
 
-    const result = await this.db.update(crawlEndpoints)
+    const result = await this.db
+      .update(crawlEndpoints)
       .set(updates)
       .where(eq(crawlEndpoints.id, id))
       .returning();
@@ -121,13 +148,15 @@ export class DrizzleCrawlEndpointRepository implements ICrawlEndpointRepository 
   }
 
   async updateLastCrawlTime(id: number): Promise<void> {
-    await this.db.update(crawlEndpoints)
+    await this.db
+      .update(crawlEndpoints)
       .set({ lastCrawlAt: new Date(), updatedAt: new Date() })
       .where(eq(crawlEndpoints.id, id));
   }
 
   async updateNextCrawlTime(id: number, nextRun: Date): Promise<void> {
-    await this.db.update(crawlEndpoints)
+    await this.db
+      .update(crawlEndpoints)
       .set({ nextCrawlAt: nextRun, updatedAt: new Date() })
       .where(eq(crawlEndpoints.id, id));
   }

@@ -212,7 +212,7 @@ export class PushChannel implements NotificationChannel {
     }
 
     // Check if metadata.notification has title (from handler)
-    const metadata = event.metadata as Record<string, unknown> | undefined;
+    const metadata = event.metadata;
     const notificationFromMetadata = metadata?.notification as
       | Record<string, string>
       | undefined;
@@ -249,7 +249,7 @@ export class PushChannel implements NotificationChannel {
     }
 
     // Check if metadata.notification has body (from handler)
-    const metadata = event.metadata as Record<string, unknown> | undefined;
+    const metadata = event.metadata;
     const notificationFromMetadata = metadata?.notification as
       | Record<string, string>
       | undefined;

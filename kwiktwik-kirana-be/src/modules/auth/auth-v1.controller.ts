@@ -71,7 +71,7 @@ export class AuthV1Controller {
     private readonly migrationService: MigrationService,
     @Inject(DRIZZLE_TOKEN)
     private readonly db: NodePgDatabase<typeof schema>,
-  ) { }
+  ) {}
 
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)

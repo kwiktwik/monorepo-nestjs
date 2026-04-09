@@ -1,8 +1,8 @@
-import { 
-  PaginationType, 
-  AuthType, 
-  ContentHandling, 
-  StorageType 
+import {
+  PaginationType,
+  AuthType,
+  ContentHandling,
+  StorageType,
 } from '../../constants';
 
 // Auth Configurations
@@ -44,10 +44,10 @@ export interface PageNumberConfig {
   startPage: number;
 }
 
-export type PaginationConfig = 
-  | OffsetPaginationConfig 
-  | CursorPaginationConfig 
-  | PageNumberConfig 
+export type PaginationConfig =
+  | OffsetPaginationConfig
+  | CursorPaginationConfig
+  | PageNumberConfig
   | null;
 
 // Deduplication Config

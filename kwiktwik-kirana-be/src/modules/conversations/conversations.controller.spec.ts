@@ -68,11 +68,16 @@ describe('ConversationsController', () => {
   describe('getUserConversations', () => {
     it('should return user conversations', async () => {
       const mockConversations = [{ id: 'conv-123' }];
-      mockConversationsService.getUserConversations.mockResolvedValue(mockConversations);
+      mockConversationsService.getUserConversations.mockResolvedValue(
+        mockConversations,
+      );
 
       const result = await controller.getUserConversations(mockUser, appId);
 
-      expect(service.getUserConversations).toHaveBeenCalledWith(appId, mockUser.userId);
+      expect(service.getUserConversations).toHaveBeenCalledWith(
+        appId,
+        mockUser.userId,
+      );
       expect(result).toEqual(mockConversations);
     });
   });
@@ -84,7 +89,10 @@ describe('ConversationsController', () => {
 
       const result = await controller.getConversation('conv-123', mockUser);
 
-      expect(service.findById).toHaveBeenCalledWith('conv-123', mockUser.userId);
+      expect(service.findById).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+      );
       expect(result).toEqual(mockConversation);
     });
   });
@@ -92,9 +100,15 @@ describe('ConversationsController', () => {
   describe('getOrCreateDirectConversation', () => {
     it('should get or create direct conversation', async () => {
       const mockConversation = { id: 'conv-123', type: 'direct' };
-      mockConversationsService.getOrCreateDirectConversation.mockResolvedValue(mockConversation);
+      mockConversationsService.getOrCreateDirectConversation.mockResolvedValue(
+        mockConversation,
+      );
 
-      const result = await controller.getOrCreateDirectConversation('user-2', mockUser, appId);
+      const result = await controller.getOrCreateDirectConversation(
+        'user-2',
+        mockUser,
+        appId,
+      );
 
       expect(service.getOrCreateDirectConversation).toHaveBeenCalledWith(
         appId,
@@ -110,7 +124,12 @@ describe('ConversationsController', () => {
       const mockResult = { message: 'Participant added' };
       mockConversationsService.addParticipant.mockResolvedValue(mockResult);
 
-      const result = await controller.addParticipant('conv-123', 'user-3', mockUser, appId);
+      const result = await controller.addParticipant(
+        'conv-123',
+        'user-3',
+        mockUser,
+        appId,
+      );
 
       expect(service.addParticipant).toHaveBeenCalledWith(
         'conv-123',
@@ -129,7 +148,10 @@ describe('ConversationsController', () => {
 
       const result = await controller.markAsRead('conv-123', mockUser);
 
-      expect(service.markAsRead).toHaveBeenCalledWith('conv-123', mockUser.userId);
+      expect(service.markAsRead).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+      );
       expect(result).toEqual(mockResult);
     });
   });
@@ -140,7 +162,10 @@ describe('ConversationsController', () => {
 
       const result = await controller.getUnreadCount('conv-123', mockUser);
 
-      expect(service.getUnreadCount).toHaveBeenCalledWith('conv-123', mockUser.userId);
+      expect(service.getUnreadCount).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+      );
       expect(result).toEqual({ unreadCount: 5 });
     });
   });
@@ -150,7 +175,12 @@ describe('ConversationsController', () => {
       const mockResult = { message: 'User promoted to admin' };
       mockConversationsService.promoteToAdmin.mockResolvedValue(mockResult);
 
-      const result = await controller.promoteToAdmin('conv-123', 'user-2', mockUser, appId);
+      const result = await controller.promoteToAdmin(
+        'conv-123',
+        'user-2',
+        mockUser,
+        appId,
+      );
 
       expect(service.promoteToAdmin).toHaveBeenCalledWith(
         'conv-123',
@@ -167,7 +197,12 @@ describe('ConversationsController', () => {
       const mockResult = { message: 'User demoted from admin' };
       mockConversationsService.demoteFromAdmin.mockResolvedValue(mockResult);
 
-      const result = await controller.demoteFromAdmin('conv-123', 'user-2', mockUser, appId);
+      const result = await controller.demoteFromAdmin(
+        'conv-123',
+        'user-2',
+        mockUser,
+        appId,
+      );
 
       expect(service.demoteFromAdmin).toHaveBeenCalledWith(
         'conv-123',
@@ -185,7 +220,12 @@ describe('ConversationsController', () => {
       const mockResult = { id: 'conv-123', ...updates };
       mockConversationsService.updateGroup.mockResolvedValue(mockResult);
 
-      const result = await controller.updateGroup('conv-123', updates, mockUser, appId);
+      const result = await controller.updateGroup(
+        'conv-123',
+        updates,
+        mockUser,
+        appId,
+      );
 
       expect(service.updateGroup).toHaveBeenCalledWith(
         'conv-123',

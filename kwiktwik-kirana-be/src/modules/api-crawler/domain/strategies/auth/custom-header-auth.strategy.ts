@@ -9,7 +9,7 @@ export class CustomHeaderAuthStrategy implements AuthStrategy {
   applyAuth(
     config: CrawlRequest,
     authConfig: CustomHeaderAuthConfig,
-    context?: AuthContext
+    context?: AuthContext,
   ): CrawlRequest {
     return {
       ...config,

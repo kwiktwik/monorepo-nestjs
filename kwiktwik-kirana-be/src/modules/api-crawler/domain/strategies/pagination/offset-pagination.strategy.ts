@@ -1,4 +1,7 @@
-import { PaginationStrategy, PaginationContext } from './pagination-strategy.interface';
+import {
+  PaginationStrategy,
+  PaginationContext,
+} from './pagination-strategy.interface';
 import { OffsetPaginationConfig } from '../../entities/crawl-endpoint.entity';
 
 export class OffsetPaginationStrategy implements PaginationStrategy {
@@ -14,7 +17,7 @@ export class OffsetPaginationStrategy implements PaginationStrategy {
   buildNextRequest(
     context: PaginationContext,
     baseParams: Record<string, any>,
-    config?: OffsetPaginationConfig
+    config?: OffsetPaginationConfig,
   ): Record<string, any> {
     if (!config) return baseParams;
     return {
@@ -27,11 +30,11 @@ export class OffsetPaginationStrategy implements PaginationStrategy {
   updateContext(
     context: PaginationContext,
     response: any,
-    config?: OffsetPaginationConfig
+    config?: OffsetPaginationConfig,
   ): PaginationContext {
     const items = this.extractItems(response) || [];
     const newOffset = context.currentOffset + items.length;
-    
+
     return {
       ...context,
       currentOffset: newOffset,

@@ -1,4 +1,7 @@
-import { PaginationStrategy, PaginationContext } from './pagination-strategy.interface';
+import {
+  PaginationStrategy,
+  PaginationContext,
+} from './pagination-strategy.interface';
 import { PageNumberConfig } from '../../entities/crawl-endpoint.entity';
 
 export class PageNumberPaginationStrategy implements PaginationStrategy {
@@ -14,14 +17,13 @@ export class PageNumberPaginationStrategy implements PaginationStrategy {
   buildNextRequest(
     context: PaginationContext,
     baseParams: Record<string, any>,
-    config?: PageNumberConfig
+    config?: PageNumberConfig,
   ): Record<string, any> {
     if (!config) return baseParams;
-    
-    const page = context.currentPage === 0 
-      ? config.startPage 
-      : context.currentPage + 1;
-    
+
+    const page =
+      context.currentPage === 0 ? config.startPage : context.currentPage + 1;
+
     return {
       ...baseParams,
       [config.pageParam]: page,
@@ -32,13 +34,15 @@ export class PageNumberPaginationStrategy implements PaginationStrategy {
   updateContext(
     context: PaginationContext,
     response: any,
-    config?: PageNumberConfig
+    config?: PageNumberConfig,
   ): PaginationContext {
     const items = this.extractItems(response) || [];
-    const nextPage = config 
-      ? (context.currentPage === 0 ? config.startPage + 1 : context.currentPage + 1)
+    const nextPage = config
+      ? context.currentPage === 0
+        ? config.startPage + 1
+        : context.currentPage + 1
       : context.currentPage + 1;
-    
+
     return {
       ...context,
       currentPage: nextPage,

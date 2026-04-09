@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
 import * as crypto from 'crypto';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
@@ -34,12 +39,14 @@ export class FeatureToggleService {
    * Get all feature flags for an app.
    * Used by GET /feature-toggle/flags endpoint.
    */
-  async getAllFlags(appId: string): Promise<Array<{
-    key: string;
-    description: string | null;
-    isEnabled: boolean;
-    defaultValue: { enabled: boolean; value?: unknown } | null;
-  }>> {
+  async getAllFlags(appId: string): Promise<
+    Array<{
+      key: string;
+      description: string | null;
+      isEnabled: boolean;
+      defaultValue: { enabled: boolean; value?: unknown } | null;
+    }>
+  > {
     const flags = await this.db
       .select({
         key: schema.featureFlags.key,
@@ -54,7 +61,10 @@ export class FeatureToggleService {
       key: flag.key,
       description: flag.description,
       isEnabled: flag.isEnabled,
-      defaultValue: flag.defaultValue as { enabled: boolean; value?: unknown } | null,
+      defaultValue: flag.defaultValue as {
+        enabled: boolean;
+        value?: unknown;
+      } | null,
     }));
   }
 
@@ -164,7 +174,10 @@ export class FeatureToggleService {
 
     if (!experiments[0]) {
       // No active experiment → return flag's defaultValue
-      const defaultVal = flag.defaultValue as { enabled?: boolean; value?: unknown } | null;
+      const defaultVal = flag.defaultValue as {
+        enabled?: boolean;
+        value?: unknown;
+      } | null;
       return {
         success: true,
         appId,
@@ -191,7 +204,12 @@ export class FeatureToggleService {
       )
       .limit(1);
 
-    let cohort: { id: number; name: string; weight: number; config: Record<string, unknown> | null } | null = null;
+    let cohort: {
+      id: number;
+      name: string;
+      weight: number;
+      config: Record<string, unknown> | null;
+    } | null = null;
 
     if (existingAssignments[0]) {
       // Reuse existing cohort (sticky)
@@ -290,8 +308,9 @@ export class FeatureToggleService {
     // ─────────────────────────────────────────────────────────────
     // 6. Build and return evaluation
     // ─────────────────────────────────────────────────────────────
-    const cohortConfig = (cohort?.config ?? {}) as Record<string, unknown>;
-    const enabled = typeof cohortConfig.enabled === 'boolean' ? cohortConfig.enabled : false;
+    const cohortConfig = cohort?.config ?? {};
+    const enabled =
+      typeof cohortConfig.enabled === 'boolean' ? cohortConfig.enabled : false;
 
     const evaluation: FeatureEvaluation = {
       success: true,
@@ -380,7 +399,8 @@ export class FeatureToggleService {
     if (!req.identity) {
       throw new BadRequestException({
         success: false,
-        error: 'Identity is required (firebaseInstallationId, deviceId, or userId)',
+        error:
+          'Identity is required (firebaseInstallationId, deviceId, or userId)',
         code: 'MISSING_IDENTITY',
       });
     }

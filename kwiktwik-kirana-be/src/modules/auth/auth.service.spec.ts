@@ -90,7 +90,9 @@ describe('AuthService', () => {
       const result = await service.checkKiranaFeUser('+919876543210');
 
       expect(result).toBe(true);
-      expect(mockKiranaFeService.checkUserExists).toHaveBeenCalledWith('+919876543210');
+      expect(mockKiranaFeService.checkUserExists).toHaveBeenCalledWith(
+        '+919876543210',
+      );
     });
 
     it('should return false if user does not exist', async () => {
@@ -112,5 +114,4 @@ describe('AuthService', () => {
       expect(mockKiranaFeService.checkUserExists).toHaveBeenCalledTimes(2);
     });
   });
-
 });

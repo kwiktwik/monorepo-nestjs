@@ -6,7 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { BetterAuthValidator } from './services/better-auth-validator.service';
 import { KiranaFeDataService } from './services/kirana-fe-data.service';
 import { TableMigrationService } from './services/table-migration.service';
-import { MigrationState, MigrationErrorCode } from './interfaces/migration.interfaces';
+import {
+  MigrationState,
+  MigrationErrorCode,
+} from './interfaces/migration.interfaces';
 
 describe('MigrationService', () => {
   let service: MigrationService;
@@ -131,10 +134,14 @@ describe('MigrationService', () => {
         success: true,
         session: mockSessionData,
       });
-      mockKiranaFeDataService.checkMigrationStatusInOldSystem.mockResolvedValue({
-        isMigrated: false,
-      });
-      mockKiranaFeDataService.fetchAllUserData.mockResolvedValue(mockSourceData);
+      mockKiranaFeDataService.checkMigrationStatusInOldSystem.mockResolvedValue(
+        {
+          isMigrated: false,
+        },
+      );
+      mockKiranaFeDataService.fetchAllUserData.mockResolvedValue(
+        mockSourceData,
+      );
 
       const result = await service.migrateUser('valid-token', 'device-1');
 
@@ -148,11 +155,15 @@ describe('MigrationService', () => {
         success: true,
         session: mockSessionData,
       });
-      mockKiranaFeDataService.checkMigrationStatusInOldSystem.mockResolvedValue({
-        isMigrated: true,
-        migratedAt: new Date(),
-      });
-      mockKiranaFeDataService.fetchAllUserData.mockResolvedValue(mockSourceData);
+      mockKiranaFeDataService.checkMigrationStatusInOldSystem.mockResolvedValue(
+        {
+          isMigrated: true,
+          migratedAt: new Date(),
+        },
+      );
+      mockKiranaFeDataService.fetchAllUserData.mockResolvedValue(
+        mockSourceData,
+      );
 
       const result = await service.migrateUser('token', 'device-1');
 

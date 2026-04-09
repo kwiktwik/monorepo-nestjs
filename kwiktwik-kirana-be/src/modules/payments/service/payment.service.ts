@@ -8,7 +8,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { paymentConfigRegistry, PaymentConfigRegistry } from '../config/config-registry';
+import {
+  paymentConfigRegistry,
+  PaymentConfigRegistry,
+} from '../config/config-registry';
 import { PaymentProviderFactory } from '../factory/payment-provider.factory';
 import { loadPaymentConfigs } from '../config/config-loader';
 import type { PaymentProvider } from '../types/payment-provider.interface';
@@ -48,50 +51,86 @@ export class PaymentService {
   }
 
   getProvider(provider: PaymentProviderType, appId: string): PaymentProvider {
-    const config = this.registry.get(provider, appId, { fallbackToDefault: true });
+    const config = this.registry.get(provider, appId, {
+      fallbackToDefault: true,
+    });
     if (!config) {
-      throw new ConfigError(`No config found for provider ${provider} and app ${appId}`, appId, provider);
+      throw new ConfigError(
+        `No config found for provider ${provider} and app ${appId}`,
+        appId,
+        provider,
+      );
     }
     return PaymentProviderFactory.createProvider(config);
   }
 
-  async createOrder(provider: PaymentProviderType, params: CreateOrderParams): Promise<OrderResult> {
+  async createOrder(
+    provider: PaymentProviderType,
+    params: CreateOrderParams,
+  ): Promise<OrderResult> {
     return this.getProvider(provider, params.appId).createOrder(params);
   }
 
-  async verifyPayment(provider: PaymentProviderType, params: VerifyPaymentParams): Promise<VerifyResult> {
+  async verifyPayment(
+    provider: PaymentProviderType,
+    params: VerifyPaymentParams,
+  ): Promise<VerifyResult> {
     return this.getProvider(provider, params.appId).verifyPayment(params);
   }
 
-  async createSubscription(provider: PaymentProviderType, params: CreateSubscriptionParams): Promise<SubscriptionResult> {
+  async createSubscription(
+    provider: PaymentProviderType,
+    params: CreateSubscriptionParams,
+  ): Promise<SubscriptionResult> {
     const p = this.getProvider(provider, params.appId);
-    if (!p.createSubscription) throw new Error(`${provider} does not support subscriptions`);
+    if (!p.createSubscription)
+      throw new Error(`${provider} does not support subscriptions`);
     return p.createSubscription(params);
   }
 
-  async handleWebhook(provider: PaymentProviderType, params: HandleWebhookParams): Promise<WebhookResult> {
+  async handleWebhook(
+    provider: PaymentProviderType,
+    params: HandleWebhookParams,
+  ): Promise<WebhookResult> {
     return this.getProvider(provider, params.appId).handleWebhook(params);
   }
 
-  async refund(provider: PaymentProviderType, appId: string, orderId: string, amount?: number): Promise<RefundResult> {
+  async refund(
+    provider: PaymentProviderType,
+    appId: string,
+    orderId: string,
+    amount?: number,
+  ): Promise<RefundResult> {
     const p = this.getProvider(provider, appId);
     if (!p.refund) throw new Error(`${provider} does not support refunds`);
     return p.refund(orderId, amount);
   }
 
-  async checkOrderStatus(provider: PaymentProviderType, appId: string, orderId: string): Promise<OrderResult> {
+  async checkOrderStatus(
+    provider: PaymentProviderType,
+    appId: string,
+    orderId: string,
+  ): Promise<OrderResult> {
     const p = this.getProvider(provider, appId);
-    if (!p.checkOrderStatus) throw new Error(`${provider} does not support order status check`);
+    if (!p.checkOrderStatus)
+      throw new Error(`${provider} does not support order status check`);
     return p.checkOrderStatus(orderId);
   }
 
-  getPublicConfig(provider: PaymentProviderType, appId: string): Record<string, unknown> {
+  getPublicConfig(
+    provider: PaymentProviderType,
+    appId: string,
+  ): Record<string, unknown> {
     return this.getProvider(provider, appId).getPublicConfig();
   }
 
-  async healthCheck(provider: PaymentProviderType, appId: string): Promise<{ healthy: boolean; message?: string }> {
+  async healthCheck(
+    provider: PaymentProviderType,
+    appId: string,
+  ): Promise<{ healthy: boolean; message?: string }> {
     const p = this.getProvider(provider, appId);
-    if (!p.healthCheck) return { healthy: true, message: 'No health check implemented' };
+    if (!p.healthCheck)
+      return { healthy: true, message: 'No health check implemented' };
     return p.healthCheck();
   }
 }

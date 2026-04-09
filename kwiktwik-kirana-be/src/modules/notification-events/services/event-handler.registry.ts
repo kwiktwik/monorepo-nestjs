@@ -36,7 +36,9 @@ export class EventHandlerRegistry {
    */
   register(handler: EventHandler): void {
     this.handlers.set(handler.eventType, handler);
-    this.logger.log(`✅ Registered handler for event type: ${handler.eventType}`);
+    this.logger.log(
+      `✅ Registered handler for event type: ${handler.eventType}`,
+    );
   }
 
   /**

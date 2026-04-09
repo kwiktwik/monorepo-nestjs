@@ -12,18 +12,18 @@ export interface PaginationContext {
 
 export interface PaginationStrategy {
   getInitialContext(): PaginationContext;
-  
+
   buildNextRequest(
     context: PaginationContext,
     baseParams: Record<string, any>,
-    config?: PaginationConfig
+    config?: PaginationConfig,
   ): Record<string, any>;
-  
+
   updateContext(
     context: PaginationContext,
     response: any,
-    config?: PaginationConfig
+    config?: PaginationConfig,
   ): PaginationContext;
-  
+
   extractItems?(response: any): any[];
 }

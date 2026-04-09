@@ -1,7 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { ICrawlJobRepository, JobStats } from '../../domain/repositories/crawl-job.repository.interface';
+import type {
+  ICrawlJobRepository,
+  JobStats,
+} from '../../domain/repositories/crawl-job.repository.interface';
 import type {
   CrawlJob,
   CreateCrawlJobInput,
@@ -12,49 +15,59 @@ import { crawlJobs, crawlResults } from './crawler.schema';
 
 @Injectable()
 export class DrizzleCrawlJobRepository implements ICrawlJobRepository {
-  constructor(
-    @Inject('DRIZZLE_DB') private db: NodePgDatabase,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private db: NodePgDatabase) {}
 
   async create(input: CreateCrawlJobInput): Promise<CrawlJob> {
     // Generate ULID if not provided
     const id = input.id || this.generateUlid();
     const now = new Date();
-    
-    const result = await this.db.insert(crawlJobs).values({
-      id,
-      endpointId: input.endpointId,
-      url: input.url,
-      method: input.method,
-      headers: input.headers || {},
-      queryParams: input.queryParams || {},
-      body: input.body,
-      dedupKey: input.dedupKey,
-      status: input.status || 'pending',
-      priority: input.priority || 'normal',
-      scheduledAt: input.scheduledAt,
-      metadata: input.metadata || {},
-      createdAt: now,
-      updatedAt: now,
-    }).returning();
+
+    const result = await this.db
+      .insert(crawlJobs)
+      .values({
+        id,
+        endpointId: input.endpointId,
+        url: input.url,
+        method: input.method,
+        headers: input.headers || {},
+        queryParams: input.queryParams || {},
+        body: input.body,
+        dedupKey: input.dedupKey,
+        status: input.status || 'pending',
+        priority: input.priority || 'normal',
+        scheduledAt: input.scheduledAt,
+        metadata: input.metadata || {},
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
 
     return this.mapToEntity(result[0]);
   }
 
   private generateUlid(): string {
     const timestamp = Date.now().toString(36).toUpperCase().padStart(10, '0');
-    const random = Array.from({ length: 16 }, () => 
-      Math.floor(Math.random() * 36).toString(36).toUpperCase()
+    const random = Array.from({ length: 16 }, () =>
+      Math.floor(Math.random() * 36)
+        .toString(36)
+        .toUpperCase(),
     ).join('');
     return timestamp + random;
   }
 
   async findById(id: string): Promise<CrawlJob | null> {
-    const result = await this.db.select().from(crawlJobs).where(eq(crawlJobs.id, id)).limit(1);
+    const result = await this.db
+      .select()
+      .from(crawlJobs)
+      .where(eq(crawlJobs.id, id))
+      .limit(1);
     return result.length > 0 ? this.mapToEntity(result[0]) : null;
   }
 
-  async findByDedupKey(endpointId: number, dedupKey: string): Promise<CrawlJob | null> {
+  async findByDedupKey(
+    endpointId: number,
+    dedupKey: string,
+  ): Promise<CrawlJob | null> {
     const result = await this.db
       .select()
       .from(crawlJobs)
@@ -62,37 +75,47 @@ export class DrizzleCrawlJobRepository implements ICrawlJobRepository {
         and(
           eq(crawlJobs.endpointId, endpointId),
           eq(crawlJobs.dedupKey, dedupKey),
-          sql`${crawlJobs.status} IN ('completed', 'running')`
-        )
+          sql`${crawlJobs.status} IN ('completed', 'running')`,
+        ),
       )
       .limit(1);
     return result.length > 0 ? this.mapToEntity(result[0]) : null;
   }
 
-  async findByEndpointId(endpointId: number, limit?: number): Promise<CrawlJob[]> {
+  async findByEndpointId(
+    endpointId: number,
+    limit?: number,
+  ): Promise<CrawlJob[]> {
     const query = this.db
       .select()
       .from(crawlJobs)
       .where(eq(crawlJobs.endpointId, endpointId))
       .orderBy(desc(crawlJobs.createdAt));
-    
+
     const results = limit ? await query.limit(limit) : await query;
-    return results.map(r => this.mapToEntity(r));
+    return results.map((r) => this.mapToEntity(r));
   }
 
-  async findByStatus(status: CrawlJobStatus, limit?: number): Promise<CrawlJob[]> {
+  async findByStatus(
+    status: CrawlJobStatus,
+    limit?: number,
+  ): Promise<CrawlJob[]> {
     const query = this.db
       .select()
       .from(crawlJobs)
       .where(eq(crawlJobs.status, status))
       .orderBy(desc(crawlJobs.createdAt));
-    
+
     const results = limit ? await query.limit(limit) : await query;
-    return results.map(r => this.mapToEntity(r));
+    return results.map((r) => this.mapToEntity(r));
   }
 
-  async updateStatus(id: string, status: CrawlJobStatus, metadata?: UpdateCrawlJobInput): Promise<void> {
-    const updates: any = { 
+  async updateStatus(
+    id: string,
+    status: CrawlJobStatus,
+    metadata?: UpdateCrawlJobInput,
+  ): Promise<void> {
+    const updates: any = {
       status,
       updatedAt: new Date(),
     };
@@ -103,13 +126,13 @@ export class DrizzleCrawlJobRepository implements ICrawlJobRepository {
     if (metadata?.lastError) updates.lastError = metadata.lastError;
     if (metadata?.lastErrorAt) updates.lastErrorAt = metadata.lastErrorAt;
     if (metadata?.attemptCount) updates.attemptCount = metadata.attemptCount;
-    if (metadata?.extractedFields) updates.extractedFields = metadata.extractedFields;
-    if (metadata?.storageLocation) updates.storageLocation = metadata.storageLocation;
+    if (metadata?.extractedFields)
+      updates.extractedFields = metadata.extractedFields;
+    if (metadata?.storageLocation)
+      updates.storageLocation = metadata.storageLocation;
     if (metadata?.rawContent) updates.rawContent = metadata.rawContent;
 
-    await this.db.update(crawlJobs)
-      .set(updates)
-      .where(eq(crawlJobs.id, id));
+    await this.db.update(crawlJobs).set(updates).where(eq(crawlJobs.id, id));
   }
 
   async claimNextPending(): Promise<CrawlJob | null> {
@@ -125,7 +148,7 @@ export class DrizzleCrawlJobRepository implements ICrawlJobRepository {
     if (result.length === 0) return null;
 
     const job = result[0];
-    await this.updateStatus(job.id, 'running', { 
+    await this.updateStatus(job.id, 'running', {
       startedAt: new Date(),
       attemptCount: (job.attemptCount || 0) + 1,
     });
@@ -142,10 +165,13 @@ export class DrizzleCrawlJobRepository implements ICrawlJobRepository {
   }
 
   async getStats(endpointId?: number): Promise<JobStats> {
-    let query = this.db.select({
-      status: crawlJobs.status,
-      count: sql<number>`count(*)`,
-    }).from(crawlJobs).groupBy(crawlJobs.status);
+    let query = this.db
+      .select({
+        status: crawlJobs.status,
+        count: sql<number>`count(*)`,
+      })
+      .from(crawlJobs)
+      .groupBy(crawlJobs.status);
 
     if (endpointId) {
       query = query.where(eq(crawlJobs.endpointId, endpointId)) as any;

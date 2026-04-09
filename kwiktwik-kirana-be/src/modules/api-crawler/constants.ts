@@ -20,13 +20,13 @@ export type ContentHandling = 'auto' | 'json' | 'text' | 'binary' | 'image';
 export type StorageType = 'database' | 's3' | 'hybrid';
 
 // Job Status
-export type CrawlJobStatus = 
-  | 'pending' 
-  | 'queued' 
-  | 'running' 
-  | 'completed' 
-  | 'failed' 
-  | 'cancelled' 
+export type CrawlJobStatus =
+  | 'pending'
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
   | 'deduplicated';
 
 // Priority

@@ -152,9 +152,12 @@ export class BetterAuthValidator {
    * IMPORTANT: throws are ALL UnauthorizedException with a `.details` property
    * that callers can use to skip re-building error info (avoids duplicate formatting).
    */
-  async validateSession(
-    token: string,
-  ): Promise<BetterAuthSession & { timing: FetchTiming; validationDetails: ValidationErrorDetails | null }> {
+  async validateSession(token: string): Promise<
+    BetterAuthSession & {
+      timing: FetchTiming;
+      validationDetails: ValidationErrorDetails | null;
+    }
+  > {
     const tokenType = this.detectTokenType(token);
     this.logger.log(
       `Validating session: type=${tokenType}, preview=${token.substring(0, 20)}...`,
@@ -186,7 +189,9 @@ export class BetterAuthValidator {
         'session_validation',
       );
 
-      this.logger.log(`Session validation timing: ${formatTimingLog(fetchTiming)}`);
+      this.logger.log(
+        `Session validation timing: ${formatTimingLog(fetchTiming)}`,
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();
@@ -257,14 +262,14 @@ export class BetterAuthValidator {
           error instanceof Error
             ? error
             : error && typeof error === 'object' && 'error' in error
-              ? ((error as any).error instanceof Error
-                  ? (error as any).error
-                  : new Error(String((error as any).error)))
+              ? error.error instanceof Error
+                ? error.error
+                : new Error(String(error.error))
               : new Error('Unknown fetch error');
 
         const innerTiming: FetchTiming | undefined =
           error && typeof error === 'object' && 'timing' in error
-            ? (error as any).timing
+            ? error.timing
             : undefined;
 
         details = {
@@ -310,7 +315,11 @@ export class BetterAuthValidator {
       }
   > {
     try {
-      const { timing, validationDetails: _vd, ...sessionData } = await this.validateSession(token);
+      const {
+        timing,
+        validationDetails: _vd,
+        ...sessionData
+      } = await this.validateSession(token);
       return { success: true, session: sessionData, timing };
     } catch (thrown) {
       // If validateSession attached structured details, use them directly.
@@ -319,9 +328,9 @@ export class BetterAuthValidator {
         thrown &&
         typeof thrown === 'object' &&
         'validationDetails' in thrown &&
-        (thrown as any).validationDetails
+        thrown.validationDetails
       ) {
-        const details: ValidationErrorDetails = (thrown as any).validationDetails;
+        const details: ValidationErrorDetails = thrown.validationDetails;
         return {
           success: false,
           errorDetails: details,

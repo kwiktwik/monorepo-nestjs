@@ -1,4 +1,10 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -62,7 +68,9 @@ export class FeatureToggleAdminService {
     } as FeatureFlagResponseDto;
   }
 
-  async createFeatureFlag(dto: CreateFeatureFlagDto): Promise<FeatureFlagResponseDto> {
+  async createFeatureFlag(
+    dto: CreateFeatureFlagDto,
+  ): Promise<FeatureFlagResponseDto> {
     // Ensure the app exists in the apps table (auto-create if missing)
     await this.ensureAppExists(dto.appId);
 
@@ -158,10 +166,14 @@ export class FeatureToggleAdminService {
     } as FeatureFlagResponseDto;
   }
 
-  async deleteFeatureFlag(id: number): Promise<{ success: boolean; message: string }> {
+  async deleteFeatureFlag(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
     await this.getFeatureFlag(id); // throws if not found
 
-    await this.db.delete(schema.featureFlags).where(eq(schema.featureFlags.id, id));
+    await this.db
+      .delete(schema.featureFlags)
+      .where(eq(schema.featureFlags.id, id));
     this.logger.log(`Deleted feature flag ${id}`);
     return { success: true, message: 'Feature flag deleted' };
   }
@@ -170,7 +182,10 @@ export class FeatureToggleAdminService {
   // EXPERIMENTS
   // ============================================================================
 
-  async listExperiments(appId?: string, status?: string): Promise<ExperimentResponseDto[]> {
+  async listExperiments(
+    appId?: string,
+    status?: string,
+  ): Promise<ExperimentResponseDto[]> {
     const conditions: any[] = [];
 
     if (appId) {
@@ -236,11 +251,15 @@ export class FeatureToggleAdminService {
     } as ExperimentResponseDto;
   }
 
-  async createExperiment(dto: CreateExperimentDto): Promise<ExperimentResponseDto> {
+  async createExperiment(
+    dto: CreateExperimentDto,
+  ): Promise<ExperimentResponseDto> {
     // Validate cohorts weights sum to 100 (or close)
     const totalWeight = dto.cohorts.reduce((sum, c) => sum + c.weight, 0);
     if (totalWeight !== 100) {
-      this.logger.warn(`Experiment cohorts weights sum to ${totalWeight}, expected 100`);
+      this.logger.warn(
+        `Experiment cohorts weights sum to ${totalWeight}, expected 100`,
+      );
     }
 
     // Ensure app exists (auto-create if missing)
@@ -286,12 +305,17 @@ export class FeatureToggleAdminService {
       });
     }
 
-    this.logger.log(`Created experiment "${dto.name}" with ${dto.cohorts.length} cohorts`);
+    this.logger.log(
+      `Created experiment "${dto.name}" with ${dto.cohorts.length} cohorts`,
+    );
 
     return this.getExperiment(experiment.id);
   }
 
-  async updateExperiment(id: number, dto: UpdateExperimentDto): Promise<ExperimentResponseDto> {
+  async updateExperiment(
+    id: number,
+    dto: UpdateExperimentDto,
+  ): Promise<ExperimentResponseDto> {
     const existing = await this.getExperiment(id);
 
     const updateData: Record<string, unknown> = {
@@ -300,7 +324,8 @@ export class FeatureToggleAdminService {
 
     if (dto.name) updateData.name = dto.name;
     if (dto.status) updateData.status = dto.status;
-    if (dto.trafficAllocation !== undefined) updateData.trafficAllocation = dto.trafficAllocation;
+    if (dto.trafficAllocation !== undefined)
+      updateData.trafficAllocation = dto.trafficAllocation;
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
     if (dto.metadata) updateData.metadata = dto.metadata;
@@ -314,13 +339,19 @@ export class FeatureToggleAdminService {
     return this.getExperiment(id);
   }
 
-  async deleteExperiment(id: number): Promise<{ success: boolean; message: string }> {
+  async deleteExperiment(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
     await this.getExperiment(id); // throws if not found
 
     // Delete cohorts first (cascade should handle, but being explicit)
-    await this.db.delete(schema.experimentCohorts).where(eq(schema.experimentCohorts.experimentId, id));
+    await this.db
+      .delete(schema.experimentCohorts)
+      .where(eq(schema.experimentCohorts.experimentId, id));
 
-    await this.db.delete(schema.experiments).where(eq(schema.experiments.id, id));
+    await this.db
+      .delete(schema.experiments)
+      .where(eq(schema.experiments.id, id));
     this.logger.log(`Deleted experiment ${id}`);
     return { success: true, message: 'Experiment deleted' };
   }
@@ -329,7 +360,9 @@ export class FeatureToggleAdminService {
   // RESULTS / ANALYSIS
   // ============================================================================
 
-  async getExperimentResults(id: number): Promise<ExperimentResultsResponseDto> {
+  async getExperimentResults(
+    id: number,
+  ): Promise<ExperimentResultsResponseDto> {
     const experiment = await this.getExperiment(id);
 
     const cohorts = await this.db
@@ -371,7 +404,8 @@ export class FeatureToggleAdminService {
 
       const usersExposed = Number(exposures[0]?.count ?? 0);
       const conversionCount = Number(conversions[0]?.count ?? 0);
-      const conversionRate = usersExposed > 0 ? (conversionCount / usersExposed) * 100 : 0;
+      const conversionRate =
+        usersExposed > 0 ? (conversionCount / usersExposed) * 100 : 0;
 
       results.push({
         name: cohort.name,
@@ -383,7 +417,9 @@ export class FeatureToggleAdminService {
 
     // Determine winner (highest conversion rate, must have at least some exposures)
     let winner: string | undefined;
-    const sorted = [...results].sort((a, b) => b.conversionRate - a.conversionRate);
+    const sorted = [...results].sort(
+      (a, b) => b.conversionRate - a.conversionRate,
+    );
     if (sorted.length > 0 && sorted[0].usersExposed > 0) {
       winner = sorted[0].name;
     }

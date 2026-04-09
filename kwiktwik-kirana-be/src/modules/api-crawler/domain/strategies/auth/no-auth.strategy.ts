@@ -5,7 +5,7 @@ export class NoAuthStrategy implements AuthStrategy {
   applyAuth(
     config: CrawlRequest,
     authConfig: any,
-    context?: AuthContext
+    context?: AuthContext,
   ): CrawlRequest {
     return config;
   }

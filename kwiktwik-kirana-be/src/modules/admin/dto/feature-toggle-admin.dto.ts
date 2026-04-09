@@ -24,7 +24,10 @@ export class ListExperimentsQueryDto {
   @IsString()
   appId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by status', enum: ['draft', 'running', 'paused', 'concluded'] })
+  @ApiPropertyOptional({
+    description: 'Filter by status',
+    enum: ['draft', 'running', 'paused', 'concluded'],
+  })
   @IsOptional()
   @IsEnum(['draft', 'running', 'paused', 'concluded'])
   status?: string;
@@ -44,7 +47,9 @@ export class CreateFeatureFlagDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Default evaluation result when no experiment is active' })
+  @ApiPropertyOptional({
+    description: 'Default evaluation result when no experiment is active',
+  })
   @IsOptional()
   @IsObject()
   defaultValue?: { enabled: boolean; value?: unknown };
@@ -61,7 +66,9 @@ export class UpdateFeatureFlagDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Default evaluation result when no experiment is active' })
+  @ApiPropertyOptional({
+    description: 'Default evaluation result when no experiment is active',
+  })
   @IsOptional()
   @IsObject()
   defaultValue?: { enabled: boolean; value?: unknown };
@@ -107,7 +114,9 @@ export class CohortDto {
   @IsNumber()
   weight: number;
 
-  @ApiPropertyOptional({ description: 'Configuration payload returned for this cohort' })
+  @ApiPropertyOptional({
+    description: 'Configuration payload returned for this cohort',
+  })
   @IsOptional()
   @IsObject()
   config?: Record<string, unknown>;
@@ -122,7 +131,9 @@ export class CreateExperimentDto {
   @IsString()
   appId: string;
 
-  @ApiPropertyOptional({ description: 'ID of the feature flag to connect with' })
+  @ApiPropertyOptional({
+    description: 'ID of the feature flag to connect with',
+  })
   @IsOptional()
   @IsNumber()
   featureFlagId?: number;

@@ -3,9 +3,11 @@ import { ContentHandler, ContentMetadata } from './content-handler.interface';
 
 export class JsonContentHandler implements ContentHandler {
   canHandle(contentType: string, data: Buffer): boolean {
-    return contentType.includes('application/json') || 
-           contentType.includes('application/javascript') ||
-           contentType.includes('text/json');
+    return (
+      contentType.includes('application/json') ||
+      contentType.includes('application/javascript') ||
+      contentType.includes('text/json')
+    );
   }
 
   parse(data: Buffer): any {

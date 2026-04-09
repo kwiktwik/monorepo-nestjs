@@ -1,7 +1,7 @@
-import { 
-  CrawlResult, 
+import {
+  CrawlResult,
   CreateCrawlResultInput,
-  StorageLocation 
+  StorageLocation,
 } from '../entities/crawl-result.entity';
 
 export interface ICrawlResultRepository {

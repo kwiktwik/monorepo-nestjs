@@ -27,8 +27,23 @@ describe('PaymentConfigRegistry', () => {
 
     it('should allow registering multiple configs', () => {
       registry.registerMany([
-        { id: 'app1', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k1', keySecret: 's1' } as RazorpayConfig,
-        { id: 'app2', provider: 'phonepe', environment: 'sandbox', enabled: true, merchantId: 'm1', clientId: 'c1', clientSecret: 's1' } as PhonePeConfig,
+        {
+          id: 'app1',
+          provider: 'razorpay',
+          environment: 'sandbox',
+          enabled: true,
+          keyId: 'k1',
+          keySecret: 's1',
+        } as RazorpayConfig,
+        {
+          id: 'app2',
+          provider: 'phonepe',
+          environment: 'sandbox',
+          enabled: true,
+          merchantId: 'm1',
+          clientId: 'c1',
+          clientSecret: 's1',
+        } as PhonePeConfig,
       ]);
       expect(registry.size()).toBe(2);
     });
@@ -37,7 +52,12 @@ describe('PaymentConfigRegistry', () => {
   describe('get', () => {
     it('should return config by provider and id', () => {
       const config: RazorpayConfig = {
-        id: 'myapp', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k', keySecret: 's',
+        id: 'myapp',
+        provider: 'razorpay',
+        environment: 'sandbox',
+        enabled: true,
+        keyId: 'k',
+        keySecret: 's',
       };
       registry.register(config);
       const found = registry.get('razorpay', 'myapp');
@@ -50,12 +70,19 @@ describe('PaymentConfigRegistry', () => {
 
     it('should fallback to default when enabled', () => {
       const defaultConfig: RazorpayConfig = {
-        id: 'default', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'def', keySecret: 'def',
+        id: 'default',
+        provider: 'razorpay',
+        environment: 'sandbox',
+        enabled: true,
+        keyId: 'def',
+        keySecret: 'def',
       };
       registry.register(defaultConfig);
       registry.setDefault('razorpay', 'default');
 
-      const found = registry.get('razorpay', 'someapp', { fallbackToDefault: true });
+      const found = registry.get('razorpay', 'someapp', {
+        fallbackToDefault: true,
+      });
       expect(found?.id).toBe('default');
     });
   });
@@ -63,9 +90,31 @@ describe('PaymentConfigRegistry', () => {
   describe('getAllForProvider', () => {
     it('should return all configs for a provider type', () => {
       registry.registerMany([
-        { id: 'a1', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k', keySecret: 's' } as RazorpayConfig,
-        { id: 'a2', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k2', keySecret: 's2' } as RazorpayConfig,
-        { id: 'b1', provider: 'phonepe', environment: 'sandbox', enabled: true, merchantId: 'm', clientId: 'c', clientSecret: 's' } as PhonePeConfig,
+        {
+          id: 'a1',
+          provider: 'razorpay',
+          environment: 'sandbox',
+          enabled: true,
+          keyId: 'k',
+          keySecret: 's',
+        } as RazorpayConfig,
+        {
+          id: 'a2',
+          provider: 'razorpay',
+          environment: 'sandbox',
+          enabled: true,
+          keyId: 'k2',
+          keySecret: 's2',
+        } as RazorpayConfig,
+        {
+          id: 'b1',
+          provider: 'phonepe',
+          environment: 'sandbox',
+          enabled: true,
+          merchantId: 'm',
+          clientId: 'c',
+          clientSecret: 's',
+        } as PhonePeConfig,
       ]);
       const razorpayConfigs = registry.getAllForProvider('razorpay');
       expect(razorpayConfigs.length).toBe(2);
@@ -74,7 +123,14 @@ describe('PaymentConfigRegistry', () => {
 
   describe('remove', () => {
     it('should remove a config', () => {
-      registry.register({ id: 'x', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k', keySecret: 's' } as RazorpayConfig);
+      registry.register({
+        id: 'x',
+        provider: 'razorpay',
+        environment: 'sandbox',
+        enabled: true,
+        keyId: 'k',
+        keySecret: 's',
+      } as RazorpayConfig);
       const removed = registry.remove('razorpay', 'x');
       expect(removed).toBe(true);
       expect(registry.has('razorpay', 'x')).toBe(false);
@@ -83,7 +139,14 @@ describe('PaymentConfigRegistry', () => {
 
   describe('clear', () => {
     it('should clear all configs', () => {
-      registry.register({ id: 'a', provider: 'razorpay', environment: 'sandbox', enabled: true, keyId: 'k', keySecret: 's' } as RazorpayConfig);
+      registry.register({
+        id: 'a',
+        provider: 'razorpay',
+        environment: 'sandbox',
+        enabled: true,
+        keyId: 'k',
+        keySecret: 's',
+      } as RazorpayConfig);
       registry.clear();
       expect(registry.size()).toBe(0);
     });

@@ -37,7 +37,8 @@ export class PaymentConfigRegistry {
     let config = this.configs.get(key);
 
     if (!config && options?.fallbackToDefault) {
-      const defaultId = options.defaultConfigId ?? this.defaultConfigs.get(provider);
+      const defaultId =
+        options.defaultConfigId ?? this.defaultConfigs.get(provider);
       if (defaultId) {
         const defaultKey = this.getConfigKey(provider, defaultId);
         config = this.configs.get(defaultKey) ?? undefined;
@@ -71,7 +72,10 @@ export class PaymentConfigRegistry {
     return this.configs.size;
   }
 
-  private getConfigKey(provider: PaymentProviderType, configId: string): string {
+  private getConfigKey(
+    provider: PaymentProviderType,
+    configId: string,
+  ): string {
     return `${provider}:${configId}`;
   }
 }

@@ -1,4 +1,7 @@
-import { PaginationStrategy, PaginationContext } from './pagination-strategy.interface';
+import {
+  PaginationStrategy,
+  PaginationContext,
+} from './pagination-strategy.interface';
 import { PaginationConfig } from '../../entities/crawl-endpoint.entity';
 
 export class NoPaginationStrategy implements PaginationStrategy {
@@ -14,7 +17,7 @@ export class NoPaginationStrategy implements PaginationStrategy {
   buildNextRequest(
     context: PaginationContext,
     baseParams: Record<string, any>,
-    config?: PaginationConfig
+    config?: PaginationConfig,
   ): Record<string, any> {
     return baseParams;
   }
@@ -22,7 +25,7 @@ export class NoPaginationStrategy implements PaginationStrategy {
   updateContext(
     context: PaginationContext,
     response: any,
-    config?: PaginationConfig
+    config?: PaginationConfig,
   ): PaginationContext {
     return {
       ...context,

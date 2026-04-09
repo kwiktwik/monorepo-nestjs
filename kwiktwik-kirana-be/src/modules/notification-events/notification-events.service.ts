@@ -15,7 +15,10 @@ import { AnalyticsService } from '../analytics/analytics.service';
  * Schema validation rules per event type
  * Add more schemas here as event types are added
  */
-const EVENT_SCHEMAS: Record<string, (payload: Record<string, unknown>) => string | null> = {
+const EVENT_SCHEMAS: Record<
+  string,
+  (payload: Record<string, unknown>) => string | null
+> = {
   'payment.received': (payload) => {
     if (!payload.amount) return 'Missing required field: amount';
     if (typeof payload.amount !== 'number' && isNaN(Number(payload.amount)))
@@ -31,11 +34,13 @@ const EVENT_SCHEMAS: Record<string, (payload: Record<string, unknown>) => string
     return null;
   },
   'subscription.halted': (payload) => {
-    if (!payload.subscriptionId) return 'Missing required field: subscriptionId';
+    if (!payload.subscriptionId)
+      return 'Missing required field: subscriptionId';
     return null;
   },
   'subscription.paused': (payload) => {
-    if (!payload.subscriptionId) return 'Missing required field: subscriptionId';
+    if (!payload.subscriptionId)
+      return 'Missing required field: subscriptionId';
     return null;
   },
 };
@@ -85,7 +90,10 @@ export class NotificationEventsService {
     const effectiveAppId = appId;
 
     // Schema validation per event type
-    const validationError = this.validateEvent(dto.eventType, dto.payload || {});
+    const validationError = this.validateEvent(
+      dto.eventType,
+      dto.payload || {},
+    );
     if (validationError) {
       this.logger.warn(
         `Validation failed for event ${eventId}: ${validationError}`,
@@ -181,7 +189,9 @@ export class NotificationEventsService {
       }
       return true; // Duplicate
     } catch (error) {
-      this.logger.warn(`Idempotency check failed for ${eventId}: ${(error as Error).message}`);
+      this.logger.warn(
+        `Idempotency check failed for ${eventId}: ${(error as Error).message}`,
+      );
       return false; // On error, proceed (fail-open)
     }
   }
@@ -198,11 +208,16 @@ export class NotificationEventsService {
 
     try {
       // Convert unknown values to string | number | boolean | undefined for EventProperties
-      const eventProps: Record<string, string | number | boolean | undefined> = {};
+      const eventProps: Record<string, string | number | boolean | undefined> =
+        {};
       for (const [key, value] of Object.entries(properties)) {
         if (value === undefined || value === null) {
           eventProps[key] = undefined;
-        } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        } else if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
           eventProps[key] = value;
         } else {
           // Convert complex types to string
@@ -221,7 +236,9 @@ export class NotificationEventsService {
           eventProperties: eventProps,
         })
         .catch((err) => {
-          this.logger.debug(`Mixpanel track failed (non-critical): ${err.message}`);
+          this.logger.debug(
+            `Mixpanel track failed (non-critical): ${err.message}`,
+          );
         });
     } catch (error) {
       // Non-critical - just log

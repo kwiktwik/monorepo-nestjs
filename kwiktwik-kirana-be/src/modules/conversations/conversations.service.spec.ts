@@ -23,8 +23,18 @@ describe('ConversationsService', () => {
     lastMessageAt: null,
     lastMessagePreview: null,
     participants: [
-      { id: 'part-1', userId: 'user-1', role: 'admin', user: { id: 'user-1', name: 'User 1' } },
-      { id: 'part-2', userId: 'user-2', role: 'member', user: { id: 'user-2', name: 'User 2' } },
+      {
+        id: 'part-1',
+        userId: 'user-1',
+        role: 'admin',
+        user: { id: 'user-1', name: 'User 1' },
+      },
+      {
+        id: 'part-2',
+        userId: 'user-2',
+        role: 'member',
+        user: { id: 'user-2', name: 'User 2' },
+      },
     ],
   };
 
@@ -60,7 +70,9 @@ describe('ConversationsService', () => {
 
     mockRedisService = {
       cacheConversationParticipants: jest.fn().mockResolvedValue(undefined),
-      getConversationParticipants: jest.fn().mockResolvedValue(['user-1', 'user-2']),
+      getConversationParticipants: jest
+        .fn()
+        .mockResolvedValue(['user-1', 'user-2']),
     };
 
     mockMqttService = {
@@ -92,12 +104,10 @@ describe('ConversationsService', () => {
     it('should create a direct conversation', async () => {
       mockDb.query.conversations.findFirst.mockResolvedValue(mockConversation);
 
-      const result = await service.create(
-        'com.test.app',
+      const result = await service.create('com.test.app', 'user-1', 'direct', [
         'user-1',
-        'direct',
-        ['user-1', 'user-2'],
-      );
+        'user-2',
+      ]);
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockRedisService.cacheConversationParticipants).toHaveBeenCalled();
@@ -105,7 +115,9 @@ describe('ConversationsService', () => {
     });
 
     it('should create a group conversation with name', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
 
       const result = await service.create(
         'com.test.app',
@@ -152,7 +164,10 @@ describe('ConversationsService', () => {
         { conversation: mockConversation },
       ]);
 
-      const result = await service.getUserConversations('com.test.app', 'user-1');
+      const result = await service.getUserConversations(
+        'com.test.app',
+        'user-1',
+      );
 
       expect(Array.isArray(result)).toBe(true);
     });
@@ -195,8 +210,10 @@ describe('ConversationsService', () => {
   describe('addParticipant', () => {
     it('should add participant to group when user is admin', async () => {
       // Use mockResolvedValue (not Once) so it works for multiple calls
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+
       // For checkIsAdmin - user is admin
       mockDb.query.conversationParticipants.findFirst
         .mockResolvedValueOnce({
@@ -207,7 +224,12 @@ describe('ConversationsService', () => {
         // For checking if new user already exists - not found
         .mockResolvedValueOnce(null);
 
-      await service.addParticipant('conv-123', 'user-1', 'user-3', 'com.test.app');
+      await service.addParticipant(
+        'conv-123',
+        'user-1',
+        'user-3',
+        'com.test.app',
+      );
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockMqttService.publishToUser).toHaveBeenCalled();
@@ -234,40 +256,77 @@ describe('ConversationsService', () => {
 
   describe('removeParticipant', () => {
     it('should allow user to remove themselves', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'member' });
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'member',
+      });
 
-      const result = await service.removeParticipant('conv-123', 'user-2', 'user-2', 'com.test.app');
+      const result = await service.removeParticipant(
+        'conv-123',
+        'user-2',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(result).toEqual({ message: 'Participant removed' });
       expect(mockDb.delete).toHaveBeenCalled();
     });
 
     it('should allow admin to remove other participants', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'admin' });
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'admin',
+      });
 
-      const result = await service.removeParticipant('conv-123', 'user-1', 'user-2', 'com.test.app');
+      const result = await service.removeParticipant(
+        'conv-123',
+        'user-1',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(result).toEqual({ message: 'Participant removed' });
       expect(mockMqttService.publishToUser).toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException when non-admin tries to remove others', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'member' });
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'member',
+      });
 
       await expect(
-        service.removeParticipant('conv-123', 'user-2', 'user-1', 'com.test.app'),
+        service.removeParticipant(
+          'conv-123',
+          'user-2',
+          'user-1',
+          'com.test.app',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException when trying to remove creator', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue({ ...mockGroupConversation, createdBy: 'user-1' });
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'admin' });
+      mockDb.query.conversations.findFirst.mockResolvedValue({
+        ...mockGroupConversation,
+        createdBy: 'user-1',
+      });
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'admin',
+      });
 
       await expect(
-        service.removeParticipant('conv-123', 'user-1', 'user-1', 'com.test.app'),
+        service.removeParticipant(
+          'conv-123',
+          'user-1',
+          'user-1',
+          'com.test.app',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -330,10 +389,23 @@ describe('ConversationsService', () => {
         .mockResolvedValueOnce(mockGroupConversation)
         .mockResolvedValueOnce(mockGroupConversation);
       mockDb.query.conversationParticipants.findFirst
-        .mockResolvedValueOnce({ id: 'part-1', userId: 'user-1', role: 'admin' })
-        .mockResolvedValueOnce({ id: 'part-2', userId: 'user-2', role: 'member' });
+        .mockResolvedValueOnce({
+          id: 'part-1',
+          userId: 'user-1',
+          role: 'admin',
+        })
+        .mockResolvedValueOnce({
+          id: 'part-2',
+          userId: 'user-2',
+          role: 'member',
+        });
 
-      const result = await service.promoteToAdmin('conv-123', 'user-1', 'user-2', 'com.test.app');
+      const result = await service.promoteToAdmin(
+        'conv-123',
+        'user-1',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(result).toEqual({ message: 'User promoted to admin' });
       expect(mockDb.update).toHaveBeenCalled();
@@ -345,7 +417,11 @@ describe('ConversationsService', () => {
         .mockResolvedValueOnce(mockGroupConversation)
         .mockResolvedValueOnce(mockGroupConversation);
       mockDb.query.conversationParticipants.findFirst
-        .mockResolvedValueOnce({ id: 'part-1', userId: 'user-1', role: 'admin' })
+        .mockResolvedValueOnce({
+          id: 'part-1',
+          userId: 'user-1',
+          role: 'admin',
+        })
         .mockResolvedValueOnce(null);
 
       await expect(
@@ -358,8 +434,16 @@ describe('ConversationsService', () => {
         .mockResolvedValueOnce(mockGroupConversation)
         .mockResolvedValueOnce(mockGroupConversation);
       mockDb.query.conversationParticipants.findFirst
-        .mockResolvedValueOnce({ id: 'part-1', userId: 'user-1', role: 'admin' })
-        .mockResolvedValueOnce({ id: 'part-2', userId: 'user-2', role: 'admin' });
+        .mockResolvedValueOnce({
+          id: 'part-1',
+          userId: 'user-1',
+          role: 'admin',
+        })
+        .mockResolvedValueOnce({
+          id: 'part-2',
+          userId: 'user-2',
+          role: 'admin',
+        });
 
       await expect(
         service.promoteToAdmin('conv-123', 'user-1', 'user-2', 'com.test.app'),
@@ -367,8 +451,12 @@ describe('ConversationsService', () => {
     });
 
     it('should throw ForbiddenException when non-admin tries to promote', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'member' });
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'member',
+      });
 
       await expect(
         service.promoteToAdmin('conv-123', 'user-2', 'user-3', 'com.test.app'),
@@ -380,12 +468,28 @@ describe('ConversationsService', () => {
     it('should demote admin to member when requester is admin', async () => {
       mockDb.query.conversations.findFirst
         .mockResolvedValueOnce(mockGroupConversation)
-        .mockResolvedValueOnce({ ...mockGroupConversation, createdBy: 'user-1' });
+        .mockResolvedValueOnce({
+          ...mockGroupConversation,
+          createdBy: 'user-1',
+        });
       mockDb.query.conversationParticipants.findFirst
-        .mockResolvedValueOnce({ id: 'part-1', userId: 'user-1', role: 'admin' })
-        .mockResolvedValueOnce({ id: 'part-2', userId: 'user-2', role: 'admin' });
+        .mockResolvedValueOnce({
+          id: 'part-1',
+          userId: 'user-1',
+          role: 'admin',
+        })
+        .mockResolvedValueOnce({
+          id: 'part-2',
+          userId: 'user-2',
+          role: 'admin',
+        });
 
-      const result = await service.demoteFromAdmin('conv-123', 'user-1', 'user-2', 'com.test.app');
+      const result = await service.demoteFromAdmin(
+        'conv-123',
+        'user-1',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(result).toEqual({ message: 'User demoted to member' });
       expect(mockDb.update).toHaveBeenCalled();
@@ -394,9 +498,14 @@ describe('ConversationsService', () => {
     it('should throw ForbiddenException when trying to demote creator', async () => {
       mockDb.query.conversations.findFirst
         .mockResolvedValueOnce(mockGroupConversation)
-        .mockResolvedValueOnce({ ...mockGroupConversation, createdBy: 'user-1' });
-      mockDb.query.conversationParticipants.findFirst
-        .mockResolvedValueOnce({ id: 'part-1', role: 'admin' });
+        .mockResolvedValueOnce({
+          ...mockGroupConversation,
+          createdBy: 'user-1',
+        });
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValueOnce({
+        id: 'part-1',
+        role: 'admin',
+      });
 
       await expect(
         service.demoteFromAdmin('conv-123', 'user-2', 'user-1', 'com.test.app'),
@@ -422,10 +531,20 @@ describe('ConversationsService', () => {
       mockDb.query.conversations.findFirst
         .mockResolvedValueOnce(mockGroupConversation)
         .mockResolvedValueOnce(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'admin' });
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'admin',
+      });
 
-      const updates = { name: 'Updated Group Name', description: 'New description' };
-      const result = await service.updateGroup('conv-123', 'user-1', updates, 'com.test.app');
+      const updates = {
+        name: 'Updated Group Name',
+        description: 'New description',
+      };
+      const result = await service.updateGroup(
+        'conv-123',
+        'user-1',
+        updates,
+        'com.test.app',
+      );
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockMqttService.publishToUser).toHaveBeenCalledTimes(2);
@@ -435,7 +554,9 @@ describe('ConversationsService', () => {
       mockDb.query.conversations.findFirst
         .mockResolvedValueOnce(mockGroupConversation)
         .mockResolvedValueOnce(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'admin' });
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'admin',
+      });
 
       const updates = { avatarUrl: 'https://example.com/avatar.jpg' };
       await service.updateGroup('conv-123', 'user-1', updates, 'com.test.app');
@@ -444,11 +565,20 @@ describe('ConversationsService', () => {
     });
 
     it('should throw ForbiddenException when non-admin tries to update', async () => {
-      mockDb.query.conversations.findFirst.mockResolvedValue(mockGroupConversation);
-      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({ role: 'member' });
+      mockDb.query.conversations.findFirst.mockResolvedValue(
+        mockGroupConversation,
+      );
+      mockDb.query.conversationParticipants.findFirst.mockResolvedValue({
+        role: 'member',
+      });
 
       await expect(
-        service.updateGroup('conv-123', 'user-2', { name: 'New Name' }, 'com.test.app'),
+        service.updateGroup(
+          'conv-123',
+          'user-2',
+          { name: 'New Name' },
+          'com.test.app',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -457,12 +587,18 @@ describe('ConversationsService', () => {
     it('should update last message preview', async () => {
       mockDb.returning = jest.fn().mockResolvedValue([{ id: 'conv-123' }]);
 
-      await service.updateLastMessage('conv-123', 'Hello world this is a long message');
+      await service.updateLastMessage(
+        'conv-123',
+        'Hello world this is a long message',
+      );
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockDb.set).toHaveBeenCalledWith(
         expect.objectContaining({
-          lastMessagePreview: 'Hello world this is a long message'.substring(0, 100),
+          lastMessagePreview: 'Hello world this is a long message'.substring(
+            0,
+            100,
+          ),
         }),
       );
     });

@@ -49,13 +49,13 @@ export class ApiCrawlerModule {
           provide: CRAWL_JOB_REPOSITORY,
           useClass: DrizzleCrawlJobRepository,
         },
-        
+
         // Storage - using Mock S3 for development
         {
           provide: RESPONSE_STORAGE,
           useClass: MockS3StorageStrategy,
         },
-        
+
         // Services
         CrawlEndpointService,
         CrawlerOrchestratorService,

@@ -18,10 +18,7 @@ describe('MessagesService', () => {
   const mockConversation = {
     id: 'conv-123',
     appId: 'com.test.app',
-    participants: [
-      { userId: 'user-1' },
-      { userId: 'user-2' },
-    ],
+    participants: [{ userId: 'user-1' }, { userId: 'user-2' }],
   };
 
   const mockMessage = {
@@ -95,7 +92,10 @@ describe('MessagesService', () => {
         { provide: RedisService, useValue: mockRedisService },
         { provide: MqttService, useValue: mockMqttService },
         { provide: ConversationsService, useValue: mockConversationsService },
-        { provide: ChatPushNotificationService, useValue: mockChatPushNotificationService },
+        {
+          provide: ChatPushNotificationService,
+          useValue: mockChatPushNotificationService,
+        },
       ],
     }).compile();
 
@@ -117,7 +117,10 @@ describe('MessagesService', () => {
         'com.test.app',
       );
 
-      expect(mockConversationsService.findById).toHaveBeenCalledWith('conv-123', 'user-1');
+      expect(mockConversationsService.findById).toHaveBeenCalledWith(
+        'conv-123',
+        'user-1',
+      );
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockConversationsService.updateLastMessage).toHaveBeenCalled();
       expect(mockMqttService.publishToConversation).toHaveBeenCalled();
@@ -150,18 +153,30 @@ describe('MessagesService', () => {
 
       expect(result).toHaveProperty('messages');
       expect(result).toHaveProperty('hasMore');
-      expect(mockConversationsService.findById).toHaveBeenCalledWith('conv-123', 'user-1');
+      expect(mockConversationsService.findById).toHaveBeenCalledWith(
+        'conv-123',
+        'user-1',
+      );
     });
 
     it('should handle cursor pagination', async () => {
-      const cursor = Buffer.from(JSON.stringify({
-        createdAt: new Date().toISOString(),
-        id: 'msg-100',
-      })).toString('base64');
+      const cursor = Buffer.from(
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          id: 'msg-100',
+        }),
+      ).toString('base64');
 
       mockDb.query.messages.findMany.mockResolvedValue([]);
 
-      await service.getMessages('conv-123', 'user-1', 50, undefined, undefined, cursor);
+      await service.getMessages(
+        'conv-123',
+        'user-1',
+        50,
+        undefined,
+        undefined,
+        cursor,
+      );
 
       expect(mockDb.query.messages.findMany).toHaveBeenCalled();
     });
@@ -174,7 +189,12 @@ describe('MessagesService', () => {
       mockDb.where.mockReturnThis();
       mockDb.returning = jest.fn().mockResolvedValue([mockEditedMessage]);
 
-      const result = await service.edit('msg-123', 'user-1', 'Updated text', 'com.test.app');
+      const result = await service.edit(
+        'msg-123',
+        'user-1',
+        'Updated text',
+        'com.test.app',
+      );
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(result.isEdited).toBe(true);
@@ -221,17 +241,29 @@ describe('MessagesService', () => {
       mockDb.query.messages.findFirst.mockResolvedValue(mockMessage);
       mockDb.query.messageReads.findFirst.mockResolvedValue(null);
 
-      const result = await service.markAsRead('msg-123', 'user-2', 'com.test.app');
+      const result = await service.markAsRead(
+        'msg-123',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
     it('should return existing read if already marked', async () => {
-      const existingRead = { id: 'read-1', messageId: 'msg-123', userId: 'user-2' };
+      const existingRead = {
+        id: 'read-1',
+        messageId: 'msg-123',
+        userId: 'user-2',
+      };
       mockDb.query.messages.findFirst.mockResolvedValue(mockMessage);
       mockDb.query.messageReads.findFirst.mockResolvedValue(existingRead);
 
-      const result = await service.markAsRead('msg-123', 'user-2', 'com.test.app');
+      const result = await service.markAsRead(
+        'msg-123',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(result).toEqual(existingRead);
       expect(mockDb.insert).not.toHaveBeenCalled();
@@ -260,17 +292,34 @@ describe('MessagesService', () => {
       mockDb.query.messages.findFirst.mockResolvedValue(mockMessage);
       mockDb.query.messageReactions.findFirst.mockResolvedValue(null);
 
-      const result = await service.addReaction('msg-123', 'user-2', '👍', 'com.test.app');
+      const result = await service.addReaction(
+        'msg-123',
+        'user-2',
+        '👍',
+        'com.test.app',
+      );
 
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
     it('should update existing reaction', async () => {
-      const existingReaction = { id: 'react-1', messageId: 'msg-123', userId: 'user-2', reaction: '❤️' };
+      const existingReaction = {
+        id: 'react-1',
+        messageId: 'msg-123',
+        userId: 'user-2',
+        reaction: '❤️',
+      };
       mockDb.query.messages.findFirst.mockResolvedValue(mockMessage);
-      mockDb.query.messageReactions.findFirst.mockResolvedValue(existingReaction);
+      mockDb.query.messageReactions.findFirst.mockResolvedValue(
+        existingReaction,
+      );
 
-      const result = await service.addReaction('msg-123', 'user-2', '👍', 'com.test.app');
+      const result = await service.addReaction(
+        'msg-123',
+        'user-2',
+        '👍',
+        'com.test.app',
+      );
 
       expect(mockDb.update).toHaveBeenCalled();
     });
@@ -278,11 +327,21 @@ describe('MessagesService', () => {
 
   describe('removeReaction', () => {
     it('should remove reaction', async () => {
-      const existingReaction = { id: 'react-1', messageId: 'msg-123', userId: 'user-2' };
+      const existingReaction = {
+        id: 'react-1',
+        messageId: 'msg-123',
+        userId: 'user-2',
+      };
       mockDb.query.messages.findFirst.mockResolvedValue(mockMessage);
-      mockDb.query.messageReactions.findFirst.mockResolvedValue(existingReaction);
+      mockDb.query.messageReactions.findFirst.mockResolvedValue(
+        existingReaction,
+      );
 
-      const result = await service.removeReaction('msg-123', 'user-2', 'com.test.app');
+      const result = await service.removeReaction(
+        'msg-123',
+        'user-2',
+        'com.test.app',
+      );
 
       expect(mockDb.delete).toHaveBeenCalled();
       expect(result.message).toBe('Reaction removed');

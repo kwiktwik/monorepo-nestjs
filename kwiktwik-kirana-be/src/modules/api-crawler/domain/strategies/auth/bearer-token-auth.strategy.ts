@@ -9,13 +9,13 @@ export class BearerTokenAuthStrategy implements AuthStrategy {
   applyAuth(
     config: CrawlRequest,
     authConfig: BearerTokenAuthConfig,
-    context?: AuthContext
+    context?: AuthContext,
   ): CrawlRequest {
     return {
       ...config,
       headers: {
         ...config.headers,
-        'Authorization': `Bearer ${authConfig.token}`,
+        Authorization: `Bearer ${authConfig.token}`,
       },
     };
   }

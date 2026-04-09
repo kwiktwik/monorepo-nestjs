@@ -6,14 +6,18 @@ import { ApiCrawlerModule } from '../api-crawler.module';
 import { CrawlEndpointService } from '../application/services/crawl-endpoint.service';
 import { CrawlerOrchestratorService } from '../application/services/crawler-orchestrator.service';
 import { MockS3StorageStrategy } from '../infrastructure/storage/mock-s3-storage.service';
-import { RESPONSE_STORAGE, CRAWL_ENDPOINT_REPOSITORY, CRAWL_JOB_REPOSITORY } from '../constants';
+import {
+  RESPONSE_STORAGE,
+  CRAWL_ENDPOINT_REPOSITORY,
+  CRAWL_JOB_REPOSITORY,
+} from '../constants';
 import { CreateCrawlEndpointInput } from '../domain/entities/crawl-endpoint.entity';
 import { InMemoryCrawlEndpointRepository } from './mocks/in-memory-crawl-endpoint.repository';
 import { InMemoryCrawlJobRepository } from './mocks/in-memory-crawl-job.repository';
 
 /**
  * Integration Test Suite for API Crawler
- * 
+ *
  * This test suite:
  * 1. Creates different types of endpoints (no pagination, offset, cursor, etc.)
  * 2. Triggers crawls for each endpoint type
@@ -57,25 +61,36 @@ describe('API Crawler Integration Tests', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    endpointService = moduleFixture.get<CrawlEndpointService>(CrawlEndpointService);
-    crawlerService = moduleFixture.get<CrawlerOrchestratorService>(CrawlerOrchestratorService);
+    endpointService =
+      moduleFixture.get<CrawlEndpointService>(CrawlEndpointService);
+    crawlerService = moduleFixture.get<CrawlerOrchestratorService>(
+      CrawlerOrchestratorService,
+    );
     storage = moduleFixture.get<MockS3StorageStrategy>(RESPONSE_STORAGE);
   });
 
   afterAll(async () => {
     // Print test report
     console.log('\n');
-    console.log('╔══════════════════════════════════════════════════════════════════╗');
-    console.log('║                  API CRAWLER TEST REPORT                         ║');
-    console.log('╠══════════════════════════════════════════════════════════════════╣');
-    
+    console.log(
+      '╔══════════════════════════════════════════════════════════════════╗',
+    );
+    console.log(
+      '║                  API CRAWLER TEST REPORT                         ║',
+    );
+    console.log(
+      '╠══════════════════════════════════════════════════════════════════╣',
+    );
+
     let totalPassed = 0;
     let totalFailed = 0;
 
     for (const result of testResults) {
       const status = result.passed ? '✅ PASS' : '❌ FAIL';
-      console.log(`║ ${status} | ${result.endpoint.padEnd(20)} | ${result.type.padEnd(15)} | Jobs: ${result.jobsCreated.toString().padStart(2)} | Keys: ${result.storageKeys.toString().padStart(2)} ║`);
-      
+      console.log(
+        `║ ${status} | ${result.endpoint.padEnd(20)} | ${result.type.padEnd(15)} | Jobs: ${result.jobsCreated.toString().padStart(2)} | Keys: ${result.storageKeys.toString().padStart(2)} ║`,
+      );
+
       if (result.passed) totalPassed++;
       else totalFailed++;
 
@@ -86,9 +101,15 @@ describe('API Crawler Integration Tests', () => {
       }
     }
 
-    console.log('╠══════════════════════════════════════════════════════════════════╣');
-    console.log(`║ Total: ${(totalPassed + totalFailed).toString().padStart(2)} | Passed: ${totalPassed.toString().padStart(2)} | Failed: ${totalFailed.toString().padStart(2)}${''.padEnd(35)}║`);
-    console.log('╚══════════════════════════════════════════════════════════════════╝');
+    console.log(
+      '╠══════════════════════════════════════════════════════════════════╣',
+    );
+    console.log(
+      `║ Total: ${(totalPassed + totalFailed).toString().padStart(2)} | Passed: ${totalPassed.toString().padStart(2)} | Failed: ${totalFailed.toString().padStart(2)}${''.padEnd(35)}║`,
+    );
+    console.log(
+      '╚══════════════════════════════════════════════════════════════════╝',
+    );
     console.log('\n');
 
     if (app) {
@@ -121,7 +142,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60 },
     };
 
-    const result = { endpoint: 'simple-api-test', type: 'none', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'simple-api-test',
+      type: 'none',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -132,7 +160,9 @@ describe('API Crawler Integration Tests', () => {
       result.passed = jobIds.length === 1 && result.storageKeys === 1;
 
       if (!result.passed) {
-        result.errors.push(`Expected 1 job and 1 storage key, got ${jobIds.length} jobs and ${result.storageKeys} keys`);
+        result.errors.push(
+          `Expected 1 job and 1 storage key, got ${jobIds.length} jobs and ${result.storageKeys} keys`,
+        );
       }
     } catch (error) {
       result.errors.push(error.message);
@@ -154,7 +184,12 @@ describe('API Crawler Integration Tests', () => {
       auth: { type: 'none', config: {} },
       pagination: {
         type: 'offset',
-        config: { offsetParam: 'offset', limitParam: 'limit', limitValue: 10, offsetStart: 0 },
+        config: {
+          offsetParam: 'offset',
+          limitParam: 'limit',
+          limitValue: 10,
+          offsetStart: 0,
+        },
         maxPages: 5,
       },
       response: {
@@ -165,7 +200,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60, delayBetweenRequestsMs: 10 },
     };
 
-    const result = { endpoint: 'offset-api-test', type: 'offset', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'offset-api-test',
+      type: 'offset',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -178,7 +220,9 @@ describe('API Crawler Integration Tests', () => {
       result.passed = jobIds.length === 5 && result.storageKeys === 5;
 
       if (!result.passed) {
-        result.errors.push(`Expected 5 jobs and 5 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`);
+        result.errors.push(
+          `Expected 5 jobs and 5 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`,
+        );
       }
     } catch (error) {
       result.errors.push(error.message);
@@ -200,7 +244,12 @@ describe('API Crawler Integration Tests', () => {
       auth: { type: 'none', config: {} },
       pagination: {
         type: 'cursor',
-        config: { cursorParam: 'cursor', limitParam: 'limit', limitValue: 10, cursorPath: 'pagination.next_cursor' },
+        config: {
+          cursorParam: 'cursor',
+          limitParam: 'limit',
+          limitValue: 10,
+          cursorPath: 'pagination.next_cursor',
+        },
         maxPages: 3,
       },
       response: {
@@ -211,7 +260,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60, delayBetweenRequestsMs: 10 },
     };
 
-    const result = { endpoint: 'cursor-api-test', type: 'cursor', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'cursor-api-test',
+      type: 'cursor',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -223,7 +279,9 @@ describe('API Crawler Integration Tests', () => {
       result.passed = jobIds.length === 3 && result.storageKeys === 3;
 
       if (!result.passed) {
-        result.errors.push(`Expected 3 jobs and 3 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`);
+        result.errors.push(
+          `Expected 3 jobs and 3 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`,
+        );
       }
     } catch (error) {
       result.errors.push(error.message);
@@ -245,7 +303,12 @@ describe('API Crawler Integration Tests', () => {
       auth: { type: 'none', config: {} },
       pagination: {
         type: 'page_number',
-        config: { pageParam: 'page', perPageParam: 'per_page', perPageValue: 10, startPage: 1 },
+        config: {
+          pageParam: 'page',
+          perPageParam: 'per_page',
+          perPageValue: 10,
+          startPage: 1,
+        },
         maxPages: 4,
       },
       response: {
@@ -256,7 +319,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60, delayBetweenRequestsMs: 10 },
     };
 
-    const result = { endpoint: 'page-number-api-test', type: 'page_number', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'page-number-api-test',
+      type: 'page_number',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -267,7 +337,9 @@ describe('API Crawler Integration Tests', () => {
       result.passed = jobIds.length === 4 && result.storageKeys === 4;
 
       if (!result.passed) {
-        result.errors.push(`Expected 4 jobs and 4 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`);
+        result.errors.push(
+          `Expected 4 jobs and 4 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`,
+        );
       }
     } catch (error) {
       result.errors.push(error.message);
@@ -288,7 +360,11 @@ describe('API Crawler Integration Tests', () => {
       method: 'GET',
       auth: {
         type: 'api_key',
-        config: { keyName: 'X-API-Key', keyValue: 'test-api-key-123', placement: 'header' },
+        config: {
+          keyName: 'X-API-Key',
+          keyValue: 'test-api-key-123',
+          placement: 'header',
+        },
       },
       pagination: { type: 'none' },
       response: {
@@ -299,7 +375,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60 },
     };
 
-    const result = { endpoint: 'apikey-auth-test', type: 'api_key', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'apikey-auth-test',
+      type: 'api_key',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -342,7 +425,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60 },
     };
 
-    const result = { endpoint: 'bearer-auth-test', type: 'bearer_token', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'bearer-auth-test',
+      type: 'bearer_token',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -374,7 +464,9 @@ describe('API Crawler Integration Tests', () => {
       method: 'GET',
       auth: {
         type: 'custom_header',
-        config: { headers: { 'X-Client-ID': 'client-123', 'X-Secret': 'secret-value' } },
+        config: {
+          headers: { 'X-Client-ID': 'client-123', 'X-Secret': 'secret-value' },
+        },
       },
       pagination: { type: 'none' },
       response: {
@@ -385,7 +477,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60 },
     };
 
-    const result = { endpoint: 'custom-headers-test', type: 'custom_header', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'custom-headers-test',
+      type: 'custom_header',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -418,7 +517,12 @@ describe('API Crawler Integration Tests', () => {
       auth: { type: 'none', config: {} },
       pagination: {
         type: 'offset',
-        config: { offsetParam: 'offset', limitParam: 'limit', limitValue: 10, offsetStart: 0 },
+        config: {
+          offsetParam: 'offset',
+          limitParam: 'limit',
+          limitValue: 10,
+          offsetStart: 0,
+        },
         maxPages: 3,
       },
       response: {
@@ -429,7 +533,14 @@ describe('API Crawler Integration Tests', () => {
       rateLimit: { requestsPerMinute: 60, delayBetweenRequestsMs: 50 },
     };
 
-    const result = { endpoint: 'rate-limit-test', type: 'rate_limit', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'rate-limit-test',
+      type: 'rate_limit',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const startTime = Date.now();
@@ -449,7 +560,9 @@ describe('API Crawler Integration Tests', () => {
           result.errors.push(`Expected 3 jobs, got ${jobIds.length}`);
         }
         if (!hasDelay) {
-          result.errors.push(`Rate limit delay not respected: ${duration}ms < 100ms expected`);
+          result.errors.push(
+            `Rate limit delay not respected: ${duration}ms < 100ms expected`,
+          );
         }
       }
     } catch (error) {
@@ -472,7 +585,12 @@ describe('API Crawler Integration Tests', () => {
       auth: { type: 'none', config: {} },
       pagination: {
         type: 'offset',
-        config: { offsetParam: 'offset', limitParam: 'limit', limitValue: 10, offsetStart: 0 },
+        config: {
+          offsetParam: 'offset',
+          limitParam: 'limit',
+          limitValue: 10,
+          offsetStart: 0,
+        },
         maxPages: 3,
       },
       response: {
@@ -490,7 +608,14 @@ describe('API Crawler Integration Tests', () => {
       },
     };
 
-    const result = { endpoint: 'dedup-test', type: 'dedup', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'dedup-test',
+      type: 'dedup',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -523,14 +648,19 @@ describe('API Crawler Integration Tests', () => {
       description: 'Test complex configuration with all features',
       baseUrl: 'https://api.example.com/complex',
       method: 'POST',
-      headers: { 'Accept': 'application/json' },
+      headers: { Accept: 'application/json' },
       auth: {
         type: 'bearer_token',
         config: { token: 'complex-token' },
       },
       pagination: {
         type: 'cursor',
-        config: { cursorParam: 'after', limitParam: 'limit', limitValue: 5, cursorPath: 'pagination.next_cursor' },
+        config: {
+          cursorParam: 'after',
+          limitParam: 'limit',
+          limitValue: 5,
+          cursorPath: 'pagination.next_cursor',
+        },
         maxPages: 2,
       },
       request: {
@@ -558,7 +688,14 @@ describe('API Crawler Integration Tests', () => {
       },
     };
 
-    const result = { endpoint: 'complex-config-test', type: 'complex', jobsCreated: 0, storageKeys: 0, passed: false, errors: [] };
+    const result = {
+      endpoint: 'complex-config-test',
+      type: 'complex',
+      jobsCreated: 0,
+      storageKeys: 0,
+      passed: false,
+      errors: [],
+    };
 
     try {
       const endpoint = await endpointService.create(endpointInput);
@@ -569,7 +706,9 @@ describe('API Crawler Integration Tests', () => {
       result.passed = jobIds.length === 2 && result.storageKeys === 2;
 
       if (!result.passed) {
-        result.errors.push(`Expected 2 jobs and 2 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`);
+        result.errors.push(
+          `Expected 2 jobs and 2 storage keys, got ${jobIds.length} jobs and ${result.storageKeys} keys`,
+        );
       }
     } catch (error) {
       result.errors.push(error.message);

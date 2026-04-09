@@ -1,4 +1,7 @@
-import { ICrawlJobRepository, JobStats } from '../../domain/repositories/crawl-job.repository.interface';
+import {
+  ICrawlJobRepository,
+  JobStats,
+} from '../../domain/repositories/crawl-job.repository.interface';
 import {
   CrawlJob,
   CreateCrawlJobInput,
@@ -40,32 +43,47 @@ export class InMemoryCrawlJobRepository implements ICrawlJobRepository {
     return this.jobs.get(id) || null;
   }
 
-  async findByDedupKey(endpointId: number, dedupKey: string): Promise<CrawlJob | null> {
+  async findByDedupKey(
+    endpointId: number,
+    dedupKey: string,
+  ): Promise<CrawlJob | null> {
     for (const job of this.jobs.values()) {
-      if (job.endpointId === endpointId && 
-          job.dedupKey === dedupKey && 
-          (job.status === 'completed' || job.status === 'running')) {
+      if (
+        job.endpointId === endpointId &&
+        job.dedupKey === dedupKey &&
+        (job.status === 'completed' || job.status === 'running')
+      ) {
         return job;
       }
     }
     return null;
   }
 
-  async findByEndpointId(endpointId: number, limit?: number): Promise<CrawlJob[]> {
+  async findByEndpointId(
+    endpointId: number,
+    limit?: number,
+  ): Promise<CrawlJob[]> {
     const results = Array.from(this.jobs.values())
-      .filter(j => j.endpointId === endpointId)
+      .filter((j) => j.endpointId === endpointId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return limit ? results.slice(0, limit) : results;
   }
 
-  async findByStatus(status: CrawlJobStatus, limit?: number): Promise<CrawlJob[]> {
+  async findByStatus(
+    status: CrawlJobStatus,
+    limit?: number,
+  ): Promise<CrawlJob[]> {
     const results = Array.from(this.jobs.values())
-      .filter(j => j.status === status)
+      .filter((j) => j.status === status)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return limit ? results.slice(0, limit) : results;
   }
 
-  async updateStatus(id: string, status: CrawlJobStatus, metadata?: UpdateCrawlJobInput): Promise<void> {
+  async updateStatus(
+    id: string,
+    status: CrawlJobStatus,
+    metadata?: UpdateCrawlJobInput,
+  ): Promise<void> {
     const job = this.jobs.get(id);
     if (job) {
       job.status = status;
@@ -76,24 +94,27 @@ export class InMemoryCrawlJobRepository implements ICrawlJobRepository {
       if (metadata?.lastError) job.lastError = metadata.lastError;
       if (metadata?.lastErrorAt) job.lastErrorAt = metadata.lastErrorAt;
       if (metadata?.attemptCount) job.attemptCount = metadata.attemptCount;
-      if (metadata?.extractedFields) job.extractedFields = metadata.extractedFields;
-      if (metadata?.storageLocation) job.storageLocation = metadata.storageLocation;
+      if (metadata?.extractedFields)
+        job.extractedFields = metadata.extractedFields;
+      if (metadata?.storageLocation)
+        job.storageLocation = metadata.storageLocation;
       if (metadata?.rawContent) job.rawContent = metadata.rawContent;
     }
   }
 
   async claimNextPending(): Promise<CrawlJob | null> {
     const pending = Array.from(this.jobs.values())
-      .filter(j => j.status === 'pending')
+      .filter((j) => j.status === 'pending')
       .sort((a, b) => {
         const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+        const priorityDiff =
+          priorityOrder[a.priority] - priorityOrder[b.priority];
         if (priorityDiff !== 0) return priorityDiff;
         return a.createdAt.getTime() - b.createdAt.getTime();
       });
-    
+
     if (pending.length === 0) return null;
-    
+
     const job = pending[0];
     job.status = 'running';
     job.startedAt = new Date();
@@ -103,21 +124,24 @@ export class InMemoryCrawlJobRepository implements ICrawlJobRepository {
   }
 
   async getPendingCount(): Promise<number> {
-    return Array.from(this.jobs.values()).filter(j => j.status === 'pending').length;
+    return Array.from(this.jobs.values()).filter((j) => j.status === 'pending')
+      .length;
   }
 
   async getStats(endpointId?: number): Promise<JobStats> {
-    const jobs = endpointId 
-      ? Array.from(this.jobs.values()).filter(j => j.endpointId === endpointId)
+    const jobs = endpointId
+      ? Array.from(this.jobs.values()).filter(
+          (j) => j.endpointId === endpointId,
+        )
       : Array.from(this.jobs.values());
 
     const stats: JobStats = {
       total: jobs.length,
-      pending: jobs.filter(j => j.status === 'pending').length,
-      running: jobs.filter(j => j.status === 'running').length,
-      completed: jobs.filter(j => j.status === 'completed').length,
-      failed: jobs.filter(j => j.status === 'failed').length,
-      deduplicated: jobs.filter(j => j.status === 'deduplicated').length,
+      pending: jobs.filter((j) => j.status === 'pending').length,
+      running: jobs.filter((j) => j.status === 'running').length,
+      completed: jobs.filter((j) => j.status === 'completed').length,
+      failed: jobs.filter((j) => j.status === 'failed').length,
+      deduplicated: jobs.filter((j) => j.status === 'deduplicated').length,
     };
 
     return stats;
@@ -129,8 +153,10 @@ export class InMemoryCrawlJobRepository implements ICrawlJobRepository {
 
   private generateUlid(): string {
     const timestamp = Date.now().toString(36).toUpperCase().padStart(10, '0');
-    const random = Array.from({ length: 16 }, () => 
-      Math.floor(Math.random() * 36).toString(36).toUpperCase()
+    const random = Array.from({ length: 16 }, () =>
+      Math.floor(Math.random() * 36)
+        .toString(36)
+        .toUpperCase(),
     ).join('');
     return timestamp + random;
   }

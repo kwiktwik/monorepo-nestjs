@@ -39,13 +39,18 @@ describe('MessagesController', () => {
       controllers: [MessagesController],
       providers: [
         { provide: MessagesService, useValue: mockMessagesService },
-        { provide: ScheduledMessagesService, useValue: mockScheduledMessagesService },
+        {
+          provide: ScheduledMessagesService,
+          useValue: mockScheduledMessagesService,
+        },
       ],
     }).compile();
 
     controller = module.get<MessagesController>(MessagesController);
     service = module.get<MessagesService>(MessagesService);
-    scheduledService = module.get<ScheduledMessagesService>(ScheduledMessagesService);
+    scheduledService = module.get<ScheduledMessagesService>(
+      ScheduledMessagesService,
+    );
   });
 
   afterEach(() => {
@@ -76,7 +81,12 @@ describe('MessagesController', () => {
     });
 
     it('should send reply message', async () => {
-      const dto = { conversationId: 'conv-123', content: 'Reply', replyToId: 'msg-100', type: 'text' };
+      const dto = {
+        conversationId: 'conv-123',
+        content: 'Reply',
+        replyToId: 'msg-100',
+        type: 'text',
+      };
       mockMessagesService.send.mockResolvedValue({ id: 'msg-123' });
 
       await controller.sendMessage(dto, mockUser, appId);
@@ -117,7 +127,14 @@ describe('MessagesController', () => {
     it('should get messages with pagination params', async () => {
       mockMessagesService.getMessages.mockResolvedValue({ messages: [] });
 
-      await controller.getMessages('conv-123', mockUser, '20', 'before-id', 'after-id', 'cursor-123');
+      await controller.getMessages(
+        'conv-123',
+        mockUser,
+        '20',
+        'before-id',
+        'after-id',
+        'cursor-123',
+      );
 
       expect(service.getMessages).toHaveBeenCalledWith(
         'conv-123',
@@ -133,9 +150,17 @@ describe('MessagesController', () => {
   describe('editMessage', () => {
     it('should edit message', async () => {
       const dto = { content: 'Updated' };
-      mockMessagesService.edit.mockResolvedValue({ id: 'msg-123', content: 'Updated' });
+      mockMessagesService.edit.mockResolvedValue({
+        id: 'msg-123',
+        content: 'Updated',
+      });
 
-      const result = await controller.editMessage('msg-123', dto, mockUser, appId);
+      const result = await controller.editMessage(
+        'msg-123',
+        dto,
+        mockUser,
+        appId,
+      );
 
       expect(service.edit).toHaveBeenCalledWith(
         'msg-123',
@@ -148,11 +173,17 @@ describe('MessagesController', () => {
 
   describe('deleteMessage', () => {
     it('should delete message', async () => {
-      mockMessagesService.delete.mockResolvedValue({ message: 'Message deleted' });
+      mockMessagesService.delete.mockResolvedValue({
+        message: 'Message deleted',
+      });
 
       const result = await controller.deleteMessage('msg-123', mockUser, appId);
 
-      expect(service.delete).toHaveBeenCalledWith('msg-123', mockUser.userId, appId);
+      expect(service.delete).toHaveBeenCalledWith(
+        'msg-123',
+        mockUser.userId,
+        appId,
+      );
     });
   });
 
@@ -162,7 +193,11 @@ describe('MessagesController', () => {
 
       const result = await controller.markAsRead('msg-123', mockUser, appId);
 
-      expect(service.markAsRead).toHaveBeenCalledWith('msg-123', mockUser.userId, appId);
+      expect(service.markAsRead).toHaveBeenCalledWith(
+        'msg-123',
+        mockUser.userId,
+        appId,
+      );
     });
   });
 
@@ -172,7 +207,11 @@ describe('MessagesController', () => {
 
       await controller.setTyping('conv-123', mockUser, appId);
 
-      expect(service.setTyping).toHaveBeenCalledWith('conv-123', mockUser.userId, appId);
+      expect(service.setTyping).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+        appId,
+      );
     });
   });
 
@@ -182,13 +221,20 @@ describe('MessagesController', () => {
 
       await controller.stopTyping('conv-123', mockUser, appId);
 
-      expect(service.stopTyping).toHaveBeenCalledWith('conv-123', mockUser.userId, appId);
+      expect(service.stopTyping).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+        appId,
+      );
     });
   });
 
   describe('getTypingUsers', () => {
     it('should get typing users', async () => {
-      mockMessagesService.getTypingUsers.mockResolvedValue(['user-1', 'user-2']);
+      mockMessagesService.getTypingUsers.mockResolvedValue([
+        'user-1',
+        'user-2',
+      ]);
 
       const result = await controller.getTypingUsers('conv-123');
 
@@ -201,7 +247,12 @@ describe('MessagesController', () => {
     it('should add reaction', async () => {
       mockMessagesService.addReaction.mockResolvedValue({ id: 'react-1' });
 
-      const result = await controller.addReaction('msg-123', '👍', mockUser, appId);
+      const result = await controller.addReaction(
+        'msg-123',
+        '👍',
+        mockUser,
+        appId,
+      );
 
       expect(service.addReaction).toHaveBeenCalledWith(
         'msg-123',
@@ -214,21 +265,37 @@ describe('MessagesController', () => {
 
   describe('removeReaction', () => {
     it('should remove reaction', async () => {
-      mockMessagesService.removeReaction.mockResolvedValue({ message: 'Reaction removed' });
+      mockMessagesService.removeReaction.mockResolvedValue({
+        message: 'Reaction removed',
+      });
 
-      const result = await controller.removeReaction('msg-123', mockUser, appId);
+      const result = await controller.removeReaction(
+        'msg-123',
+        mockUser,
+        appId,
+      );
 
-      expect(service.removeReaction).toHaveBeenCalledWith('msg-123', mockUser.userId, appId);
+      expect(service.removeReaction).toHaveBeenCalledWith(
+        'msg-123',
+        mockUser.userId,
+        appId,
+      );
     });
   });
 
   describe('getReactions', () => {
     it('should get reactions', async () => {
-      mockMessagesService.getReactions.mockResolvedValue({ total: 5, grouped: {} });
+      mockMessagesService.getReactions.mockResolvedValue({
+        total: 5,
+        grouped: {},
+      });
 
       const result = await controller.getReactions('msg-123', mockUser);
 
-      expect(service.getReactions).toHaveBeenCalledWith('msg-123', mockUser.userId);
+      expect(service.getReactions).toHaveBeenCalledWith(
+        'msg-123',
+        mockUser.userId,
+      );
     });
   });
 
@@ -270,11 +337,16 @@ describe('MessagesController', () => {
   describe('getMediaAttachments', () => {
     it('should get media attachments', async () => {
       const mockAttachments = [{ id: 'att-1', type: 'image' }];
-      mockMessagesService.getMediaAttachments.mockResolvedValue(mockAttachments);
+      mockMessagesService.getMediaAttachments.mockResolvedValue(
+        mockAttachments,
+      );
 
       const result = await controller.getMediaAttachments('conv-123', mockUser);
 
-      expect(service.getMediaAttachments).toHaveBeenCalledWith('conv-123', mockUser.userId);
+      expect(service.getMediaAttachments).toHaveBeenCalledWith(
+        'conv-123',
+        mockUser.userId,
+      );
       expect(result).toEqual(mockAttachments);
     });
   });
@@ -286,7 +358,9 @@ describe('MessagesController', () => {
         content: 'Scheduled message',
         sendAt: '2024-12-01T10:00:00Z',
       };
-      mockScheduledMessagesService.scheduleMessage.mockResolvedValue({ id: 'sched-1' });
+      mockScheduledMessagesService.scheduleMessage.mockResolvedValue({
+        id: 'sched-1',
+      });
 
       const result = await controller.scheduleMessage(dto, mockUser, appId);
 
@@ -305,21 +379,33 @@ describe('MessagesController', () => {
   describe('getScheduledMessages', () => {
     it('should get all scheduled messages for user', async () => {
       const mockMessages = [{ id: 'sched-1', content: 'Hello' }];
-      mockScheduledMessagesService.getUserScheduledMessages.mockResolvedValue(mockMessages);
+      mockScheduledMessagesService.getUserScheduledMessages.mockResolvedValue(
+        mockMessages,
+      );
 
       const result = await controller.getScheduledMessages(mockUser);
 
-      expect(scheduledService.getUserScheduledMessages).toHaveBeenCalledWith(mockUser.userId);
+      expect(scheduledService.getUserScheduledMessages).toHaveBeenCalledWith(
+        mockUser.userId,
+      );
     });
   });
 
   describe('cancelScheduledMessage', () => {
     it('should cancel scheduled message', async () => {
-      mockScheduledMessagesService.cancelScheduledMessage.mockResolvedValue({ success: true });
+      mockScheduledMessagesService.cancelScheduledMessage.mockResolvedValue({
+        success: true,
+      });
 
-      const result = await controller.cancelScheduledMessage('sched-1', mockUser);
+      const result = await controller.cancelScheduledMessage(
+        'sched-1',
+        mockUser,
+      );
 
-      expect(scheduledService.cancelScheduledMessage).toHaveBeenCalledWith('sched-1', mockUser.userId);
+      expect(scheduledService.cancelScheduledMessage).toHaveBeenCalledWith(
+        'sched-1',
+        mockUser.userId,
+      );
     });
   });
 });

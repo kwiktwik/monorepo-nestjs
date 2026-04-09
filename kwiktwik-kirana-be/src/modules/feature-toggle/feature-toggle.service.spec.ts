@@ -101,9 +101,13 @@ describe('FeatureToggleService', () => {
     it('should return disabled when flag not found', async () => {
       mockDb.limit.mockResolvedValueOnce([]);
 
-      const result = await service.evaluateFeature('com.test.app', 'unknown_feature', {
-        userId: 'user-123',
-      });
+      const result = await service.evaluateFeature(
+        'com.test.app',
+        'unknown_feature',
+        {
+          userId: 'user-123',
+        },
+      );
 
       expect(result.enabled).toBe(false);
       expect(result.reason).toContain('not found');
@@ -112,22 +116,28 @@ describe('FeatureToggleService', () => {
     it('should return disabled when flag is globally disabled', async () => {
       mockDb.limit.mockResolvedValueOnce([{ ...mockFlag, isEnabled: false }]);
 
-      const result = await service.evaluateFeature('com.test.app', 'new_feature', {
-        userId: 'user-123',
-      });
+      const result = await service.evaluateFeature(
+        'com.test.app',
+        'new_feature',
+        {
+          userId: 'user-123',
+        },
+      );
 
       expect(result.enabled).toBe(false);
       expect(result.reason).toContain('disabled');
     });
 
     it('should return flag default when no active experiment', async () => {
-      mockDb.limit
-        .mockResolvedValueOnce([mockFlag])
-        .mockResolvedValueOnce([]);
+      mockDb.limit.mockResolvedValueOnce([mockFlag]).mockResolvedValueOnce([]);
 
-      const result = await service.evaluateFeature('com.test.app', 'new_feature', {
-        userId: 'user-123',
-      });
+      const result = await service.evaluateFeature(
+        'com.test.app',
+        'new_feature',
+        {
+          userId: 'user-123',
+        },
+      );
 
       expect(result.enabled).toBe(true);
       expect(result.reason).toContain('No active experiment');
@@ -147,9 +157,13 @@ describe('FeatureToggleService', () => {
         .mockResolvedValueOnce([mockAssignment])
         .mockResolvedValueOnce([mockCohort]);
 
-      const result = await service.evaluateFeature('com.test.app', 'new_feature', {
-        userId: 'user-123',
-      });
+      const result = await service.evaluateFeature(
+        'com.test.app',
+        'new_feature',
+        {
+          userId: 'user-123',
+        },
+      );
 
       expect(result.enabled).toBe(true);
       expect(result.variant).toBe('control');

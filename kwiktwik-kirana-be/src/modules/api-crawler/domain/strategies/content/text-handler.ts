@@ -3,10 +3,12 @@ import { ContentHandler, ContentMetadata } from './content-handler.interface';
 
 export class TextContentHandler implements ContentHandler {
   canHandle(contentType: string, data: Buffer): boolean {
-    return contentType.includes('text/') || 
-           contentType.includes('application/xml') ||
-           contentType.includes('application/csv') ||
-           contentType.includes('application/javascript');
+    return (
+      contentType.includes('text/') ||
+      contentType.includes('application/xml') ||
+      contentType.includes('application/csv') ||
+      contentType.includes('application/javascript')
+    );
   }
 
   parse(data: Buffer): string {

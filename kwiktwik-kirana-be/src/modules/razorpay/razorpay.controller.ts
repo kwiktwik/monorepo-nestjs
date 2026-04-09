@@ -208,7 +208,10 @@ export class RazorpayController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Subscription not found on Razorpay' })
+  @ApiResponse({
+    status: 400,
+    description: 'Subscription not found on Razorpay',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSubscriptionStatus(
     @CurrentUser() user: { userId: string },
@@ -225,4 +228,3 @@ export class RazorpayController {
     );
   }
 }
-

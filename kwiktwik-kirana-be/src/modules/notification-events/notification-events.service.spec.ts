@@ -27,7 +27,9 @@ describe('NotificationEventsService', () => {
 
     // Mock AnalyticsService for Mixpanel tracking
     mockAnalyticsService = {
-      sendEvent: jest.fn().mockResolvedValue({ overallSuccess: true, results: [] }),
+      sendEvent: jest
+        .fn()
+        .mockResolvedValue({ overallSuccess: true, results: [] }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

@@ -80,15 +80,15 @@ export interface RazorpaySubscriptionEntity {
   ended_at: number | null;
   quantity: number;
   notes: Record<string, string> | null;
-  charge_at: number | null;       // Unix timestamp of next charge
-  start_at: number | null;        // Unix timestamp when subscription starts
-  end_at: number | null;          // Unix timestamp when subscription ends
+  charge_at: number | null; // Unix timestamp of next charge
+  start_at: number | null; // Unix timestamp when subscription starts
+  end_at: number | null; // Unix timestamp when subscription ends
   auth_attempts: number;
   total_count: number;
   paid_count: number;
   customer_notify: boolean;
   created_at: number;
-  expire_by: number | null;       // Auth payment expiry (Unix)
+  expire_by: number | null; // Auth payment expiry (Unix)
   short_url: string | null;
   has_scheduled_changes: boolean;
   change_scheduled_at: string | null;
@@ -118,9 +118,9 @@ export const RazorpaySubscriptionStatuses = {
  * Lifecycle: created → attempted → paid
  */
 export const RazorpayOrderStatuses = {
-  CREATED: 'created',    // Order created, payment not attempted yet
+  CREATED: 'created', // Order created, payment not attempted yet
   ATTEMPTED: 'attempted', // Payment started but not completed
-  PAID: 'paid',          // Payment successful — DO NOT create another order
+  PAID: 'paid', // Payment successful — DO NOT create another order
 } as const;
 
 export type RazorpayOrderStatus =

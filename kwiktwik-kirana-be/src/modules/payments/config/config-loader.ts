@@ -5,7 +5,11 @@
  * Loosely coupled: Can work with process.env directly OR NestJS ConfigService.
  */
 
-import type { PaymentProviderConfig, PhonePeConfig, RazorpayConfig } from '../types';
+import type {
+  PaymentProviderConfig,
+  PhonePeConfig,
+  RazorpayConfig,
+} from '../types';
 import { normalizeAppIdForEnv } from '../types';
 
 export interface ConfigSource {
@@ -15,7 +19,9 @@ export interface ConfigSource {
 /**
  * Load configs from any source (process.env or NestJS ConfigService)
  */
-export function loadPaymentConfigs(source: ConfigSource): PaymentProviderConfig[] {
+export function loadPaymentConfigs(
+  source: ConfigSource,
+): PaymentProviderConfig[] {
   const configs: PaymentProviderConfig[] = [];
   configs.push(...loadRazorpayConfigs(source));
   configs.push(...loadPhonePeConfigs(source));
@@ -24,7 +30,8 @@ export function loadPaymentConfigs(source: ConfigSource): PaymentProviderConfig[
 
 function loadRazorpayConfigs(source: ConfigSource): RazorpayConfig[] {
   const configs: RazorpayConfig[] = [];
-  const env = source.get('NODE_ENV') === 'production' ? 'production' : 'sandbox';
+  const env =
+    source.get('NODE_ENV') === 'production' ? 'production' : 'sandbox';
 
   // Default config
   const defaultKeyId = source.get('NEXT_PUBLIC_RAZORPAY_KEY_ID');
@@ -56,7 +63,7 @@ function loadRazorpayConfigs(source: ConfigSource): RazorpayConfig[] {
           environment: env,
           enabled: true,
           keyId: value,
-          keySecret: process.env[secretKey]!,
+          keySecret: process.env[secretKey],
           webhookSecret: process.env[webhookKey],
         });
       }
@@ -67,12 +74,18 @@ function loadRazorpayConfigs(source: ConfigSource): RazorpayConfig[] {
 
 function loadPhonePeConfigs(source: ConfigSource): PhonePeConfig[] {
   const configs: PhonePeConfig[] = [];
-  const env = (source.get('PHONEPE_ENV') || 'SANDBOX').toLowerCase() === 'production' ? 'production' : 'sandbox';
+  const env =
+    (source.get('PHONEPE_ENV') || 'SANDBOX').toLowerCase() === 'production'
+      ? 'production'
+      : 'sandbox';
 
   for (const [key, value] of Object.entries(process.env)) {
     if (key.startsWith('PHONEPE_CLIENT_ID_')) {
       const suffix = key.replace('PHONEPE_CLIENT_ID_', '');
-      const appId = suffix === 'DEV' || suffix === 'PROD' ? 'default' : suffix.toLowerCase().replace(/_/g, '.');
+      const appId =
+        suffix === 'DEV' || suffix === 'PROD'
+          ? 'default'
+          : suffix.toLowerCase().replace(/_/g, '.');
       const secretKey = `PHONEPE_CLIENT_SECRET_${suffix}`;
 
       if (value && process.env[secretKey]) {
@@ -81,10 +94,15 @@ function loadPhonePeConfigs(source: ConfigSource): PhonePeConfig[] {
           provider: 'phonepe',
           environment: env,
           enabled: true,
-          merchantId: process.env[`PHONEPE_MERCHANT_ID_${suffix}`] || (env === 'sandbox' ? 'PGTESTPAYUAT' : ''),
+          merchantId:
+            process.env[`PHONEPE_MERCHANT_ID_${suffix}`] ||
+            (env === 'sandbox' ? 'PGTESTPAYUAT' : ''),
           clientId: value,
-          clientSecret: process.env[secretKey]!,
-          clientVersion: parseInt(process.env[`PHONEPE_CLIENT_VERSION_${suffix}`] || '1', 10),
+          clientSecret: process.env[secretKey],
+          clientVersion: parseInt(
+            process.env[`PHONEPE_CLIENT_VERSION_${suffix}`] || '1',
+            10,
+          ),
           saltKey: process.env[`PHONEPE_SALT_KEY_${suffix}`],
           saltIndex: process.env[`PHONEPE_SALT_INDEX_${suffix}`] || '1',
           baseUrl: process.env[`PHONEPE_BASE_URL_${suffix}`],
@@ -106,13 +124,18 @@ export function loadConfigFromEnv(
   const normalized = normalizeAppIdForEnv(appId);
 
   if (provider === 'razorpay') {
-    const keyId = source.get(`RAZORPAY_KEY_ID_${normalized}`) || source.get('NEXT_PUBLIC_RAZORPAY_KEY_ID');
-    const keySecret = source.get(`RAZORPAY_KEY_SECRET_${normalized}`) || source.get('RAZORPAY_KEY_SECRET');
+    const keyId =
+      source.get(`RAZORPAY_KEY_ID_${normalized}`) ||
+      source.get('NEXT_PUBLIC_RAZORPAY_KEY_ID');
+    const keySecret =
+      source.get(`RAZORPAY_KEY_SECRET_${normalized}`) ||
+      source.get('RAZORPAY_KEY_SECRET');
     if (keyId && keySecret) {
       return {
         id: appId,
         provider: 'razorpay',
-        environment: source.get('NODE_ENV') === 'production' ? 'production' : 'sandbox',
+        environment:
+          source.get('NODE_ENV') === 'production' ? 'production' : 'sandbox',
         enabled: true,
         keyId,
         keySecret,
@@ -123,18 +146,31 @@ export function loadConfigFromEnv(
   }
 
   if (provider === 'phonepe') {
-    const clientId = source.get(`PHONEPE_CLIENT_ID_${normalized}`) || source.get('PHONEPE_CLIENT_ID');
-    const clientSecret = source.get(`PHONEPE_CLIENT_SECRET_${normalized}`) || source.get('PHONEPE_CLIENT_SECRET');
+    const clientId =
+      source.get(`PHONEPE_CLIENT_ID_${normalized}`) ||
+      source.get('PHONEPE_CLIENT_ID');
+    const clientSecret =
+      source.get(`PHONEPE_CLIENT_SECRET_${normalized}`) ||
+      source.get('PHONEPE_CLIENT_SECRET');
     if (clientId && clientSecret) {
       return {
         id: appId,
         provider: 'phonepe',
-        environment: (source.get('PHONEPE_ENV') || 'SANDBOX').toLowerCase() === 'production' ? 'production' : 'sandbox',
+        environment:
+          (source.get('PHONEPE_ENV') || 'SANDBOX').toLowerCase() ===
+          'production'
+            ? 'production'
+            : 'sandbox',
         enabled: true,
-        merchantId: source.get(`PHONEPE_MERCHANT_ID_${normalized}`) || (source.get('PHONEPE_ENV') === 'PRODUCTION' ? '' : 'PGTESTPAYUAT'),
+        merchantId:
+          source.get(`PHONEPE_MERCHANT_ID_${normalized}`) ||
+          (source.get('PHONEPE_ENV') === 'PRODUCTION' ? '' : 'PGTESTPAYUAT'),
         clientId,
         clientSecret,
-        clientVersion: parseInt(source.get(`PHONEPE_CLIENT_VERSION_${normalized}`) || '1', 10),
+        clientVersion: parseInt(
+          source.get(`PHONEPE_CLIENT_VERSION_${normalized}`) || '1',
+          10,
+        ),
         saltKey: source.get(`PHONEPE_SALT_KEY_${normalized}`),
         saltIndex: source.get(`PHONEPE_SALT_INDEX_${normalized}`) || '1',
       };

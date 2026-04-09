@@ -15,7 +15,7 @@ export class SubscriptionPausedHandler implements EventHandler {
       `⏸️ [SUBSCRIPTION] Handling subscription.paused for user ${envelope.userId}`,
     );
 
-    const payload = envelope.payload as Record<string, unknown>;
+    const payload = envelope.payload;
     const subscriptionId = payload.subscriptionId as string;
 
     // Custom logic: confirm this is intentional and check its duration, if provided

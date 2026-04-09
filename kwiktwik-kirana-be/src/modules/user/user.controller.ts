@@ -23,6 +23,7 @@ import { AppId } from '../../common/decorators/app-id.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { DeleteUserImageDto } from './dto/delete-user-image.dto';
+import { SubmitPlayStoreRatingDto } from './dto/submit-play-store-rating.dto';
 
 interface AuthUser {
   userId: string;
@@ -300,6 +301,51 @@ export class UserController {
       const data = await this.userService.checkMigrationStatus(user.userId);
       this.logRequestSuccess(endpoint, user.userId, startTime);
       return { success: true, data };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
+  }
+
+  @Post('playstore-rating/v1')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Submit Play Store rating',
+    description:
+      'Allows the authenticated user to submit their app rating and review to the Play Store ratings table.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rating submitted successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Rating submitted successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid rating value',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing JWT token',
+  })
+  async submitPlayStoreRating(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: SubmitPlayStoreRatingDto,
+  ) {
+    const endpoint = 'POST /v1/user/playstore-rating';
+    const startTime = this.logRequestStart(endpoint, user.userId, user.appId);
+    try {
+      await this.userService.submitPlayStoreRating(
+        user.userId,
+        user.appId,
+        dto,
+      );
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return { success: true, message: 'Rating submitted successfully' };
     } catch (error) {
       this.logRequestFailure(endpoint, user.userId, startTime, error);
       throw error;

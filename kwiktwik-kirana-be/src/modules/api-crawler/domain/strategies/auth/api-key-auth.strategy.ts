@@ -11,7 +11,7 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
   applyAuth(
     config: CrawlRequest,
     authConfig: ApiKeyAuthConfig,
-    context?: AuthContext
+    context?: AuthContext,
   ): CrawlRequest {
     const newConfig: CrawlRequest = {
       ...config,

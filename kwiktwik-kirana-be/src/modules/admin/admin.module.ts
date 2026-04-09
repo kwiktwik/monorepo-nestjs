@@ -134,10 +134,7 @@ export class AdminAuthMiddleware implements NestMiddleware {
           .json({ success: false, message: 'User not found' });
       }
 
-      const cleanUserPhone = (userRecords.phoneNumber || '').replace(
-        /\D/g,
-        '',
-      );
+      const cleanUserPhone = (userRecords.phoneNumber || '').replace(/\D/g, '');
       const allowedAdminPhones = expectedMobile
         .split(',')
         .map((phone) => phone.trim().replace(/\D/g, ''))
