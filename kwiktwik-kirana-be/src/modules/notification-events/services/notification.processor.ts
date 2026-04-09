@@ -305,6 +305,11 @@ export class NotificationProcessor
     handlerMetadata?: Record<string, unknown>,
   ): Promise<void> {
     const data = job.data;
+    const notificationContent = this.extractNotificationContent(
+      data.eventType,
+      data.payload,
+      handlerMetadata,
+    );
 
     // Build event envelope
     const envelope: EventEnvelope = {
@@ -344,6 +349,8 @@ export class NotificationProcessor
         eventType: data.eventType,
         userId: data.userId,
         channels: data.channels,
+        notificationTitle: notificationContent.title,
+        notificationBody: notificationContent.body,
       });
       this.logger.log(
         `✅ [COMPLETED] Event ${data.eventId} delivered to all channels`,
@@ -354,11 +361,84 @@ export class NotificationProcessor
         eventType: data.eventType,
         userId: data.userId,
         failedChannels,
+        notificationTitle: notificationContent.title,
+        notificationBody: notificationContent.body,
       });
       this.logger.warn(
         `⚠️  [PARTIAL] Event ${data.eventId} completed with failures: ${failedChannels.join(', ')}`,
       );
     }
+  }
+
+  /**
+   * Extract notification content for analytics tracking.
+   * Priority:
+   * 1) payload.title/body/message
+   * 2) handler metadata.notification.title/body
+   * 3) event-type based defaults
+   */
+  private extractNotificationContent(
+    eventType: string,
+    payload: Record<string, unknown>,
+    handlerMetadata?: Record<string, unknown>,
+  ): { title: string; body: string } {
+    const payloadTitle =
+      typeof payload.title === 'string' ? payload.title : undefined;
+    const payloadBody =
+      typeof payload.body === 'string'
+        ? payload.body
+        : typeof payload.message === 'string'
+          ? payload.message
+          : undefined;
+
+    const metadataNotification = handlerMetadata?.notification as
+      | Record<string, unknown>
+      | undefined;
+    const metadataTitle =
+      typeof metadataNotification?.title === 'string'
+        ? metadataNotification.title
+        : undefined;
+    const metadataBody =
+      typeof metadataNotification?.body === 'string'
+        ? metadataNotification.body
+        : undefined;
+
+    const titleMap: Record<string, string> = {
+      'subscription.halted': '⚠️ Subscription Halted',
+      'subscription.paused': '⏸️ Subscription Paused',
+      'subscription.resumed': '▶️ Subscription Resumed',
+      'subscription.cancelled': '❌ Subscription Cancelled',
+      'payment.received': '💰 Payment Received',
+      'payment.failed': '❌ Payment Failed',
+      'order.completed': '✅ Order Completed',
+      'order.cancelled': '❌ Order Cancelled',
+      'checkout.abandoned': '🛒 Complete Your Purchase',
+    };
+
+    const bodyMap: Record<string, string> = {
+      'subscription.halted':
+        'Your subscription has been paused due to payment issues. Please update your payment method to continue using our services.',
+      'subscription.paused':
+        'Your subscription has been paused. You can resume it anytime from your account settings.',
+      'subscription.resumed':
+        'Your subscription has been resumed successfully. Welcome back!',
+      'subscription.cancelled':
+        "Your subscription has been cancelled. We're sorry to see you go!",
+      'payment.failed':
+        'Your payment could not be processed. Please try again with a different payment method.',
+      'order.cancelled': 'Your order has been cancelled as requested.',
+      'checkout.abandoned':
+        'You left items in your cart. Complete your purchase now!',
+    };
+
+    return {
+      title: payloadTitle || metadataTitle || titleMap[eventType] || eventType,
+      body:
+        payloadBody ||
+        metadataBody ||
+        bodyMap[eventType] ||
+        `Notification for ${eventType}`,
+    };
   }
 
   /**
