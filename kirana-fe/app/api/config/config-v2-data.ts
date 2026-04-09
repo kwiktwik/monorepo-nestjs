@@ -64,7 +64,7 @@ const BASE_CONFIG = {
         enabled: false,
         forceUpdate: true,
         minVersion: "1.0.0",
-        latestVersion: "1.0.0",
+        latestVersion: "2.0.6",
         updateUrl: "", // Set per flavour in getConfigForAppId
         updateTitle: "Update Available",
         updateMessage: "A new version of the app is available. Please update to continue using the app.",
@@ -187,7 +187,7 @@ const kiranaappsOverrides = {
         enabled: true,
         forceUpdate: true,
         minVersion: "1.0.0",
-        latestVersion: "1.0.13",
+        latestVersion: "2.0.6",
         updateTitle: "Update Available",
         updateMessage: "A new version of the app is available with the latest improvements.",
     },
