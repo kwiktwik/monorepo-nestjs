@@ -91,9 +91,9 @@ const BASE_CONFIG = {
   },
   appUpdate: {
     enabled: false,
-    forceUpdate: false,
+    forceUpdate: true,
     minVersion: "1.0.0",
-    latestVersion: "1.0.0",
+    latestVersion: "2.0.6",
     updateUrl: "",
     updateTitle: "Update Available",
     updateMessage: "A new version of the app is available. Please update to continue using the app.",
@@ -164,9 +164,9 @@ const kiranaappsOverrides = {
   ...alertpayOverrides,
   appUpdate: {
     enabled: true,
-    forceUpdate: false,
+    forceUpdate: true,
     minVersion: "1.0.0",
-    latestVersion: "1.0.13",
+    latestVersion: "2.0.6",
     updateTitle: "Update Available",
     updateMessage: "A new version of the app is available with the latest improvements.",
   },

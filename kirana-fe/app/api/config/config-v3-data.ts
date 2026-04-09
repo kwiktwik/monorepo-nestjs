@@ -400,9 +400,9 @@ const baseConfig = {
   },
   appUpdate: {
     enabled: false,
-    forceUpdate: false,
+    forceUpdate: true,
     minVersion: "1.0.0",
-    latestVersion: "1.0.0",
+    latestVersion: "2.0.6",
     updateUrl: "",
     updateTitle: "Update Available",
     updateMessage:
