@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException, Inject, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, desc, and, like, gte, lte, sql } from 'drizzle-orm';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
+import { UpdateNotificationStatusDto } from './dto/update-notification-status.dto';
 import {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -436,6 +443,92 @@ export class NotificationService {
     return {
       data: [resultItem],
       processed: 1,
+    };
+  }
+
+  async updateStatus(userId: string, dto: UpdateNotificationStatusDto) {
+    const { notificationLogId, ttsAnnounced, teamNotificationSent } = dto;
+
+    if (!Number.isInteger(notificationLogId) || notificationLogId <= 0) {
+      throw new BadRequestException(
+        'Missing or invalid notificationLogId (positive integer required)',
+      );
+    }
+
+    if (ttsAnnounced === undefined && teamNotificationSent === undefined) {
+      throw new BadRequestException(
+        'Provide at least one field to update: ttsAnnounced, teamNotificationSent',
+      );
+    }
+
+    const [log] = await this.db
+      .select({
+        id: schema.notificationLogs.id,
+      })
+      .from(schema.notificationLogs)
+      .where(
+        and(
+          eq(schema.notificationLogs.id, notificationLogId),
+          eq(schema.notificationLogs.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (!log) {
+      throw new NotFoundException('Notification log not found or access denied');
+    }
+
+    const now = new Date();
+    const updates: {
+      notificationLog?: { ttsAnnounced?: boolean };
+      enhanced?: { ttsAnnounced?: boolean; teamNotificationSent?: boolean };
+    } = {};
+
+    if (ttsAnnounced !== undefined) {
+      await this.db
+        .update(schema.notificationLogs)
+        .set({ ttsAnnounced, updatedAt: now })
+        .where(eq(schema.notificationLogs.id, notificationLogId));
+      updates.notificationLog = { ttsAnnounced };
+    }
+
+    const enhancedSet: {
+      ttsAnnounced?: boolean;
+      teamNotificationSent?: boolean;
+      updatedAt: Date;
+    } = { updatedAt: now };
+
+    if (ttsAnnounced !== undefined) {
+      enhancedSet.ttsAnnounced = ttsAnnounced;
+    }
+    if (teamNotificationSent !== undefined) {
+      enhancedSet.teamNotificationSent = teamNotificationSent;
+    }
+
+    if (
+      enhancedSet.ttsAnnounced !== undefined ||
+      enhancedSet.teamNotificationSent !== undefined
+    ) {
+      await this.db
+        .update(schema.enhancedNotifications)
+        .set(enhancedSet)
+        .where(
+          and(
+            eq(schema.enhancedNotifications.notificationLogId, notificationLogId),
+            eq(schema.enhancedNotifications.userId, userId),
+          ),
+        );
+
+      updates.enhanced = {
+        ...(ttsAnnounced !== undefined ? { ttsAnnounced } : {}),
+        ...(teamNotificationSent !== undefined ? { teamNotificationSent } : {}),
+      };
+    }
+
+    return {
+      success: true,
+      notificationLogId,
+      updated: updates,
     };
   }
 

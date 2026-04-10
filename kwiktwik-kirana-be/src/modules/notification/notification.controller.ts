@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Query,
   UseGuards,
@@ -25,6 +26,7 @@ import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
 } from './dto/register-push-token.dto';
+import { UpdateNotificationStatusDto } from './dto/update-notification-status.dto';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -106,6 +108,25 @@ export class NotificationController {
     @Body() dto: CreateNotificationV2Dto,
   ) {
     return this.notificationService.createV2(user.userId, dto);
+  }
+
+  @Patch('status')
+  @ApiBearerAuth('JWT')
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiOperation({
+    summary:
+      'Update notification status fields (ttsAnnounced, teamNotificationSent)',
+  })
+  async updateStatus(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: UpdateNotificationStatusDto,
+  ) {
+    return this.notificationService.updateStatus(user.userId, dto);
   }
 
   @Post('test')

@@ -54,6 +54,7 @@ describe('NotificationController', () => {
     findAll: jest.fn(),
     create: jest.fn(),
     createV2: jest.fn(),
+    updateStatus: jest.fn(),
     createTestNotification: jest.fn(),
     pollTestNotification: jest.fn(),
     ackTestNotification: jest.fn(),
@@ -270,6 +271,39 @@ describe('NotificationController', () => {
         expect.objectContaining({
           hasTransaction: false,
           transactionType: 'UNKNOWN',
+        }),
+      );
+    });
+  });
+
+  describe('PATCH /notifications/status', () => {
+    it('should update notification status', async () => {
+      mockNotificationService.updateStatus.mockResolvedValue({
+        success: true,
+        notificationLogId: 123,
+        updated: {
+          notificationLog: { ttsAnnounced: true },
+          enhanced: { ttsAnnounced: true, teamNotificationSent: false },
+        },
+      });
+
+      const res = await request(app.getHttpServer())
+        .patch('/notifications/status')
+        .set('X-App-ID', 'com.test.app')
+        .send({
+          notificationLogId: 123,
+          ttsAnnounced: true,
+          teamNotificationSent: false,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(mockNotificationService.updateStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          notificationLogId: 123,
+          ttsAnnounced: true,
+          teamNotificationSent: false,
         }),
       );
     });
