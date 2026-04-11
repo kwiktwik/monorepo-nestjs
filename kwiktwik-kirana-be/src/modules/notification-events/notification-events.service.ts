@@ -1,7 +1,6 @@
 import {
   Injectable,
   Logger,
-  Inject,
   ConflictException,
   Optional,
 } from '@nestjs/common';
@@ -29,7 +28,7 @@ const EVENT_SCHEMAS: Record<
     if (!payload.orderId) return 'Missing required field: orderId';
     return null;
   },
-  'checkout.abandoned': (payload) => {
+  'checkout.abandoned': () => {
     // orderId is optional for checkout abandoned
     return null;
   },
@@ -49,6 +48,10 @@ const EVENT_SCHEMAS: Record<
  * Idempotency TTL in seconds (24 hours)
  */
 const IDEMPOTENCY_TTL_SECONDS = 86400;
+const EVENT_TYPES_WITHOUT_INAPP = new Set([
+  'subscription.halted',
+  'subscription.cancelled',
+]);
 
 /**
  * Queue-First Notification Events Service
@@ -118,10 +121,12 @@ export class NotificationEventsService {
       };
     }
 
+    const channels = this.resolveChannels(dto.eventType, dto.channels);
+
     // Store channels in payload for the processor to use
     const payloadWithChannels = {
       ...dto.payload,
-      _channels: dto.channels ?? [NotificationChannelType.InApp],
+      _channels: channels,
       _metadata: dto.metadata,
     };
 
@@ -136,7 +141,7 @@ export class NotificationEventsService {
           userId,
           eventType: dto.eventType,
           payload: payloadWithChannels,
-          channels: dto.channels ?? [NotificationChannelType.InApp],
+          channels,
           metadata: dto.metadata,
         },
         0, // Process immediately (0 delay)
@@ -148,7 +153,7 @@ export class NotificationEventsService {
         eventId,
         eventType: dto.eventType,
         userId,
-        channels: dto.channels ?? [NotificationChannelType.InApp],
+        channels,
       });
     } catch (error) {
       this.logger.warn(
@@ -162,6 +167,21 @@ export class NotificationEventsService {
       eventId: eventId,
       enqueuedAt: createdAt.toISOString(),
     };
+  }
+
+  private resolveChannels(
+    eventType: string,
+    requestedChannels?: NotificationChannelType[],
+  ): NotificationChannelType[] {
+    const defaultChannels = [NotificationChannelType.InApp];
+    const baseChannels = requestedChannels ?? defaultChannels;
+
+    if (!EVENT_TYPES_WITHOUT_INAPP.has(eventType)) {
+      return baseChannels;
+    }
+
+    // Enforce push-only delivery for halted/cancelled subscription events.
+    return [NotificationChannelType.Push];
   }
 
   /**
@@ -235,9 +255,10 @@ export class NotificationEventsService {
           },
           eventProperties: eventProps,
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : String(err);
           this.logger.debug(
-            `Mixpanel track failed (non-critical): ${err.message}`,
+            `Mixpanel track failed (non-critical): ${errorMessage}`,
           );
         });
     } catch (error) {

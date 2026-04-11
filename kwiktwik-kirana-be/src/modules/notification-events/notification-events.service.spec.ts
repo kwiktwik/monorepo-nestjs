@@ -138,6 +138,49 @@ describe('NotificationEventsService', () => {
       );
     });
 
+    it('should force push-only for subscription.halted when channels are provided', async () => {
+      const dto = {
+        eventType: 'subscription.halted',
+        payload: { subscriptionId: 'sub_123' },
+        channels: [
+          NotificationChannelType.InApp,
+          NotificationChannelType.Sms,
+          NotificationChannelType.Push,
+        ],
+      };
+
+      await service.ingestEvent('user-123', 'com.test.app', dto);
+
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channels: [NotificationChannelType.Push],
+          payload: expect.objectContaining({
+            _channels: [NotificationChannelType.Push],
+          }),
+        }),
+        0,
+      );
+    });
+
+    it('should force push-only for subscription.cancelled when no channels are provided', async () => {
+      const dto = {
+        eventType: 'subscription.cancelled',
+        payload: { subscriptionId: 'sub_123' },
+      };
+
+      await service.ingestEvent('user-123', 'com.test.app', dto);
+
+      expect(mockQueueService.scheduleDelayedEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channels: [NotificationChannelType.Push],
+          payload: expect.objectContaining({
+            _channels: [NotificationChannelType.Push],
+          }),
+        }),
+        0,
+      );
+    });
+
     it('should return duplicate status for existing eventId (idempotency via Redis)', async () => {
       // Simulate duplicate - Redis SETNX returns 0 (key already exists)
       mockRedisService.getClient.mockReturnValueOnce({

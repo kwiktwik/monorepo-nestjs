@@ -212,10 +212,11 @@ describe('getValidTargetStatuses', () => {
   it('should return all valid targets for CREATED', () => {
     const targets = getValidTargetStatuses(SubscriptionStatus.CREATED);
     expect(targets).toContain(SubscriptionStatus.PENDING_AUTH);
+    expect(targets).toContain(SubscriptionStatus.AUTHENTICATED);
     expect(targets).toContain(SubscriptionStatus.ACTIVATION_IN_PROGRESS);
     expect(targets).toContain(SubscriptionStatus.FAILED);
     expect(targets).toContain(SubscriptionStatus.CANCELLED);
-    expect(targets).toHaveLength(4);
+    expect(targets).toHaveLength(5);
   });
 
   it('should return empty array for CANCELLED', () => {

@@ -159,6 +159,7 @@ export const ValidStateTransitions: Readonly<Record<SubscriptionStatus, readonly
   // Initial states
   [SubscriptionStatus.CREATED]: [
     SubscriptionStatus.PENDING_AUTH,
+    SubscriptionStatus.AUTHENTICATED,
     SubscriptionStatus.ACTIVATION_IN_PROGRESS,
     SubscriptionStatus.FAILED,
     SubscriptionStatus.CANCELLED,
@@ -445,6 +446,10 @@ export const EventTransitionMap: Readonly<Record<StateMachineEvent, {
  * Get the event that would cause a specific transition
  */
 export function getTransitionEvent(from: SubscriptionStatus, to: SubscriptionStatus): StateMachineEvent | null {
+  if (!isValidTransition(from, to)) {
+    return null;
+  }
+
   for (const [event, transition] of Object.entries(EventTransitionMap)) {
     if (transition.from.includes(from) && transition.to === to) {
       return event as StateMachineEvent;

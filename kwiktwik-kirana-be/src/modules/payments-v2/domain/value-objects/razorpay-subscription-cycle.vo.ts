@@ -266,6 +266,8 @@ export class RazorpaySubscriptionCycle {
     // If original day is greater than last day of new month, use last day
     const newDay = Math.min(originalDay, lastDayOfNewMonth);
     
+    // Avoid JS Date overflow (e.g. Jan 31 -> Mar) by anchoring to day 1 first.
+    date.setDate(1);
     date.setFullYear(newYear);
     date.setMonth(newMonth);
     date.setDate(newDay);
