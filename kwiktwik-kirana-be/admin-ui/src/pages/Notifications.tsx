@@ -1,6 +1,18 @@
 import { useState } from 'react';
-import { Send, Smartphone, Hash, AlertCircle, Bell, FileJson, Key } from 'lucide-react';
+import { Send, Smartphone, Hash, AlertCircle, Bell, FileJson, Key, Zap } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdminApi';
+
+const EVENT_TYPES = [
+  { value: 'subscription.halted', label: 'Subscription Halted' },
+  { value: 'subscription.paused', label: 'Subscription Paused' },
+  { value: 'subscription.resumed', label: 'Subscription Resumed' },
+  { value: 'subscription.cancelled', label: 'Subscription Cancelled' },
+  { value: 'payment.received', label: 'Payment Received' },
+  { value: 'payment.failed', label: 'Payment Failed' },
+  { value: 'order.completed', label: 'Order Completed' },
+  { value: 'order.cancelled', label: 'Order Cancelled' },
+  { value: 'checkout.abandoned', label: 'Checkout Abandoned' },
+];
 
 export default function Notifications() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -12,12 +24,54 @@ export default function Notifications() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Event-based mode
+  const [sendMode, setSendMode] = useState<'simple' | 'event'>('simple');
+  const [selectedEventType, setSelectedEventType] = useState('subscription.halted');
+
   const { fetchApi } = useAdminApi();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setResult(null);
+    setError(null);
+
+    // Event-based sending
+    if (sendMode === 'event') {
+      if (!phoneNumber.trim()) {
+        setError('Phone number is required for event-based notifications.');
+        setIsLoading(false);
+        return;
+      }
+      if (!appId.trim()) {
+        setError('App ID is required for event-based notifications.');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetchApi('/api/admin/notifications/send-test-by-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phoneNumber,
+            appId,
+            eventType: selectedEventType,
+          }),
+        });
+
+        setResult(response);
+      } catch (err: any) {
+        setError(err.message || 'Failed to send event notification');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Simple mode (existing logic)
     if (!phoneNumber.trim() && !fcmToken.trim()) {
       setError('Please provide either a phone number or an FCM Token.');
       setIsLoading(false);
@@ -77,6 +131,59 @@ export default function Notifications() {
             </h3>
 
             <form onSubmit={handleSend} className="space-y-5">
+              {/* Send Mode Toggle */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-white/40" />
+                  Send Mode
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSendMode('simple')}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      sendMode === 'simple'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                    }`}
+                  >
+                    Simple (JSON)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSendMode('event')}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      sendMode === 'event'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                    }`}
+                  >
+                    Event Based
+                  </button>
+                </div>
+              </div>
+
+              {/* Event Type Dropdown (only in event mode) */}
+              {sendMode === 'event' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-white/40" />
+                    Event Type
+                  </label>
+                  <select
+                    value={selectedEventType}
+                    onChange={(e) => setSelectedEventType(e.target.value)}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white font-mono"
+                  >
+                    {EVENT_TYPES.map((type) => (
+                      <option key={type.value} value={type.value} className="bg-gray-900">
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
@@ -92,26 +199,30 @@ export default function Notifications() {
                   />
                 </div>
                 
-                <div className="flex items-center gap-4 text-white/30 text-xs font-medium uppercase min-w-0">
-                  <div className="h-px bg-white/10 flex-1"></div>
-                  <span>OR / AND</span>
-                  <div className="h-px bg-white/10 flex-1"></div>
-                </div>
+                {sendMode === 'simple' && (
+                  <>
+                    <div className="flex items-center gap-4 text-white/30 text-xs font-medium uppercase min-w-0">
+                      <div className="h-px bg-white/10 flex-1"></div>
+                      <span>OR / AND</span>
+                      <div className="h-px bg-white/10 flex-1"></div>
+                    </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
-                    <Key className="w-4 h-4 text-white/40" />
-                    FCM Token (Direct Push)
-                  </label>
-                  <input
-                    type="text"
-                    value={fcmToken}
-                    onChange={(e) => setFcmToken(e.target.value)}
-                    placeholder="Enter device FCM token..."
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
-                  />
-                  <p className="text-xs text-white/40 mt-1">If provided, notification will route to this device directly.</p>
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                        <Key className="w-4 h-4 text-white/40" />
+                        FCM Token (Direct Push)
+                      </label>
+                      <input
+                        type="text"
+                        value={fcmToken}
+                        onChange={(e) => setFcmToken(e.target.value)}
+                        placeholder="Enter device FCM token..."
+                        className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
+                      />
+                      <p className="text-xs text-white/40 mt-1">If provided, notification will route to this device directly.</p>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -126,32 +237,42 @@ export default function Notifications() {
                   placeholder="e.g. com.paymentalert.app"
                   className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono"
                 />
-                <p className="text-xs text-white/40 mt-1">Leave empty to only create a DB record without sending FCM.</p>
+                <p className="text-xs text-white/40 mt-1">
+                  {sendMode === 'event' 
+                    ? 'Required for event-based notifications.' 
+                    : 'Leave empty to only create a DB record without sending FCM.'}
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
-                  <FileJson className="w-4 h-4 text-white/40" />
-                  FCM Data Payload (JSON)
-                </label>
-                <textarea
-                  value={payloadText}
-                  onChange={(e) => setPayloadText(e.target.value)}
-                  rows={6}
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono resize-y"
-                />
-              </div>
+              {sendMode === 'simple' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70 block flex items-center gap-2">
+                    <FileJson className="w-4 h-4 text-white/40" />
+                    FCM Data Payload (JSON)
+                  </label>
+                  <textarea
+                    value={payloadText}
+                    onChange={(e) => setPayloadText(e.target.value)}
+                    rows={6}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-white/30 transition-all font-mono resize-y"
+                  />
+                </div>
+              )}
 
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-full font-semibold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+                    sendMode === 'event'
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
+                  }`}
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <><Send className="w-5 h-5" /> Send Notification</>
+                    <><Send className="w-5 h-5" /> {sendMode === 'event' ? 'Send via Event System' : 'Send Notification'}</>
                   )}
                 </button>
               </div>
