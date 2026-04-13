@@ -10,7 +10,7 @@ import {
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import * as schema from '../../../database/schema';
 
 /**
@@ -338,20 +338,30 @@ export class NotificationProcessor
     const results = await this.eventBus.publish(envelope);
 
     // Check results
-    const allSucceeded = results.every((r) => r.delivered);
-    const failedChannels = results
-      .filter((r) => !r.delivered)
-      .map((r) => r.channel);
+    const successfulResults = results.filter((r) => r.delivered);
+    const failedResults = results.filter((r) => !r.delivered);
+    const allSucceeded = failedResults.length === 0;
+    const successfulChannels = successfulResults.map((r) => r.channel);
+    const failedChannels = failedResults.map((r) => r.channel);
 
-    if (allSucceeded) {
+    for (const result of successfulResults) {
       this.trackToMixpanel(data.appId, 'notification_event_delivered', {
         eventId: data.eventId,
         eventType: data.eventType,
         userId: data.userId,
-        channels: data.channels,
+        channel: result.channel,
+        requestedChannels: data.channels,
+        successfulChannels,
+        failedChannels,
+        deliveryDetail: result.detail,
+        deliveredAt: result.deliveredAt.toISOString(),
+        allChannelsSucceeded: allSucceeded,
         notificationTitle: notificationContent.title,
         notificationBody: notificationContent.body,
       });
+    }
+
+    if (allSucceeded) {
       this.logger.log(
         `✅ [COMPLETED] Event ${data.eventId} delivered to all channels`,
       );
@@ -361,6 +371,7 @@ export class NotificationProcessor
         eventType: data.eventType,
         userId: data.userId,
         failedChannels,
+        successfulChannels,
         notificationTitle: notificationContent.title,
         notificationBody: notificationContent.body,
       });
@@ -527,8 +538,9 @@ export class NotificationProcessor
           eventProperties: eventProps,
         })
         .catch((err) => {
+          const errorMessage = err instanceof Error ? err.message : String(err);
           this.logger.debug(
-            `Mixpanel track failed (non-critical): ${err.message}`,
+            `Mixpanel track failed (non-critical): ${errorMessage}`,
           );
         });
     } catch (error) {

@@ -108,6 +108,59 @@ describe('NotificationProcessor', () => {
       // Queue-first: tracks to Mixpanel instead of DB
       expect(mockAnalyticsService.sendEvent).toHaveBeenCalled();
     });
+
+    it('should track delivered channels individually even on partial delivery', async () => {
+      mockEventBus.publish.mockResolvedValueOnce([
+        {
+          channel: NotificationChannelType.Push,
+          delivered: true,
+          detail: 'Sent to 1/1 devices',
+          deliveredAt: new Date('2026-04-13T10:00:00.000Z'),
+        },
+        {
+          channel: NotificationChannelType.InApp,
+          delivered: false,
+          detail: 'In-app write failed',
+          deliveredAt: new Date('2026-04-13T10:00:01.000Z'),
+        },
+      ]);
+
+      const job = createJob({
+        channels: [NotificationChannelType.Push, NotificationChannelType.InApp],
+      });
+
+      await processor.process(job);
+
+      const deliveredEvent = mockAnalyticsService.sendEvent.mock.calls.find(
+        ([input]: [{ eventName: string }]) =>
+          input.eventName === 'notification_event_delivered',
+      )?.[0];
+
+      const partialEvent = mockAnalyticsService.sendEvent.mock.calls.find(
+        ([input]: [{ eventName: string }]) =>
+          input.eventName === 'notification_event_partial',
+      )?.[0];
+
+      expect(deliveredEvent).toMatchObject({
+        eventName: 'notification_event_delivered',
+        appId: 'com.test.app',
+        userData: {
+          userId: 'user-123',
+        },
+        eventProperties: expect.objectContaining({
+          channel: NotificationChannelType.Push,
+          allChannelsSucceeded: false,
+        }),
+      });
+
+      expect(partialEvent).toMatchObject({
+        eventName: 'notification_event_partial',
+        eventProperties: expect.objectContaining({
+          failedChannels: JSON.stringify([NotificationChannelType.InApp]),
+          successfulChannels: JSON.stringify([NotificationChannelType.Push]),
+        }),
+      });
+    });
   });
 
   describe('getMetrics', () => {
