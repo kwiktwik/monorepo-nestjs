@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AdminNotificationController } from './admin-notification.controller';
 import { NotificationService } from './notification.service';
+import { NotificationEventsService } from '../notification-events/notification-events.service';
 
 interface SendTestResponse {
   success: boolean;
@@ -27,6 +28,10 @@ describe('AdminNotificationController', () => {
     sendTestNotificationByPhone: jest.fn(),
   };
 
+  const mockNotificationEventsService = {
+    ingestEvent: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AdminNotificationController],
@@ -34,6 +39,10 @@ describe('AdminNotificationController', () => {
         {
           provide: NotificationService,
           useValue: mockNotificationService,
+        },
+        {
+          provide: NotificationEventsService,
+          useValue: mockNotificationEventsService,
         },
       ],
     }).compile();
