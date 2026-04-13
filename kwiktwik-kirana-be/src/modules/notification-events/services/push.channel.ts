@@ -58,14 +58,15 @@ export class PushChannel implements NotificationChannel {
       // Prepare FCM data payload
       const data = this.prepareDataPayload(event);
 
-      // Send via Firebase Admin
+      // Send via Firebase Admin - use data-only message so client always receives in onMessageReceived
+      // This ensures target_notification_received tracks correctly for both foreground/background
       const response = await admin.messaging().sendEachForMulticast({
         tokens,
-        notification: {
+        data: {
+          ...data,
           title,
           body,
         },
-        data,
         android: {
           priority: 'high',
           notification: {

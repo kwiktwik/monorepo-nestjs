@@ -747,13 +747,15 @@ export class NotificationService {
         const body =
           payload && typeof payload.body === 'string' ? payload.body : '';
 
+        // Use data-only payload so client always receives in onMessageReceived
+        // This ensures target_notification_received tracks correctly
         const response = await admin.messaging().sendEachForMulticast({
           tokens,
-          notification: {
+          data: {
+            ...fcmData,
             title,
             body,
           },
-          data: fcmData,
           android: {
             priority: 'high',
             notification: {

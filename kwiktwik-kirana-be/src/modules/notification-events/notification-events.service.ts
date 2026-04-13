@@ -86,26 +86,33 @@ export class NotificationEventsService {
    * NO DB writes on happy path - pure queue-based processing.
    * Event tracking done via Mixpanel (AnalyticsService).
    */
-  async ingestEvent(userId: string, appId: string, dto: NotificationEventDto) {
+  async ingestEvent(
+    userId: string,
+    appId: string,
+    dto: NotificationEventDto,
+    bypassValidation = false,
+  ) {
     const createdAt = new Date();
     const eventId = dto.eventId ?? this.buildEventId(dto.eventType);
     // SECURITY: Always use appId from X-App-ID header, never from POST body
     const effectiveAppId = appId;
 
     // Schema validation per event type
-    const validationError = this.validateEvent(
-      dto.eventType,
-      dto.payload || {},
-    );
-    if (validationError) {
-      this.logger.warn(
-        `Validation failed for event ${eventId}: ${validationError}`,
+    if (!bypassValidation) {
+      const validationError = this.validateEvent(
+        dto.eventType,
+        dto.payload || {},
       );
-      throw new ConflictException({
-        message: 'Event validation failed',
-        error: validationError,
-        eventType: dto.eventType,
-      });
+      if (validationError) {
+        this.logger.warn(
+          `Validation failed for event ${eventId}: ${validationError}`,
+        );
+        throw new ConflictException({
+          message: 'Event validation failed',
+          error: validationError,
+          eventType: dto.eventType,
+        });
+      }
     }
 
     // Idempotency check via Redis (sub-millisecond, no DB)
