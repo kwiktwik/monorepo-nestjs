@@ -26,6 +26,7 @@ export const PhonePeSubscriptionState = {
   REVOKED: 'REVOKED',
   EXPIRED: 'EXPIRED',
   FAILED: 'FAILED',
+  COMPLETED: 'COMPLETED',
 } as const;
 
 export type PhonePeSubscriptionState = typeof PhonePeSubscriptionState[keyof typeof PhonePeSubscriptionState];
@@ -43,6 +44,7 @@ export const ALL_PHONEPE_SUBSCRIPTION_STATES: readonly PhonePeSubscriptionState[
   PhonePeSubscriptionState.REVOKED,
   PhonePeSubscriptionState.EXPIRED,
   PhonePeSubscriptionState.FAILED,
+  PhonePeSubscriptionState.COMPLETED,
 ] as const;
 
 /**
@@ -450,6 +452,7 @@ export function mapPhonePeSubscriptionState(phonePeState: PhonePeSubscriptionSta
     [PhonePeSubscriptionState.REVOKED]: SubscriptionStatus.REVOKED,
     [PhonePeSubscriptionState.EXPIRED]: SubscriptionStatus.EXPIRED,
     [PhonePeSubscriptionState.FAILED]: SubscriptionStatus.FAILED,
+    [PhonePeSubscriptionState.COMPLETED]: SubscriptionStatus.COMPLETED,
   };
 
   return mapping[phonePeState];
@@ -469,6 +472,7 @@ export function toPhonePeSubscriptionState(status: SubscriptionStatus): PhonePeS
     [SubscriptionStatus.REVOKED]: PhonePeSubscriptionState.REVOKED,
     [SubscriptionStatus.EXPIRED]: PhonePeSubscriptionState.EXPIRED,
     [SubscriptionStatus.FAILED]: PhonePeSubscriptionState.FAILED,
+    [SubscriptionStatus.COMPLETED]: PhonePeSubscriptionState.COMPLETED,
   };
 
   return mapping[status] ?? null;

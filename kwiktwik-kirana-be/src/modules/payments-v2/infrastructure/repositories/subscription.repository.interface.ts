@@ -54,6 +54,14 @@ export interface ISubscriptionRepository {
   findInRetry(): Promise<readonly Subscription[]>;
 
   /**
+   * Find subscriptions by status
+   */
+  findByStatus(
+    status: string | readonly string[],
+    options?: SubscriptionQueryOptions,
+  ): Promise<readonly Subscription[]>;
+
+  /**
    * Save subscription (create or update)
    */
   save(subscription: Subscription): Promise<Subscription>;

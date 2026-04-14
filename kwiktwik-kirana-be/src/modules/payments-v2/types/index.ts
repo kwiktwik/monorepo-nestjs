@@ -4,7 +4,10 @@
  * Exports all types, enums, and utility functions.
  */
 
+// ============================================================================
 // Core Enums
+// ============================================================================
+
 export {
   PaymentProvider,
   ALL_PAYMENT_PROVIDERS,
@@ -72,7 +75,33 @@ export {
   toRazorpayPeriod,
 } from './frequency.enum';
 
-// Provider-Specific Types
+// ============================================================================
+// Payment Method Types
+// ============================================================================
+
+export {
+  PaymentMethodType,
+  ALL_PAYMENT_METHOD_TYPES,
+  PaymentMethodCategory,
+  PaymentMethodCapabilitiesMap,
+  ProviderPaymentMethodSupport,
+  getPaymentMethodCategory,
+  isSubscriptionMethod,
+  supportsAutoDebit,
+  getPaymentMethodCapabilities,
+  providerSupportsMethod,
+  getProviderPaymentMethods,
+  createPaymentMethodConfig,
+  type PaymentMethodCapabilities,
+  type PaymentMethodConfig,
+  type PaymentIntent,
+  type CreatePaymentIntentParams,
+} from './payment-method.types';
+
+// ============================================================================
+// Provider-Specific Types (from original files)
+// ============================================================================
+
 export {
   RazorpaySubscriptionStatus,
   ALL_RAZORPAY_SUBSCRIPTION_STATUSES,
@@ -99,10 +128,6 @@ export {
 } from './razorpay.types';
 
 export {
-  PhonePeSubscriptionState,
-  ALL_PHONEPE_SUBSCRIPTION_STATES,
-  PhonePeOrderState,
-  ALL_PHONEPE_ORDER_STATES,
   PhonePePaymentFlowType,
   PhonePeAuthWorkflowType,
   PhonePeAmountType,
@@ -130,6 +155,125 @@ export {
   type PhonePeCancelSubscriptionResponse,
   mapPhonePeSubscriptionState,
   toPhonePeSubscriptionState,
-  mapPhonePeOrderState,
   mapPhonePeFrequency,
 } from './phonepe.types';
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export {
+  PaymentErrorCode,
+  ErrorSeverity,
+  PaymentError,
+  SubscriptionNotFoundError,
+  PaymentFailedError,
+  MandateRejectedError,
+  ProviderUnavailableError,
+  InvalidStateTransitionError,
+  WebhookSignatureInvalidError,
+  OrderNotFoundError,
+  ConfigurationNotFoundError,
+  mapRazorpayError,
+  mapPhonePeError,
+  mapProviderError,
+  isRetryableError,
+  getErrorSeverity,
+  type PaymentErrorJSON,
+} from '../common/errors/payment-errors';
+
+// ============================================================================
+// State Mappers (these override some exports from phonepe.types)
+// ============================================================================
+
+export {
+  RazorpaySubscriptionState,
+  RazorpayOrderState,
+  RazorpayPaymentState,
+  RazorpayStateMapper,
+  mapRazorpayOrderState as mapRazorpayOrderStateV2,
+  mapRazorpayPaymentState,
+  PhonePeSubscriptionState,
+  PhonePeOrderState,
+  PhonePeTransactionState,
+  PhonePeStateMapper,
+  mapPhonePeOrderState as mapPhonePeOrderStateV2,
+  mapPhonePeTransactionState,
+  StateMapperRegistry,
+  stateMapperRegistry,
+  type ProviderStateMapper,
+} from '../providers/mappers/state-mappers';
+
+// ============================================================================
+// Webhook Types
+// ============================================================================
+
+export {
+  NormalizedWebhookEventType,
+  WebhookEventCategory,
+  RazorpayEventMapping,
+  PhonePeEventMapping,
+  getEventCategory,
+  normalizeRazorpayEventType,
+  normalizePhonePeEventType,
+  normalizeEventType,
+  type NormalizedWebhookEvent,
+  type WebhookHeaders,
+  type WebhookParseResult,
+  type WebhookHandler,
+  type WebhookHandlerResult,
+  type WebhookAction,
+  type PaymentInstrument,
+  type PaymentRail,
+  type WebhookPaymentDetail,
+} from '../webhooks/webhook-types';
+
+// ============================================================================
+// Webhook Parsers
+// ============================================================================
+
+export type { WebhookParser } from '../webhooks/webhook-parsers';
+export {
+  RazorpayWebhookParser,
+  PhonePeWebhookParser,
+  WebhookParserRegistry,
+  webhookParserRegistry,
+} from '../webhooks/webhook-parsers';
+
+// ============================================================================
+// Webhook Processor
+// ============================================================================
+
+export {
+  WebhookProcessorService,
+  InMemoryIdempotencyStore,
+  createLoggingHandler,
+  createSubscriptionStatusHandler,
+  createOrderStatusHandler,
+  createPaymentRecordHandler,
+  type ProcessWebhookParams,
+  type ProcessWebhookResult,
+  type WebhookSecretProvider,
+  type IdempotencyStore as WebhookIdempotencyStore,
+} from '../webhooks/webhook-processor.service';
+
+// ============================================================================
+// Idempotency
+// ============================================================================
+
+export {
+  IdempotencyService,
+  InMemoryIdempotencyStore as InMemoryIdempotencyStoreV2,
+  IdempotencyKeyExistsError,
+  IdempotencyKeyNotFoundError,
+  IdempotencyRequestMismatchError,
+  IdempotencyOperationInProgressError,
+  IdempotencyOperationType,
+  IdempotencyStatus,
+  type IdempotencyKey,
+  type IdempotencyStore,
+  type CreateIdempotencyKeyParams,
+  type UpdateIdempotencyKeyParams,
+  type IdempotentResult,
+  type IdempotentOptions,
+} from '../common/idempotency/idempotency.service';

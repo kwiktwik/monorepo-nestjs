@@ -184,6 +184,114 @@ export class PaymentConfigService {
     return null;
   }
 
+  /**
+   * Get provider configuration for an app (simplified API)
+   */
+  getProviderConfig(
+    appId: string,
+    provider: PaymentProvider,
+  ): AnyProviderConfig | null {
+    return this.getConfig({ appId, provider });
+  }
+
+  /**
+   * Get all registered app IDs
+   */
+  getRegisteredAppIds(): string[] {
+    this.ensureInitialized();
+    return Array.from(this.appConfigs.keys());
+  }
+
+  /**
+   * Check if encryption is available
+   */
+  isEncryptionAvailable(): boolean {
+    const key = process.env.PAYMENT_ENCRYPTION_KEY;
+    return !!key && key.length === 64; // 32 bytes hex = 64 chars
+  }
+
+  /**
+   * Get feature flags
+   */
+  getFeatures(): {
+    enableIdempotency: boolean;
+    enableMetrics: boolean;
+    enableTracing: boolean;
+  } {
+    return {
+      enableIdempotency: process.env.PAYMENT_ENABLE_IDEMPOTENCY !== 'false',
+      enableMetrics: process.env.PAYMENT_ENABLE_METRICS === 'true',
+      enableTracing: process.env.PAYMENT_ENABLE_TRACING === 'true',
+    };
+  }
+
+  /**
+   * Get plan configuration for an app
+   * Returns plan details including pricing
+   */
+  getPlanConfig(appId: string, planId: string): {
+    planId: string;
+    initialAmount: number;
+    recurringAmount: number;
+    currency: string;
+    frequency: string;
+  } | null {
+    this.ensureInitialized();
+
+    // Default plan configurations
+    // In production, this would be loaded from database or external config
+    const planConfigs: Record<string, Record<string, {
+      initialAmount: number;
+      recurringAmount: number;
+      currency: string;
+      frequency: string;
+    }>> = {
+      'com.paymentalert.app': {
+        'premium_monthly': {
+          initialAmount: 4900, // ₹49
+          recurringAmount: 4900,
+          currency: 'INR',
+          frequency: 'MONTHLY',
+        },
+        'premium_yearly': {
+          initialAmount: 49900, // ₹499
+          recurringAmount: 49900,
+          currency: 'INR',
+          frequency: 'YEARLY',
+        },
+      },
+    };
+
+    const appPlans = planConfigs[appId];
+    if (!appPlans) {
+      // Return default plan config
+      return {
+        planId,
+        initialAmount: 4900,
+        recurringAmount: 4900,
+        currency: 'INR',
+        frequency: 'MONTHLY',
+      };
+    }
+
+    const plan = appPlans[planId];
+    if (!plan) {
+      // Return default plan config
+      return {
+        planId,
+        initialAmount: 4900,
+        recurringAmount: 4900,
+        currency: 'INR',
+        frequency: 'MONTHLY',
+      };
+    }
+
+    return {
+      planId,
+      ...plan,
+    };
+  }
+
   // ============================================================================
   // Private Methods
   // ============================================================================

@@ -71,6 +71,8 @@ interface PhonePeClient {
   setupSubscription(request: PhonePeSetupSubscriptionRequest): Promise<PhonePeSetupSubscriptionResponse>;
   getSubscriptionStatus(merchantSubscriptionId: string): Promise<PhonePeSubscriptionStatusResponse>;
   cancelSubscription(merchantSubscriptionId: string): Promise<{ state: PhonePeSubscriptionState }>;
+  pauseSubscription(merchantSubscriptionId: string): Promise<{ state: PhonePeSubscriptionState }>;
+  unpauseSubscription(merchantSubscriptionId: string): Promise<{ state: PhonePeSubscriptionState }>;
   
   // Redemption APIs
   notifyRedemption(request: PhonePeNotifyRedemptionRequest): Promise<PhonePeNotifyRedemptionResponse>;
@@ -201,6 +203,20 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
     cancelSubscription: async (merchantSubscriptionId: string) => {
       return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
         `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/cancel`,
+        { method: 'POST' },
+      );
+    },
+
+    pauseSubscription: async (merchantSubscriptionId: string) => {
+      return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
+        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/pause`,
+        { method: 'POST' },
+      );
+    },
+
+    unpauseSubscription: async (merchantSubscriptionId: string) => {
+      return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
+        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/unpause`,
         { method: 'POST' },
       );
     },
@@ -734,6 +750,72 @@ export class PhonePeProviderManagedProvider extends BasePhonePeProvider {
     }
   }
 
+  async pauseSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const response = await this.client!.pauseSubscription(merchantSubscriptionId);
+      const mappedStatus = mapPhonePeSubscriptionState(response.state);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId,
+        providerState: response.state,
+        mappedStatus,
+        maxAmount: null,
+        frequency: null,
+        nextBillingDate: null,
+        paidCount: 0,
+        remainingCount: null,
+        canCharge: false,
+        providerData: { response },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to pause subscription',
+        'PAUSE_FAILED',
+        'PHONEPE',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async resumeSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const response = await this.client!.unpauseSubscription(merchantSubscriptionId);
+      const mappedStatus = mapPhonePeSubscriptionState(response.state);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId,
+        providerState: response.state,
+        mappedStatus,
+        maxAmount: null,
+        frequency: null,
+        nextBillingDate: null,
+        paidCount: 0,
+        remainingCount: null,
+        canCharge: response.state === PhonePeSubscriptionState.ACTIVE,
+        providerData: { response },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to resume subscription',
+        'RESUME_FAILED',
+        'PHONEPE',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
   async parseWebhookEvent(params: ParseWebhookParams): Promise<WebhookEvent> {
     const { decoded, signatureValid } = this.decodeWebhookPayload(params);
     const baseEvent = this.buildWebhookEvent(decoded, signatureValid);
@@ -904,6 +986,72 @@ export class PhonePeUserManagedProvider extends BasePhonePeProvider {
       return this.createCancelSuccessResult(response.state);
     } catch (error) {
       return this.createCancelFailedResult(error);
+    }
+  }
+
+  async pauseSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const response = await this.client!.pauseSubscription(merchantSubscriptionId);
+      const mappedStatus = mapPhonePeSubscriptionState(response.state);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId,
+        providerState: response.state,
+        mappedStatus,
+        maxAmount: null,
+        frequency: null,
+        nextBillingDate: null,
+        paidCount: 0,
+        remainingCount: null,
+        canCharge: false,
+        providerData: { response },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to pause subscription',
+        'PAUSE_FAILED',
+        'PHONEPE',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async resumeSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const response = await this.client!.unpauseSubscription(merchantSubscriptionId);
+      const mappedStatus = mapPhonePeSubscriptionState(response.state);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId,
+        providerState: response.state,
+        mappedStatus,
+        maxAmount: null,
+        frequency: null,
+        nextBillingDate: null,
+        paidCount: 0,
+        remainingCount: null,
+        canCharge: response.state === PhonePeSubscriptionState.ACTIVE,
+        providerData: { response },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to resume subscription',
+        'RESUME_FAILED',
+        'PHONEPE',
+        error instanceof Error ? error : null,
+      );
     }
   }
 

@@ -64,6 +64,7 @@ interface RazorpayClient {
     cancel(subscriptionId: string, options?: { cancel_at_cycle_end?: boolean }): Promise<RazorpaySubscriptionEntity>;
     pause(subscriptionId: string): Promise<RazorpaySubscriptionEntity>;
     resume(subscriptionId: string): Promise<RazorpaySubscriptionEntity>;
+    update(subscriptionId: string, params: RazorpaySubscriptionUpdateParams): Promise<RazorpaySubscriptionEntity>;
   };
   orders: {
     create(params: RazorpayOrderCreateParams): Promise<RazorpayOrderEntity>;
@@ -124,6 +125,16 @@ interface RazorpayPlanCreateParams {
 }
 
 /**
+ * Razorpay subscription update parameters
+ */
+interface RazorpaySubscriptionUpdateParams {
+  plan_id?: string;
+  offer_id?: string;
+  notes?: Record<string, string>;
+  customer_notify?: boolean;
+}
+
+/**
  * Create Razorpay client
  */
 function createRazorpayClient(config: RazorpayProviderConfig): RazorpayClient {
@@ -141,6 +152,7 @@ function createRazorpayClient(config: RazorpayProviderConfig): RazorpayClient {
       cancel: (id, options) => client.subscriptions.cancel(id, options),
       pause: (id) => client.subscriptions.pause(id),
       resume: (id) => client.subscriptions.resume(id),
+      update: (id, params) => client.subscriptions.update(id, params),
     },
     orders: {
       create: (params) => client.orders.create(params),
@@ -415,7 +427,7 @@ export class RazorpayProviderManagedProvider extends BaseRazorpayProvider {
     try {
       const subscription = await this.client!.subscriptions.cancel(
         params.providerSubscriptionId,
-        { cancel_at_cycle_end: false },
+        { cancel_at_cycle_end: params.cancelAtCycleEnd ?? false },
       );
 
       return {
@@ -432,6 +444,105 @@ export class RazorpayProviderManagedProvider extends BaseRazorpayProvider {
         cancelledAt: null,
         error: err.error?.description ?? 'Failed to cancel subscription',
       };
+    }
+  }
+
+  async pauseSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const subscription = await this.client!.subscriptions.pause(providerSubscriptionId);
+      const mappedStatus = mapRazorpaySubscriptionStatus(subscription.status);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId: subscription.id,
+        providerState: subscription.status,
+        mappedStatus,
+        maxAmount: null,
+        frequency: this.mapRazorpayPeriodToFrequency(subscription),
+        nextBillingDate: subscription.charge_at ? unixToDate(subscription.charge_at) : null,
+        paidCount: subscription.paid_count,
+        remainingCount: subscription.remaining_count,
+        canCharge: false,
+        providerData: { subscription },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to pause subscription',
+        'PAUSE_FAILED',
+        'RAZORPAY',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async resumeSubscription(
+    merchantSubscriptionId: string,
+    providerSubscriptionId: string,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const subscription = await this.client!.subscriptions.resume(providerSubscriptionId);
+      const mappedStatus = mapRazorpaySubscriptionStatus(subscription.status);
+
+      return {
+        merchantSubscriptionId,
+        providerSubscriptionId: subscription.id,
+        providerState: subscription.status,
+        mappedStatus,
+        maxAmount: null,
+        frequency: this.mapRazorpayPeriodToFrequency(subscription),
+        nextBillingDate: subscription.charge_at ? unixToDate(subscription.charge_at) : null,
+        paidCount: subscription.paid_count,
+        remainingCount: subscription.remaining_count,
+        canCharge: subscription.status === RazorpaySubscriptionStatus.ACTIVE,
+        providerData: { subscription },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to resume subscription',
+        'RESUME_FAILED',
+        'RAZORPAY',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async updateSubscription(
+    providerSubscriptionId: string,
+    params: RazorpaySubscriptionUpdateParams,
+  ): Promise<SubscriptionStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const subscription = await this.client!.subscriptions.update(providerSubscriptionId, params);
+      const mappedStatus = mapRazorpaySubscriptionStatus(subscription.status);
+
+      return {
+        merchantSubscriptionId: subscription.id,
+        providerSubscriptionId: subscription.id,
+        providerState: subscription.status,
+        mappedStatus,
+        maxAmount: null,
+        frequency: this.mapRazorpayPeriodToFrequency(subscription),
+        nextBillingDate: subscription.charge_at ? unixToDate(subscription.charge_at) : null,
+        paidCount: subscription.paid_count,
+        remainingCount: subscription.remaining_count,
+        canCharge: subscription.status === RazorpaySubscriptionStatus.ACTIVE,
+        providerData: { subscription },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to update subscription',
+        'UPDATE_FAILED',
+        'RAZORPAY',
+        error instanceof Error ? error : null,
+      );
     }
   }
 
@@ -729,6 +840,7 @@ export {
   createRazorpayClient,
   type RazorpayClient,
   type RazorpaySubscriptionCreateParams,
+  type RazorpaySubscriptionUpdateParams,
   type RazorpayOrderCreateParams,
   type RazorpayPlanCreateParams,
 };

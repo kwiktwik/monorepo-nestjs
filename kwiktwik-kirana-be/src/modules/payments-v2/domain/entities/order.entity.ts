@@ -8,6 +8,7 @@
 import type { PaymentProvider } from '../../types/provider.enum';
 import type { SubscriptionType } from '../../types/subscription-type.enum';
 import type { OrderStatus } from '../../types/order-status.enum';
+import type { PaymentMethodType } from '../../types/payment-method.types';
 
 // ============================================================================
 // Provider Data Types
@@ -157,6 +158,8 @@ export interface Order {
   readonly currency: string;
   /** Current order status */
   readonly status: OrderStatus;
+  /** Payment method used (if known) */
+  readonly paymentMethodType?: PaymentMethodType;
 
   // === Timestamps ===
   /** Creation timestamp */

@@ -346,6 +346,8 @@ export interface CancelSubscriptionParams {
   readonly providerSubscriptionId: string;
   /** Cancellation reason */
   readonly reason: string | null;
+  /** Whether to cancel at the end of current billing cycle (Razorpay-specific) */
+  readonly cancelAtCycleEnd?: boolean;
 }
 
 /**

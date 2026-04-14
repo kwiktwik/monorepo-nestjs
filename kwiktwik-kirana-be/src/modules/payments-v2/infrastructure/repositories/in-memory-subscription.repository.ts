@@ -70,6 +70,36 @@ export class InMemorySubscriptionRepository implements ISubscriptionRepository {
     return Array.from(this.subscriptions.values()).filter(s => s.status === 'RETRYING');
   }
 
+  async findByStatus(
+    status: string | readonly string[],
+    options?: SubscriptionQueryOptions,
+  ): Promise<readonly Subscription[]> {
+    const statuses = Array.isArray(status) ? status : [status];
+    let results = Array.from(this.subscriptions.values()).filter(s => 
+      statuses.includes(s.status),
+    );
+    
+    // Apply ordering
+    if (options?.orderBy) {
+      const dir = options.orderDirection === 'desc' ? -1 : 1;
+      results.sort((a, b) => {
+        const aVal = a[options.orderBy!];
+        const bVal = b[options.orderBy!];
+        return dir * (aVal < bVal ? -1 : aVal > bVal ? 1 : 0);
+      });
+    }
+    
+    // Apply pagination
+    if (options?.offset) {
+      results = results.slice(options.offset);
+    }
+    if (options?.limit) {
+      results = results.slice(0, options.limit);
+    }
+    
+    return results;
+  }
+
   async save(subscription: Subscription): Promise<Subscription> {
     this.subscriptions.set(subscription.id, subscription);
     this.merchantIdIndex.set(subscription.merchantSubscriptionId, subscription.id);
