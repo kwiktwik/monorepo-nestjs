@@ -1,0 +1,483 @@
+<!-- Source: https://razorpay.com/docs/payments/payment-gateway/quick-integration/integration-steps -->
+
+Follow these steps to integrate the standard checkout form on your website:
+
+#### 1. Build Integration
+
+Integrate Standard Checkout form on website.
+
+#### 2. Test Integration
+
+Test the integration by making a test payment.
+
+#### 3. Go-live Checklist
+
+Check the go-live checklist.
+
+## 1. Build Integration
+
+Follow the steps given below:
+
+1.1 Create an Order in Server
+
+**Order is an important step in the payment process.**
+
+- An order should be created for every payment.
+- You can create an order using the [Orders API](/razorpay-docs-md/payment-gateway/quick-integration/integration-steps.md#api-sample-code)  . It is a server-side API call. Know how to [authenticate](/razorpay-docs-md/dashboard/account-settings/api-keys.md#generate-api-keys)
+
+  Orders API.
+- The `order_id` received in the response should be passed to the checkout. This ties the order with the payment and secures the request from being tampered.
+
+**Watch Out!**
+
+Payments made without an `order_id` cannot be captured and will be automatically refunded. You must create an order before initiating payments to ensure proper payment processing.
+
+You can create an order using:
+
+API Sample Code
+
+Razorpay Postman Public Workspace
+
+Use this endpoint to create an order using the Orders API.
+
+POST
+
+/orders
+
+CurlJavaPythonGoPHPRubyNode.js.NET
+
+copy
+
+```bash
+curl -X POST https://api.razorpay.com/v1/orders 
+-U [YOUR_KEY_ID]:[YOUR_KEY_SECRET]
+-H 'content-type:application/json'
+-d '{
+    "amount": 50000,
+    "currency": "",
+    "receipt": "qwsaq1",
+    "partial_payment": true,
+    "first_payment_min_amount": 230
+}'
+```
+
+Success ResponseFailure Response
+
+copy
+
+```json
+{
+    "id": "order_IluGWxBm9U8zJ8",
+    "entity": "order",
+    "amount": 50000,
+    "amount_paid": 0,
+    "amount_due": 50000,
+    "currency": "",
+    "receipt": "rcptid_11",
+    "offer_id": null,
+    "status": "created",
+    "attempts": 0,
+    "notes": [],
+    "created_at": 1642662092
+}
+```
+
+Request Parameters
+
+amount
+
+mandatory
+
+`integer` The transaction amount, expressed in the currency subunit. For example, for an actual amount of ₹222.25, the value of this field should be `22225`.
+
+currency
+
+mandatory
+
+`string` The currency in which the transaction should be made.  See the [list of supported currencies](/razorpay-docs-md/international-payments.md#supported-currencies). Length must be of 3 characters.
+
+receipt
+
+optional
+
+`string` Your receipt id for this order should be passed here. Maximum length is 40 characters.
+
+notes
+
+optional
+
+`json object` Key-value pair that can be used to store additional information about the entity. Maximum 15 key-value pairs, 256 characters (maximum) each. For example, `"note_key": "Beam me up Scotty”`.
+
+partial\_payment
+
+optional
+
+`boolean` Indicates whether the customer can make a partial payment. Possible values:
+
+- `true`: The customer can make partial payments.
+- `false` (default): The customer cannot make partial payments.
+
+first\_payment\_min\_amount
+
+optional
+
+`integer` Minimum amount that must be paid by the customer as the first partial payment. For example, if an amount of ₹7,000 is to be received from the customer in two installments of #1 - ₹5,000, #2 - ₹2,000, then you can set this value as `500000`. This parameter should be passed only if `partial_payment` is `true`.
+
+Response Parameters
+
+Descriptions for the response parameters are present in the [Orders Entity](/razorpay-docs-md/api/orders/entity.md) parameters table.
+
+Error Response Parameters
+
+The error response parameters are available in the [API Reference Guide](/razorpay-docs-md/api/orders/create.md).
+
+1.2 Pass Order ID and Other Options to Checkout
+
+- This integration method provides a default **Pay with Razorpay** button that invokes the Checkout form.
+- Pass Checkout form options as data attributes inside a `<script>` tag. You can add any additional hidden or visible fields to the form, which will be submitted along with the form.
+- Send Checkout options as form-data to the following URL in a POST request.
+
+1.2.1 Code to Add Pay Button
+
+POST
+
+/
+
+<https://www.example.com/success/>
+
+The following sample code passes the Razorpay checkout options as HTML data attributes:
+
+Quick Integration
+
+copy
+
+```html
+<form action="https://www.example.com/success/" method="POST">
+<script
+   src="https://checkout.razorpay.com/v1/checkout.js"
+    data-key="YOUR_KEY_ID" // Enter the Test API Key ID generated from Dashboard → Settings → API Keys
+    data-amount="29935" // Amount is in currency subunits. Hence, 29935 refers to 29935 paise or ₹299.35.
+    data-currency="INR"// You can accept international payments by changing the currency code. Contact our Support Team to enable International for your account
+    data-order_id="order_CgmcjRh9ti2lP7"// Replace with the order_id generated by you in the backend.
+    data-buttontext="Pay with Razorpay"
+    data-name="Acme Corp"
+    data-description="A Wild Sheep Chase is the third novel by Japanese author Haruki Murakami"
+    data-image="https://example.com/your_logo.jpg"
+    data-prefill.name="Gaurav Kumar"
+    data-prefill.email="gaurav.kumar@example.com"
+    data-theme.color="#F37254"
+></script>
+<input type="hidden" custom="Hidden Element" name="hidden"/>
+</form>
+```
+
+1.2.2 Handle Payment Success and Failure
+
+The way the payment success and failure scenarios are handled depends on the [Checkout Sample Code](/razorpay-docs-md/payment-gateway/quick-integration/integration-steps.md#122-code-to-add-pay-button) you used in the previous step.
+
+Payment Success
+
+Payment Failure
+
+#### On Payment Success
+
+Razorpay makes a POST call to the callback URL with the **razorpay\_payment\_id**, **razorpay\_order\_id** and **razorpay\_signature** in the response object of the successful payment. Only successful authorisations are auto-submitted.
+
+1.2.3 Checkout Options
+
+data-key
+
+mandatory
+
+`string` API Key ID generated from the Razorpay Dashboard.
+
+data-amount
+
+mandatory
+
+`integer` The amount to be paid by the customer in cents. For example, if the amount is ₹500, enter `50000`.
+
+data-currency
+
+mandatory
+
+`string` The currency in which the payment should be made by the customer. See the [list of supported currencies](/razorpay-docs-md/international-payments.md#supported-currencies) data-order\_id
+
+mandatory
+
+`string` Unique identifier of the Order generated in [Step 1: Create an Order in your Server](/razorpay-docs-md/payment-gateway/quick-integration/integration-steps.md#11-create-an-order-in-server).
+
+data-buttontext
+
+mandatory
+
+`string` The text you want to display on the button. For example, `Buy Now!`.
+
+data-name
+
+mandatory
+
+`string` Your Business/Enterprise name shown on the Checkout form. For example, **Acme Corp**.
+
+data-description
+
+optional
+
+`string` Description of the purchase item shown on the Checkout form. It should start with an alphanumeric character.
+
+data-image
+
+mandatory
+
+`string` Link to an image (usually your business logo) shown on the Checkout form. Can also be a **base64** string if you are not loading the image from a network.
+
+data-prefill.name
+
+optional
+
+`string` Cardholder's name to be pre-filled when the Checkout opens.
+
+data-prefill.email
+
+optional
+
+`string` Customer's email to be pre-filled when the Checkout opens.
+
+data-prefill.contact
+
+optional
+
+`string` Customer's phone number to be pre-filled when the Checkout opens.
+
+data-theme.color
+
+optional
+
+`string` Brand color to alter the appearance of Checkout form. For example, `#F37254`.
+
+Know more about the complete [list of available Checkout options](/razorpay-docs-md/payment-gateway/web-integration/standard/integration-steps.md#123-checkout-options).
+
+1.3 Store Fields in Your Server
+
+A successful payment returns the following fields to the Checkout form.
+
+Success Callback
+
+- You need to store these fields in your server.
+- You can confirm the authenticity of these details by verifying the signature in the next step.
+
+razorpay\_payment\_id
+
+`string` Unique identifier for the payment returned by Checkout **only** for successful payments.
+
+razorpay\_order\_id
+
+`string` Unique identifier for the order returned by Checkout.
+
+razorpay\_signature
+
+`string` Signature returned by the Checkout. This is used to verify the payment.
+
+1.4 Verify Payment Signature
+
+This is a mandatory step to confirm the authenticity of the details returned to the Checkout form for successful payments.
+
+To verify the `razorpay_signature` returned to you by the Checkout form:
+
+1. Create a signature in your server using the following attributes:
+
+   - `order_id`: Retrieve the `order_id` from your server. Do not use the `razorpay_order_id` returned by Checkout.
+   - `razorpay_payment_id`: Returned by Checkout.
+   - `key_secret`: Available in your server. The `key_secret` that was generated from the [Dashboard](/razorpay-docs-md/dashboard/account-settings/api-keys.md#generate-api-keys)     .
+2. Use the SHA256 algorithm, the `razorpay_payment_id` and the `order_id` to construct a HMAC hex digest as shown below:
+
+   HMAC Hex Digest
+
+   copy
+
+   ```html
+generated_signature = hmac_sha256(order_id + "|" + razorpay_payment_id, secret);
+
+  if (generated_signature == razorpay_signature) {
+    payment is successful
+  }
+```
+3. If the signature you generate on your server matches the `razorpay_signature` returned to you by the Checkout form, the payment received is from an authentic source.
+
+Generate Signature on Your Server
+
+Given below is the sample code for payment signature verification:
+
+JavaPythonGoPHPRubyNode.js.NET
+
+copy
+
+```java
+RazorpayClient razorpay = new RazorpayClient("[YOUR_KEY_ID]", "[YOUR_KEY_SECRET]");
+
+String secret = "EnLs21M47BllR3X8PSFtjtbd";
+
+JSONObject options = new JSONObject();
+options.put("razorpay_order_id", "order_IEIaMR65cu6nz3");
+options.put("razorpay_payment_id", "pay_IH4NVgf4Dreq1l");
+options.put("razorpay_signature", "0d4e745a1838664ad6c9c9902212a32d627d68e917290b0ad5f08ff4561bc50f");
+
+boolean status =  Utils.verifyPaymentSignature(options, secret);
+```
+
+Post Signature Verification
+
+After you have completed the integration, you can [set up webhooks](/docs/webhooks/setup-edit-payments/), make test payments, replace the test key with the live key and integrate with other [APIs](/razorpay-docs-md/api/index.md).
+
+Here are the links to our [SDKs](/razorpay-docs-md/payment-gateway/web-integration/standard.md#github-and-documentation-links-for-sdks) for the supported platforms.
+
+1.6 Verify Payment Status
+
+**Handy Tips**
+
+On the Razorpay Dashboard, ensure that the payment status is `captured`. Refer to the payment capture settings page to know how to [capture payments automatically](/razorpay-docs-md/payments/capture-settings.md).
+
+You can track the payment status in three ways:
+
+Verify Status from Dashboard
+
+Subscribe to Webhook Events
+
+Poll APIs
+
+To verify the payment status from the Razorpay Dashboard:
+
+1. Log in to the Razorpay Dashboard and navigate to **Transactions** → **Payments**.
+2. Check if a **Payment Id** has been generated and note the status. In case of a successful payment, the status is marked as **Captured**.
+
+![Payment details on Dashboard](https://razorpay.com/docs/payments/payment-gateway/quick-integration/build/browser/assets/images/testpayment.jpg)
+
+## 2. Test Integration
+
+After the integration is complete, a **Pay** button appears on your webpage/app.
+
+![Test integration on your webpage/app](https://razorpay.com/docs/payments/payment-gateway/quick-integration/build/browser/assets/images/test-int.gif)
+
+Click the button and make a test transaction to ensure the integration is working as expected. You can start accepting actual payments from your customers once the test transaction is successful.
+
+**Watch Out!**
+
+This is a mock payment page that uses your test API keys, test card and payment details.
+
+- Ensure you have entered only your [Test Mode API keys](/razorpay-docs-md/dashboard/account-settings/api-keys.md#generate-api-keys)
+
+  in the Checkout code.
+- Test mode features a mock bank page with **Success** and **Failure** buttons to replicate the live payment experience.
+- No real money is deducted due to the usage of test API keys. This is a simulated transaction.
+
+Following are all the payment modes that the customer can use to complete the payment on the Checkout. Some of them are available by default, while others may require approval from us. Raise a request from the Dashboard to enable such payment methods.
+
+You can make test payments using one of the payment methods configured at the Checkout.
+
+Netbanking
+
+You can select any of the listed banks. After choosing a bank, Razorpay will redirect to a mock page where you can make the payment `success` or a `failure`. Since this is Test Mode, we will not redirect you to the bank login portals.
+
+Check the list of [supported banks](/razorpay-docs-md/payment-methods/netbanking.md#supported-banks).
+
+UPI
+
+You can enter one of the following UPI IDs:
+
+- `success@razorpay`: To make the payment successful.
+- `failure@razorpay`: To fail the payment.
+
+Check the list of [supported UPI flows](/razorpay-docs-md/payment-methods/upi.md).
+
+**Handy Tips**
+
+You can use **Test Mode** to test UPI payments, and **Live Mode** for UPI Intent and QR payments.
+
+Cards
+
+You can use the following test cards to test transactions for your integration in Test Mode.
+
+### Domestic Cards
+
+Use the following test cards for Indian payments:
+
+#### Error Scenarios
+
+Use these test cards to simulate payment errors. See the [complete list](/razorpay-docs-md/payments/test-card-details.md#error-scenario-test-cards) of error test cards with detailed scenarios.
+Check the following lists:
+
+- [Supported Card Networks](/razorpay-docs-md/payment-methods/cards.md)
+
+  .
+- [Cards Error Codes](/docs/errors/payments/cards/)
+
+  .
+
+### International Cards
+
+Use the following test cards to test international payments. Use any valid expiration date in the future in the MM/YY format and any random CVV to create a successful payment.
+
+Check the list of [supported card networks](/razorpay-docs-md/payment-methods/cards.md).
+
+Wallet
+
+You can select any of the listed wallets. After choosing a wallet, Razorpay will redirect to a mock page where you can make the payment `success` or a `failure`. Since this is Test Mode, we will not redirect you to the wallet login portals.
+
+Check the list of [supported wallets](/razorpay-docs-md/payment-methods/wallets.md#supported-wallets).
+
+## 3. Go-live Checklist
+
+Check the go-live checklist for Razorpay Web Standard Checkout integration. Consider these steps before taking the integration live.
+
+3.1 Accept Live Payments
+
+Perform an end-to-end simulation of funds flow in the Test Mode. Once confident that the integration is working as expected, switch to the Live Mode and start accepting payments from customers.
+
+**Watch Out!**
+
+Ensure you are switching your test API keys with API keys generated in Live Mode.
+
+To generate API Keys in Live Mode on your Razorpay Dashboard:
+
+1. Log in to the Razorpay Dashboard and switch to **Live Mode** on the menu.
+2. Navigate to **Account & Settings** → **API Keys** → **Generate Key** to generate the API Key for Live Mode.
+3. Download the keys and save them securely.
+4. Replace the Test API Key with the Live Key in the Checkout code and start accepting actual payments.
+
+3.2 Payment Capture
+
+After payment is `authorized`, you need to capture it to settle the amount to your bank account as per the settlement schedule. Payments that are not captured are auto-refunded after a fixed time.
+
+**Watch Out**
+
+- You should deliver the products or services to your customers only after the payment is captured. Razorpay automatically refunds all the uncaptured payments.
+- You can track the payment status using our [Fetch a Payment API](/razorpay-docs-md/api/payments.md#fetch-a-payment)
+
+  or webhooks.
+
+Auto-capture Payments (Recommended)
+
+Manually Capture Payments
+
+Authorized payments can be automatically captured. You can auto-capture all payments [using global settings](/razorpay-docs-md/payments/capture-settings.md#auto-capture-all-payments) on the Razorpay Dashboard. Know more about [capture settings for payments](/razorpay-docs-md/payments/capture-settings.md).
+
+**Watch Out!**
+
+Payment capture settings work only if you have integrated with Orders API on your server side. Know more about the [Orders API](/razorpay-docs-md/api/orders/create.md).
+
+3.3 Set Up Webhooks
+
+Ensure you have [set up webhooks](/docs/webhooks/setup-edit-payments/) in the live mode and configured the events for which you want to receive notifications.
+
+**Implementation Considerations**
+
+Webhooks are the primary and most efficient method for event notifications. They are delivered asynchronously in near real-time. For critical user-facing flows that need instant confirmation (like showing "Payment Successful" immediately), supplement webhooks with API verification.
+
+**Recommended approach**
+
+- Rely on webhooks for all automation, which can be asynchronous.
+- If a critical user-facing flow requires instant status, but the webhook notification has not arrived within the time mandated by your business needs, perform an immediate API Fetch call ( [Payments](/razorpay-docs-md/api/payments/fetch-with-id.md)  , [Orders](/razorpay-docs-md/api/orders/fetch-with-id.md)
+
+  and [Refunds](/razorpay-docs-md/api/refunds/fetch-specific-refund-payment.md)
+
+  ) to verify the status.
