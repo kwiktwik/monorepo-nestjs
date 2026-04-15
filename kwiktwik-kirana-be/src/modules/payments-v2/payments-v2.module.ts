@@ -18,6 +18,7 @@
  */
 
 import { Module, Global, OnModuleInit } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 // Services
@@ -82,7 +83,7 @@ const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !
  */
 @Global()
 @Module({
-  imports: [ScheduleModule.forRoot()],
+  imports: [ConfigModule, ScheduleModule.forRoot()],
   controllers: [WebhookController, SubscriptionApiController],
   providers: [
     // Configuration
