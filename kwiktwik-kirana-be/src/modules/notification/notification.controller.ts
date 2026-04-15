@@ -22,7 +22,7 @@ import { NotificationService } from './notification.service';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
 import { ZodValidationPipe } from '../phonepe-v2/infrastructure/validation/zod-validation.pipe';
-import { CreateNotificationV2Schema } from './dto/create-notification-v2.schema';
+import { CreateNotificationV2Schema, CreateNotificationV2Input } from './dto/create-notification-v2.schema';
 import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -99,10 +99,7 @@ export class NotificationController {
     description: 'App identifier',
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
-  @UsePipes(
-    new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }),
-    new ZodValidationPipe(CreateNotificationV2Schema),
-  )
+  @UsePipes(new ZodValidationPipe(CreateNotificationV2Schema))
   @ApiOperation({
     summary: 'Create notification (v2) - Android sends pre-parsed data',
     description:
@@ -110,9 +107,9 @@ export class NotificationController {
   })
   async createV2(
     @CurrentUser() user: { userId: string },
-    @Body() dto: CreateNotificationV2Dto,
+    @Body() dto: CreateNotificationV2Input,
   ) {
-    return this.notificationService.createV2(user.userId, dto);
+    return this.notificationService.createV2(user.userId, dto as CreateNotificationV2Dto);
   }
 
   @Patch('status')
