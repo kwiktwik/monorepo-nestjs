@@ -447,17 +447,49 @@ export class NotificationService {
   }
 
   async updateStatus(userId: string, dto: UpdateNotificationStatusDto) {
-    const { notificationLogId, ttsAnnounced, teamNotificationSent } = dto;
+    const { notificationLogId, notificationId, ttsAnnounced, teamNotificationSent } = dto;
 
-    if (!Number.isInteger(notificationLogId) || notificationLogId <= 0) {
+    // Validate at least one ID is provided
+    if (!notificationLogId && !notificationId) {
       throw new BadRequestException(
-        'Missing or invalid notificationLogId (positive integer required)',
+        'Provide either notificationLogId or notificationId',
       );
     }
 
     if (ttsAnnounced === undefined && teamNotificationSent === undefined) {
       throw new BadRequestException(
         'Provide at least one field to update: ttsAnnounced, teamNotificationSent',
+      );
+    }
+
+    // Resolve notificationLogId from notificationId if needed
+    let resolvedNotificationLogId = notificationLogId;
+    if (!resolvedNotificationLogId && notificationId) {
+      const [enhanced] = await this.db
+        .select({
+          notificationLogId: schema.enhancedNotifications.notificationLogId,
+        })
+        .from(schema.enhancedNotifications)
+        .where(
+          and(
+            eq(schema.enhancedNotifications.notificationId, notificationId),
+            eq(schema.enhancedNotifications.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!enhanced || !enhanced.notificationLogId) {
+        throw new NotFoundException(
+          'Notification not found for given notificationId or access denied',
+        );
+      }
+      resolvedNotificationLogId = enhanced.notificationLogId;
+    }
+
+    // Validate the resolved ID
+    if (!resolvedNotificationLogId || resolvedNotificationLogId <= 0) {
+      throw new BadRequestException(
+        'Invalid notificationLogId (positive integer required)',
       );
     }
 
@@ -468,7 +500,7 @@ export class NotificationService {
       .from(schema.notificationLogs)
       .where(
         and(
-          eq(schema.notificationLogs.id, notificationLogId),
+          eq(schema.notificationLogs.id, resolvedNotificationLogId),
           eq(schema.notificationLogs.userId, userId),
         ),
       )
@@ -488,7 +520,7 @@ export class NotificationService {
       await this.db
         .update(schema.notificationLogs)
         .set({ ttsAnnounced, updatedAt: now })
-        .where(eq(schema.notificationLogs.id, notificationLogId));
+        .where(eq(schema.notificationLogs.id, resolvedNotificationLogId!));
       updates.notificationLog = { ttsAnnounced };
     }
 
@@ -514,7 +546,7 @@ export class NotificationService {
         .set(enhancedSet)
         .where(
           and(
-            eq(schema.enhancedNotifications.notificationLogId, notificationLogId),
+            eq(schema.enhancedNotifications.notificationLogId, resolvedNotificationLogId!),
             eq(schema.enhancedNotifications.userId, userId),
           ),
         );
@@ -527,7 +559,7 @@ export class NotificationService {
 
     return {
       success: true,
-      notificationLogId,
+      notificationLogId: resolvedNotificationLogId,
       updated: updates,
     };
   }

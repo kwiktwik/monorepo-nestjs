@@ -1,13 +1,22 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class UpdateNotificationStatusDto {
-  @ApiProperty({
-    description: 'ID from POST /notifications/v1 or /notifications/v2 response',
+  @ApiPropertyOptional({
+    description: 'Database notification log ID (preferred)',
     example: 123,
   })
+  @IsOptional()
   @IsInt()
-  notificationLogId: number;
+  notificationLogId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Android device notification ID (alternative - will be resolved to notificationLogId)',
+    example: 'com.phonepe.app_1709876543210_abc123',
+  })
+  @IsOptional()
+  @IsString()
+  notificationId?: string;
 
   @ApiPropertyOptional({
     description: 'Whether TTS was announced on device',
