@@ -5,7 +5,7 @@
  * Supports both in-memory (development) and database-backed (production) storage.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 
 // ============================================================================
 // Idempotency Key Types
@@ -296,7 +296,11 @@ export class IdempotencyService {
   private readonly logger = new Logger(IdempotencyService.name);
   private store: IdempotencyStore;
 
-  constructor(store?: IdempotencyStore) {
+  constructor(
+    @Optional()
+    @Inject('IdempotencyStore')
+    store?: IdempotencyStore,
+  ) {
     this.store = store ?? new InMemoryIdempotencyStore();
   }
 
