@@ -99,7 +99,10 @@ export class NotificationController {
     description: 'App identifier',
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
-  @UsePipes(new ZodValidationPipe(CreateNotificationV2Schema))
+  @UsePipes(
+    new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }),
+    new ZodValidationPipe(CreateNotificationV2Schema),
+  )
   @ApiOperation({
     summary: 'Create notification (v2) - Android sends pre-parsed data',
     description:
