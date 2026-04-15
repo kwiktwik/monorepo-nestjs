@@ -194,6 +194,7 @@ export const ValidStateTransitions: Readonly<Record<SubscriptionStatus, readonly
     SubscriptionStatus.REVOKED,
     SubscriptionStatus.COMPLETED,
     SubscriptionStatus.RETRYING, // Payment failed, retrying
+    SubscriptionStatus.FAILED, // Permanent failure
   ] as const,
 
   [SubscriptionStatus.PAUSED]: [
@@ -205,6 +206,7 @@ export const ValidStateTransitions: Readonly<Record<SubscriptionStatus, readonly
   [SubscriptionStatus.RETRYING]: [
     SubscriptionStatus.ACTIVE, // Payment succeeded
     SubscriptionStatus.EXPIRED, // Max retries exceeded
+    SubscriptionStatus.FAILED, // Permanent failure
     SubscriptionStatus.CANCELLED, // User cancelled during retry
   ] as const,
 
@@ -354,6 +356,12 @@ export const StateMachineEvent = {
   RETRY: 'RETRY',
   RETRY_EXHAUSTED: 'RETRY_EXHAUSTED',
   EXPIRE: 'EXPIRE',
+  
+  // Permanent failure events
+  PAYMENT_FAILED_PERMANENTLY: 'PAYMENT_FAILED_PERMANENTLY',
+  
+  // Cycle completion events
+  ALL_CYCLES_COMPLETED: 'ALL_CYCLES_COMPLETED',
 } as const;
 
 export type StateMachineEvent = typeof StateMachineEvent[keyof typeof StateMachineEvent];
@@ -439,6 +447,14 @@ export const EventTransitionMap: Readonly<Record<StateMachineEvent, {
   [StateMachineEvent.EXPIRE]: {
     from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
     to: SubscriptionStatus.EXPIRED,
+  },
+  [StateMachineEvent.PAYMENT_FAILED_PERMANENTLY]: {
+    from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
+    to: SubscriptionStatus.FAILED,
+  },
+  [StateMachineEvent.ALL_CYCLES_COMPLETED]: {
+    from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
+    to: SubscriptionStatus.COMPLETED,
   },
 } as const;
 

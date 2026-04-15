@@ -12,6 +12,7 @@
  * - Event-driven architecture
  * - Drizzle ORM persistence
  * - Encryption for credentials
+ * - Scheduled billing for user-managed subscriptions
  */
 
 // ============================================================================
@@ -63,6 +64,14 @@ export * from './controllers';
 
 // Infrastructure
 export * from './infrastructure';
+
+// Scheduler
+export {
+  BillingSchedulerService,
+  type BillingSchedulerConfig,
+  type BillingProcessResult,
+  type BillingBatchResult,
+} from './scheduler/billing-scheduler.service';
 
 // Event Bus
 export type {

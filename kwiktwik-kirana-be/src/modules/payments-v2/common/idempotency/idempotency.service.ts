@@ -297,7 +297,7 @@ export class IdempotencyService {
   private store: IdempotencyStore;
 
   constructor(store?: IdempotencyStore) {
-    this.store = store ?? new InMemoryIdpendencyStore();
+    this.store = store ?? new InMemoryIdempotencyStore();
   }
 
   /**
@@ -551,6 +551,3 @@ export class IdempotencyOperationInProgressError extends Error {
     this.name = 'IdempotencyOperationInProgressError';
   }
 }
-
-// Alias for backward compatibility
-class InMemoryIdpendencyStore extends InMemoryIdempotencyStore {}

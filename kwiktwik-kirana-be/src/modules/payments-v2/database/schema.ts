@@ -23,7 +23,6 @@ import {
   pgEnum,
   unique,
   integer,
-  serial,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -300,6 +299,7 @@ export const subscriptionsV2 = pgTable(
     currency: varchar('currency', { length: 3 }).notNull().default('INR'),
     frequency: billingFrequencyEnum('frequency').notNull(),
     maxAmount: integer('max_amount'), // for variable amount subscriptions
+    totalCycles: integer('total_cycles'), // null = unlimited
     
     // === Status ===
     status: subscriptionStatusV2Enum('status').notNull().default('CREATED'),

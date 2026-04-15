@@ -527,6 +527,14 @@ export class SubscriptionStateMachineService {
         from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
         to: SubscriptionStatus.EXPIRED,
       },
+      [StateMachineEvent.PAYMENT_FAILED_PERMANENTLY]: {
+        from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
+        to: SubscriptionStatus.FAILED,
+      },
+      [StateMachineEvent.ALL_CYCLES_COMPLETED]: {
+        from: [SubscriptionStatus.ACTIVE, SubscriptionStatus.RETRYING],
+        to: SubscriptionStatus.COMPLETED,
+      },
     };
   }
 

@@ -366,7 +366,7 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
       recurringAmount: row.recurringAmount,
       currency: row.currency,
       frequency: this.mapFrequencyToDomain(row.frequency),
-      totalCycles: null, // TODO: Add totalCycles to schema
+      totalCycles: row.totalCycles,
     };
 
     const providerData: ProviderSubscriptionData = {
@@ -457,6 +457,7 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
       currency: subscription.pricing.currency,
       frequency: this.mapFrequencyToDatabase(subscription.pricing.frequency),
       maxAmount: null,
+      totalCycles: subscription.pricing.totalCycles,
       status: subscription.status,
       previousStatus: null,
       billingCycleCount: subscription.billingCycleCount,

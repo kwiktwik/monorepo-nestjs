@@ -14,9 +14,11 @@
  * - Event-driven architecture for loose coupling
  * - Drizzle ORM for persistent storage
  * - Encryption for sensitive credentials
+ * - Scheduled billing for user-managed subscriptions
  */
 
 import { Module, Global, OnModuleInit } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 
 // Services
 import { SubscriptionStateMachineService } from './services/subscription-state-machine.service';
@@ -27,6 +29,9 @@ import { PaymentConfigService } from './config/payment-config.service';
 // New Services
 import { WebhookProcessorService } from './webhooks/webhook-processor.service';
 import { IdempotencyService, InMemoryIdempotencyStore } from './common/idempotency/idempotency.service';
+
+// Scheduler
+import { BillingSchedulerService } from './scheduler/billing-scheduler.service';
 
 // Event Bus
 import { InMemoryEventBus } from './common/events/in-memory-event-bus';
@@ -57,6 +62,7 @@ import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 
 // Feature flags
 const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
+const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !== 'false';
 
 /**
  * Payments V2 Module
@@ -72,9 +78,11 @@ const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
  * - Idempotency service for safe retries
  * - Event bus for async processing
  * - Encryption service for credentials
+ * - Scheduled billing for user-managed subscriptions
  */
 @Global()
 @Module({
+  imports: [ScheduleModule.forRoot()],
   controllers: [WebhookController, SubscriptionApiController],
   providers: [
     // Configuration
@@ -106,6 +114,9 @@ const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
     
     // Encryption
     EncryptionService,
+    
+    // Billing Scheduler (conditionally added based on feature flag)
+    ...(ENABLE_BILLING_SCHEDULER ? [BillingSchedulerService] : []),
     
     // Repositories - use Drizzle for production, in-memory for development
     ...(USE_DATABASE_REPOSITORIES
@@ -154,6 +165,9 @@ const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
     
     // Encryption
     EncryptionService,
+    
+    // Billing Scheduler
+    ...(ENABLE_BILLING_SCHEDULER ? [BillingSchedulerService] : []),
     
     // Repositories
     'ISubscriptionRepository',
