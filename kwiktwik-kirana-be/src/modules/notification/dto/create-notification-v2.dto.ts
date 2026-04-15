@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsBoolean, IsOptional, IsNumber, IsObject } from 'class-validator';
 
 export class CreateNotificationV2Dto {
   // Required fields - Android sends these pre-parsed

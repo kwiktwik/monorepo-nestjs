@@ -22,7 +22,7 @@ import { NotificationService } from './notification.service';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateNotificationV2Dto } from './dto/create-notification-v2.dto';
 import { ZodValidationPipe } from '../phonepe-v2/infrastructure/validation/zod-validation.pipe';
-import { CreateNotificationV2Schema, CreateNotificationV2Input } from './dto/create-notification-v2.schema';
+import { CreateNotificationV2Schema } from './dto/create-notification-v2.schema';
 import type {
   RegisterPushTokenDto,
   DeletePushTokenDto,
@@ -107,9 +107,9 @@ export class NotificationController {
   })
   async createV2(
     @CurrentUser() user: { userId: string },
-    @Body() dto: CreateNotificationV2Input,
+    @Body() dto: CreateNotificationV2Dto,
   ) {
-    return this.notificationService.createV2(user.userId, dto as CreateNotificationV2Dto);
+    return this.notificationService.createV2(user.userId, dto);
   }
 
   @Patch('status')
