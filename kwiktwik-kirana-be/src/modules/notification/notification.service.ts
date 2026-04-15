@@ -72,14 +72,24 @@ export class NotificationService {
     const conditions = [eq(schema.enhancedNotifications.userId, userId)];
 
     if (options.startDate) {
-      const start = new Date(options.startDate);
+      // Parse as UTC to match database timestamps
+      const startDateStr =
+        options.startDate.includes('Z') || options.startDate.includes('+')
+          ? options.startDate
+          : options.startDate + 'Z';
+      const start = new Date(startDateStr);
       if (!isNaN(start.getTime())) {
         conditions.push(gte(schema.enhancedNotifications.timestamp, start));
       }
     }
 
     if (options.endDate) {
-      const end = new Date(options.endDate);
+      // Parse as UTC to match database timestamps
+      const endDateStr =
+        options.endDate.includes('Z') || options.endDate.includes('+')
+          ? options.endDate
+          : options.endDate + 'Z';
+      const end = new Date(endDateStr);
       if (!isNaN(end.getTime())) {
         conditions.push(lte(schema.enhancedNotifications.timestamp, end));
       }
@@ -447,7 +457,12 @@ export class NotificationService {
   }
 
   async updateStatus(userId: string, dto: UpdateNotificationStatusDto) {
-    const { notificationLogId, notificationId, ttsAnnounced, teamNotificationSent } = dto;
+    const {
+      notificationLogId,
+      notificationId,
+      ttsAnnounced,
+      teamNotificationSent,
+    } = dto;
 
     // Validate at least one ID is provided
     if (!notificationLogId && !notificationId) {
@@ -507,7 +522,9 @@ export class NotificationService {
       .limit(1);
 
     if (!log) {
-      throw new NotFoundException('Notification log not found or access denied');
+      throw new NotFoundException(
+        'Notification log not found or access denied',
+      );
     }
 
     const now = new Date();
@@ -546,7 +563,10 @@ export class NotificationService {
         .set(enhancedSet)
         .where(
           and(
-            eq(schema.enhancedNotifications.notificationLogId, resolvedNotificationLogId!),
+            eq(
+              schema.enhancedNotifications.notificationLogId,
+              resolvedNotificationLogId!,
+            ),
             eq(schema.enhancedNotifications.userId, userId),
           ),
         );
