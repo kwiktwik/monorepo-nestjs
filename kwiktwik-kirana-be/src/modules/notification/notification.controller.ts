@@ -9,6 +9,7 @@ import {
   BadRequestException,
   Delete,
   UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -81,6 +82,7 @@ export class NotificationController {
     description: 'App identifier',
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }))
   @ApiOperation({ summary: 'Create notification (v1)' })
   async create(
     @CurrentUser() user: { userId: string },
