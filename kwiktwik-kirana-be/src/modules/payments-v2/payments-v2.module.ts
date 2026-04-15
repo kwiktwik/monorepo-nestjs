@@ -1,10 +1,10 @@
 /**
  * Payments V2 NestJS Module
- * 
+ *
  * Provides a unified payment system supporting multiple providers:
  * - Razorpay (subscriptions, one-time payments)
  * - PhonePe (UPI Autopay, UPI Mandate, one-time payments)
- * 
+ *
  * Key features:
  * - Provider-agnostic subscription management
  * - Unified state machine for subscription/order statuses
@@ -15,9 +15,10 @@
  * - Drizzle ORM for persistent storage
  * - Encryption for sensitive credentials
  * - Scheduled billing for user-managed subscriptions
+ * - Circuit breaker for provider resilience
  */
 
-import { Module, Global, OnModuleInit } from '@nestjs/common';
+import { Module, Global, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -41,6 +42,10 @@ import type { IEventBus } from './common/events/event-bus.interface';
 // Security
 import { EncryptionService } from './common/security/encryption.service';
 
+// Resilience
+import { CircuitBreakerService } from './common/resilience/circuit-breaker.service';
+import type { PaymentFallbackConfig } from './common/resilience/payment-fallback.strategies';
+
 // Provider Factory
 import { ProviderFactory } from './providers/factory/provider.factory';
 
@@ -61,13 +66,34 @@ import type { IOrderRepository } from './infrastructure/repositories/order.repos
 // Database
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 
+// Redis
+import { RedisService } from '../../common/redis/redis.service';
+
 // Feature flags
 const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
 const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !== 'false';
+const ENABLE_CIRCUIT_BREAKER = process.env.PAYMENT_CIRCUIT_BREAKER_ENABLED !== 'false';
+
+// Circuit breaker default configuration
+const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
+  failureThreshold: 5,
+  successThreshold: 3,
+  timeoutMs: 30000,
+  failureWindowMs: 60000,
+};
+
+// Fallback default configuration
+const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
+  enableRetryQueue: true,
+  maxRetries: 5,
+  initialRetryDelayMs: 1000,
+  maxRetryDelayMs: 60000,
+  useCachedData: true,
+};
 
 /**
  * Payments V2 Module
- * 
+ *
  * Provides:
  * - Subscription state machine
  * - Provider factory with multi-provider support
@@ -80,6 +106,7 @@ const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !
  * - Event bus for async processing
  * - Encryption service for credentials
  * - Scheduled billing for user-managed subscriptions
+ * - Circuit breaker for provider resilience
  */
 @Global()
 @Module({
@@ -88,37 +115,70 @@ const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !
   providers: [
     // Configuration
     PaymentConfigService,
-    
-    // Provider Factory
-    ProviderFactory,
-    
+
+    // Circuit Breaker Service (with Redis client)
+    {
+      provide: CircuitBreakerService,
+      useFactory: (redisService: RedisService) => {
+        const logger = new Logger('CircuitBreakerFactory');
+        const redisClient = redisService.isRedisEnabled() ? redisService.getClient() : null;
+
+        if (!redisClient) {
+          logger.warn('Redis not available, circuit breaker will use local in-memory state');
+        } else {
+          logger.log('Circuit breaker initialized with Redis backend');
+        }
+
+        const service = new CircuitBreakerService(redisClient);
+
+        // Configure default circuit breaker settings for providers
+        service.configure('RAZORPAY', DEFAULT_CIRCUIT_BREAKER_CONFIG);
+        service.configure('PHONEPE', DEFAULT_CIRCUIT_BREAKER_CONFIG);
+
+        return service;
+      },
+      inject: [RedisService],
+    },
+
+    // Provider Factory (with circuit breaker)
+    {
+      provide: ProviderFactory,
+      useFactory: (circuitBreaker: CircuitBreakerService) => {
+        if (!ENABLE_CIRCUIT_BREAKER) {
+          return new ProviderFactory(undefined, DEFAULT_FALLBACK_CONFIG);
+        }
+        return new ProviderFactory(circuitBreaker, DEFAULT_FALLBACK_CONFIG);
+      },
+      inject: [CircuitBreakerService],
+    },
+
     // Core Services
     SubscriptionStateMachineService,
     SubscriptionManagerService,
     WebhookHandlerService,
-    
+
     // Webhook Processing
     WebhookProcessorService,
-    
+
     // Idempotency
     IdempotencyService,
     {
       provide: 'IdempotencyStore',
       useClass: InMemoryIdempotencyStore,
     },
-    
+
     // Event Bus
     {
       provide: 'IEventBus',
       useClass: InMemoryEventBus,
     },
-    
+
     // Encryption
     EncryptionService,
-    
+
     // Billing Scheduler (conditionally added based on feature flag)
     ...(ENABLE_BILLING_SCHEDULER ? [BillingSchedulerService] : []),
-    
+
     // Repositories - use Drizzle for production, in-memory for development
     ...(USE_DATABASE_REPOSITORIES
       ? [
@@ -145,31 +205,34 @@ const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !
   exports: [
     // Configuration
     PaymentConfigService,
-    
+
+    // Resilience
+    CircuitBreakerService,
+
     // Provider Factory
     ProviderFactory,
-    
+
     // Core Services
     SubscriptionStateMachineService,
     SubscriptionManagerService,
     WebhookHandlerService,
-    
+
     // Webhook Processing
     WebhookProcessorService,
-    
+
     // Idempotency
     IdempotencyService,
     'IdempotencyStore',
-    
+
     // Event Bus
     'IEventBus',
-    
+
     // Encryption
     EncryptionService,
-    
+
     // Billing Scheduler
     ...(ENABLE_BILLING_SCHEDULER ? [BillingSchedulerService] : []),
-    
+
     // Repositories
     'ISubscriptionRepository',
     'IOrderRepository',
