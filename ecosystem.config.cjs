@@ -35,7 +35,7 @@ module.exports = {
       args: "start",
       cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
       kill_timeout: 20000,
-      instances: "2",
+      instances: "1",
       exec_mode: "cluster",
       env_production: {
         PORT: 3000,
@@ -43,32 +43,6 @@ module.exports = {
       },
       wait_ready: true,
       listen_timeout: 10000,
-    },
-    {
-      name: "check-subscriptions-cron",
-      cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
-      script: "scripts/check-subscriptions-cron.js",
-      cron_restart: "*/15 * * * *", // Run every 15 minutes
-      autorestart: false, // Don't auto-restart, only run on cron schedule
-      watch: false,
-      env_production: {
-        PORT: 3000, // Use the first app's port
-        BASE_URL: "https://api.kiranaapps.com", // Production domain
-        CRON_SECRET: "Xv8UHlz740SH", // Pass through from system env
-      },
-    },
-    {
-      name: "segment-no-trial-cron",
-      cwd: "/home/ubuntu/project/backend-monorepo/kirana-fe",
-      script: "scripts/segment-no-trial-cron.js",
-      cron_restart: "0 */4 * * *", // Run every 4 hours (at minute 0)
-      autorestart: false,
-      watch: false,
-      env_production: {
-        PORT: 3000,
-        BASE_URL: "https://api.kiranaapps.com",
-        CRON_SECRET: "Xv8UHlz740SH",
-      },
     },
     {
       name: "segment-trial-ended-cron",
