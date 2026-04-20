@@ -1,4 +1,7 @@
 import { UAParser } from 'ua-parser-js';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('MixpanelHelpers');
 
 export interface MixpanelEnrichmentProps {
   $browser?: string;
@@ -36,7 +39,7 @@ export function parseUserAgent(
       $os: os.name || undefined,
     };
   } catch (error) {
-    console.warn('[Mixpanel] Failed to parse User-Agent:', error);
+    logger.warn(`Failed to parse User-Agent: ${error}`);
     return {};
   }
 }
@@ -81,7 +84,7 @@ export function extractUtmParams(
       });
     }
   } catch (error) {
-    console.warn('[Mixpanel] Failed to extract UTM params:', error);
+    logger.warn(`Failed to extract UTM params: ${error}`);
   }
 
   return result;
@@ -138,7 +141,7 @@ export function getClientIp(
 
     return realIp || undefined;
   } catch (error) {
-    console.warn('[Mixpanel] Failed to extract client IP:', error);
+    logger.warn(`Failed to extract client IP: ${error}`);
     return undefined;
   }
 }

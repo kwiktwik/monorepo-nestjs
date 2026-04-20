@@ -28,6 +28,16 @@ import {
 
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
+/**
+ * Helper to extract Redis TIME result as milliseconds
+ * Handles both string[] and number[] return types from different ioredis versions
+ */
+function parseRedisTime(timeResult: string[] | number[] | [string, string]): number {
+  const seconds = typeof timeResult[0] === 'string' ? parseInt(timeResult[0], 10) : timeResult[0];
+  const microseconds = typeof timeResult[1] === 'string' ? parseInt(timeResult[1], 10) : timeResult[1];
+  return seconds * 1000 + Math.floor(microseconds / 1000);
+}
+
 export interface CircuitBreakerConfig {
   /** Number of failures before opening circuit */
   readonly failureThreshold: number;
@@ -461,10 +471,8 @@ export class CircuitBreakerService {
     config: CircuitBreakerConfig,
   ): Promise<CircuitState> {
     // Get Redis server time for consistent comparison
-    const timeResult = (await this.redisClient!.time()) as [string, string];
-    const redisNowMs =
-      parseInt(timeResult[0], 10) * 1000 +
-      Math.floor(parseInt(timeResult[1], 10) / 1000);
+    const timeResult = await this.redisClient!.time();
+    const redisNowMs = parseRedisTime(timeResult);
 
     const state = await this.redisClient!.get(`${key}:state`);
     if (!state) return 'CLOSED';
@@ -521,10 +529,8 @@ export class CircuitBreakerService {
     config: CircuitBreakerConfig,
   ): Promise<CircuitStats> {
     // Use Redis TIME for consistent timestamp
-    const timeResult = (await this.redisClient!.time()) as [string, string];
-    const redisNowMs =
-      parseInt(timeResult[0], 10) * 1000 +
-      Math.floor(parseInt(timeResult[1], 10) / 1000);
+    const timeResult = await this.redisClient!.time();
+    const redisNowMs = parseRedisTime(timeResult);
     const windowStartMs = redisNowMs - config.failureWindowMs;
 
     const [state, changedAt, successCount] = await Promise.all([
@@ -694,9 +700,10 @@ export class CircuitBreakerService {
    */
   private async generateLockId(): Promise<string> {
     if (this.redisClient) {
-      const time = (await this.redisClient.time()) as [string, string];
-      const ms = Math.floor(parseInt(time[1], 10) / 1000);
-      return `${time[0]}:${ms}:${Math.random().toString(36).slice(2)}`;
+      const timeResult = await this.redisClient.time();
+      const seconds = typeof timeResult[0] === 'string' ? timeResult[0] : String(timeResult[0]);
+      const ms = Math.floor((typeof timeResult[1] === 'string' ? parseInt(timeResult[1], 10) : timeResult[1]) / 1000);
+      return `${seconds}:${ms}:${Math.random().toString(36).slice(2)}`;
     }
     return `${Date.now()}:${Math.random().toString(36).slice(2)}`;
   }
@@ -898,9 +905,8 @@ export class CircuitBreakerService {
     config: CircuitBreakerConfig,
   ): Promise<void> {
     // Get Redis time
-    const time = (await this.redisClient!.time()) as [string, string];
-    const nowMs =
-      parseInt(time[0], 10) * 1000 + Math.floor(parseInt(time[1], 10) / 1000);
+    const timeResult = await this.redisClient!.time();
+    const nowMs = parseRedisTime(timeResult);
     const windowStartMs = nowMs - config.failureWindowMs;
 
     // Use transaction for atomicity
@@ -1039,9 +1045,8 @@ export class CircuitBreakerService {
     // Get Redis time if not provided
     let timestamp = nowMs;
     if (!timestamp) {
-      const time = (await this.redisClient!.time()) as [string, string];
-      timestamp =
-        parseInt(time[0], 10) * 1000 + Math.floor(parseInt(time[1], 10) / 1000);
+      const timeResult = await this.redisClient!.time();
+      timestamp = parseRedisTime(timeResult);
     }
 
     await this.redisClient!.multi()
@@ -1078,9 +1083,8 @@ export class CircuitBreakerService {
     config: CircuitBreakerConfig,
   ): Promise<void> {
     // Get Redis time
-    const time = (await this.redisClient!.time()) as [string, string];
-    const nowMs =
-      parseInt(time[0], 10) * 1000 + Math.floor(parseInt(time[1], 10) / 1000);
+    const timeResult = await this.redisClient!.time();
+    const nowMs = parseRedisTime(timeResult);
 
     await this.redisClient!.multi()
       .set(`${key}:state`, 'CLOSED', 'EX', Math.ceil(config.stateTtlMs / 1000))

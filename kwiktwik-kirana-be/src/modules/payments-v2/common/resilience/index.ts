@@ -19,7 +19,7 @@ export {
   GetOrderStatusFallback,
   CancelSubscriptionFallback,
   FallbackStrategyFactory,
-  type FallbackConfig,
+  type PaymentFallbackConfig,
   type FallbackContext,
   type FallbackStrategy,
   type OperationType,

@@ -15,8 +15,36 @@ interface BetterAuthSession {
   expiresAt: Date;
 }
 
+/**
+ * Circuit Breaker State
+ * Prevents cascade failures when kirana-fe is overloaded
+ */
+interface CircuitBreakerState {
+  isOpen: boolean;
+  failureCount: number;
+  lastFailureTime: number;
+  lastSuccessTime: number;
+  nextRetryTime: number;
+}
+
+/**
+ * Circuit Breaker Configuration
+ * - Prevents repeated calls to a failing service
+ * - Allows time for the service to recover
+ * - Provides fast-fail behavior during outages
+ */
+const CIRCUIT_BREAKER_CONFIG = {
+  // Number of failures before opening the circuit
+  failureThreshold: 5,
+  // Time to wait before trying again (ms)
+  resetTimeout: 30000, // 30 seconds
+  // Half-open state: allow one request through to test
+  halfOpenMaxCalls: 1,
+};
+
 // Timeout configuration for session validation
-const SESSION_VALIDATION_TIMEOUT_MS = 5000; // 5 seconds
+// Increased from 5s to 10s to handle GC pauses in kirana-fe
+const DEFAULT_SESSION_VALIDATION_TIMEOUT_MS = 10000;
 
 export interface ValidationErrorDetails {
   tokenType: 'JWT' | 'BetterAuth' | 'Unknown';
@@ -38,6 +66,19 @@ export class BetterAuthValidator {
   private readonly logger = new Logger(BetterAuthValidator.name);
   private readonly kiranaFeBaseUrl: string;
   private readonly internalApiKey: string;
+  private readonly sessionValidationTimeoutMs: number;
+
+  /**
+   * Circuit Breaker State
+   * Prevents cascade failures when kirana-fe is overloaded
+   */
+  private circuitBreaker: CircuitBreakerState = {
+    isOpen: false,
+    failureCount: 0,
+    lastFailureTime: 0,
+    lastSuccessTime: Date.now(),
+    nextRetryTime: 0,
+  };
 
   constructor(private readonly configService: ConfigService) {
     this.kiranaFeBaseUrl = this.configService.get<string>(
@@ -48,6 +89,96 @@ export class BetterAuthValidator {
       'INTERNAL_API_KEY',
       '',
     );
+    this.sessionValidationTimeoutMs = this.configService.get<number>(
+      'SESSION_VALIDATION_TIMEOUT_MS',
+      DEFAULT_SESSION_VALIDATION_TIMEOUT_MS,
+    );
+  }
+
+  /**
+   * Check if circuit breaker should allow the request
+   * Returns true if request should proceed, false if circuit is open
+   */
+  private shouldAllowRequest(): { allowed: boolean; reason: string } {
+    const now = Date.now();
+    const cb = this.circuitBreaker;
+
+    // Circuit is closed - allow request
+    if (!cb.isOpen) {
+      return { allowed: true, reason: 'circuit_closed' };
+    }
+
+    // Circuit is open - check if we should try again
+    if (now >= cb.nextRetryTime) {
+      // Half-open state - allow one request to test
+      this.logger.log(
+        'Circuit breaker entering half-open state, allowing test request',
+      );
+      return { allowed: true, reason: 'circuit_half_open' };
+    }
+
+    // Circuit is still open - reject fast
+    const waitTime = Math.ceil((cb.nextRetryTime - now) / 1000);
+    return {
+      allowed: false,
+      reason: `circuit_open_retry_in_${waitTime}s`,
+    };
+  }
+
+  /**
+   * Record a successful request - close circuit if it was open
+   */
+  private recordSuccess(): void {
+    const cb = this.circuitBreaker;
+
+    if (cb.isOpen) {
+      this.logger.log('Circuit breaker closed after successful request');
+    }
+
+    cb.isOpen = false;
+    cb.failureCount = 0;
+    cb.lastSuccessTime = Date.now();
+  }
+
+  /**
+   * Record a failed request - potentially open circuit
+   */
+  private recordFailure(error: string): void {
+    const cb = this.circuitBreaker;
+    const now = Date.now();
+
+    cb.failureCount++;
+    cb.lastFailureTime = now;
+
+    // Check if we should open the circuit
+    if (cb.failureCount >= CIRCUIT_BREAKER_CONFIG.failureThreshold) {
+      cb.isOpen = true;
+      cb.nextRetryTime = now + CIRCUIT_BREAKER_CONFIG.resetTimeout;
+
+      this.logger.warn(
+        `Circuit breaker OPENED after ${cb.failureCount} failures. ` +
+          `Last error: ${error}. ` +
+          `Next retry in ${CIRCUIT_BREAKER_CONFIG.resetTimeout / 1000}s`,
+      );
+    }
+  }
+
+  /**
+   * Get circuit breaker status for health checks
+   */
+  getCircuitBreakerStatus(): {
+    isOpen: boolean;
+    failureCount: number;
+    lastFailureTime: number | null;
+  } {
+    return {
+      isOpen: this.circuitBreaker.isOpen,
+      failureCount: this.circuitBreaker.failureCount,
+      lastFailureTime:
+        this.circuitBreaker.lastFailureTime > 0
+          ? this.circuitBreaker.lastFailureTime
+          : null,
+    };
   }
 
   /**
@@ -151,6 +282,9 @@ export class BetterAuthValidator {
    *
    * IMPORTANT: throws are ALL UnauthorizedException with a `.details` property
    * that callers can use to skip re-building error info (avoids duplicate formatting).
+   *
+   * CIRCUIT BREAKER: Prevents cascade failures when kirana-fe is overloaded.
+   * After 5 consecutive failures, circuit opens for 30 seconds.
    */
   async validateSession(token: string): Promise<
     BetterAuthSession & {
@@ -159,8 +293,37 @@ export class BetterAuthValidator {
     }
   > {
     const tokenType = this.detectTokenType(token);
+
+    // Check circuit breaker before attempting request
+    const { allowed, reason } = this.shouldAllowRequest();
+    if (!allowed) {
+      this.logger.warn(
+        `Session validation blocked by circuit breaker: ${reason}`,
+      );
+      const details: ValidationErrorDetails = {
+        tokenType,
+        tokenPreview: token.substring(0, 30),
+        tokenLength: token.length,
+        kiranaFeUrl: `${this.kiranaFeBaseUrl}/api/internal/session/validate`,
+        timeoutMs: this.sessionValidationTimeoutMs,
+        errorType: 'CircuitBreakerOpen',
+        errorMessage: `Session validation temporarily unavailable. kirana-fe service is recovering. ${reason}`,
+        extractedUserId:
+          tokenType === 'JWT'
+            ? this.tryExtractUserIdFromJwt(token)
+            : undefined,
+        suggestion:
+          'Wait a few seconds and retry. The kirana-fe service is recovering from high load.',
+      };
+
+      const formatted = this.formatErrorDetails(details);
+      const exc = new UnauthorizedException(formatted) as any;
+      exc.validationDetails = details;
+      throw exc;
+    }
+
     this.logger.log(
-      `Validating session: type=${tokenType}, preview=${token.substring(0, 20)}...`,
+      `Validating session: type=${tokenType}, preview=${token.substring(0, 20)}... (${reason})`,
     );
 
     if (tokenType === 'JWT') {
@@ -185,9 +348,12 @@ export class BetterAuthValidator {
           },
           body: JSON.stringify({ token }),
         },
-        SESSION_VALIDATION_TIMEOUT_MS,
+        this.sessionValidationTimeoutMs,
         'session_validation',
       );
+
+      // Record success - close circuit if it was open
+      this.recordSuccess();
 
       this.logger.log(
         `Session validation timing: ${formatTimingLog(fetchTiming)}`,
@@ -195,12 +361,18 @@ export class BetterAuthValidator {
 
       if (!response.ok) {
         const errorBody = await response.text();
+
+        // Record failure for circuit breaker (only for 5xx errors - service issues)
+        if (response.status >= 500) {
+          this.recordFailure(`HTTP ${response.status}`);
+        }
+
         const details: ValidationErrorDetails = {
           tokenType,
           tokenPreview: token.substring(0, 30),
           tokenLength: token.length,
           kiranaFeUrl: url,
-          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          timeoutMs: this.sessionValidationTimeoutMs,
           durationMs: fetchTiming.durationMs,
           httpStatus: response.status,
           responseBody: errorBody,
@@ -241,20 +413,23 @@ export class BetterAuthValidator {
       let details: ValidationErrorDetails;
 
       if (error instanceof FetchTimeoutError) {
+        // Record failure for circuit breaker
+        this.recordFailure('Timeout');
+
         details = {
           tokenType,
           tokenPreview: token.substring(0, 30),
           tokenLength: token.length,
           kiranaFeUrl: url,
-          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          timeoutMs: this.sessionValidationTimeoutMs,
           errorType: 'FetchTimeoutError',
-          errorMessage: `kirana-fe did not respond within ${SESSION_VALIDATION_TIMEOUT_MS}ms. The service may be down, cold-starting, or overloaded.`,
+          errorMessage: `kirana-fe did not respond within ${this.sessionValidationTimeoutMs}ms. The service may be down, cold-starting, or overloaded.`,
           extractedUserId:
             tokenType === 'JWT'
               ? this.tryExtractUserIdFromJwt(token)
               : undefined,
           suggestion:
-            'Check kirana-fe service health. If this happens repeatedly, increase SESSION_VALIDATION_TIMEOUT_MS or check network connectivity between services.',
+            'Check kirana-fe service health. If this happens repeatedly, the circuit breaker will temporarily block requests to allow recovery.',
         };
       } else {
         // Non-timeout network/parse errors — unwrap { error, timing } from fetchWithTimeout
@@ -272,12 +447,15 @@ export class BetterAuthValidator {
             ? error.timing
             : undefined;
 
+        // Record failure for circuit breaker
+        this.recordFailure(innerError.message);
+
         details = {
           tokenType,
           tokenPreview: token.substring(0, 30),
           tokenLength: token.length,
           kiranaFeUrl: url,
-          timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+          timeoutMs: this.sessionValidationTimeoutMs,
           durationMs: innerTiming?.durationMs,
           errorType: innerError.constructor.name,
           errorMessage: innerError.message,
@@ -348,7 +526,7 @@ export class BetterAuthValidator {
         tokenPreview: token.substring(0, 30),
         tokenLength: token.length,
         kiranaFeUrl: `${this.kiranaFeBaseUrl}/api/internal/session/validate`,
-        timeoutMs: SESSION_VALIDATION_TIMEOUT_MS,
+        timeoutMs: this.sessionValidationTimeoutMs,
         errorType: error.constructor.name,
         errorMessage: error.message,
         extractedUserId:

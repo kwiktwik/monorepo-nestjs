@@ -2,9 +2,18 @@
 
 exports[`HealthController - Extended GET /health should return health status matching snapshot 1`] = `
 Object {
+  "memory": Object {
+    "externalMB": 8,
+    "heapTotalMB": 89,
+    "heapUsedMB": 58,
+    "percentage": 3,
+    "rssMB": 257,
+    "status": "ok",
+  },
   "service": "kwiktwik-kirana-be",
   "status": "ok",
   "timestamp": Any<String>,
+  "uptime": 1,
   "version": "1.0.0",
 }
 `;

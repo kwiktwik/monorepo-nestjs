@@ -1,4 +1,4 @@
-import { Module, Global, DynamicModule, InjectionToken } from '@nestjs/common';
+import { Module, Global, DynamicModule, InjectionToken, Logger } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { QueueOptions } from 'bullmq';
@@ -35,8 +35,9 @@ export function isRedisAvailable(config: ConfigService): boolean {
  */
 function createRedisConnection(config: ConfigService): Redis {
   const redisUrl = config.get<string>('REDIS_URL');
-
-  console.log(`[QueueModule] Connecting to Redis at ${redisUrl}`);
+  const logger = new Logger('QueueModule');
+  
+  logger.log(`Connecting to Redis at ${redisUrl}`);
   return new Redis(redisUrl!, {
     maxRetriesPerRequest: null,
   });
@@ -45,6 +46,8 @@ function createRedisConnection(config: ConfigService): Redis {
 @Global()
 @Module({})
 export class QueueModule {
+  private static readonly logger = new Logger(QueueModule.name);
+
   /**
    * Initialize BullMQ with real Redis connection.
    * Throws if Redis is unavailable.
@@ -86,8 +89,8 @@ export class QueueModule {
       (!isMockMode() || process.env.USE_REAL_REDIS_FOR_QUEUES === 'true');
 
     if (!redisAvailable) {
-      console.log(
-        '[QueueModule] Redis unavailable or in mock mode. Queue features disabled.',
+      this.logger.log(
+        'Redis unavailable or in mock mode. Queue features disabled.',
       );
       return {
         module: QueueModule,

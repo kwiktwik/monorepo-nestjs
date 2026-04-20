@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -8,6 +8,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private pubClient: Redis | null = null;
   private subClient: Redis | null = null;
   private isEnabled = false;
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(private configService: ConfigService) {}
 
@@ -17,8 +18,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     // Skip Redis initialization if not configured
     if (!redisUrl && !redisHost) {
-      console.log(
-        '[RedisService] Redis not configured. Redis features disabled.',
+      this.logger.log(
+        'Redis not configured. Redis features disabled.',
       );
       this.isEnabled = false;
       return;
@@ -54,17 +55,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         });
 
     client.on('connect', () => {
-      console.log(`✅ Redis ${name} connected`);
+      this.logger.log(`Redis ${name} client connected`);
     });
 
     client.on('error', (err) => {
       // Only log first error to avoid spam
       if (err.message?.includes('ECONNREFUSED')) {
-        console.log(
-          `[RedisService] ${name} client connection refused (Redis not available)`,
+        this.logger.warn(
+          `${name} client connection refused (Redis not available)`,
         );
       } else {
-        console.error(`[RedisService] ${name} client error:`, err.message);
+        this.logger.error(`${name} client error: ${err.message}`);
       }
     });
 

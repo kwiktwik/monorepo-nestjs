@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
+import { AuthRateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 describe('AuthController', () => {
   let app: INestApplication;
@@ -33,6 +34,8 @@ describe('AuthController', () => {
       ],
     })
       .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(AuthRateLimitGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

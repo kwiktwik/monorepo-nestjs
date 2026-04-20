@@ -26,6 +26,7 @@ import {
   normalizePhoneNumber,
 } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
+import { AuthRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { MigrationService } from '../migration/migration.service';
 import { Inject } from '@nestjs/common';
@@ -75,10 +76,12 @@ export class AuthV1Controller {
 
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthRateLimitGuard)
+  @RateLimit(DEFAULT_RATE_LIMITS.OTP_SEND)
   @ApiOperation({
     summary: 'Send OTP (v1)',
     description:
-      'Send OTP to phone number. First checks for kirana-fe (legacy Flutter app) user detection. Rate limited: 20 OTPs/hour per phone number.',
+      'Send OTP to phone number. Rate limited: 5 requests per minute per IP.',
   })
   @ApiBody({ type: SendOtpDto })
   @ApiResponse({
@@ -186,10 +189,12 @@ export class AuthV1Controller {
 
   @Post('login/:provider')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthRateLimitGuard)
+  @RateLimit(DEFAULT_RATE_LIMITS.LOGIN)
   @ApiOperation({
     summary: 'Unified Login (v1)',
     description:
-      'Login with OTP, Truecaller, or Google. First checks for kirana-fe (legacy Flutter app) user detection.',
+      'Login with OTP, Truecaller, or Google. Rate limited: 10 requests per minute per IP.',
   })
   @ApiParam({
     name: 'provider',

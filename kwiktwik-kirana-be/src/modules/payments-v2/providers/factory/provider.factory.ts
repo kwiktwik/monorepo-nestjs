@@ -291,7 +291,7 @@ export class ProviderFactory {
 
     return new Proxy(provider, {
       get(target, prop: string) {
-        const original = (target as Record<string, unknown>)[prop];
+        const original = Reflect.get(target, prop);
 
         // Only wrap async methods that make API calls
         if (

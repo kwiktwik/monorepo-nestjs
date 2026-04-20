@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService, AuthUserResponse } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
+import { AuthRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -25,14 +26,16 @@ export class AuthController {
 
   @Post('phone-number/send-otp')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthRateLimitGuard)
+  @RateLimit(DEFAULT_RATE_LIMITS.OTP_SEND)
   @ApiOperation({
     summary: 'Send OTP',
-    description: 'Send OTP to phone number. No JWT required.',
+    description: 'Send OTP to phone number. Rate limited: 5 requests per minute per IP.',
   })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
   @ApiResponse({
     status: 429,
-    description: 'Rate limit exceeded (20 OTPs/hour per phone number)',
+    description: 'Rate limit exceeded',
   })
   async sendOtp(@Body() sendOtpDto: SendOtpDto, @Req() req: Request) {
     const ipAddress =
