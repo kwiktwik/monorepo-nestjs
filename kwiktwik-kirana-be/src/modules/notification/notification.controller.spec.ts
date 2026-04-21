@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
+import { NotificationLogQueueService } from './notification-log-queue.service';
+import { NotificationLogProcessor } from './notification-log-queue.processor';
 import {
   INestApplication,
   CanActivate,
@@ -62,6 +64,15 @@ describe('NotificationController', () => {
     deletePushToken: jest.fn(),
   };
 
+  const mockNotificationLogQueueService = {
+    getQueueStats: jest.fn(),
+    isAsyncModeEnabled: jest.fn().mockReturnValue(true),
+  };
+
+  const mockNotificationLogProcessor = {
+    getMetrics: jest.fn().mockReturnValue({ processed: 0, duplicates: 0 }),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [NotificationController],
@@ -69,6 +80,14 @@ describe('NotificationController', () => {
         {
           provide: NotificationService,
           useValue: mockNotificationService,
+        },
+        {
+          provide: NotificationLogQueueService,
+          useValue: mockNotificationLogQueueService,
+        },
+        {
+          provide: NotificationLogProcessor,
+          useValue: mockNotificationLogProcessor,
         },
       ],
     })
@@ -83,7 +102,9 @@ describe('NotificationController', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
     jest.clearAllMocks();
   });
 

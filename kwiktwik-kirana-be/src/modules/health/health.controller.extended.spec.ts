@@ -16,7 +16,9 @@ describe('HealthController - Extended', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   describe('GET /health', () => {
@@ -27,6 +29,8 @@ describe('HealthController - Extended', () => {
 
       expect(response.body).toMatchSnapshot({
         timestamp: expect.any(String),
+        memory: expect.any(Object),
+        uptime: expect.any(Number),
       });
     });
 
