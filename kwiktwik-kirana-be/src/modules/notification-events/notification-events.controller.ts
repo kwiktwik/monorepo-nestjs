@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RateLimitGuard, UserRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { NotificationEventsService } from './notification-events.service';
 import { NotificationEventDto } from './dto/notification-event.dto';
@@ -24,6 +25,8 @@ import { NotificationQueueService } from './services/notification-queue.service'
 
 @ApiTags('events')
 @Controller('event')
+@UseGuards(AppIdGuard, JwtAuthGuard, RateLimitGuard, UserRateLimitGuard)
+@RateLimit(DEFAULT_RATE_LIMITS.NOTIFICATION)
 export class NotificationEventsController {
   constructor(
     private readonly notificationEventsService: NotificationEventsService,

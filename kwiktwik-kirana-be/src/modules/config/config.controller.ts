@@ -16,6 +16,7 @@ import {
 import { ConfigService } from './config.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RateLimitGuard, UserRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
@@ -28,7 +29,8 @@ import { GetConfigV4Dto } from './dto/get-config-v4.dto';
 @ApiTags('config')
 @ApiBearerAuth('JWT')
 @Controller('config')
-@UseGuards(AppIdGuard, JwtAuthGuard)
+@UseGuards(AppIdGuard, JwtAuthGuard, RateLimitGuard, UserRateLimitGuard)
+@RateLimit(DEFAULT_RATE_LIMITS.CONFIG)
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 

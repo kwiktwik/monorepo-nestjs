@@ -30,12 +30,21 @@ import type {
 import { UpdateNotificationStatusDto } from './dto/update-notification-status.dto';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RateLimitGuard, UserRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { NotificationLogQueueService } from './notification-log-queue.service';
+import { NotificationLogProcessor } from './notification-log-queue.processor';
 
 @ApiTags('notifications')
 @Controller('notifications')
+@UseGuards(AppIdGuard, JwtAuthGuard, RateLimitGuard, UserRateLimitGuard)
+@RateLimit(DEFAULT_RATE_LIMITS.NOTIFICATION)
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly logQueueService: NotificationLogQueueService,
+    private readonly logProcessor: NotificationLogProcessor,
+  ) {}
 
   @Get('v1')
   @ApiBearerAuth('JWT')
@@ -246,5 +255,86 @@ export class NotificationController {
     @Body() dto: DeletePushTokenDto,
   ) {
     return this.notificationService.deletePushToken(user.userId, dto);
+  }
+
+  // ============================================================================
+  // Queue Monitoring Endpoints
+  // ============================================================================
+
+  @Get('queue/stats')
+  @ApiBearerAuth('JWT')
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get notification log queue statistics',
+    description:
+      'Returns queue health, job counts, and processor metrics. Use this to monitor async notification processing.',
+  })
+  async getQueueStats() {
+    const [queueStats, processorMetrics] = await Promise.all([
+      this.logQueueService.getQueueStats(),
+      this.logProcessor.getMetrics(),
+    ]);
+
+    return {
+      success: true,
+      queue: queueStats,
+      processor: processorMetrics,
+      mode: this.logQueueService.isAsyncModeEnabled() ? 'async' : 'sync',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('queue/health')
+  @ApiBearerAuth('JWT')
+  @ApiHeader({
+    name: 'X-App-ID',
+    required: true,
+    description: 'App identifier',
+  })
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get notification log queue health check',
+    description:
+      'Simple health check for monitoring systems. Returns 200 if queue is healthy.',
+  })
+  async getQueueHealth() {
+    const isAsyncMode = this.logQueueService.isAsyncModeEnabled();
+    const queueStats = await this.logQueueService.getQueueStats();
+    const processorMetrics = this.logProcessor.getMetrics();
+
+    // Calculate health status
+    const isHealthy = queueStats.available || !isAsyncMode;
+    const failedJobsHigh = (queueStats.failed ?? 0) > 100;
+    const queueBacklogHigh = (queueStats.waiting ?? 0) > 1000;
+
+    const status =
+      isHealthy && !failedJobsHigh && !queueBacklogHigh
+        ? 'healthy'
+        : isHealthy
+          ? 'degraded'
+          : 'unhealthy';
+
+    return {
+      status,
+      mode: isAsyncMode ? 'async' : 'sync',
+      queueAvailable: queueStats.available,
+      metrics: {
+        waiting: queueStats.waiting ?? 0,
+        active: queueStats.active ?? 0,
+        failed: queueStats.failed ?? 0,
+        processed: processorMetrics.processed,
+        duplicates: processorMetrics.duplicates,
+      },
+      alerts: {
+        queueBacklogHigh,
+        failedJobsHigh,
+        fallbackActive: !isAsyncMode,
+      },
+    };
   }
 }

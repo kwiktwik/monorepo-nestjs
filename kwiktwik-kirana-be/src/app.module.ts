@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import {
   ConfigModule as NestConfigModule,
@@ -27,6 +27,7 @@ import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
   process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
@@ -72,4 +73,10 @@ const dbModule =
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply global rate limiting middleware to all routes
+    // This acts as a safety net against infinite API calls from buggy clients
+    consumer.apply(GlobalRateLimitMiddleware).forRoutes('*');
+  }
+}

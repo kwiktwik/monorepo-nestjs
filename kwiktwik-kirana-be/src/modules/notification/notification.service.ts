@@ -4,6 +4,7 @@ import {
   Inject,
   Logger,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
@@ -21,6 +22,7 @@ import {
   parseUPINotification,
 } from '../../common/utils/upi-parser';
 import * as admin from 'firebase-admin';
+import { NotificationLogQueueService } from './notification-log-queue.service';
 
 const logger = new Logger('NotificationService');
 
@@ -51,6 +53,8 @@ export class NotificationService {
   constructor(
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
+    @Optional()
+    private readonly logQueueService?: NotificationLogQueueService,
   ) {}
 
   async findAll(
@@ -177,26 +181,6 @@ export class NotificationService {
       sanitizeString(dto.app_name || dto.appName) ||
       this.getCleanAppName(packageName);
 
-    const existing = await this.db
-      .select({ id: schema.enhancedNotifications.id })
-      .from(schema.enhancedNotifications)
-      .where(eq(schema.enhancedNotifications.notificationId, notificationId))
-      .limit(1);
-
-    if (existing.length > 0) {
-      // kirana-fe shape: { data: [...], processed: N }
-      return {
-        data: [
-          {
-            status: 'duplicate',
-            notificationId,
-            message: 'Notification already processed',
-          },
-        ],
-        processed: 1,
-      };
-    }
-
     const providedHasTransaction = dto.has_transaction ?? dto.hasTransaction;
     const providedAmount = dto.amount ? String(dto.amount) : null;
     const providedPayerName = sanitizeString(dto.payer_name || dto.payerName);
@@ -226,6 +210,90 @@ export class NotificationService {
       Boolean(paymentAmount) || providedHasTransaction === true;
 
     const processingTimeMs = dto.processing_time_ms ?? 0;
+
+    const createdAt = new Date();
+    const readNotification = this.generateTTSMessage(
+      paymentAmount ?? null,
+      paymentPayerName ?? null,
+      hasTransaction,
+    );
+
+    const toIST = (date: Date | null | undefined) => {
+      if (!date) return date;
+      const istTimeMs = date.getTime() + 5.5 * 60 * 60 * 1000;
+      return new Date(istTimeMs).toISOString().replace('Z', '+05:30');
+    };
+
+    // Try async queue first
+    if (this.logQueueService?.isAsyncModeEnabled()) {
+      try {
+        await this.logQueueService.queueNotificationLog({
+          userId,
+          notificationId,
+          packageName,
+          appName,
+          timestamp: timestamp.toISOString(),
+          title,
+          text: content,
+          bigText,
+          hasTransaction,
+          amount: paymentAmount,
+          payerName: paymentPayerName,
+          transactionType,
+          processingTimeMs,
+          ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
+          teamNotificationSent: dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
+          processingMetadata: dto.processing_metadata ?? {},
+        });
+
+        // Return immediately with queued status
+        return {
+          data: [{
+            notificationId,
+            packageName,
+            appName,
+            title,
+            content,
+            bigText,
+            timestamp: toIST(timestamp) as unknown as Date,
+            hasTransaction,
+            amount: paymentAmount,
+            payerName: paymentPayerName,
+            transactionType,
+            processingTimeMs,
+            ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
+            teamNotificationSent: dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
+            createdAt: toIST(createdAt) as unknown as Date,
+            updatedAt: toIST(createdAt) as unknown as Date,
+            readNotification,
+            status: 'queued',
+          }],
+          processed: 1,
+        };
+      } catch (error) {
+        // Queue failed, fall back to sync writes
+        logger.warn(`Queue failed, falling back to sync writes: ${(error as Error).message}`);
+      }
+    }
+
+    // Sync write (fallback or when queue disabled)
+    // Check for duplicate first
+    const existing = await this.db
+      .select({ id: schema.enhancedNotifications.id })
+      .from(schema.enhancedNotifications)
+      .where(eq(schema.enhancedNotifications.notificationId, notificationId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return {
+        data: [{
+          status: 'duplicate',
+          notificationId,
+          message: 'Notification already processed',
+        }],
+        processed: 1,
+      };
+    }
 
     let notificationLogId: number | null = null;
 
@@ -281,21 +349,6 @@ export class NotificationService {
       enhancedNotificationId = enhancedRows[0]?.id ?? null;
     }
 
-    const createdAt = new Date();
-    const updatedAt = new Date();
-    const readNotification = this.generateTTSMessage(
-      paymentAmount ?? null,
-      paymentPayerName ?? null,
-      hasTransaction,
-    );
-
-    // kirana-fe shape: { data: [ item ], processed: 1 } so Flutter can use response.data[0]
-    const toIST = (date: Date | null | undefined) => {
-      if (!date) return date;
-      const istTimeMs = date.getTime() + 5.5 * 60 * 60 * 1000;
-      return new Date(istTimeMs).toISOString().replace('Z', '+05:30');
-    };
-
     const resultItem = {
       id: enhancedNotificationId ?? notificationLogId,
       notificationId,
@@ -315,7 +368,7 @@ export class NotificationService {
       teamNotificationSent:
         dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
       createdAt: toIST(createdAt) as unknown as Date,
-      updatedAt: toIST(updatedAt) as unknown as Date,
+      updatedAt: toIST(createdAt) as unknown as Date,
       readNotification,
       status: 'success',
     };
@@ -333,7 +386,79 @@ export class NotificationService {
   async createV2(userId: string, dto: CreateNotificationV2Dto) {
     const timestamp = new Date(dto.timestamp);
 
-    // Check for duplicate
+    const appName =
+      sanitizeString(dto.appName) || this.getCleanAppName(dto.packageName);
+    const hasTransaction = dto.hasTransaction;
+    const transactionType = dto.transactionType || 'UNKNOWN';
+    const processingTimeMs = dto.processingTimeMs ?? 0;
+
+    const createdAt = new Date();
+    const readNotification = this.generateTTSMessage(
+      dto.amount ?? null,
+      dto.payerName ?? null,
+      hasTransaction,
+    );
+
+    const toIST = (date: Date | null | undefined) => {
+      if (!date) return date;
+      const istTimeMs = date.getTime() + 5.5 * 60 * 60 * 1000;
+      return new Date(istTimeMs).toISOString().replace('Z', '+05:30');
+    };
+
+    // Try async queue first
+    if (this.logQueueService?.isAsyncModeEnabled()) {
+      try {
+        await this.logQueueService.queueNotificationLog({
+          userId,
+          notificationId: dto.notificationId,
+          packageName: dto.packageName,
+          appName,
+          timestamp: timestamp.toISOString(),
+          title: sanitizeString(dto.title),
+          text: sanitizeString(dto.content),
+          bigText: sanitizeString(dto.bigText),
+          hasTransaction,
+          amount: dto.amount || null,
+          payerName: sanitizeString(dto.payerName),
+          transactionType,
+          processingTimeMs,
+          ttsAnnounced: dto.ttsAnnounced ?? false,
+          teamNotificationSent: dto.teamNotificationSent ?? false,
+          processingMetadata: dto.processingMetadata ?? {},
+        });
+
+        // Return immediately with queued status
+        return {
+          data: [{
+            notificationId: dto.notificationId,
+            packageName: dto.packageName,
+            appName,
+            title: dto.title,
+            content: dto.content,
+            bigText: dto.bigText || null,
+            timestamp: toIST(timestamp) as unknown as Date,
+            hasTransaction,
+            amount: dto.amount || null,
+            payerName: dto.payerName || null,
+            transactionType,
+            processingTimeMs,
+            ttsAnnounced: dto.ttsAnnounced ?? false,
+            teamNotificationSent: dto.teamNotificationSent ?? false,
+            createdAt: toIST(createdAt) as unknown as Date,
+            updatedAt: toIST(createdAt) as unknown as Date,
+            readNotification,
+            status: 'queued',
+          }],
+          processed: 1,
+        };
+      } catch (error) {
+        // Queue failed, fall back to sync writes
+        logger.warn(`Queue failed, falling back to sync writes: ${(error as Error).message}`);
+      }
+    }
+
+    // Sync write (fallback or when queue disabled)
+    // Check for duplicate first
     const existing = await this.db
       .select({ id: schema.enhancedNotifications.id })
       .from(schema.enhancedNotifications)
@@ -344,22 +469,14 @@ export class NotificationService {
 
     if (existing.length > 0) {
       return {
-        data: [
-          {
-            status: 'duplicate',
-            notificationId: dto.notificationId,
-            message: 'Notification already processed',
-          },
-        ],
+        data: [{
+          status: 'duplicate',
+          notificationId: dto.notificationId,
+          message: 'Notification already processed',
+        }],
         processed: 1,
       };
     }
-
-    const appName =
-      sanitizeString(dto.appName) || this.getCleanAppName(dto.packageName);
-    const hasTransaction = dto.hasTransaction;
-    const transactionType = dto.transactionType || 'UNKNOWN';
-    const processingTimeMs = dto.processingTimeMs ?? 0;
 
     // Insert into notificationLogs (all notifications)
     const logEntry = await this.db
@@ -413,20 +530,6 @@ export class NotificationService {
       enhancedNotificationId = enhancedRows[0]?.id ?? null;
     }
 
-    const createdAt = new Date();
-    const updatedAt = new Date();
-    const readNotification = this.generateTTSMessage(
-      dto.amount ?? null,
-      dto.payerName ?? null,
-      hasTransaction,
-    );
-
-    const toIST = (date: Date | null | undefined) => {
-      if (!date) return date;
-      const istTimeMs = date.getTime() + 5.5 * 60 * 60 * 1000;
-      return new Date(istTimeMs).toISOString().replace('Z', '+05:30');
-    };
-
     const resultItem = {
       id: enhancedNotificationId ?? notificationLogId,
       notificationId: dto.notificationId,
@@ -445,7 +548,7 @@ export class NotificationService {
       ttsAnnounced: dto.ttsAnnounced ?? false,
       teamNotificationSent: dto.teamNotificationSent ?? false,
       createdAt: toIST(createdAt) as unknown as Date,
-      updatedAt: toIST(updatedAt) as unknown as Date,
+      updatedAt: toIST(createdAt) as unknown as Date,
       readNotification,
       status: 'success',
     };

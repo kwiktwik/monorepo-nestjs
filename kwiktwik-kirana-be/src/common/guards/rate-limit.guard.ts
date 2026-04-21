@@ -52,7 +52,7 @@ export interface RateLimitOptions {
  * Default configuration options
  * Values read from environment variables with sensible defaults
  */
-const RATE_LIMIT_OPTIONS: RateLimitOptions = {
+export const RATE_LIMIT_OPTIONS: RateLimitOptions = {
   cleanupIntervalMs: parseInt(process.env.RATE_LIMIT_CLEANUP_INTERVAL_MS || '60000', 10),
   defaultErrorMessage: process.env.RATE_LIMIT_DEFAULT_MESSAGE || 'Too many requests. Please try again later.',
   authIpErrorMessage: process.env.RATE_LIMIT_AUTH_IP_MESSAGE || 'Too many authentication attempts from this IP. Please try again later.',
@@ -102,7 +102,150 @@ export const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
     skipInMock: true,
     errorMessage: RATE_LIMIT_OPTIONS.authPhoneErrorMessage,
   },
+  /**
+   * Global rate limit - safety net for all endpoints
+   * This protects against infinite loops from buggy clients
+   * Default: 300 requests per minute per IP (5 req/sec average)
+   */
+  GLOBAL: {
+    limit: parseInt(process.env.RATE_LIMIT_GLOBAL_PER_MINUTE || '300', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_GLOBAL_WINDOW_MS || '60000', 10),
+    keyPrefix: 'global',
+    skipInMock: true,
+    errorMessage: 'Too many requests from this device. Please restart the app and try again.',
+  },
+  /**
+   * Per-user rate limit for authenticated endpoints
+   * Limits requests per authenticated user (by user ID from JWT)
+   * Default: 200 requests per minute per user
+   */
+  USER: {
+    limit: parseInt(process.env.RATE_LIMIT_USER_PER_MINUTE || '200', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_USER_WINDOW_MS || '60000', 10),
+    keyPrefix: 'user',
+    skipInMock: true,
+    errorMessage: 'Too many requests. Please wait a moment and try again.',
+  },
+  /**
+   * Config endpoint rate limit
+   * Config endpoints are commonly called by mobile apps
+   * Default: 30 requests per minute per IP
+   */
+  CONFIG: {
+    limit: parseInt(process.env.RATE_LIMIT_CONFIG_PER_MINUTE || '30', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_CONFIG_WINDOW_MS || '60000', 10),
+    keyPrefix: 'config',
+    skipInMock: true,
+    errorMessage: 'Too many config requests. Please wait a moment.',
+  },
+  /**
+   * Notification endpoint rate limit
+   * Notification endpoints are frequently polled by mobile apps
+   * Higher limit to accommodate legitimate polling behavior
+   * Default: 600 requests per minute per IP (10 req/sec)
+   */
+  NOTIFICATION: {
+    limit: parseInt(process.env.RATE_LIMIT_NOTIFICATION_PER_MINUTE || '600', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_NOTIFICATION_WINDOW_MS || '60000', 10),
+    keyPrefix: 'notification',
+    skipInMock: true,
+    errorMessage: 'Too many notification requests. Please reduce polling frequency.',
+  },
+  /**
+   * High-frequency endpoint rate limit
+   * For endpoints that legitimately need very high frequency calls
+   * Default: 1000 requests per minute per IP (~16 req/sec)
+   */
+  HIGH_FREQUENCY: {
+    limit: parseInt(process.env.RATE_LIMIT_HIGH_FREQ_PER_MINUTE || '1000', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_HIGH_FREQ_WINDOW_MS || '60000', 10),
+    keyPrefix: 'highfreq',
+    skipInMock: true,
+    errorMessage: 'Rate limit exceeded. Please slow down.',
+  },
 };
+
+// ============================================================================
+// Global Rate Limiting Middleware
+// ============================================================================
+
+/**
+ * Routes to skip from global rate limiting
+ * These are typically health checks, webhooks, or static assets
+ */
+export const GLOBAL_RATE_LIMIT_SKIP_ROUTES = [
+  '/health',
+  '/api/health',
+  '/api/razorpay/webhook',
+  '/api/phonepe/webhook',
+  '/api/admin/docs',
+  '/api/admin/mock-docs',
+];
+
+/**
+ * Global rate limiting middleware
+ * Acts as a safety net to protect against infinite API calls from buggy clients
+ *
+ * Usage in main.ts:
+ * ```
+ * app.use(new GlobalRateLimitMiddleware(redisService).use());
+ * ```
+ */
+export class GlobalRateLimitMiddleware {
+  private readonly logger = new Logger(GlobalRateLimitMiddleware.name);
+  private readonly store: HybridRateLimitStore;
+  private readonly config: RateLimitConfig;
+
+  constructor(redisService: RedisService | null) {
+    this.store = new HybridRateLimitStore(redisService);
+    this.config = DEFAULT_RATE_LIMITS.GLOBAL;
+  }
+
+  use() {
+    return async (req: Request, res: Response, next: () => void) => {
+      // Skip rate limiting in mock mode if configured
+      if (this.config.skipInMock && process.env.USE_MOCK_DB === 'true') {
+        return next();
+      }
+
+      // Skip certain routes
+      const path = req.path || req.url?.split('?')[0] || '';
+      if (GLOBAL_RATE_LIMIT_SKIP_ROUTES.some(route => path.startsWith(route))) {
+        return next();
+      }
+
+      const ip = extractClientIp(req);
+      const key = `${this.config.keyPrefix}:${ip}`;
+
+      try {
+        const { count, ttl } = await this.store.increment(key, this.config.windowMs);
+        const remaining = Math.max(0, this.config.limit - count);
+
+        // Set rate limit headers
+        res.setHeader('X-RateLimit-Limit', this.config.limit);
+        res.setHeader('X-RateLimit-Remaining', remaining);
+        res.setHeader('X-RateLimit-Reset', Math.ceil((Date.now() + ttl) / 1000));
+
+        if (count > this.config.limit) {
+          this.logger.warn(
+            `Global rate limit exceeded: IP=${ip}, path=${path}, count=${count}, limit=${this.config.limit}`,
+          );
+          res.setHeader('Retry-After', Math.ceil(ttl / 1000));
+          throw buildRateLimitResponse(ttl, this.config.errorMessage || RATE_LIMIT_OPTIONS.defaultErrorMessage);
+        }
+
+        next();
+      } catch (error) {
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        // Log error but don't block request if rate limiting fails
+        this.logger.error(`Rate limiting error: ${(error as Error).message}`);
+        next();
+      }
+    };
+  }
+}
 
 // ============================================================================
 // Rate Limit Decorator
@@ -111,12 +254,24 @@ export const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
 export const RATE_LIMIT_KEY = 'rate_limit';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function RateLimit(config: RateLimitConfig): <T>(target: object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) => TypedPropertyDescriptor<T> | void {
-  return <T>(target: object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) => {
-    if (descriptor.value) {
-      Reflect.defineMetadata(RATE_LIMIT_KEY, config, descriptor.value);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function RateLimit(config: RateLimitConfig): any {
+  return <T>(
+    target: object | Function,
+    propertyKey?: string | symbol,
+    descriptor?: TypedPropertyDescriptor<T>,
+  ): TypedPropertyDescriptor<T> | void => {
+    // Method decorator
+    if (propertyKey !== undefined && descriptor) {
+      if (descriptor.value) {
+        Reflect.defineMetadata(RATE_LIMIT_KEY, config, descriptor.value);
+      }
+      return descriptor;
     }
-    return descriptor;
+    // Class decorator
+    if (typeof target === 'function') {
+      Reflect.defineMetadata(RATE_LIMIT_KEY, config, target);
+    }
   };
 }
 
@@ -478,6 +633,84 @@ export class AuthRateLimitGuard extends RateLimitGuard {
         this.logger.warn(`Auth rate limit exceeded for phone: ${phoneNumber}`);
         throw buildRateLimitResponse(phoneResult.ttl, phoneConfig.errorMessage || RATE_LIMIT_OPTIONS.authPhoneErrorMessage);
       }
+    }
+
+    return true;
+  }
+}
+
+// ============================================================================
+// User Rate Limit Guard
+// ============================================================================
+
+/**
+ * Request type with user property from JWT
+ */
+interface RequestWithUser extends Request {
+  user?: {
+    id?: string;
+    sub?: string;
+    userId?: string;
+  };
+}
+
+/**
+ * Per-user rate limit guard for authenticated endpoints
+ * 
+ * Limits requests per authenticated user (by user ID from JWT).
+ * This provides an additional layer of protection beyond IP-based limiting.
+ * 
+ * Use this guard on endpoints that require authentication to prevent
+ * a single user from overwhelming the server, even from multiple IPs.
+ * 
+ * Usage:
+ * ```typescript
+ * @UseGuards(JwtAuthGuard, UserRateLimitGuard)
+ * async myAuthenticatedEndpoint() {}
+ * ```
+ */
+@Injectable()
+export class UserRateLimitGuard extends RateLimitGuard {
+  constructor(reflector: Reflector, @Optional() redisService?: RedisService) {
+    super(reflector, redisService);
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (process.env.USE_MOCK_DB === 'true') {
+      return true;
+    }
+
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
+    const response = context.switchToHttp().getResponse<Response>();
+
+    // Get user ID from JWT payload (could be in id, sub, or userId)
+    const userId = request.user?.id || request.user?.sub || request.user?.userId;
+
+    if (!userId) {
+      // If no user ID, fall back to IP-based rate limiting
+      this.logger.debug('No user ID found, falling back to IP-based rate limiting');
+      return super.canActivate(context);
+    }
+
+    const userConfig = DEFAULT_RATE_LIMITS.USER;
+    const result = await this.checkRateLimit(userConfig, userId);
+
+    setRateLimitHeaders(
+      response,
+      result.limit,
+      result.limit - result.count,
+      Math.ceil((Date.now() + result.ttl) / 1000),
+    );
+
+    if (!result.allowed) {
+      this.logger.warn(
+        `User rate limit exceeded: userId=${userId}, count=${result.count}, limit=${result.limit}`,
+      );
+      response.setHeader('Retry-After', Math.ceil(result.ttl / 1000));
+      throw buildRateLimitResponse(
+        result.ttl,
+        userConfig.errorMessage || RATE_LIMIT_OPTIONS.defaultErrorMessage,
+      );
     }
 
     return true;
