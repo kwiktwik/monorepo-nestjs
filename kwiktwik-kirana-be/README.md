@@ -116,10 +116,48 @@ See `.env.example` for required configuration.
 
 ## Production Deployment
 
-The app is managed by PM2. Configuration in `ecosystem.config.cjs`:
+The app is managed by PM2 with separate configurations for production and pre-production environments.
+
+### Build the Application
 ```bash
 pnpm run build
-pm2 start ecosystem.config.cjs --only kwiktwik-kirana-be
 ```
 
-Port: **3002**
+### Start Production (Port 3000, 2 instances)
+```bash
+pm2 start ecosystem.production.config.js
+```
+
+### Start Pre-Production (Port 3010, 1 instance)
+```bash
+pm2 start ecosystem.preprod.config.js
+```
+
+### PM2 Management Commands
+```bash
+# View status
+pm2 status
+
+# View logs
+pm2 logs kirana-be-prod
+pm2 logs kirana-be-preprod
+
+# Restart
+pm2 restart kirana-be-prod
+pm2 restart kirana-be-preprod
+
+# Stop
+pm2 stop kirana-be-prod
+pm2 stop kirana-be-preprod
+
+# Delete
+pm2 delete kirana-be-prod
+pm2 delete kirana-be-preprod
+```
+
+### Environment Configuration
+
+| Environment | Port | Instances | Config File |
+|------------|------|-----------|-------------|
+| **Production** | 3000 | 2 | `ecosystem.production.config.js` |
+| **Pre-Production** | 3010 | 1 | `ecosystem.preprod.config.js` |
