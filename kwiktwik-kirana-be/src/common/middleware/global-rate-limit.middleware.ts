@@ -58,16 +58,29 @@ export class GlobalRateLimitMiddleware implements NestMiddleware {
   private readonly store: HybridRateLimitStore;
   private readonly config: RateLimitConfig;
 
+  private readonly enabled: boolean;
+
   constructor(@Optional() redisService?: RedisService) {
     this.store = new HybridRateLimitStore(redisService ?? null);
     this.config = DEFAULT_RATE_LIMITS.GLOBAL;
+    // Allow disabling global rate limiting via env (e.g. for local dev or staging)
+    this.enabled = process.env.RATE_LIMIT_GLOBAL_ENABLED === 'true';
 
-    this.logger.log(
-      `Global rate limiting initialized: ${this.config.limit} requests per ${this.config.windowMs / 1000}s per IP`,
-    );
+    if (!this.enabled) {
+      this.logger.warn('Global rate limiting is DISABLED (RATE_LIMIT_GLOBAL_ENABLED=false)');
+    } else {
+      this.logger.log(
+        `Global rate limiting initialized: ${this.config.limit} requests per ${this.config.windowMs / 1000}s per IP`,
+      );
+    }
   }
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    // Skip if globally disabled via env config
+    if (!this.enabled) {
+      return next();
+    }
+
     // Skip rate limiting in mock mode if configured
     if (this.config.skipInMock && process.env.USE_MOCK_DB === 'true') {
       return next();
