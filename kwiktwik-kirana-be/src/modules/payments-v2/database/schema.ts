@@ -210,7 +210,7 @@ export const providerConfigs = pgTable(
       table.environment,
     ),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Plans Table
@@ -258,7 +258,7 @@ export const plans = pgTable(
     appIdIdx: index('plans_app_id_idx').on(table.appId),
     activeIdx: index('plans_active_idx').on(table.isActive),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Unified Subscriptions Table
@@ -395,7 +395,7 @@ export const subscriptionsV2 = pgTable(
     userAppIdx: index('subscriptions_v2_user_app_idx').on(table.userId, table.appId),
     merchantIdIdx: index('subscriptions_v2_merchant_id_idx').on(table.merchantSubscriptionId),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Unified Orders Table
@@ -493,7 +493,7 @@ export const ordersV2 = pgTable(
     merchantIdIdx: index('orders_v2_merchant_id_idx').on(table.merchantOrderId),
     createdAtIdx: index('orders_v2_created_at_idx').on(table.createdAt),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Webhook Events Table
@@ -560,7 +560,7 @@ export const paymentWebhookEvents = pgTable(
     createdAtIdx: index('payment_webhook_events_created_at_idx').on(table.createdAt),
     uniqueEventId: unique('payment_webhook_events_event_id_unique').on(table.provider, table.eventId),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Idempotency Keys Table
@@ -599,7 +599,7 @@ export const idempotencyKeys = pgTable(
     expiresAtIdx: index('idempotency_keys_expires_at_idx').on(table.expiresAt),
     operationIdx: index('idempotency_keys_operation_idx').on(table.operationType),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Payment Transactions Table
@@ -665,7 +665,7 @@ export const paymentTransactions = pgTable(
     transactionAtIdx: index('payment_transactions_transaction_at_idx').on(table.transactionAt),
     providerTxIdIdx: index('payment_transactions_provider_tx_id_idx').on(table.providerTransactionId),
   }),
-);
+).enableRLS();
 
 // ============================================================================
 // Relations
