@@ -20,4 +20,8 @@ export default {
   dbCredentials: {
     url: sslConnectionString,
   },
+  migrations: {
+    table: '__drizzle_migrations',
+    schema: 'public', // or 'drizzle' if you create that schema
+  },
 } satisfies Config;
