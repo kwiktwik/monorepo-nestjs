@@ -1,1 +1,0 @@
-ALTER TABLE "user_metadata" ADD COLUMN "client_data" jsonb DEFAULT '{}'::jsonb;
