@@ -14,7 +14,7 @@ if (!connectionString) {
 const sslConnectionString = `${connectionString}?sslmode=require`;
 
 export default {
-  schema: './src/database/schema.ts',
+  schema: ['./src/database/schema.ts', './src/modules/payments-v2/database/schema.ts'],
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
