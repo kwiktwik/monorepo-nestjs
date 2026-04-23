@@ -23,7 +23,7 @@ import { DeviceSessionModule } from './modules/device-session/device-session.mod
 import { HealthController } from './modules/health/health.controller';
 import { DbDebugModule } from './debug/db-debug.module';
 import { PrometheusModule as PrometheusModuleBase } from '@willsoto/nestjs-prometheus';
-import { MetricsController, metricProviders } from './modules/prometheus';
+import { MetricsController, metricProviders, HealthMetricsService } from './modules/prometheus';
 import { MqttModule } from './common/mqtt/mqtt.module';
 import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
@@ -76,6 +76,7 @@ const dbModule =
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
     },
+    HealthMetricsService,
     ...metricProviders,
   ],
 })
