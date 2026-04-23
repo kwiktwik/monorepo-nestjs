@@ -21,8 +21,8 @@ import { HealthMetricsService } from './health-metrics.service';
       defaultMetrics: {
         enabled: true,
       },
-      // Disable the default controller since we provide our own in AppModule
-      controller: class DummyController {},
+      // Set a different path so it doesn't conflict with our custom controller
+      path: '/internal/metrics',
     }),
   ],
   providers: [HealthMetricsService, ...metricProviders],
