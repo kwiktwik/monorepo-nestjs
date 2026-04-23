@@ -89,6 +89,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply global rate limiting middleware to all routes
     // This acts as a safety net against infinite API calls from buggy clients
-    consumer.apply(GlobalRateLimitMiddleware).forRoutes('*');
+    // consumer.apply(GlobalRateLimitMiddleware).forRoutes('*');
   }
 }
