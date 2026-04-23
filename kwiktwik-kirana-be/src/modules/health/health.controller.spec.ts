@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HealthController } from './health.controller';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { HealthMetricsService } from '../prometheus';
 
 describe('HealthController', () => {
   let app: INestApplication;
@@ -9,6 +10,16 @@ describe('HealthController', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
+      providers: [
+        {
+          provide: HealthMetricsService,
+          useValue: {
+            updateMemoryMetrics: jest.fn(),
+            updateUptime: jest.fn(),
+            updateHealthStatus: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
