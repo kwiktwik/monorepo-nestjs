@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -9,12 +9,14 @@ import {
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 import { FeedService } from './feed.service';
 
 @ApiTags('feed')
 @ApiBearerAuth('JWT')
 @Controller('feed')
 @UseGuards(AppIdGuard, JwtAuthGuard)
+@UseInterceptors(PrometheusMetricsInterceptor)
 export class FeedController {
   constructor(private readonly feedService: FeedService) {}
 
