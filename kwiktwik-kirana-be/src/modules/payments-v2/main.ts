@@ -1,12 +1,12 @@
 /**
  * Payments V2 Standalone Service Bootstrap
- * 
+ *
  * Entry point for running the payments-v2 module as an independent service.
  * This allows the payment system to be deployed separately from the main application.
- * 
+ *
  * Usage:
  *   npx ts-node -P tsconfig.json src/modules/payments-v2/main.ts
- * 
+ *
  * Environment Variables:
  *   PORT - Server port (default: 3001)
  *   NODE_ENV - Environment (development, production)
@@ -43,7 +43,7 @@ async function bootstrap() {
     .setTitle('Payments V2 API')
     .setDescription(
       'Unified payment service supporting Razorpay and PhonePe providers. ' +
-      'Supports both provider-managed and user-managed subscriptions.',
+        'Supports both provider-managed and user-managed subscriptions.',
     )
     .setVersion('2.0.0')
     .addBearerAuth()

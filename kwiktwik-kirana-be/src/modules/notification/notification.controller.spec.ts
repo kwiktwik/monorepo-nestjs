@@ -73,6 +73,15 @@ describe('NotificationController', () => {
     getMetrics: jest.fn().mockReturnValue({ processed: 0, duplicates: 0 }),
   };
 
+  // Mock Prometheus metrics
+  const mockHttpRequestsTotal = {
+    inc: jest.fn(),
+  };
+
+  const mockHttpRequestDuration = {
+    observe: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [NotificationController],
@@ -88,6 +97,16 @@ describe('NotificationController', () => {
         {
           provide: NotificationLogProcessor,
           useValue: mockNotificationLogProcessor,
+        },
+        // Mock Prometheus metrics for the interceptor
+        // Token format: PROM_METRIC_<NAME_IN_UPPERCASE>
+        {
+          provide: 'PROM_METRIC_HTTP_REQUESTS_TOTAL',
+          useValue: mockHttpRequestsTotal,
+        },
+        {
+          provide: 'PROM_METRIC_HTTP_REQUEST_DURATION_SECONDS',
+          useValue: mockHttpRequestDuration,
         },
       ],
     })

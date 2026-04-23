@@ -10,6 +10,7 @@ import {
   Delete,
   UsePipes,
   ValidationPipe,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -34,6 +35,7 @@ import { RateLimitGuard, UserRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } fr
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { NotificationLogQueueService } from './notification-log-queue.service';
 import { NotificationLogProcessor } from './notification-log-queue.processor';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -47,6 +49,7 @@ export class NotificationController {
   ) {}
 
   @Get('v1')
+  @UseInterceptors(PrometheusMetricsInterceptor)
   @ApiBearerAuth('JWT')
   @ApiHeader({
     name: 'X-App-ID',
@@ -84,6 +87,7 @@ export class NotificationController {
   }
 
   @Post('v1')
+  @UseInterceptors(PrometheusMetricsInterceptor)
   @ApiBearerAuth('JWT')
   @ApiHeader({
     name: 'X-App-ID',
