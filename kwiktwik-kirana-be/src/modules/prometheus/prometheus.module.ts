@@ -12,15 +12,7 @@ import { metricProviders } from './metrics.providers';
 @Module({
   imports: [
     PrometheusModuleBase.register({
-      // Metrics will be available at /metrics (excluded from global /api prefix)
       path: '/metrics',
-      defaultMetrics: {
-        enabled: true,
-        config: {
-          // Include event loop lag, GC stats, and other Node.js metrics
-          eventLoopMonitoringPrecision: 10,
-        },
-      },
     }),
   ],
   providers: [HealthMetricsService, ...metricProviders],
