@@ -5,16 +5,26 @@ import {
   INestApplication,
   CanActivate,
   ExecutionContext,
+  NestInterceptor,
+  CallHandler,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 
 class MockUserGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { userId: 'test-user-id', appId: 'com.test.app' };
     return true;
+  }
+}
+
+class MockPrometheusMetricsInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    return next.handle();
   }
 }
 
@@ -41,6 +51,8 @@ describe('FeedController', () => {
       .useValue(new MockUserGuard())
       .overrideGuard(JwtAuthGuard)
       .useValue(new MockUserGuard())
+      .overrideInterceptor(PrometheusMetricsInterceptor)
+      .useValue(new MockPrometheusMetricsInterceptor())
       .compile();
 
     app = moduleFixture.createNestApplication();
