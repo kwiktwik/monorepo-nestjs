@@ -23,6 +23,7 @@ import { DeviceSessionModule } from './modules/device-session/device-session.mod
 import { HealthController } from './modules/health/health.controller';
 import { DbDebugModule } from './debug/db-debug.module';
 import { PrometheusModule } from './modules/prometheus';
+import { MetricsController } from './modules/prometheus/metrics.controller';
 import { MqttModule } from './common/mqtt/mqtt.module';
 import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
@@ -67,7 +68,7 @@ const dbModule =
     AdminModule,
     PrometheusModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     {
       provide: APP_FILTER,

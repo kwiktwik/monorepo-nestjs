@@ -13,11 +13,11 @@ import { MetricsController } from './metrics.controller';
 @Module({
   imports: [
     PrometheusModuleBase.register({
+      path: 'metrics',
       // Use custom controller instead of auto-registered one
       controller: MetricsController,
     }),
   ],
-  controllers: [MetricsController],
   providers: [HealthMetricsService, ...metricProviders],
   exports: [HealthMetricsService, ...metricProviders],
 })
