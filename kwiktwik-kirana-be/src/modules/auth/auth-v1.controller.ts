@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   UseGuards,
+  UseInterceptors,
   Param,
   HttpCode,
   HttpStatus,
@@ -41,6 +42,7 @@ import {
 } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { HealthMetricsService } from '../prometheus/health-metrics.service';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 
 type ProviderType = 'otp' | 'truecaller' | 'google';
 
@@ -65,6 +67,7 @@ interface UnifiedLoginResponse {
 @ApiTags('auth-v1')
 @Controller('v1/auth')
 @UseGuards(AppIdGuard)
+@UseInterceptors(PrometheusMetricsInterceptor)
 export class AuthV1Controller {
   private readonly logger = new Logger(AuthV1Controller.name);
 

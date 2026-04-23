@@ -12,6 +12,7 @@ import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AuthRateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { HealthMetricsService } from '../prometheus/health-metrics.service';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 
 describe('AuthController', () => {
   let app: INestApplication;
@@ -44,6 +45,15 @@ describe('AuthController', () => {
         {
           provide: HealthMetricsService,
           useValue: mockMetricsService,
+        },
+        PrometheusMetricsInterceptor,
+        {
+          provide: 'PROM_METRIC_HTTP_REQUESTS_TOTAL',
+          useValue: { inc: jest.fn() },
+        },
+        {
+          provide: 'PROM_METRIC_HTTP_REQUEST_DURATION_SECONDS',
+          useValue: { observe: jest.fn() },
         },
       ],
     })

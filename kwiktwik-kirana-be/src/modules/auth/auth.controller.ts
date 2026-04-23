@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   UseGuards,
+  UseInterceptors,
   Req,
   HttpCode,
   HttpStatus,
@@ -17,11 +18,13 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleSigninDto } from './dto/google-signin.dto';
 import { TruecallerSigninDto } from './dto/truecaller-signin.dto';
 import { HealthMetricsService } from '../prometheus/health-metrics.service';
+import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 import type { Request } from 'express';
 
 @ApiTags('auth')
 @Controller()
 @UseGuards(AppIdGuard)
+@UseInterceptors(PrometheusMetricsInterceptor)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

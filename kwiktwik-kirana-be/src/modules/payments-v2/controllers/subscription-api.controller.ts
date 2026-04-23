@@ -13,6 +13,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   Logger,
   HttpCode,
   HttpStatus,
@@ -41,6 +42,7 @@ import type { ISubscriptionRepository } from '../infrastructure/repositories/sub
 import type { Subscription } from '../domain/entities/subscription.entity';
 import type { PaymentProvider } from '../types/provider.enum';
 import { HealthMetricsService } from '../../prometheus/health-metrics.service';
+import { PrometheusMetricsInterceptor } from '../../../common/interceptors/prometheus-metrics.interceptor';
 
 @ApiTags('Payments V2 - Subscriptions')
 @ApiBearerAuth('JWT')
@@ -51,6 +53,7 @@ import { HealthMetricsService } from '../../prometheus/health-metrics.service';
 })
 @Controller('v1/subscriptions')
 @UseGuards(AppIdGuard, JwtAuthGuard)
+@UseInterceptors(PrometheusMetricsInterceptor)
 export class SubscriptionApiController {
   private readonly logger = new Logger(SubscriptionApiController.name);
 
