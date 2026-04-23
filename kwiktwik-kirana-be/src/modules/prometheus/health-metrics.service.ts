@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  Counter,
-  Gauge,
-  Histogram,
-  InjectMetric,
-} from '@willsoto/nestjs-prometheus';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter, Gauge, Histogram } from 'prom-client';
 
 /**
  * Service for tracking custom application metrics
