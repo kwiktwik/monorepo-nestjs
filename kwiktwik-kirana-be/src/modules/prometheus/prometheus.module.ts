@@ -17,6 +17,7 @@ import { MetricsController } from './metrics.controller';
       controller: MetricsController,
     }),
   ],
+  controllers: [MetricsController], // 👈 ADD THIS
   providers: [HealthMetricsService, ...metricProviders],
   exports: [HealthMetricsService, ...metricProviders],
 })
