@@ -66,9 +66,11 @@ const dbModule =
       get: (key: string) => process.env[key],
     } as ConfigService),
     AdminModule,
-    PrometheusModuleBase.register(),
+    PrometheusModuleBase.register({
+      path: '/internal/metrics',
+    }),
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     {
       provide: APP_FILTER,
