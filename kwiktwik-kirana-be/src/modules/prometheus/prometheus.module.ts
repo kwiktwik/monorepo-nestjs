@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrometheusModule as PrometheusModuleBase } from '@willsoto/nestjs-prometheus';
 import { HealthMetricsService } from './health-metrics.service';
 import { metricProviders } from './metrics.providers';
+import { MetricsController } from './metrics.controller';
 
 /**
  * Prometheus metrics module for monitoring
@@ -12,10 +13,8 @@ import { metricProviders } from './metrics.providers';
 @Module({
   imports: [
     PrometheusModuleBase.register({
-      path: '/metrics',
-      defaultMetrics: {
-        enabled: true,
-      },
+      // Use custom controller instead of auto-registered one
+      controller: MetricsController,
     }),
   ],
   providers: [HealthMetricsService, ...metricProviders],
