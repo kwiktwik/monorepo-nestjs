@@ -159,7 +159,14 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(port);
+  logger.log(`Attempting to listen on port ${port}...`);
+  try {
+    await app.listen(port);
+    logger.log(`✅ Successfully listening on port ${port}`);
+  } catch (err) {
+    logger.error(`❌ Failed to listen on port ${port}: ${err.message}`);
+    process.exit(1);
+  }
 
   // Notify PM2 that the app is ready (required when wait_ready: true in ecosystem config)
   if (process.send) {
