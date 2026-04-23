@@ -21,9 +21,14 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationEventsModule } from './modules/notification-events/notification-events.module';
 import { DeviceSessionModule } from './modules/device-session/device-session.module';
 import { HealthController } from './modules/health/health.controller';
+import { RootController } from './modules/root/root.controller';
 import { DbDebugModule } from './debug/db-debug.module';
 import { PrometheusModule as PrometheusModuleBase } from '@willsoto/nestjs-prometheus';
-import { MetricsController, metricProviders, HealthMetricsService } from './modules/prometheus';
+import {
+  MetricsController,
+  metricProviders,
+  HealthMetricsService,
+} from './modules/prometheus';
 import { MqttModule } from './common/mqtt/mqtt.module';
 import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
@@ -70,7 +75,7 @@ const dbModule =
       path: '/internal/metrics',
     }),
   ],
-  controllers: [HealthController, MetricsController],
+  controllers: [RootController, HealthController, MetricsController],
   providers: [
     {
       provide: APP_FILTER,
