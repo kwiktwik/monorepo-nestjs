@@ -34,7 +34,7 @@ class GetOrderStatusDto {
   details?: string;
 }
 
-class NotifyRedemptionDto {
+class AdminNotifyRedemptionDto {
   @IsNumber()
   amount!: number;
 
@@ -189,7 +189,7 @@ export class PhonePeAdminController {
     @Param('merchantSubscriptionId') merchantSubscriptionId: string,
     @Query('appId') appId: string,
     @Query('userId') userId: string,
-    @Body() body: NotifyRedemptionDto,
+    @Body() body: AdminNotifyRedemptionDto,
   ) {
     const result = await this.subscriptionService.notifyRedemption({
       userId,
