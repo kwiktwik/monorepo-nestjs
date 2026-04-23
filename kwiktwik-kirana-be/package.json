@@ -17,7 +17,7 @@
     "start:dev": "nest start --watch",
     "start:dev:mock": "USE_MOCK_DB=true pnpm test:db:setup && USE_MOCK_DB=true nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest --forceExit",
     "test:watch": "jest --watch",
