@@ -1,24 +1,31 @@
 import { Module } from '@nestjs/common';
 import { PrometheusModule as PrometheusModuleBase } from '@willsoto/nestjs-prometheus';
-import { HealthMetricsService } from './health-metrics.service';
 import { metricProviders } from './metrics.providers';
-import { MetricsController } from './metrics.controller';
+import { HealthMetricsService } from './health-metrics.service';
 
 /**
  * Prometheus metrics module for monitoring
  *
- * Exposes metrics at /metrics endpoint (excluded from global /api prefix)
- * Includes default Node.js metrics + custom application metrics
+ * This module:
+ * - Registers the PrometheusModule from @willsoto/nestjs-prometheus
+ * - Provides custom application metrics via metricProviders
+ * - Exports metric providers for injection into other services
+ *
+ * Note: The MetricsController is registered separately in AppModule to ensure
+ * it's excluded from the global /api prefix (configured in main.ts).
  */
 @Module({
   imports: [
     PrometheusModuleBase.register({
-      path: 'metrics',
-      // Use custom controller instead of auto-registered one
-      controller: MetricsController,
+      // Enable default Node.js metrics (event loop lag, memory, CPU, etc.)
+      defaultMetrics: {
+        enabled: true,
+      },
+      // Disable the default controller since we provide our own in AppModule
+      controller: class DummyController {},
     }),
   ],
   providers: [HealthMetricsService, ...metricProviders],
-  exports: [HealthMetricsService, ...metricProviders],
+  exports: [HealthMetricsService, PrometheusModuleBase, ...metricProviders],
 })
 export class PrometheusModule {}

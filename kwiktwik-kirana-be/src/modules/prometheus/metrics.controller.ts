@@ -1,20 +1,20 @@
 import { Controller, Get, Res } from '@nestjs/common';
-import { PrometheusController } from '@willsoto/nestjs-prometheus';
 import type { Response } from 'express';
+import { register } from 'prom-client';
 
 /**
- * Explicit metrics controller extending the library's base controller.
- * This ensures /metrics endpoint works reliably in all deployment scenarios.
+ * Custom metrics controller that serves prometheus metrics
+ * 
+ * This controller is registered directly in AppModule (not through PrometheusModule)
+ * so it respects the global prefix exclusion configured in main.ts.
+ * 
+ * The /metrics endpoint is excluded from the /api prefix for load balancer health checks.
  */
-@Controller()
-export class MetricsController extends PrometheusController {
-  @Get('metrics')
-  async index(@Res({ passthrough: true }) res: Response): Promise<string> {
-    return super.index(res);
-  }
-
-  @Get('metric')
-  async indexAlt(@Res({ passthrough: true }) res: Response): Promise<string> {
-    return super.index(res);
+@Controller('metrics')
+export class MetricsController {
+  @Get()
+  async getMetrics(@Res() res: Response) {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
   }
 }

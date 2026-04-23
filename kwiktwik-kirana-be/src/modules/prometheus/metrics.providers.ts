@@ -1,4 +1,3 @@
-import { Module } from '@nestjs/common';
 import {
   makeCounterProvider,
   makeGaugeProvider,
@@ -7,6 +6,7 @@ import {
 
 /**
  * Custom metric providers for the application
+ * These providers create and register metrics with the prometheus client
  */
 export const metricProviders = [
   // HTTP request counter
@@ -62,9 +62,3 @@ export const metricProviders = [
     labelNames: ['provider', 'status'],
   }),
 ];
-
-@Module({
-  providers: [...metricProviders],
-  exports: [...metricProviders],
-})
-export class MetricsModule {}

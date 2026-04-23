@@ -5,6 +5,8 @@ import { Counter, Gauge, Histogram } from 'prom-client';
 /**
  * Service for tracking custom application metrics
  * Used by health controller and other components
+ * 
+ * Metrics are automatically exposed at /metrics endpoint by PrometheusModule
  */
 @Injectable()
 export class HealthMetricsService {
@@ -25,17 +27,25 @@ export class HealthMetricsService {
     private readonly healthCheckStatus: Gauge<string>,
     @InjectMetric('app_uptime_seconds')
     private readonly appUptime: Gauge<string>,
+    @InjectMetric('orders_created_total')
+    private readonly ordersCreated: Counter<string>,
+    @InjectMetric('payments_processed_total')
+    private readonly paymentsProcessed: Counter<string>,
   ) {}
 
   /**
    * Record an HTTP request metric
    */
   recordHttpRequest(method: string, route: string, statusCode: number): void {
-    this.httpRequestsTotal.inc({
-      method,
-      route,
-      status_code: statusCode.toString(),
-    });
+    try {
+      this.httpRequestsTotal.inc({
+        method,
+        route,
+        status_code: statusCode.toString(),
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to record HTTP request metric: ${error.message}`);
+    }
   }
 
   /**
@@ -46,24 +56,32 @@ export class HealthMetricsService {
     route: string,
     durationSeconds: number,
   ): void {
-    this.httpRequestDuration.observe(
-      { method, route },
-      durationSeconds,
-    );
+    try {
+      this.httpRequestDuration.observe(
+        { method, route },
+        durationSeconds,
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to record HTTP duration metric: ${error.message}`);
+    }
   }
 
   /**
    * Update memory metrics from current process state
    */
   updateMemoryMetrics(): void {
-    const mem = process.memoryUsage();
-    const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
-    const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024);
-    const rssMB = Math.round(mem.rss / 1024 / 1024);
+    try {
+      const mem = process.memoryUsage();
+      const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
+      const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024);
+      const rssMB = Math.round(mem.rss / 1024 / 1024);
 
-    this.memoryHeapUsed.set(heapUsedMB);
-    this.memoryHeapTotal.set(heapTotalMB);
-    this.memoryRss.set(rssMB);
+      this.memoryHeapUsed.set(heapUsedMB);
+      this.memoryHeapTotal.set(heapTotalMB);
+      this.memoryRss.set(rssMB);
+    } catch (error) {
+      this.logger.warn(`Failed to update memory metrics: ${error.message}`);
+    }
   }
 
   /**
@@ -71,15 +89,45 @@ export class HealthMetricsService {
    * 0 = critical, 1 = warning, 2 = ok
    */
   updateHealthStatus(status: 'ok' | 'warning' | 'critical'): void {
-    const statusValue = status === 'ok' ? 2 : status === 'warning' ? 1 : 0;
-    this.healthCheckStatus.set(statusValue);
+    try {
+      const statusValue = status === 'ok' ? 2 : status === 'warning' ? 1 : 0;
+      this.healthCheckStatus.set(statusValue);
+    } catch (error) {
+      this.logger.warn(`Failed to update health status metric: ${error.message}`);
+    }
   }
 
   /**
    * Update application uptime metric
    */
   updateUptime(startTime: number): void {
-    const uptimeSeconds = Math.round((Date.now() - startTime) / 1000);
-    this.appUptime.set(uptimeSeconds);
+    try {
+      const uptimeSeconds = Math.round((Date.now() - startTime) / 1000);
+      this.appUptime.set(uptimeSeconds);
+    } catch (error) {
+      this.logger.warn(`Failed to update uptime metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record order creation
+   */
+  recordOrderCreated(status: string): void {
+    try {
+      this.ordersCreated.inc({ status });
+    } catch (error) {
+      this.logger.warn(`Failed to record order metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record payment processing
+   */
+  recordPaymentProcessed(provider: string, status: string): void {
+    try {
+      this.paymentsProcessed.inc({ provider, status });
+    } catch (error) {
+      this.logger.warn(`Failed to record payment metric: ${error.message}`);
+    }
   }
 }
