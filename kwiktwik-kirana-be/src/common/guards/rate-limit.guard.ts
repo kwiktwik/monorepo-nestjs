@@ -534,6 +534,8 @@ export class RateLimitGuard implements CanActivate, OnModuleDestroy {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    return true; // Rate limiting temporarily disabled globally
+
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
 
@@ -604,6 +606,8 @@ export class AuthRateLimitGuard extends RateLimitGuard {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    return true; // Rate limiting temporarily disabled globally
+    
     if (process.env.USE_MOCK_DB === 'true') {
       return true;
     }
@@ -676,6 +680,8 @@ export class UserRateLimitGuard extends RateLimitGuard {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    return true; // Rate limiting temporarily disabled globally
+
     if (process.env.USE_MOCK_DB === 'true') {
       return true;
     }
