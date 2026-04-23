@@ -11,6 +11,7 @@ import {
 import request from 'supertest';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AuthRateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { HealthMetricsService } from '../prometheus/health-metrics.service';
 
 describe('AuthController', () => {
   let app: INestApplication;
@@ -23,6 +24,15 @@ describe('AuthController', () => {
     googleSignin: jest.fn(),
   };
 
+  const mockMetricsService = {
+    recordOtpSent: jest.fn(),
+    recordOtpVerified: jest.fn(),
+    recordLoginAttempt: jest.fn(),
+    recordLoginSuccess: jest.fn(),
+    recordLoginFailure: jest.fn(),
+    recordAuthDuration: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -30,6 +40,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: HealthMetricsService,
+          useValue: mockMetricsService,
         },
       ],
     })

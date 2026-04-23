@@ -5,7 +5,7 @@ import { Counter, Gauge, Histogram } from 'prom-client';
 /**
  * Service for tracking custom application metrics
  * Used by health controller and other components
- * 
+ *
  * Metrics are automatically exposed at /metrics endpoint by PrometheusModule
  */
 @Injectable()
@@ -31,6 +31,34 @@ export class HealthMetricsService {
     private readonly ordersCreated: Counter<string>,
     @InjectMetric('payments_processed_total')
     private readonly paymentsProcessed: Counter<string>,
+    // Auth metrics
+    @InjectMetric('auth_login_attempts_total')
+    private readonly authLoginAttempts: Counter<string>,
+    @InjectMetric('auth_login_success_total')
+    private readonly authLoginSuccess: Counter<string>,
+    @InjectMetric('auth_login_failures_total')
+    private readonly authLoginFailures: Counter<string>,
+    @InjectMetric('auth_otp_sent_total')
+    private readonly authOtpSent: Counter<string>,
+    @InjectMetric('auth_otp_verified_total')
+    private readonly authOtpVerified: Counter<string>,
+    @InjectMetric('auth_duration_seconds')
+    private readonly authDuration: Histogram<string>,
+    @InjectMetric('auth_active_sessions')
+    private readonly authActiveSessions: Gauge<string>,
+    // Subscription metrics
+    @InjectMetric('subscriptions_created_total')
+    private readonly subscriptionsCreated: Counter<string>,
+    @InjectMetric('subscriptions_status_changed_total')
+    private readonly subscriptionsStatusChanged: Counter<string>,
+    @InjectMetric('subscriptions_cancelled_total')
+    private readonly subscriptionsCancelled: Counter<string>,
+    @InjectMetric('subscriptions_active')
+    private readonly subscriptionsActive: Gauge<string>,
+    @InjectMetric('subscriptions_revenue_total')
+    private readonly subscriptionsRevenue: Counter<string>,
+    @InjectMetric('subscriptions_billing_events_total')
+    private readonly subscriptionsBillingEvents: Counter<string>,
   ) {}
 
   /**
@@ -128,6 +156,157 @@ export class HealthMetricsService {
       this.paymentsProcessed.inc({ provider, status });
     } catch (error) {
       this.logger.warn(`Failed to record payment metric: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
+  // Auth Metrics
+  // ============================================================================
+
+  /**
+   * Record a login attempt
+   */
+  recordLoginAttempt(provider: string, appId: string): void {
+    try {
+      this.authLoginAttempts.inc({ provider, app_id: appId });
+    } catch (error) {
+      this.logger.warn(`Failed to record login attempt metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record a successful login
+   */
+  recordLoginSuccess(provider: string, appId: string): void {
+    try {
+      this.authLoginSuccess.inc({ provider, app_id: appId });
+    } catch (error) {
+      this.logger.warn(`Failed to record login success metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record a failed login
+   */
+  recordLoginFailure(provider: string, appId: string, reason: string): void {
+    try {
+      this.authLoginFailures.inc({ provider, app_id: appId, reason });
+    } catch (error) {
+      this.logger.warn(`Failed to record login failure metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record OTP sent
+   */
+  recordOtpSent(appId: string): void {
+    try {
+      this.authOtpSent.inc({ app_id: appId });
+    } catch (error) {
+      this.logger.warn(`Failed to record OTP sent metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record OTP verification
+   */
+  recordOtpVerified(appId: string, success: boolean): void {
+    try {
+      this.authOtpVerified.inc({ app_id: appId, status: success ? 'success' : 'failure' });
+    } catch (error) {
+      this.logger.warn(`Failed to record OTP verified metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record authentication operation duration
+   */
+  recordAuthDuration(operation: string, durationSeconds: number): void {
+    try {
+      this.authDuration.observe({ operation }, durationSeconds);
+    } catch (error) {
+      this.logger.warn(`Failed to record auth duration metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update active sessions count
+   */
+  updateActiveSessions(appId: string, count: number): void {
+    try {
+      this.authActiveSessions.set({ app_id: appId }, count);
+    } catch (error) {
+      this.logger.warn(`Failed to update active sessions metric: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
+  // Subscription Metrics
+  // ============================================================================
+
+  /**
+   * Record subscription creation
+   */
+  recordSubscriptionCreated(provider: string, planId: string, appId: string): void {
+    try {
+      this.subscriptionsCreated.inc({ provider, plan_id: planId, app_id: appId });
+    } catch (error) {
+      this.logger.warn(`Failed to record subscription created metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record subscription status change
+   */
+  recordSubscriptionStatusChange(provider: string, fromStatus: string, toStatus: string): void {
+    try {
+      this.subscriptionsStatusChanged.inc({ provider, from_status: fromStatus, to_status: toStatus });
+    } catch (error) {
+      this.logger.warn(`Failed to record subscription status change metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record subscription cancellation
+   */
+  recordSubscriptionCancelled(provider: string, reason?: string): void {
+    try {
+      this.subscriptionsCancelled.inc({ provider, reason: reason || 'unknown' });
+    } catch (error) {
+      this.logger.warn(`Failed to record subscription cancelled metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update active subscriptions count
+   */
+  updateActiveSubscriptions(provider: string, planId: string, appId: string, count: number): void {
+    try {
+      this.subscriptionsActive.set({ provider, plan_id: planId, app_id: appId }, count);
+    } catch (error) {
+      this.logger.warn(`Failed to update active subscriptions metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record subscription revenue
+   */
+  recordSubscriptionRevenue(provider: string, type: 'initial' | 'recurring', appId: string, amountPaise: number): void {
+    try {
+      this.subscriptionsRevenue.inc({ provider, type, app_id: appId }, amountPaise);
+    } catch (error) {
+      this.logger.warn(`Failed to record subscription revenue metric: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record billing event
+   */
+  recordBillingEvent(provider: string, status: 'success' | 'failure'): void {
+    try {
+      this.subscriptionsBillingEvents.inc({ provider, status });
+    } catch (error) {
+      this.logger.warn(`Failed to record billing event metric: ${error.message}`);
     }
   }
 }

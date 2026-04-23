@@ -40,6 +40,7 @@ import {
   LoginGoogleDto,
 } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { HealthMetricsService } from '../prometheus/health-metrics.service';
 
 type ProviderType = 'otp' | 'truecaller' | 'google';
 
@@ -70,6 +71,7 @@ export class AuthV1Controller {
   constructor(
     private readonly authService: AuthService,
     private readonly migrationService: MigrationService,
+    private readonly metrics: HealthMetricsService,
     @Inject(DRIZZLE_TOKEN)
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
@@ -180,6 +182,9 @@ export class AuthV1Controller {
       dto.appHash,
       ipAddress,
     );
+
+    // Record OTP sent metric
+    this.metrics.recordOtpSent(appId);
 
     return {
       success: true,
@@ -296,24 +301,39 @@ export class AuthV1Controller {
       );
     }
 
+    // Record login attempt
+    this.metrics.recordLoginAttempt(provider, appId);
+
+    const startTime = Date.now();
+
     try {
       // Route to appropriate login method
+      let result: UnifiedLoginResponse;
       switch (provider) {
         case 'otp':
-          return await this.loginWithOtp(credentials as LoginOtpDto, appId);
+          result = await this.loginWithOtp(credentials as LoginOtpDto, appId);
+          break;
         case 'truecaller':
-          return await this.loginWithTruecaller(
+          result = await this.loginWithTruecaller(
             credentials as LoginTruecallerDto,
             appId,
           );
+          break;
         case 'google':
-          return await this.loginWithGoogle(
+          result = await this.loginWithGoogle(
             credentials as LoginGoogleDto,
             appId,
           );
+          break;
         default:
           throw new BadRequestException('Invalid provider');
       }
+
+      // Record successful login
+      this.metrics.recordLoginSuccess(provider, appId);
+      this.metrics.recordAuthDuration(`${provider}_login`, (Date.now() - startTime) / 1000);
+
+      return result;
     } catch (error) {
       this.logger.error(
         `[Unified Login] Error for provider ${provider}:`,
@@ -322,6 +342,12 @@ export class AuthV1Controller {
       this.logger.error(
         `[Unified Login] Error details - Stack: ${error instanceof Error ? error.stack : 'N/A'}`,
       );
+
+      // Record failed login
+      const reason = error instanceof UnauthorizedException ? 'invalid_credentials' :
+                     error instanceof BadRequestException ? 'bad_request' : 'server_error';
+      this.metrics.recordLoginFailure(provider, appId, reason);
+      this.metrics.recordAuthDuration(`${provider}_login`, (Date.now() - startTime) / 1000);
 
       if (
         error instanceof UnauthorizedException ||
@@ -429,6 +455,9 @@ export class AuthV1Controller {
       appId,
       'otp',
     );
+
+    // Record OTP verification success
+    this.metrics.recordOtpVerified(appId, true);
 
     this.logger.log(`[OTP Login] Success for user: ${result.user.id}`);
 

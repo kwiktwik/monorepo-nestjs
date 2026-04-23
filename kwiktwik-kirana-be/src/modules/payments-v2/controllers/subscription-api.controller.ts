@@ -40,6 +40,7 @@ import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
 import type { Subscription } from '../domain/entities/subscription.entity';
 import type { PaymentProvider } from '../types/provider.enum';
+import { HealthMetricsService } from '../../prometheus/health-metrics.service';
 
 @ApiTags('Payments V2 - Subscriptions')
 @ApiBearerAuth('JWT')
@@ -56,6 +57,7 @@ export class SubscriptionApiController {
   constructor(
     private readonly subscriptionManager: SubscriptionManagerService,
     private readonly configService: PaymentConfigService,
+    private readonly metrics: HealthMetricsService,
     @Inject('ISubscriptionRepository')
     private readonly subscriptionRepo: ISubscriptionRepository,
   ) {}
@@ -102,6 +104,24 @@ export class SubscriptionApiController {
       customerPhone: dto.phone,
       metadata: dto.metadata,
     });
+
+    // Record subscription metrics
+    if (result.success && result.subscription) {
+      this.metrics.recordSubscriptionCreated(
+        dto.provider,
+        dto.planId,
+        appId,
+      );
+      // Record initial revenue
+      if (planConfig.initialAmount > 0) {
+        this.metrics.recordSubscriptionRevenue(
+          dto.provider,
+          'initial',
+          appId,
+          planConfig.initialAmount,
+        );
+      }
+    }
 
     return {
       success: result.success,
@@ -234,6 +254,17 @@ export class SubscriptionApiController {
       throw new BadRequestException(result.error ?? 'Failed to cancel subscription');
     }
 
+    // Record cancellation metric
+    this.metrics.recordSubscriptionCancelled(
+      existing.provider,
+      dto?.reason,
+    );
+    this.metrics.recordSubscriptionStatusChange(
+      existing.provider,
+      existing.status,
+      'CANCELLED',
+    );
+
     return this.toStatusDto(result.subscription);
   }
 
@@ -264,6 +295,20 @@ export class SubscriptionApiController {
 
     if (!subscription) {
       throw new NotFoundException('Subscription not found');
+    }
+
+    // Record status change if different from previous
+    if (subscription.status !== existing.status) {
+      this.metrics.recordSubscriptionStatusChange(
+        existing.provider,
+        existing.status,
+        subscription.status,
+      );
+
+      // Record billing event if subscription became active
+      if (subscription.status === 'ACTIVE' && existing.status !== 'ACTIVE') {
+        this.metrics.recordBillingEvent(existing.provider, 'success');
+      }
     }
 
     return this.toStatusDto(subscription);

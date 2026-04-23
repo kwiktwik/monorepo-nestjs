@@ -16,13 +16,17 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleSigninDto } from './dto/google-signin.dto';
 import { TruecallerSigninDto } from './dto/truecaller-signin.dto';
+import { HealthMetricsService } from '../prometheus/health-metrics.service';
 import type { Request } from 'express';
 
 @ApiTags('auth')
 @Controller()
 @UseGuards(AppIdGuard)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly metrics: HealthMetricsService,
+  ) {}
 
   @Post('phone-number/send-otp')
   @HttpCode(HttpStatus.OK)
@@ -37,7 +41,11 @@ export class AuthController {
     status: 429,
     description: 'Rate limit exceeded',
   })
-  async sendOtp(@Body() sendOtpDto: SendOtpDto, @Req() req: Request) {
+  async sendOtp(
+    @Body() sendOtpDto: SendOtpDto,
+    @Req() req: Request,
+    @AppId() appId: string,
+  ) {
     const ipAddress =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       (req.headers['x-real-ip'] as string) ||
@@ -49,6 +57,9 @@ export class AuthController {
       sendOtpDto.appHash,
       ipAddress,
     );
+
+    // Record OTP sent metric
+    this.metrics.recordOtpSent(appId);
 
     return {
       success: true,
@@ -112,17 +123,34 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP verified, returns JWT token' })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto, @AppId() appId: string) {
-    const result = await this.authService.verifyOtp(
-      verifyOtpDto.phoneNumber,
-      verifyOtpDto.code,
-      appId,
-    );
+    const startTime = Date.now();
 
-    return {
-      success: true,
-      message: 'OTP verified successfully',
-      data: result,
-    };
+    try {
+      const result = await this.authService.verifyOtp(
+        verifyOtpDto.phoneNumber,
+        verifyOtpDto.code,
+        appId,
+      );
+
+      // Record successful OTP verification
+      this.metrics.recordOtpVerified(appId, true);
+      this.metrics.recordLoginAttempt('otp', appId);
+      this.metrics.recordLoginSuccess('otp', appId);
+      this.metrics.recordAuthDuration('otp_verify', (Date.now() - startTime) / 1000);
+
+      return {
+        success: true,
+        message: 'OTP verified successfully',
+        data: result,
+      };
+    } catch (error) {
+      // Record failed OTP verification
+      this.metrics.recordOtpVerified(appId, false);
+      this.metrics.recordLoginAttempt('otp', appId);
+      this.metrics.recordLoginFailure('otp', appId, 'invalid_otp');
+      this.metrics.recordAuthDuration('otp_verify', (Date.now() - startTime) / 1000);
+      throw error;
+    }
   }
 
   @Post('truecaller/token')
