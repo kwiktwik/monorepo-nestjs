@@ -25,6 +25,10 @@ import { RedisService } from '../redis/redis.service';
 export const GLOBAL_RATE_LIMIT_SKIP_ROUTES = [
   '/health',
   '/api/health',
+  '/metrics',
+  '/api/metrics',
+  '/metric',
+  '/api/metric',
   '/api/razorpay/webhook',
   '/api/phonepe/webhook',
   '/api/admin/docs',

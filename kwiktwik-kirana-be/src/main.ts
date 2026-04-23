@@ -36,7 +36,7 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
   // All API routes under /api (health and metrics excluded for load balancers)
-  app.setGlobalPrefix('api', { exclude: ['health', 'metrics'] });
+  app.setGlobalPrefix('api', { exclude: ['health', 'metrics', 'metric'] });
 
   // Enable URI versioning for v2 endpoints
   app.enableVersioning({
