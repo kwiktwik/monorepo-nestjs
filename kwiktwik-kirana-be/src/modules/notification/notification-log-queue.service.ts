@@ -95,7 +95,7 @@ export class NotificationLogQueueService implements OnModuleInit {
         },
       });
 
-      this.logger.debug(`Queued notification log: ${data.notificationId}`);
+      // this.logger.debug(`Queued notification log: ${data.notificationId}`);
 
       return {
         notificationLogId: null,

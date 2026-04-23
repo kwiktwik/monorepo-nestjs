@@ -110,9 +110,9 @@ export class NotificationLogProcessor
     const data = job.data;
     const startTime = Date.now();
 
-    this.logger.debug(
-      `Processing notification log: ${data.notificationId} for user ${data.userId}`,
-    );
+    // this.logger.debug(
+    //   `Processing notification log: ${data.notificationId} for user ${data.userId}`,
+    // );
 
     try {
       // Check for duplicate
@@ -124,7 +124,7 @@ export class NotificationLogProcessor
 
       if (existing.length > 0) {
         this.metrics.duplicates++;
-        this.logger.debug(`Duplicate notification: ${data.notificationId}`);
+        // this.logger.debug(`Duplicate notification: ${data.notificationId}`);
         return {
           notificationLogId: null,
           enhancedNotificationId: existing[0].id,
@@ -186,9 +186,9 @@ export class NotificationLogProcessor
 
       this.metrics.processed++;
       const duration = Date.now() - startTime;
-      this.logger.debug(
-        `Processed notification log in ${duration}ms: ${data.notificationId}`,
-      );
+      // this.logger.debug(
+      //   `Processed notification log in ${duration}ms: ${data.notificationId}`,
+      // );
 
       return {
         notificationLogId,
@@ -206,7 +206,7 @@ export class NotificationLogProcessor
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job<NotificationLogJobData>) {
-    this.logger.debug(`Job ${job.id} completed`);
+    // this.logger.debug(`Job ${job.id} completed`);
   }
 
   @OnWorkerEvent('failed')
