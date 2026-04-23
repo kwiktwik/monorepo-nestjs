@@ -1,0 +1,63 @@
+# Blackbox Exporter Configuration
+# 
+# This configuration defines how to probe endpoints for Prometheus monitoring
+# The issue with your current probe is:
+#   - You're probing http://services.kiranaapps.com which redirects to HTTPS
+#   - After following redirects, it gets 404 because root / doesn't exist
+#
+# Fix: Use https:// directly and probe the actual health endpoint
+
+modules:
+  # For probing HTTP 2xx endpoints with redirects
+  http_2xx:
+    prober: http
+    http:
+      # Follow redirects
+      follow_redirects: true
+      # Use GET method
+      method: GET
+      # Valid status codes (2xx and 3xx are considered successful)
+      valid_status_codes: [200, 301, 302, 303, 307, 308]
+      # TLS configuration (skip verify for self-signed certs if needed)
+      tls_config:
+        insecure_skip_verify: false
+      # Timeout for the request
+      timeout: 10s
+
+  # For probing the health endpoint specifically
+  http_health:
+    prober: http
+    http:
+      follow_redirects: true
+      method: GET
+      valid_status_codes: [200]
+      # Expect a valid JSON response
+      preferred_ip_protocol: "ip4"
+      timeout: 5s
+
+  # For probing HTTPS endpoints that redirect from HTTP
+  https_2xx:
+    prober: http
+    http:
+      follow_redirects: true
+      method: GET
+      valid_status_codes: [200]
+      # Force HTTPS
+      scheme: https
+      tls_config:
+        insecure_skip_verify: false
+      timeout: 10s
+
+  # TCP check for database or other TCP services
+  tcp_connect:
+    prober: tcp
+    tcp:
+      preferred_ip_protocol: "ip4"
+      timeout: 5s
+
+  # ICMP ping check
+  icmp_ping:
+    prober: icmp
+    icmp:
+      preferred_ip_protocol: "ip4"
+      timeout: 5s

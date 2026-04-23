@@ -35,8 +35,8 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-  // All API routes under /api (health excluded for load balancers)
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  // All API routes under /api (health and metrics excluded for load balancers)
+  app.setGlobalPrefix('api', { exclude: ['health', 'metrics'] });
 
   // Enable URI versioning for v2 endpoints
   app.enableVersioning({
@@ -171,6 +171,7 @@ async function bootstrap() {
     `🔐 JWT: ${process.env.JWT_SECRET ? 'JWT_SECRET set from env' : 'WARNING: Using default JWT secret'}`,
   );
   logger.log(`📋 Health check: http://localhost:${port}/health`);
+  logger.log(`📊 Prometheus metrics: http://localhost:${port}/metrics`);
   logger.log(
     `📖 Swagger docs (admin protected): http://localhost:${port}/api/admin/docs`,
   );

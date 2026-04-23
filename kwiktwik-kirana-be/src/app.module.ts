@@ -22,6 +22,7 @@ import { NotificationEventsModule } from './modules/notification-events/notifica
 import { DeviceSessionModule } from './modules/device-session/device-session.module';
 import { HealthController } from './modules/health/health.controller';
 import { DbDebugModule } from './debug/db-debug.module';
+import { PrometheusModule } from './modules/prometheus';
 import { MqttModule } from './common/mqtt/mqtt.module';
 import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
@@ -64,6 +65,7 @@ const dbModule =
       get: (key: string) => process.env[key],
     } as ConfigService),
     AdminModule,
+    PrometheusModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,5 +1,6 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get, Logger, OnModuleInit } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { HealthMetricsService } from '../prometheus';
 
 /**
  * Memory thresholds for health status
@@ -37,9 +38,23 @@ interface HealthStatus {
 
 @ApiTags('health')
 @Controller('health')
-export class HealthController {
+export class HealthController implements OnModuleInit {
   private readonly logger = new Logger(HealthController.name);
   private readonly startTime = Date.now();
+
+  constructor(private readonly healthMetrics: HealthMetricsService) {}
+
+  onModuleInit() {
+    // Initial metrics update
+    this.updateMetrics();
+    // Update metrics every 30 seconds
+    setInterval(() => this.updateMetrics(), 30000);
+  }
+
+  private updateMetrics(): void {
+    this.healthMetrics.updateMemoryMetrics();
+    this.healthMetrics.updateUptime(this.startTime);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Health check with memory monitoring' })
@@ -84,6 +99,10 @@ export class HealthController {
         status: memoryStatus,
       },
     };
+
+    // Update Prometheus metrics
+    this.healthMetrics.updateHealthStatus(healthStatus.status);
+    this.updateMetrics();
 
     return healthStatus;
   }

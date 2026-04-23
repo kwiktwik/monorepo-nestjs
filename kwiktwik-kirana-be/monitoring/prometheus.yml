@@ -1,0 +1,112 @@
+# Prometheus Configuration
+# 
+# This is a sample Prometheus configuration for monitoring the KwikTwik Kirana backend
+# Includes both blackbox exporter probes and direct scraping of the /metrics endpoint
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'kwiktwik-kirana-monitor'
+
+# Alertmanager configuration (optional - configure if you have Alertmanager)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load alerting rules files (optional)
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ============================================
+  # IMPORTANT: Fixed Blackbox Exporter Jobs
+  # ============================================
+  
+  # Health endpoint probe - FIXED
+  # Use https:// directly instead of http:// to avoid 301 redirect issues
+  - job_name: 'blackbox-health'
+    metrics_path: /probe
+    params:
+      module: [http_health]
+      target: ['https://services.kiranaapps.com/health']
+    static_configs:
+      - targets:
+          - 'localhost:9115'  # Your blackbox exporter address
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+  # API health endpoint with 2xx check
+  - job_name: 'blackbox-api-2xx'
+    metrics_path: /probe
+    params:
+      module: [https_2xx]
+    static_configs:
+      - targets:
+          - https://services.kiranaapps.com/health
+          - https://services.kiranaapps.com/health/live
+          - https://services.kiranaapps.com/health/ready
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+  # ============================================
+  # Direct Prometheus Metrics Scraping (NEW)
+  # ============================================
+  # This scrapes the native /metrics endpoint exposed by your NestJS app
+  - job_name: 'kirana-backend-metrics'
+    scheme: https
+    static_configs:
+      - targets:
+          - services.kiranaapps.com
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # ============================================
+  # Infrastructure Monitoring
+  # ============================================
+  
+  # Node Exporter for server metrics (CPU, memory, disk, etc.)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # Blackbox exporter self-monitoring
+  - job_name: 'blackbox-exporter'
+    static_configs:
+      - targets: ['localhost:9115']
+
+  # ============================================
+  # Additional Service Monitoring
+  # ============================================
+  
+  # Database connectivity check (if using blackbox TCP)
+  - job_name: 'blackbox-database'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - your-db-host:5432  # Update with your actual DB host:port
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
