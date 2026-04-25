@@ -167,6 +167,14 @@ export class RedemptionSchedulerService {
       `Scheduling first redemption for subscription: ${subscription.merchantSubscriptionId}`,
     );
 
+    // Safety check: Only ACTIVE subscriptions can be redeemed per PhonePe documentation
+    if (subscription.state !== 'ACTIVE') {
+      this.logger.log(
+        `Skipping first redemption for ${subscription.merchantSubscriptionId}: subscription is ${subscription.state} (must be ACTIVE)`,
+      );
+      return;
+    }
+
     try {
       const amount = this.getPlanAmount(
         subscription.metadata?.planName as string,
@@ -220,6 +228,14 @@ export class RedemptionSchedulerService {
     this.logger.log(
       `Processing redemption for subscription: ${subscription.merchantSubscriptionId}`,
     );
+
+    // Safety check: Only ACTIVE subscriptions can be redeemed per PhonePe documentation
+    if (subscription.state !== 'ACTIVE') {
+      this.logger.log(
+        `Skipping redemption for ${subscription.merchantSubscriptionId}: subscription is ${subscription.state} (must be ACTIVE)`,
+      );
+      return;
+    }
 
     try {
       const amount = this.getPlanAmount(

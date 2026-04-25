@@ -155,16 +155,13 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
   }
 
   async findDueForRedemption(beforeDate: Date): Promise<Subscription[]> {
-    // Find both ACTIVE subscriptions and EXPIRED subscriptions due for redemption in SQL
+    // Only ACTIVE subscriptions can be redeemed per PhonePe documentation
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
       .where(
         and(
-          or(
-            eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
-            eq(schema.phonepeSubscriptions.state, 'EXPIRED'),
-          ),
+          eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
           isNotNull(schema.phonepeSubscriptions.nextBillingDate),
           lte(schema.phonepeSubscriptions.nextBillingDate, beforeDate),
         ),
@@ -177,16 +174,14 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
     beforeDate: Date,
     limit: number,
   ): Promise<Subscription[]> {
+    // Only ACTIVE subscriptions can be redeemed per PhonePe documentation
     // Uses FOR UPDATE SKIP LOCKED to allow multiple instances to process different rows safely
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
       .where(
         and(
-          or(
-            eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
-            eq(schema.phonepeSubscriptions.state, 'EXPIRED'),
-          ),
+          eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
           isNotNull(schema.phonepeSubscriptions.nextBillingDate),
           lte(schema.phonepeSubscriptions.nextBillingDate, beforeDate),
         ),
