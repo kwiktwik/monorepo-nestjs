@@ -3,6 +3,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Logger,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -19,6 +20,8 @@ import { Counter, Histogram } from 'prom-client';
  */
 @Injectable()
 export class PrometheusMetricsInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(PrometheusMetricsInterceptor.name);
+
   constructor(
     @InjectMetric('http_requests_total')
     private readonly httpRequestsTotal: Counter<string>,
@@ -48,6 +51,19 @@ export class PrometheusMetricsInterceptor implements NestInterceptor {
         error: (error) => {
           // Record with error status code (500 or error's status)
           const statusCode = error.status || 500;
+          
+          // Log error for debugging silent 500s
+          if (statusCode >= 500) {
+            this.logger.error(
+              `HTTP ${statusCode} on ${method} ${route} | Provider: ${provider || 'none'}`,
+              error instanceof Error ? error.stack : JSON.stringify(error),
+            );
+          } else {
+            this.logger.warn(
+              `HTTP ${statusCode} on ${method} ${route} | Message: ${error.message || 'No message'}`,
+            );
+          }
+
           this.recordMetrics(method, route, statusCode, startTime, provider);
         },
       }),
