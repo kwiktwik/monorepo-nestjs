@@ -59,6 +59,11 @@ export class HealthMetricsService {
     private readonly subscriptionsRevenue: Counter<string>,
     @InjectMetric('subscriptions_billing_events_total')
     private readonly subscriptionsBillingEvents: Counter<string>,
+    // Database metrics
+    @InjectMetric('db_pool_connections')
+    private readonly dbPoolConnections: Gauge<string>,
+    @InjectMetric('db_transaction_duration_seconds')
+    private readonly dbTransactionDuration: Histogram<string>,
   ) {}
 
   /**
@@ -309,6 +314,34 @@ export class HealthMetricsService {
       this.subscriptionsBillingEvents.inc({ provider, status });
     } catch (error) {
       this.logger.warn(`Failed to record billing event metric: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
+  // Database Metrics
+  // ============================================================================
+
+  /**
+   * Update database pool metrics
+   */
+  updateDbPoolMetrics(metrics: { total: number; idle: number; waiting: number }): void {
+    try {
+      this.dbPoolConnections.set({ type: 'total' }, metrics.total);
+      this.dbPoolConnections.set({ type: 'idle' }, metrics.idle);
+      this.dbPoolConnections.set({ type: 'waiting' }, metrics.waiting);
+    } catch (error) {
+      this.logger.warn(`Failed to update DB pool metrics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record database transaction duration
+   */
+  recordDbTransactionDuration(operation: string, durationSeconds: number): void {
+    try {
+      this.dbTransactionDuration.observe({ operation }, durationSeconds);
+    } catch (error) {
+      this.logger.warn(`Failed to record DB transaction duration: ${error.message}`);
     }
   }
 }

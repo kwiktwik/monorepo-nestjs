@@ -4,12 +4,13 @@ import { Pool } from 'pg';
 import * as schema from './schema';
 
 export const DRIZZLE_TOKEN = 'DRIZZLE_DB';
+export const PG_POOL_TOKEN = 'PG_POOL';
 
 @Global()
 @Module({
   providers: [
     {
-      provide: DRIZZLE_TOKEN,
+      provide: PG_POOL_TOKEN,
       useFactory: () => {
         let connectionString = process.env.DATABASE_URL;
 
@@ -42,9 +43,9 @@ export const DRIZZLE_TOKEN = 'DRIZZLE_DB';
           );
         }
 
-        const pool = new Pool({
+        return new Pool({
           connectionString,
-          max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+          max: parseInt(process.env.DB_POOL_MAX || '20', 10),
           idleTimeoutMillis: parseInt(
             process.env.DB_IDLE_TIMEOUT || '30000',
             10,
@@ -56,11 +57,16 @@ export const DRIZZLE_TOKEN = 'DRIZZLE_DB';
           keepAlive: true,
           ssl: { rejectUnauthorized: false },
         });
-
+      },
+    },
+    {
+      provide: DRIZZLE_TOKEN,
+      inject: [PG_POOL_TOKEN],
+      useFactory: (pool: Pool) => {
         return drizzle(pool, { schema });
       },
     },
   ],
-  exports: [DRIZZLE_TOKEN],
+  exports: [DRIZZLE_TOKEN, PG_POOL_TOKEN],
 })
 export class DrizzleModule {}

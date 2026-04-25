@@ -36,9 +36,9 @@ export class RedemptionSchedulerService {
       const now = new Date();
 
       const dueSubscriptions =
-        await this.subscriptionRepo.findDueForRedemption(now);
+        await this.subscriptionRepo.findDueForRedemptionWithLock(now, 100);
       this.logger.log(
-        `Found ${dueSubscriptions.length} subscriptions due for redemption`,
+        `Found ${dueSubscriptions.length} subscriptions due for redemption (locked for processing)`,
       );
 
       for (const subscription of dueSubscriptions) {

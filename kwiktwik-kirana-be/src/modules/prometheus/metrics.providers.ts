@@ -168,4 +168,18 @@ export const metricProviders = [
     labelNames: ['provider'],
     buckets: [1, 7, 30, 90, 180, 365, 730],
   }),
+  // ==========================================
+  // Database Metrics
+  // ==========================================
+  makeGaugeProvider({
+    name: 'db_pool_connections',
+    help: 'Database connection pool status',
+    labelNames: ['type'], // 'total', 'idle', 'waiting'
+  }),
+  makeHistogramProvider({
+    name: 'db_transaction_duration_seconds',
+    help: 'Database transaction duration in seconds',
+    labelNames: ['operation'],
+    buckets: [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2],
+  }),
 ];

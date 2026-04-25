@@ -4,6 +4,7 @@ import { metricProviders } from './metrics.providers';
 import { HealthMetricsService } from './health-metrics.service';
 import { MetricsController } from './metrics.controller';
 import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
+import { DatabaseMetricsService } from './database-metrics.service';
 
 /**
  * Prometheus Module - Provides metrics collection and exposure capabilities
@@ -26,6 +27,7 @@ import { PrometheusMetricsInterceptor } from '../../common/interceptors/promethe
   controllers: [MetricsController],
   providers: [
     HealthMetricsService,
+    DatabaseMetricsService,
     PrometheusMetricsInterceptor,
     ...metricProviders,
   ],

@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, lt, or } from 'drizzle-orm';
+import { eq, and, lt, or, lte, isNotNull, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionRepository } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
@@ -155,7 +155,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
   }
 
   async findDueForRedemption(beforeDate: Date): Promise<Subscription[]> {
-    // Find both ACTIVE subscriptions and EXPIRED subscriptions due for retry
+    // Find both ACTIVE subscriptions and EXPIRED subscriptions due for redemption in SQL
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
@@ -165,15 +165,36 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
             eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
             eq(schema.phonepeSubscriptions.state, 'EXPIRED'),
           ),
+          isNotNull(schema.phonepeSubscriptions.nextBillingDate),
+          lte(schema.phonepeSubscriptions.nextBillingDate, beforeDate),
         ),
       );
 
-    const due = results.filter(
-      (sub) =>
-        sub.nextBillingDate && new Date(sub.nextBillingDate) <= beforeDate,
-    );
+    return results.map((r) => this.toDomain(r));
+  }
 
-    return due.map((r) => this.toDomain(r));
+  async findDueForRedemptionWithLock(
+    beforeDate: Date,
+    limit: number,
+  ): Promise<Subscription[]> {
+    // Uses FOR UPDATE SKIP LOCKED to allow multiple instances to process different rows safely
+    const results = await this.db
+      .select()
+      .from(schema.phonepeSubscriptions)
+      .where(
+        and(
+          or(
+            eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
+            eq(schema.phonepeSubscriptions.state, 'EXPIRED'),
+          ),
+          isNotNull(schema.phonepeSubscriptions.nextBillingDate),
+          lte(schema.phonepeSubscriptions.nextBillingDate, beforeDate),
+        ),
+      )
+      .limit(limit)
+      .for('update', { skipLocked: true });
+
+    return results.map((r) => this.toDomain(r));
   }
 
   async findFailedRedemptionsRetryable(
@@ -183,28 +204,21 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
+    // Filter by JSONB fields in SQL to avoid full table scan
+    // Using ->> operator to extract text from JSONB and casting where necessary
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
-      .where(and(eq(schema.phonepeSubscriptions.state, 'ACTIVE')));
-
-    const retryable = results.filter((sub: any) => {
-      const meta = sub.metadata || {};
-      const retryCount = Number(meta.retryCount) || 0;
-      const lastRedemptionStatus = meta.lastRedemptionStatus as string;
-      const lastRedemptionDate = meta.lastRedemptionDate
-        ? new Date(meta.lastRedemptionDate as string)
-        : null;
-
-      return (
-        retryCount < maxRetries &&
-        lastRedemptionStatus === 'failed' &&
-        lastRedemptionDate &&
-        lastRedemptionDate >= cutoffDate
+      .where(
+        and(
+          eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
+          sql`${schema.phonepeSubscriptions.metadata}->>'lastRedemptionStatus' = 'failed'`,
+          sql`(${schema.phonepeSubscriptions.metadata}->>'retryCount')::int < ${maxRetries}`,
+          sql`(${schema.phonepeSubscriptions.metadata}->>'lastRedemptionDate')::timestamp >= ${cutoffDate}`,
+        ),
       );
-    });
 
-    return retryable.map((r) => this.toDomain(r));
+    return results.map((r) => this.toDomain(r));
   }
 
   async findStuckActivations(minutesOld: number): Promise<Subscription[]> {

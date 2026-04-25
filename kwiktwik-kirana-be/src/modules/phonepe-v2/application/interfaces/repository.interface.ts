@@ -50,6 +50,14 @@ export interface SubscriptionRepository {
   findDueForRedemption(beforeDate: Date): Promise<Subscription[]>;
 
   /**
+   * Find subscriptions due for redemption and lock them for processing
+   */
+  findDueForRedemptionWithLock(
+    beforeDate: Date,
+    limit: number,
+  ): Promise<Subscription[]>;
+
+  /**
    * Find subscriptions with failed redemptions that can be retried
    */
   findFailedRedemptionsRetryable(

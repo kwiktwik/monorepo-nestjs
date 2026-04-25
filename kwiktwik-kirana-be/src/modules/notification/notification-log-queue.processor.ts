@@ -115,86 +115,84 @@ export class NotificationLogProcessor
     // );
 
     try {
-      // Check for duplicate
-      const existing = await this.db
-        .select({ id: schema.enhancedNotifications.id })
-        .from(schema.enhancedNotifications)
-        .where(eq(schema.enhancedNotifications.notificationId, data.notificationId))
-        .limit(1);
+      return await this.db.transaction(async (tx) => {
+        // Check for duplicate in enhanced_notifications (has unique constraint)
+        const existing = await tx
+          .select({ id: schema.enhancedNotifications.id })
+          .from(schema.enhancedNotifications)
+          .where(
+            eq(schema.enhancedNotifications.notificationId, data.notificationId),
+          )
+          .limit(1);
 
-      if (existing.length > 0) {
-        this.metrics.duplicates++;
-        // this.logger.debug(`Duplicate notification: ${data.notificationId}`);
-        return {
-          notificationLogId: null,
-          enhancedNotificationId: existing[0].id,
-          status: 'duplicate',
-        };
-      }
+        if (existing.length > 0) {
+          this.metrics.duplicates++;
+          return {
+            notificationLogId: null,
+            enhancedNotificationId: existing[0].id,
+            status: 'duplicate',
+          };
+        }
 
-      // Insert into notification_logs
-      const logEntry = await this.db
-        .insert(schema.notificationLogs)
-        .values({
-          userId: data.userId,
-          notificationId: data.notificationId,
-          packageName: data.packageName,
-          appName: data.appName,
-          timestamp: new Date(data.timestamp),
-          title: data.title,
-          text: data.text,
-          bigText: data.bigText,
-          hasTransaction: data.hasTransaction,
-          amount: data.amount,
-          payerName: data.payerName,
-          transactionType: data.transactionType,
-          processingTimeMs: data.processingTimeMs,
-          ttsAnnounced: data.ttsAnnounced,
-        })
-        .returning();
-
-      const notificationLogId = logEntry[0]?.id ?? null;
-      let enhancedNotificationId: number | null = null;
-
-      // Insert into enhanced_notifications if has transaction
-      if (data.hasTransaction && notificationLogId !== null) {
-        const enhancedRows = await this.db
-          .insert(schema.enhancedNotifications)
+        // Insert into notification_logs
+        const logEntry = await tx
+          .insert(schema.notificationLogs)
           .values({
             userId: data.userId,
             notificationId: data.notificationId,
-            originalNotificationId: null,
             packageName: data.packageName,
             appName: data.appName,
-            title: data.title,
-            content: data.text,
-            bigText: data.bigText,
             timestamp: new Date(data.timestamp),
-            hasTransaction: true,
+            title: data.title,
+            text: data.text,
+            bigText: data.bigText,
+            hasTransaction: data.hasTransaction,
             amount: data.amount,
             payerName: data.payerName,
             transactionType: data.transactionType,
             processingTimeMs: data.processingTimeMs,
-            processingMetadata: data.processingMetadata,
-            notificationLogId,
             ttsAnnounced: data.ttsAnnounced,
-            teamNotificationSent: data.teamNotificationSent,
           })
           .returning();
-        enhancedNotificationId = enhancedRows[0]?.id ?? null;
-      }
 
-      this.metrics.processed++;
-      const duration = Date.now() - startTime;
-      // this.logger.debug(
-      //   `Processed notification log in ${duration}ms: ${data.notificationId}`,
-      // );
+        const notificationLogId = logEntry[0]?.id ?? null;
+        let enhancedNotificationId: number | null = null;
 
-      return {
-        notificationLogId,
-        enhancedNotificationId,
-        status: 'success',
-      };
+        // Insert into enhanced_notifications if has transaction
+        if (data.hasTransaction && notificationLogId !== null) {
+          const enhancedRows = await tx
+            .insert(schema.enhancedNotifications)
+            .values({
+              userId: data.userId,
+              notificationId: data.notificationId,
+              originalNotificationId: null,
+              packageName: data.packageName,
+              appName: data.appName,
+              title: data.title,
+              content: data.text,
+              bigText: data.bigText,
+              timestamp: new Date(data.timestamp),
+              hasTransaction: true,
+              amount: data.amount,
+              payerName: data.payerName,
+              transactionType: data.transactionType,
+              processingTimeMs: data.processingTimeMs,
+              processingMetadata: data.processingMetadata,
+              notificationLogId,
+              ttsAnnounced: data.ttsAnnounced,
+              teamNotificationSent: data.teamNotificationSent,
+            })
+            .returning();
+          enhancedNotificationId = enhancedRows[0]?.id ?? null;
+        }
+
+        this.metrics.processed++;
+        return {
+          notificationLogId,
+          enhancedNotificationId,
+          status: 'success',
+        };
+      });
     } catch (error) {
       this.metrics.failed++;
       this.logger.error(
