@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationEventsController } from './notification-events.controller';
 import { NotificationEventsService } from './notification-events.service';
 import { NotificationQueueService } from './services/notification-queue.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('NotificationEventsController', () => {
   let controller: NotificationEventsController;
@@ -33,7 +34,10 @@ describe('NotificationEventsController', () => {
           useValue: mockNotificationQueueService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<NotificationEventsController>(
       NotificationEventsController,

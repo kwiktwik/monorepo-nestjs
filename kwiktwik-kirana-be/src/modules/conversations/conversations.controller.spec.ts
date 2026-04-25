@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConversationsController } from './conversations.controller';
 import { ConversationsService } from './conversations.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('ConversationsController', () => {
   let controller: ConversationsController;
@@ -28,7 +29,10 @@ describe('ConversationsController', () => {
       providers: [
         { provide: ConversationsService, useValue: mockConversationsService },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<ConversationsController>(ConversationsController);
     service = module.get<ConversationsService>(ConversationsService);

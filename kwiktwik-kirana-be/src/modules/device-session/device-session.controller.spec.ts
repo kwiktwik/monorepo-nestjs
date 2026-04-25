@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeviceSessionController } from './device-session.controller';
 import { DeviceSessionService } from './device-session.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('DeviceSessionController', () => {
   let controller: DeviceSessionController;
@@ -19,7 +20,10 @@ describe('DeviceSessionController', () => {
           useValue: mockDeviceSessionService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<DeviceSessionController>(DeviceSessionController);
     service = module.get<DeviceSessionService>(DeviceSessionService);

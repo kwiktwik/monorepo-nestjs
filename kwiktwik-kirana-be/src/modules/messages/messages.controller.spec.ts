@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
 import { ScheduledMessagesService } from './scheduled-messages.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('MessagesController', () => {
   let controller: MessagesController;
@@ -44,7 +45,10 @@ describe('MessagesController', () => {
           useValue: mockScheduledMessagesService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<MessagesController>(MessagesController);
     service = module.get<MessagesService>(MessagesService);

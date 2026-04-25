@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FeatureToggleController } from './feature-toggle.controller';
 import { FeatureToggleService } from './feature-toggle.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('FeatureToggleController', () => {
   let controller: FeatureToggleController;
@@ -20,7 +21,10 @@ describe('FeatureToggleController', () => {
           useValue: mockFeatureToggleService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<FeatureToggleController>(FeatureToggleController);
     service = module.get<FeatureToggleService>(FeatureToggleService);

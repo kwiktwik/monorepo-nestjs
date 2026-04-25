@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MigrationController } from './migration.controller';
 import { MigrationService } from './migration.service';
+import { AppIdGuard } from '../../common/guards/app-id.guard';
 
 describe('MigrationController', () => {
   let controller: MigrationController;
@@ -17,7 +18,10 @@ describe('MigrationController', () => {
       providers: [
         { provide: MigrationService, useValue: mockMigrationService },
       ],
-    }).compile();
+    })
+      .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<MigrationController>(MigrationController);
     service = module.get<MigrationService>(MigrationService);
