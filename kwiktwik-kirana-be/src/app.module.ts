@@ -29,6 +29,7 @@ import { RedisModule } from './common/redis/redis.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AppsModule } from './modules/apps/apps.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -66,6 +67,7 @@ const dbModule =
       get: (key: string) => process.env[key],
     } as ConfigService),
     AdminModule,
+    AppsModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],
