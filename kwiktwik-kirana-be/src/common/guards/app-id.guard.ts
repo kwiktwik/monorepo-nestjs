@@ -4,11 +4,13 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { isValidApp } from '../config/apps.config';
+import { AppsService } from '../../modules/apps/apps.service';
 import { AppIdRequest, AppIdHeaders } from '../types';
 
 @Injectable()
 export class AppIdGuard implements CanActivate {
+  constructor(private readonly appsService: AppsService) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AppIdRequest>();
 
@@ -25,7 +27,8 @@ export class AppIdGuard implements CanActivate {
       throw new UnauthorizedException('X-App-ID header is required');
     }
 
-    if (!isValidApp(validAppId)) {
+    // Use AppsService which checks cache first, falls back to hardcoded
+    if (!this.appsService.isValidApp(validAppId)) {
       throw new UnauthorizedException(
         `Invalid or disabled app identifier: ${validAppId}`,
       );
