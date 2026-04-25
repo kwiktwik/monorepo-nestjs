@@ -13,14 +13,14 @@ export const metricProviders = [
   makeCounterProvider({
     name: 'http_requests_total',
     help: 'Total number of HTTP requests',
-    labelNames: ['method', 'route', 'status_code'],
+    labelNames: ['method', 'route', 'status_code', 'provider'],
   }),
 
   // HTTP request duration histogram
   makeHistogramProvider({
     name: 'http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
-    labelNames: ['method', 'route'],
+    labelNames: ['method', 'route', 'provider'],
     buckets: [0.001, 0.005, 0.015, 0.05, 0.1, 0.2, 0.3, 0.5, 1, 2, 5],
   }),
 

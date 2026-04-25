@@ -64,12 +64,13 @@ export class HealthMetricsService {
   /**
    * Record an HTTP request metric
    */
-  recordHttpRequest(method: string, route: string, statusCode: number): void {
+  recordHttpRequest(method: string, route: string, statusCode: number, provider: string = ''): void {
     try {
       this.httpRequestsTotal.inc({
         method,
         route,
         status_code: statusCode.toString(),
+        provider,
       });
     } catch (error) {
       this.logger.warn(`Failed to record HTTP request metric: ${error.message}`);
@@ -83,10 +84,11 @@ export class HealthMetricsService {
     method: string,
     route: string,
     durationSeconds: number,
+    provider: string = '',
   ): void {
     try {
       this.httpRequestDuration.observe(
-        { method, route },
+        { method, route, provider },
         durationSeconds,
       );
     } catch (error) {
