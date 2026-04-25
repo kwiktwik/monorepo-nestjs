@@ -3,6 +3,7 @@ import {
   Inject,
   BadRequestException,
   UnauthorizedException,
+  BadGatewayException,
   HttpException,
   HttpStatus,
   InternalServerErrorException,
@@ -925,21 +926,32 @@ export class AuthService {
       `[Truecaller Token] Code verifier preview: ${codeVerifier?.substring(0, 20)}...`,
     );
 
-    const tokenResponse = await fetch(
-      'https://oauth-account-noneu.truecaller.com/v1/token',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch(
+        'https://oauth-account-noneu.truecaller.com/v1/token',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: clientId,
+            code,
+            code_verifier: codeVerifier,
+          }).toString(),
         },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          code,
-          code_verifier: codeVerifier,
-        }).toString(),
-      },
-    );
+      );
+    } catch (fetchError) {
+      this.logger.error(
+        `[Truecaller Token] Network error during token exchange:`,
+        fetchError instanceof Error ? fetchError.message : 'Unknown network error',
+      );
+      throw new BadGatewayException(
+        'Truecaller authentication service is temporarily unavailable',
+      );
+    }
 
     const tokenData = (await tokenResponse.json()) as TruecallerTokenData;
 
@@ -982,13 +994,24 @@ export class AuthService {
       `[Truecaller UserInfo] Access token preview: ${access_token?.substring(0, 30)}...`,
     );
 
-    const userInfoResponse = await fetch(
-      'https://oauth-account-noneu.truecaller.com/v1/userinfo',
-      {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${access_token}` },
-      },
-    );
+    let userInfoResponse: Response;
+    try {
+      userInfoResponse = await fetch(
+        'https://oauth-account-noneu.truecaller.com/v1/userinfo',
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${access_token}` },
+        },
+      );
+    } catch (fetchError) {
+      this.logger.error(
+        `[Truecaller UserInfo] Network error during profile fetch:`,
+        fetchError instanceof Error ? fetchError.message : 'Unknown network error',
+      );
+      throw new BadGatewayException(
+        'Truecaller authentication service is temporarily unavailable',
+      );
+    }
 
     const userInfoData = (await userInfoResponse.json()) as TruecallerUserInfo;
 
@@ -1314,21 +1337,32 @@ export class AuthService {
     // Step 1: Exchange authorization code for access token
     this.logger.log(`[Truecaller V2 Token] App ID: ${appId}`);
 
-    const tokenResponse = await fetch(
-      'https://oauth-account-noneu.truecaller.com/v1/token',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch(
+        'https://oauth-account-noneu.truecaller.com/v1/token',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: clientId,
+            code,
+            code_verifier: codeVerifier,
+          }).toString(),
         },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          code,
-          code_verifier: codeVerifier,
-        }).toString(),
-      },
-    );
+      );
+    } catch (fetchError) {
+      this.logger.error(
+        `[Truecaller V2 Token] Network error during token exchange:`,
+        fetchError instanceof Error ? fetchError.message : 'Unknown network error',
+      );
+      throw new BadGatewayException(
+        'Truecaller authentication service is temporarily unavailable',
+      );
+    }
 
     const tokenData = (await tokenResponse.json()) as TruecallerTokenData;
 
@@ -1354,13 +1388,24 @@ export class AuthService {
     }
 
     // Step 2: Fetch user profile via OIDC userinfo endpoint
-    const userInfoResponse = await fetch(
-      'https://oauth-account-noneu.truecaller.com/v1/userinfo',
-      {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${access_token}` },
-      },
-    );
+    let userInfoResponse: Response;
+    try {
+      userInfoResponse = await fetch(
+        'https://oauth-account-noneu.truecaller.com/v1/userinfo',
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${access_token}` },
+        },
+      );
+    } catch (fetchError) {
+      this.logger.error(
+        `[Truecaller V2 UserInfo] Network error during profile fetch:`,
+        fetchError instanceof Error ? fetchError.message : 'Unknown network error',
+      );
+      throw new BadGatewayException(
+        'Truecaller authentication service is temporarily unavailable',
+      );
+    }
 
     const userInfoData = (await userInfoResponse.json()) as TruecallerUserInfo;
 
