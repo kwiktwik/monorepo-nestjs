@@ -4,6 +4,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   BadGatewayException,
+  NotFoundException,
   HttpException,
   HttpStatus,
   InternalServerErrorException,
@@ -963,10 +964,21 @@ export class AuthService {
         `[Truecaller Token] Error response:`,
         JSON.stringify(tokenData, null, 2),
       );
-      throw new UnauthorizedException(
+
+      // Pass through Truecaller error code and message as-is
+      // Reference: https://docs.truecaller.com/truecaller-sdk/android/oauth-sdk-3.1.0/integration-steps/integrating-with-your-backend/fetching-user-token
+      const errorMessage =
         tokenData.error_description ||
-          tokenData.error ||
-          `Truecaller token exchange failed (${tokenResponse.status})`,
+        tokenData.error ||
+        `Truecaller token exchange failed`;
+
+      throw new HttpException(
+        {
+          statusCode: tokenResponse.status,
+          message: errorMessage,
+          error: tokenResponse.statusText || 'Error',
+        },
+        tokenResponse.status,
       );
     }
 
@@ -1023,10 +1035,21 @@ export class AuthService {
         `[Truecaller UserInfo] Error response:`,
         JSON.stringify(userInfoData, null, 2),
       );
-      throw new UnauthorizedException(
+
+      // Pass through Truecaller error code and message as-is
+      // Reference: https://docs.truecaller.com/truecaller-sdk/android/oauth-sdk-3.1.0/integration-steps/integrating-with-your-backend/fetching-user-profile
+      const errorMessage =
         userInfoData.error_description ||
-          userInfoData.error ||
-          `Truecaller profile fetch failed (${userInfoResponse.status})`,
+        userInfoData.error ||
+        `Truecaller profile fetch failed`;
+
+      throw new HttpException(
+        {
+          statusCode: userInfoResponse.status,
+          message: errorMessage,
+          error: userInfoResponse.statusText || 'Error',
+        },
+        userInfoResponse.status,
       );
     }
 
@@ -1372,10 +1395,20 @@ export class AuthService {
         tokenResponse.status,
         tokenData,
       );
-      throw new UnauthorizedException(
+
+      // Pass through Truecaller error code and message as-is
+      const errorMessage =
         tokenData.error_description ||
-          tokenData.error ||
-          `Truecaller token exchange failed (${tokenResponse.status})`,
+        tokenData.error ||
+        `Truecaller token exchange failed`;
+
+      throw new HttpException(
+        {
+          statusCode: tokenResponse.status,
+          message: errorMessage,
+          error: tokenResponse.statusText || 'Error',
+        },
+        tokenResponse.status,
       );
     }
 
@@ -1415,10 +1448,20 @@ export class AuthService {
         userInfoResponse.status,
         userInfoData,
       );
-      throw new UnauthorizedException(
+
+      // Pass through Truecaller error code and message as-is
+      const errorMessage =
         userInfoData.error_description ||
-          userInfoData.error ||
-          `Truecaller profile fetch failed (${userInfoResponse.status})`,
+        userInfoData.error ||
+        `Truecaller profile fetch failed`;
+
+      throw new HttpException(
+        {
+          statusCode: userInfoResponse.status,
+          message: errorMessage,
+          error: userInfoResponse.statusText || 'Error',
+        },
+        userInfoResponse.status,
       );
     }
 
