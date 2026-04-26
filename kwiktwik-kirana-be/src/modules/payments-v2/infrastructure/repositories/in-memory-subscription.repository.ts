@@ -60,7 +60,7 @@ export class InMemorySubscriptionRepository implements ISubscriptionRepository {
     const now = new Date();
     return Array.from(this.subscriptions.values()).filter(s => {
       if (s.subscriptionType !== 'USER_MANAGED') return false;
-      if (s.status !== 'ACTIVE') return false;
+      if (s.status !== 'ACTIVE' && s.status !== 'RETRYING') return false;
       if (!s.nextBillingDate) return false;
       return s.nextBillingDate <= now;
     });

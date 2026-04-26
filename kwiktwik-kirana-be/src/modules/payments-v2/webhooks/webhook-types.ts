@@ -109,6 +109,10 @@ export const NormalizedWebhookEventType = {
   /** Token cancelled */
   TOKEN_CANCELLED: 'token.cancelled',
 
+  // === Unknown / Unmapped ===
+  /** Unrecognized event type from provider */
+  UNKNOWN: 'unknown',
+
 } as const;
 
 export type NormalizedWebhookEventType = typeof NormalizedWebhookEventType[keyof typeof NormalizedWebhookEventType];
@@ -427,14 +431,14 @@ export const PhonePeEventMapping: Readonly<Record<string, NormalizedWebhookEvent
  * Normalize Razorpay event type
  */
 export function normalizeRazorpayEventType(razorpayEvent: string): NormalizedWebhookEventType {
-  return RazorpayEventMapping[razorpayEvent] ?? NormalizedWebhookEventType.PAYMENT_FAILED;
+  return RazorpayEventMapping[razorpayEvent] ?? NormalizedWebhookEventType.UNKNOWN;
 }
 
 /**
  * Normalize PhonePe event type
  */
 export function normalizePhonePeEventType(phonePeEvent: string): NormalizedWebhookEventType {
-  return PhonePeEventMapping[phonePeEvent] ?? NormalizedWebhookEventType.PAYMENT_FAILED;
+  return PhonePeEventMapping[phonePeEvent] ?? NormalizedWebhookEventType.UNKNOWN;
 }
 
 /**
@@ -450,5 +454,5 @@ export function normalizeEventType(
   if (provider === 'PHONEPE') {
     return normalizePhonePeEventType(providerEventType);
   }
-  return NormalizedWebhookEventType.PAYMENT_FAILED;
+  return NormalizedWebhookEventType.UNKNOWN;
 }

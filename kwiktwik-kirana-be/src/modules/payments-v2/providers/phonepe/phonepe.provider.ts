@@ -124,6 +124,7 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
     : PHONEPE_ENDPOINTS.SANDBOX;
   
   let cachedToken: { token: string; expiresAt: number } | null = null;
+  let pendingTokenRequest: Promise<string> | null = null;
 
   const fetchWithAuth = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
     const token = await getAccessToken();
@@ -155,30 +156,44 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
       return cachedToken.token;
     }
 
-    const response = await fetch(endpoints.AUTH, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: config.clientId,
-        client_secret: config.clientSecret,
-        grant_type: 'client_credentials',
-      }),
-    });
-
-    if (!response.ok) {
-      throw createProviderError('Failed to get PhonePe access token', 'AUTH_FAILED', 'PHONEPE');
+    // Deduplicate concurrent token requests
+    if (pendingTokenRequest) {
+      return pendingTokenRequest;
     }
 
-    const data = await response.json() as { access_token: string; expires_in: number };
-    
-    cachedToken = {
-      token: data.access_token,
-      expiresAt: Date.now() + (data.expires_in - 60) * 1000, // Refresh 1 minute before expiry
-    };
+    pendingTokenRequest = (async () => {
+      try {
+        const response = await fetch(endpoints.AUTH, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: config.clientId,
+            client_version: String(config.clientVersion ?? 1),
+            client_secret: config.clientSecret,
+            grant_type: 'client_credentials',
+          }),
+        });
 
-    return cachedToken.token;
+        if (!response.ok) {
+          throw createProviderError('Failed to get PhonePe access token', 'AUTH_FAILED', 'PHONEPE');
+        }
+
+        const data = await response.json() as { access_token: string; expires_in: number };
+        
+        cachedToken = {
+          token: data.access_token,
+          expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+        };
+
+        return cachedToken.token;
+      } finally {
+        pendingTokenRequest = null;
+      }
+    })();
+
+    return pendingTokenRequest;
   };
 
   return {
@@ -306,15 +321,17 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
   }
 
   verifyWebhookSignature(
-    payload: string | Record<string, unknown>,
+    _payload: string | Record<string, unknown>,
     signature: string,
   ): boolean {
     this.ensureInitialized();
-    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
     
-    // PhonePe uses base64 encoded HMAC-SHA256
-    const expected = createHmacSha256(payloadStr, this.config!.saltKey ?? '');
-    return signature === expected;
+    // PhonePe webhook verification uses Authorization header containing SHA256(username:password).
+    // The saltKey stores the pre-computed SHA256(username:password) hash.
+    // We compare the Authorization header value against this stored hash.
+    if (!this.config!.saltKey) return false;
+    
+    return signature === this.config!.saltKey;
   }
 
   async healthCheck(): Promise<{ readonly healthy: boolean; readonly message: string | null }> {
@@ -373,6 +390,8 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
     const eventMap: Record<string, string> = {
       [PhonePeWebhookEvent.SUBSCRIPTION_SETUP_ORDER_COMPLETED]: 'subscription.setup.completed',
       [PhonePeWebhookEvent.SUBSCRIPTION_SETUP_ORDER_FAILED]: 'subscription.setup.failed',
+      [PhonePeWebhookEvent.CHECKOUT_ORDER_COMPLETED]: 'subscription.setup.completed',
+      [PhonePeWebhookEvent.CHECKOUT_ORDER_FAILED]: 'subscription.setup.failed',
       [PhonePeWebhookEvent.SUBSCRIPTION_PAUSED]: 'subscription.paused',
       [PhonePeWebhookEvent.SUBSCRIPTION_UNPAUSED]: 'subscription.unpaused',
       [PhonePeWebhookEvent.SUBSCRIPTION_REVOKED]: 'subscription.revoked',
@@ -422,8 +441,8 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
     decoded: PhonePeDecodedWebhookPayload,
     signatureValid: boolean,
   ): Omit<WebhookEvent, 'subscriptionType'> {
-    const eventType = decoded.type;
-    const data = decoded.data;
+    const eventType = decoded.event;
+    const data = decoded.payload;
 
     return {
       eventId: data.orderId ?? data.subscriptionId ?? Date.now().toString(),
@@ -431,8 +450,8 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
       mappedEventType: this.mapWebhookEventType(eventType),
       provider: 'PHONEPE',
       appId: null,
-      merchantSubscriptionId: data.merchantSubscriptionId ?? null,
-      providerSubscriptionId: data.subscriptionId ?? null,
+      merchantSubscriptionId: data.merchantSubscriptionId ?? data.paymentFlow?.merchantSubscriptionId ?? null,
+      providerSubscriptionId: data.subscriptionId ?? data.paymentFlow?.subscriptionId ?? null,
       merchantOrderId: data.merchantOrderId ?? null,
       providerOrderId: data.orderId ?? null,
       paymentId: data.transactionId ?? null,
@@ -658,7 +677,7 @@ export class PhonePeProviderManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.amount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION,
+          type: PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION,
           merchantSubscriptionId: params.merchantSubscriptionId,
           autoDebit: true, // Provider-managed: auto deduct
         },
@@ -889,7 +908,7 @@ export class PhonePeUserManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.amount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION,
+          type: PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION,
           merchantSubscriptionId: params.merchantSubscriptionId,
           autoDebit: false, // User-managed: we control when to execute
         },

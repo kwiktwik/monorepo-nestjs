@@ -273,14 +273,21 @@ export class WebhookProcessorService {
       }
     }
 
-    // 6. Mark as processed
-    try {
-      await this.idempotencyStore.markProcessed(event.eventId);
-    } catch (error) {
-      this.logger.error(`Failed to mark event as processed: ${error}`);
+    // 6. Check if any handler requested a retry
+    const anyRetryRequested = results.some((r) => !r.success && r.retry);
+
+    // 7. Mark as processed only if no handler requested a retry
+    if (!anyRetryRequested) {
+      try {
+        await this.idempotencyStore.markProcessed(event.eventId);
+      } catch (error) {
+        this.logger.error(`Failed to mark event as processed: ${error}`);
+      }
+    } else {
+      this.logger.warn(`Handler requested retry for event ${event.eventId}, not marking as processed`);
     }
 
-    // 7. Determine overall success
+    // 8. Determine overall success
     const allSuccessful = results.every((r) => r.success);
 
     return {

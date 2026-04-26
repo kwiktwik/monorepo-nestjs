@@ -18,7 +18,12 @@ import { Inject } from '@nestjs/common';
 import { SubscriptionManagerService } from '../services/subscription-manager.service';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
-import type { Subscription } from '../domain/entities/subscription.entity';
+import {
+  type Subscription,
+  recordPaymentFailure,
+  createPaymentFailure,
+  transitionSubscriptionStatus,
+} from '../domain/entities/subscription.entity';
 import { SubscriptionStatus, StateMachineEvent } from '../types/subscription-status.enum';
 import { SubscriptionType } from '../types/subscription-type.enum';
 
@@ -342,7 +347,25 @@ export class BillingSchedulerService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error processing subscription ${subscription.id}: ${errorMessage}`);
-      
+
+      // Record the failure on the subscription so retry limits are tracked
+      try {
+        const failure = createPaymentFailure(
+          'charge_exception',
+          'INTERNAL_ERROR',
+          errorMessage,
+          null,
+          null,
+        );
+        const withFailure = recordPaymentFailure(subscription, failure);
+        const transitionResult = transitionSubscriptionStatus(withFailure, SubscriptionStatus.RETRYING);
+        await this.subscriptionRepo.save(transitionResult.subscription);
+      } catch (updateError) {
+        this.logger.error(
+          `Failed to record failure state for subscription ${subscription.id}: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`,
+        );
+      }
+
       return {
         subscriptionId: subscription.id,
         success: false,

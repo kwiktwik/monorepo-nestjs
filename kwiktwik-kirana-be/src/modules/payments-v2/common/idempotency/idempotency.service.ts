@@ -301,7 +301,15 @@ export class IdempotencyService {
     @Inject('IdempotencyStore')
     store?: IdempotencyStore,
   ) {
-    this.store = store ?? new InMemoryIdempotencyStore();
+    if (store) {
+      this.store = store;
+    } else {
+      this.logger.warn(
+        'No IdempotencyStore injected — using InMemoryIdempotencyStore. ' +
+        'Idempotency keys will be lost on restart. Set USE_DATABASE_REPOSITORIES=true for production.',
+      );
+      this.store = new InMemoryIdempotencyStore();
+    }
   }
 
   /**

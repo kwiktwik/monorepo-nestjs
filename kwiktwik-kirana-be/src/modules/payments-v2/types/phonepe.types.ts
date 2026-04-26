@@ -20,9 +20,12 @@ export const PhonePeSubscriptionState = {
   CREATED: 'CREATED',
   ACTIVATION_IN_PROGRESS: 'ACTIVATION_IN_PROGRESS',
   ACTIVE: 'ACTIVE',
+  PAUSE_IN_PROGRESS: 'PAUSE_IN_PROGRESS',
   PAUSED: 'PAUSED',
+  UNPAUSE_IN_PROGRESS: 'UNPAUSE_IN_PROGRESS',
   CANCEL_IN_PROGRESS: 'CANCEL_IN_PROGRESS',
   CANCELLED: 'CANCELLED',
+  REVOKE_IN_PROGRESS: 'REVOKE_IN_PROGRESS',
   REVOKED: 'REVOKED',
   EXPIRED: 'EXPIRED',
   FAILED: 'FAILED',
@@ -38,9 +41,12 @@ export const ALL_PHONEPE_SUBSCRIPTION_STATES: readonly PhonePeSubscriptionState[
   PhonePeSubscriptionState.CREATED,
   PhonePeSubscriptionState.ACTIVATION_IN_PROGRESS,
   PhonePeSubscriptionState.ACTIVE,
+  PhonePeSubscriptionState.PAUSE_IN_PROGRESS,
   PhonePeSubscriptionState.PAUSED,
+  PhonePeSubscriptionState.UNPAUSE_IN_PROGRESS,
   PhonePeSubscriptionState.CANCEL_IN_PROGRESS,
   PhonePeSubscriptionState.CANCELLED,
+  PhonePeSubscriptionState.REVOKE_IN_PROGRESS,
   PhonePeSubscriptionState.REVOKED,
   PhonePeSubscriptionState.EXPIRED,
   PhonePeSubscriptionState.FAILED,
@@ -227,7 +233,7 @@ export interface PhonePeNotifyRedemptionRequest {
   readonly merchantOrderId: string;
   readonly amount: number;
   readonly paymentFlow: {
-    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION;
+    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION;
     readonly merchantSubscriptionId: string;
     readonly redemptionRetryStrategy?: PhonePeRedemptionRetryStrategy;
     readonly autoDebit?: boolean;
@@ -367,9 +373,12 @@ export interface PhonePeMetaInfo {
  * PhonePe webhook event types
  */
 export const PhonePeWebhookEvent = {
-  // Setup callbacks
+  // Setup callbacks (API integration flow)
   SUBSCRIPTION_SETUP_ORDER_COMPLETED: 'subscription.setup.order.completed',
   SUBSCRIPTION_SETUP_ORDER_FAILED: 'subscription.setup.order.failed',
+  // Setup callbacks (Standard Checkout flow)
+  CHECKOUT_ORDER_COMPLETED: 'checkout.order.completed',
+  CHECKOUT_ORDER_FAILED: 'checkout.order.failed',
 
   // State change callbacks
   SUBSCRIPTION_PAUSED: 'subscription.paused',
@@ -407,8 +416,13 @@ export interface PhonePeWebhookPayload {
  * PhonePe decoded webhook payload
  */
 export interface PhonePeDecodedWebhookPayload {
-  readonly type: PhonePeWebhookEvent;
-  readonly data: {
+  /** @deprecated Use `event` instead — PhonePe docs say `type` will be deprecated */
+  readonly type?: string;
+  /** The canonical event identifier per PhonePe docs */
+  readonly event: PhonePeWebhookEvent;
+  /** Webhook payload data — PhonePe uses "payload" as the key */
+  readonly payload: {
+    readonly merchantId?: string;
     readonly merchantSubscriptionId?: string;
     readonly subscriptionId?: string;
     readonly merchantOrderId?: string;
@@ -419,6 +433,11 @@ export interface PhonePeDecodedWebhookPayload {
     readonly currency?: string;
     readonly errorCode?: string;
     readonly detailedErrorCode?: string;
+    readonly paymentFlow?: {
+      readonly type?: string;
+      readonly merchantSubscriptionId?: string;
+      readonly subscriptionId?: string;
+    };
     readonly paymentDetails?: readonly PhonePePaymentDetail[];
   };
 }
@@ -446,9 +465,12 @@ export function mapPhonePeSubscriptionState(phonePeState: PhonePeSubscriptionSta
     [PhonePeSubscriptionState.CREATED]: SubscriptionStatus.CREATED,
     [PhonePeSubscriptionState.ACTIVATION_IN_PROGRESS]: SubscriptionStatus.ACTIVATION_IN_PROGRESS,
     [PhonePeSubscriptionState.ACTIVE]: SubscriptionStatus.ACTIVE,
+    [PhonePeSubscriptionState.PAUSE_IN_PROGRESS]: SubscriptionStatus.PAUSED,
     [PhonePeSubscriptionState.PAUSED]: SubscriptionStatus.PAUSED,
+    [PhonePeSubscriptionState.UNPAUSE_IN_PROGRESS]: SubscriptionStatus.ACTIVE,
     [PhonePeSubscriptionState.CANCEL_IN_PROGRESS]: SubscriptionStatus.CANCEL_IN_PROGRESS,
     [PhonePeSubscriptionState.CANCELLED]: SubscriptionStatus.CANCELLED,
+    [PhonePeSubscriptionState.REVOKE_IN_PROGRESS]: SubscriptionStatus.REVOKED,
     [PhonePeSubscriptionState.REVOKED]: SubscriptionStatus.REVOKED,
     [PhonePeSubscriptionState.EXPIRED]: SubscriptionStatus.EXPIRED,
     [PhonePeSubscriptionState.FAILED]: SubscriptionStatus.FAILED,

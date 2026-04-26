@@ -196,8 +196,16 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
         .where(
           and(
             eq(subscriptionsV2.subscriptionType, 'USER_MANAGED'),
-            eq(subscriptionsV2.status, 'ACTIVE'),
-            lte(subscriptionsV2.nextBillingDate, now),
+            or(
+              and(
+                eq(subscriptionsV2.status, 'ACTIVE'),
+                lte(subscriptionsV2.nextBillingDate, now),
+              ),
+              and(
+                eq(subscriptionsV2.status, 'RETRYING'),
+                lte(subscriptionsV2.nextBillingDate, now),
+              ),
+            ),
           ),
         );
 
