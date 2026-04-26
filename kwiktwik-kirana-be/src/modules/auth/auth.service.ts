@@ -760,6 +760,9 @@ export class AuthService {
     let userId: string;
 
     if (userRecord.length === 0) {
+      this.logger.log(
+        `[mockTruecallerSignin] Creating new user: Name=${tempName}, Email=${tempEmail}, Phone=${normalized}`,
+      );
       userId = nanoid();
       await this.db.insert(schema.user).values({
         id: userId,
@@ -1177,7 +1180,7 @@ export class AuthService {
 
     if (userRecord.length === 0) {
       this.logger.log(
-        `[Truecaller UserInfo] Creating new user for app ${appId}`,
+        `[Truecaller UserInfo] Creating new user for app ${appId}: Name=${userName}, Email=${userEmail}, Phone=${normalized}`,
       );
       userId = nanoid();
       await this.db.insert(schema.user).values({
@@ -1559,7 +1562,7 @@ export class AuthService {
 
     if (userRecord.length === 0) {
       this.logger.log(
-        `[Truecaller V2 UserInfo] Creating new user for app ${appId}`,
+        `[Truecaller V2 UserInfo] Creating new user for app ${appId}: Name=${userName}, Email=${userEmail}, Phone=${normalized}`,
       );
       userId = nanoid();
       await this.db.insert(schema.user).values({
@@ -1747,6 +1750,9 @@ export class AuthService {
 
       if (userRecord.length === 0) {
         // Create new user
+        this.logger.log(
+          `[googleSignin] Creating new user for app ${appId}: Name=${name}, Email=${email}`,
+        );
         userId = nanoid();
         await this.db.insert(schema.user).values({
           id: userId,
