@@ -1,0 +1,485 @@
+<!-- Source: https://razorpay.com/docs/api/x/transactions/fetch-all -->
+
+# Fetch All Transactions
+
+Copy for AI
+
+View as Markdown
+
+`GET`
+
+`/v1/transactions?account_number=\{account number\}`
+
+Use this endpoint to retrieve the details of all transactions.
+
+Sample Code
+
+Query Parameters
+
+5
+
+Response Parameters
+
+Curl
+
+```bash
+curl -u [YOUR_KEY_ID]:[YOUR_KEY_SECRET] \
+    -X GET https://api.razorpay.com/v1/transactions?account_number=7878780080316316
+```
+
+Success
+
+```json
+{
+  "entity":"collection",
+  "count":2,
+  "items":[
+    {
+      "id":"txn_00000000000001",
+      "entity":"transaction",
+      "account_number":"1121431121541121",
+      "amount":10000000,
+      "currency":"INR",
+      "credit":10000000,
+      "debit":0,
+      "balance":10000000,
+      "source":{
+        "id":"bt_00000000000001",
+        "entity":"bank_transfer",
+        "payer_name":"Saurav Kumar",
+        "payer_account":"6543266545411243",
+        "payer_ifsc":"UTIB0000002",
+        "mode":"NEFT",
+        "bank_reference":"AXIR000000000001",
+        "amount":10000000
+      },
+      "created_at":1545125568
+    },
+    {
+      "id":"txn_00000000000003",
+      "entity":"transaction",
+      "account_number":"7878780080316316",
+      "amount":1000000,
+      "currency":"INR",
+      "credit":0,
+      "debit":1000000,
+      "balance":9000000,
+      "source":{
+        "id":"pout_00000000000001",
+        "entity":"payout",
+        "fund_account_id":"fa_00000000000001",
+        "amount":1000000,
+        "notes":{
+          "notes_key_1": "Tea, Earl Grey, Hot",
+          "notes_key_2": "Tea, Earl Grey… decaf."
+        },
+        "fees":3,
+        "tax":1,
+        "status":"processed",
+        "utr":"000000000001",
+        "mode":"NEFT",
+        "created_at":1545224066,
+        "fee_type": null
+      },
+      "created_at":1545224066
+    }
+  ]
+}
+```
+
+###### Query Parameters
+
+`account_number`
+
+\*
+
+`string`
+
+The account for which you want to view the transactions.
+Account details can be found on the RazorpayX Dashboard. For example, `7878780080316316`.
+
+- Pass your Customer Identifier (RazorpayX Lite number) if the transaction was done through it.
+- Pass your Current Account number if the transaction was done through it.
+- This is an alphanumeric or numeric value.
+
+**Watch Out!**
+
+- Log in to your [**RazorpayX Dashboard**](https://x.razorpay.com/auth/?intent=current_account)
+
+  and go to **My Account & Settings → Banking → Customer Identifier**.
+- This value is different for Test Mode and Live Mode.
+
+`from`
+
+`integer`
+
+Timestamp, in Unix, from when you want to fetch transactions.
+
+`to`
+
+`integer`
+
+Timestamp, in Unix, till when you want to fetch transactions.
+
+`count`
+
+`integer`
+
+Number of payouts to be fetched. Default value is `10`. Maximum value is `100`. This can be used for pagination, in combination with `skip`.
+
+`skip`
+
+`integer`
+
+Numbers of payouts to be skipped. Default value is `0`. This can be used for pagination, in combination with `count`.
+
+###### Response Parameters
+
+`id`
+
+`string`
+
+The unique identifier linked to the transaction. For example, `txn_00000000000001`.
+
+`entity`
+
+`string`
+
+The entity created. Here, it is `transaction`.
+
+`account_number`
+
+`string`
+
+The business account from which the payout was made. For example, `7878780080316316`.
+
+`amount`
+
+`integer`
+
+The amount transferred, in paise. The transfer can either be a credit (when you add funds to your account) or a debit (when you make a payout).
+
+ The value passed here does not include fees and tax. Fees and tax, if any, are deducted from your account balance.
+
+`currency`
+
+`string`
+
+The transaction currency. Here, it is `INR`.
+
+`credit`
+
+`integer`
+
+The amount, in paise, credited to your account. Is `0` for debit transactions (when making payouts).
+
+`debit`
+
+`integer`
+
+The amount, in paise, debited to your account. Is `0` for credit transactions (when adding funds to your account).
+
+`balance`
+
+`integer`
+
+The remaining amount, in paise, in your account after the debit or credit transaction.
+
+`source`
+
+`object`
+
+Details of the payout made or details of the bank account from which money was added to your business account.
+
+Show child parameters (10)
+
+`fees`
+
+`integer`
+
+The fees, in paise, for the transaction. This field is populated only when the transaction moves to the `processing` state. For example, `5`.
+ This value is returned only when the source entity is `payout`.
+
+`tax`
+
+`integer`
+
+The tax, in paise, for the fee being charged. This field is populated only when the transaction moves to the `processing` state. For example, `1`.
+ This value is returned only when the source entity is `payout`.
+
+`status`
+
+`string`
+
+The status of the transaction. A transaction can be in any of the following states:
+
+- `pending`
+- `queued`
+- `processing`
+- `processed`
+- `reversed`
+- `cancelled`
+- `rejected`
+
+This value is returned only when the source entity is `payout`.
+
+`utr`
+
+`string`
+
+The unique transaction number for the transaction. For example, `HDFCN00000000001`.
+ This value is returned only when the source entity is `payout`.
+
+`mode`
+
+`string`
+
+The payout mode. Refer to the [Supported Banks and Payout Modes section](/razorpay-docs-md/api/x/payouts-cards.md#supported-banks-and-payout-modes) for more details.
+ This value is returned only when the source entity is `payout`.
+
+`created_at`
+
+`integer`
+
+Timestamp, in Unix, when the source entity or transaction entity was created. For example, `1545320320`.
+
+# Fetch All Transactions
+
+Copy for AI
+
+View as Markdown
+
+`GET`
+
+`/v1/transactions?account_number=\{account number\}`
+
+Use this endpoint to retrieve the details of all transactions.
+
+Query Parameters
+
+5
+
+Response Parameters
+
+###### Query Parameters
+
+`account_number`
+
+\*
+
+`string`
+
+The account for which you want to view the transactions.
+Account details can be found on the RazorpayX Dashboard. For example, `7878780080316316`.
+
+- Pass your Customer Identifier (RazorpayX Lite number) if the transaction was done through it.
+- Pass your Current Account number if the transaction was done through it.
+- This is an alphanumeric or numeric value.
+
+**Watch Out!**
+
+- Log in to your [**RazorpayX Dashboard**](https://x.razorpay.com/auth/?intent=current_account)
+
+  and go to **My Account & Settings → Banking → Customer Identifier**.
+- This value is different for Test Mode and Live Mode.
+
+`from`
+
+`integer`
+
+Timestamp, in Unix, from when you want to fetch transactions.
+
+`to`
+
+`integer`
+
+Timestamp, in Unix, till when you want to fetch transactions.
+
+`count`
+
+`integer`
+
+Number of payouts to be fetched. Default value is `10`. Maximum value is `100`. This can be used for pagination, in combination with `skip`.
+
+`skip`
+
+`integer`
+
+Numbers of payouts to be skipped. Default value is `0`. This can be used for pagination, in combination with `count`.
+
+###### Response Parameters
+
+`id`
+
+`string`
+
+The unique identifier linked to the transaction. For example, `txn_00000000000001`.
+
+`entity`
+
+`string`
+
+The entity created. Here, it is `transaction`.
+
+`account_number`
+
+`string`
+
+The business account from which the payout was made. For example, `7878780080316316`.
+
+`amount`
+
+`integer`
+
+The amount transferred, in paise. The transfer can either be a credit (when you add funds to your account) or a debit (when you make a payout).
+
+ The value passed here does not include fees and tax. Fees and tax, if any, are deducted from your account balance.
+
+`currency`
+
+`string`
+
+The transaction currency. Here, it is `INR`.
+
+`credit`
+
+`integer`
+
+The amount, in paise, credited to your account. Is `0` for debit transactions (when making payouts).
+
+`debit`
+
+`integer`
+
+The amount, in paise, debited to your account. Is `0` for credit transactions (when adding funds to your account).
+
+`balance`
+
+`integer`
+
+The remaining amount, in paise, in your account after the debit or credit transaction.
+
+`source`
+
+`object`
+
+Details of the payout made or details of the bank account from which money was added to your business account.
+
+Show child parameters (10)
+
+`fees`
+
+`integer`
+
+The fees, in paise, for the transaction. This field is populated only when the transaction moves to the `processing` state. For example, `5`.
+ This value is returned only when the source entity is `payout`.
+
+`tax`
+
+`integer`
+
+The tax, in paise, for the fee being charged. This field is populated only when the transaction moves to the `processing` state. For example, `1`.
+ This value is returned only when the source entity is `payout`.
+
+`status`
+
+`string`
+
+The status of the transaction. A transaction can be in any of the following states:
+
+- `pending`
+- `queued`
+- `processing`
+- `processed`
+- `reversed`
+- `cancelled`
+- `rejected`
+
+This value is returned only when the source entity is `payout`.
+
+`utr`
+
+`string`
+
+The unique transaction number for the transaction. For example, `HDFCN00000000001`.
+ This value is returned only when the source entity is `payout`.
+
+`mode`
+
+`string`
+
+The payout mode. Refer to the [Supported Banks and Payout Modes section](/razorpay-docs-md/api/x/payouts-cards.md#supported-banks-and-payout-modes) for more details.
+ This value is returned only when the source entity is `payout`.
+
+`created_at`
+
+`integer`
+
+Timestamp, in Unix, when the source entity or transaction entity was created. For example, `1545320320`.
+
+Curl
+
+```bash
+curl -u [YOUR_KEY_ID]:[YOUR_KEY_SECRET] \
+    -X GET https://api.razorpay.com/v1/transactions?account_number=7878780080316316
+```
+
+Success
+
+```json
+{
+  "entity":"collection",
+  "count":2,
+  "items":[
+    {
+      "id":"txn_00000000000001",
+      "entity":"transaction",
+      "account_number":"1121431121541121",
+      "amount":10000000,
+      "currency":"INR",
+      "credit":10000000,
+      "debit":0,
+      "balance":10000000,
+      "source":{
+        "id":"bt_00000000000001",
+        "entity":"bank_transfer",
+        "payer_name":"Saurav Kumar",
+        "payer_account":"6543266545411243",
+        "payer_ifsc":"UTIB0000002",
+        "mode":"NEFT",
+        "bank_reference":"AXIR000000000001",
+        "amount":10000000
+      },
+      "created_at":1545125568
+    },
+    {
+      "id":"txn_00000000000003",
+      "entity":"transaction",
+      "account_number":"7878780080316316",
+      "amount":1000000,
+      "currency":"INR",
+      "credit":0,
+      "debit":1000000,
+      "balance":9000000,
+      "source":{
+        "id":"pout_00000000000001",
+        "entity":"payout",
+        "fund_account_id":"fa_00000000000001",
+        "amount":1000000,
+        "notes":{
+          "notes_key_1": "Tea, Earl Grey, Hot",
+          "notes_key_2": "Tea, Earl Grey… decaf."
+        },
+        "fees":3,
+        "tax":1,
+        "status":"processed",
+        "utr":"000000000001",
+        "mode":"NEFT",
+        "created_at":1545224066,
+        "fee_type": null
+      },
+      "created_at":1545224066
+    }
+  ]
+}
+```

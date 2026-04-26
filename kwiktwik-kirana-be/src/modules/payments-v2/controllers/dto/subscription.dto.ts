@@ -5,6 +5,7 @@
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, IsEmail, IsObject } from 'class-validator';
 
 // Import types from the types directory
 import type { PaymentProvider } from '../../types/provider.enum';
@@ -19,6 +20,8 @@ export class CreateSubscriptionDto {
     description: 'Plan ID to subscribe to',
     example: 'plan_PHONEPE_AUTOPAY_001',
   })
+  @IsString()
+  @IsNotEmpty()
   readonly planId: string;
 
   @ApiProperty({
@@ -26,6 +29,8 @@ export class CreateSubscriptionDto {
     enum: ['RAZORPAY', 'PHONEPE'],
     example: 'RAZORPAY',
   })
+  @IsEnum(['RAZORPAY', 'PHONEPE'])
+  @IsNotEmpty()
   readonly provider: PaymentProvider;
 
   @ApiPropertyOptional({
@@ -34,24 +39,32 @@ export class CreateSubscriptionDto {
     default: 'PROVIDER_MANAGED',
     example: 'PROVIDER_MANAGED',
   })
+  @IsOptional()
+  @IsEnum(['PROVIDER_MANAGED', 'USER_MANAGED'])
   readonly subscriptionType?: SubscriptionType;
 
   @ApiPropertyOptional({
     description: 'Customer email',
     example: 'user@example.com',
   })
+  @IsOptional()
+  @IsEmail()
   readonly email?: string;
 
   @ApiPropertyOptional({
     description: 'Customer phone number',
     example: '+919876543210',
   })
+  @IsOptional()
+  @IsString()
   readonly phone?: string;
 
   @ApiPropertyOptional({
     description: 'Additional metadata',
     example: { source: 'mobile_app', campaign: 'summer_sale' },
   })
+  @IsOptional()
+  @IsObject()
   readonly metadata?: Record<string, string>;
 }
 

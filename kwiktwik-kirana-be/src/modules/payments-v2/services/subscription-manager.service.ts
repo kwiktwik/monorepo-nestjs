@@ -5,10 +5,13 @@
  * Handles both provider-managed and user-managed subscriptions.
  */
 
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
+import { IdempotencyService, IdempotencyOperationType } from '../common/idempotency/idempotency.service';
+import type { IEventBus } from '../common/events/event-bus.interface';
+import { PaymentEventTypes, createPaymentEvent, generateCorrelationId } from '../common/events/event-bus.interface';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
 import type { IOrderRepository } from '../infrastructure/repositories/order.repository.interface';
 import type { SubscriptionProvider, AnyProviderConfig } from '../providers/interfaces/subscription-provider.interface';
@@ -137,14 +140,44 @@ export class SubscriptionManagerService {
     private readonly stateMachine: SubscriptionStateMachineService,
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
+    private readonly idempotencyService: IdempotencyService,
     @Inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
     @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
+    @Inject('IEventBus') @Optional() private readonly eventBus: IEventBus | null,
   ) {}
 
   /**
    * Create a new subscription
    */
   async createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult> {
+    const idempotencyKey = this.idempotencyService.generateKey(
+      IdempotencyOperationType.SUBSCRIPTION_SETUP,
+      `${input.userId}:${input.planId}:${input.provider}`,
+    );
+    const requestHash = this.idempotencyService.generateRequestHash({
+      userId: input.userId,
+      planId: input.planId,
+      provider: input.provider,
+      appId: input.appId,
+      initialAmount: input.initialAmount,
+      recurringAmount: input.recurringAmount,
+    });
+
+    const idempotentResult = await this.idempotencyService.execute<CreateSubscriptionResult>(
+      idempotencyKey,
+      IdempotencyOperationType.SUBSCRIPTION_SETUP,
+      () => this.executeCreateSubscription(input),
+      requestHash,
+      { provider: input.provider, appId: input.appId },
+    );
+
+    return idempotentResult.result;
+  }
+
+  /**
+   * Execute subscription creation (inner logic)
+   */
+  private async executeCreateSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult> {
     try {
       // Get provider configuration
       const config = this.configService.getConfig({
@@ -291,6 +324,21 @@ export class SubscriptionManagerService {
 
       this.logger.log(`Created subscription ${subscriptionId} with status ${subscription.status}`);
 
+      // Publish event
+      this.publishEvent(PaymentEventTypes.SUBSCRIPTION_CREATED, {
+        subscriptionId,
+        merchantSubscriptionId: subscriptionId,
+        userId: input.userId,
+        appId: input.appId,
+        planId: input.planId,
+        provider: input.provider,
+        subscriptionType: input.subscriptionType,
+        initialAmount: input.initialAmount,
+        recurringAmount: input.recurringAmount,
+        currency: input.currency ?? 'INR',
+        frequency: input.frequency,
+      }, input.appId, input.userId, input.provider);
+
       return {
         success: true,
         subscription,
@@ -311,6 +359,31 @@ export class SubscriptionManagerService {
    * Charge a subscription (for user-managed or manual charges)
    */
   async chargeSubscription(input: ChargeSubscriptionInput): Promise<ChargeSubscriptionResult> {
+    const today = new Date().toISOString().split('T')[0];
+    const idempotencyKey = this.idempotencyService.generateKey(
+      IdempotencyOperationType.SUBSCRIPTION_CHARGE,
+      `${input.subscriptionId}:${today}`,
+    );
+    const requestHash = this.idempotencyService.generateRequestHash({
+      subscriptionId: input.subscriptionId,
+      amount: input.amount,
+      date: today,
+    });
+
+    const idempotentResult = await this.idempotencyService.execute<ChargeSubscriptionResult>(
+      idempotencyKey,
+      IdempotencyOperationType.SUBSCRIPTION_CHARGE,
+      () => this.executeChargeSubscription(input),
+      requestHash,
+    );
+
+    return idempotentResult.result;
+  }
+
+  /**
+   * Execute subscription charge (inner logic)
+   */
+  private async executeChargeSubscription(input: ChargeSubscriptionInput): Promise<ChargeSubscriptionResult> {
     try {
       // Get subscription from repository
       const subscription = await this.subscriptionRepository.findById(input.subscriptionId);
@@ -404,6 +477,22 @@ export class SubscriptionManagerService {
 
       this.logger.log(`Charged subscription ${input.subscriptionId}: ${chargeResult.success ? 'success' : 'failed'}`);
 
+      // Publish event
+      const chargeEventType = chargeResult.success
+        ? PaymentEventTypes.PAYMENT_SUCCESSFUL
+        : PaymentEventTypes.PAYMENT_FAILED;
+      this.publishEvent(chargeEventType, {
+        orderId: order.id,
+        merchantOrderId: orderId,
+        subscriptionId: input.subscriptionId,
+        userId: subscription.userId,
+        appId: subscription.appId,
+        provider: subscription.provider,
+        amount: amount,
+        currency: subscription.pricing.currency,
+        transactionId: chargeResult.transactionId,
+      }, subscription.appId, subscription.userId, subscription.provider);
+
       return {
         success: chargeResult.success,
         subscription,
@@ -427,6 +516,29 @@ export class SubscriptionManagerService {
    * Cancel a subscription
    */
   async cancelSubscription(input: CancelSubscriptionInput): Promise<CancelSubscriptionResult> {
+    const idempotencyKey = this.idempotencyService.generateKey(
+      IdempotencyOperationType.SUBSCRIPTION_CANCEL,
+      input.subscriptionId,
+    );
+    const requestHash = this.idempotencyService.generateRequestHash({
+      subscriptionId: input.subscriptionId,
+      reason: input.reason ?? '',
+    });
+
+    const idempotentResult = await this.idempotencyService.execute<CancelSubscriptionResult>(
+      idempotencyKey,
+      IdempotencyOperationType.SUBSCRIPTION_CANCEL,
+      () => this.executeCancelSubscription(input),
+      requestHash,
+    );
+
+    return idempotentResult.result;
+  }
+
+  /**
+   * Execute subscription cancellation (inner logic)
+   */
+  private async executeCancelSubscription(input: CancelSubscriptionInput): Promise<CancelSubscriptionResult> {
     try {
       // Get subscription from repository
       const subscription = await this.subscriptionRepository.findById(input.subscriptionId);
