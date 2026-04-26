@@ -496,8 +496,8 @@ describe('PhonePeProviderManagedProvider', () => {
   describe('parseWebhookEvent', () => {
     it('should parse webhook event correctly', async () => {
       const webhookPayload = {
-        type: PhonePeWebhookEvent.SUBSCRIPTION_SETUP_ORDER_COMPLETED,
-        data: {
+        event: PhonePeWebhookEvent.SUBSCRIPTION_SETUP_ORDER_COMPLETED,
+        payload: {
           merchantSubscriptionId: 'MSUB123',
           subscriptionId: 'OMS123',
           merchantOrderId: 'MO123',

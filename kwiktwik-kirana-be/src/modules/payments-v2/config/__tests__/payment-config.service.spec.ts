@@ -304,24 +304,22 @@ describe('PaymentConfigService', () => {
       expect(plan?.frequency).toBe('MONTHLY');
     });
 
-    it('should return default plan config for unknown app', () => {
+    it('should return null for unknown app', () => {
       const service = new PaymentConfigService();
       service.initialize();
 
       const plan = service.getPlanConfig('unknown_app', 'some_plan');
 
-      expect(plan).not.toBeNull();
-      expect(plan?.initialAmount).toBe(4900);
+      expect(plan).toBeNull();
     });
 
-    it('should return default plan config for unknown plan', () => {
+    it('should return null for unknown plan', () => {
       const service = new PaymentConfigService();
       service.initialize();
 
       const plan = service.getPlanConfig('com.paymentalert.app', 'unknown_plan');
 
-      expect(plan).not.toBeNull();
-      expect(plan?.initialAmount).toBe(4900);
+      expect(plan).toBeNull();
     });
   });
 

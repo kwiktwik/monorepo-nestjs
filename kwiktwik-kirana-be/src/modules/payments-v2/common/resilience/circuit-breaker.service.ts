@@ -838,15 +838,24 @@ export class CircuitBreakerService {
   }
 
   private async recordSuccess(
-    _provider: PaymentProvider,
-    _operation: string,
+    provider: PaymentProvider,
+    operation: string,
     _config: CircuitBreakerConfig,
   ): Promise<void> {
-    // In CLOSED state, don't clear the failure set on individual successes.
-    // The sliding window in recordFailure() already expires old failures via
-    // ZREMRANGEBYSCORE. Clearing all failures on a single success masks
-    // flapping providers (e.g., 4 failures then 1 success resets the counter).
-    // In HALF_OPEN state, successes are tracked separately via recordHalfOpenSuccess().
+    if (!this.redisClient) {
+      return;
+    }
+
+    const key = this.getKey(provider, operation);
+    const state = await this.redisClient.get(`${key}:state`);
+
+    if (state !== 'HALF_OPEN') {
+      await this.redisClient.eval(
+        "redis.call('DEL', KEYS[1])",
+        1,
+        key,
+      );
+    }
   }
 
   /**
