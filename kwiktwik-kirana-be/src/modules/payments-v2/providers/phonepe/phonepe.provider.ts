@@ -186,11 +186,22 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
           throw createProviderError('Failed to get PhonePe access token', 'AUTH_FAILED', 'PHONEPE');
         }
 
-        const data = await response.json() as { access_token: string; expires_in: number };
+        const data = await response.json() as {
+          access_token: string;
+          expires_at: number;
+          expires_in: number | null;
+        };
         
+        // PhonePe returns expires_at as epoch in seconds, expires_in may be null
+        const expiresAtMs = data.expires_at
+          ? data.expires_at * 1000
+          : data.expires_in
+            ? Date.now() + data.expires_in * 1000
+            : Date.now() + 30 * 60 * 1000; // fallback: 30 minutes
+
         cachedToken = {
           token: data.access_token,
-          expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+          expiresAt: expiresAtMs - 60_000, // refresh 1 minute before actual expiry
         };
 
         return cachedToken.token;

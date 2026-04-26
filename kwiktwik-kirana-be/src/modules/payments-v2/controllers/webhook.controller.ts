@@ -80,15 +80,15 @@ export class WebhookController {
   /**
    * Handle PhonePe webhooks
    * 
-   * PhonePe sends webhooks with:
-   * - X-VERIFY header for signature verification
-   * - Base64 encoded JSON body
+   * PhonePe Autopay sends webhooks with:
+   * - Authorization header containing SHA256(username:password) for verification
+   * - JSON body with event + payload structure
    */
   @Post('phonepe')
   @HttpCode(HttpStatus.OK)
   async handlePhonePeWebhook(
     @Body() body: Record<string, unknown> | string,
-    @Headers('x-verify') signature: string,
+    @Headers('authorization') signature: string,
     @Req() req: Request,
   ): Promise<{ received: boolean; eventId: string }> {
     this.logger.debug('Received PhonePe webhook');
@@ -125,7 +125,7 @@ export class WebhookController {
   async handlePhonePeWebhookWithAppId(
     @Param('appId') appId: string,
     @Body() body: Record<string, unknown> | string,
-    @Headers('x-verify') signature: string,
+    @Headers('authorization') signature: string,
     @Req() req: Request,
   ): Promise<{ received: boolean; eventId: string }> {
     this.logger.debug(`Received PhonePe webhook for app: ${appId}`);

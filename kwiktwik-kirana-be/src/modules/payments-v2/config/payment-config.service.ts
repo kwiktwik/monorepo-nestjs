@@ -264,26 +264,14 @@ export class PaymentConfigService {
 
     const appPlans = planConfigs[appId];
     if (!appPlans) {
-      // Return default plan config
-      return {
-        planId,
-        initialAmount: 4900,
-        recurringAmount: 4900,
-        currency: 'INR',
-        frequency: 'MONTHLY',
-      };
+      this.logger.warn(`No plan configs found for app ${appId}. Plan data should be loaded from the database.`);
+      return null;
     }
 
     const plan = appPlans[planId];
     if (!plan) {
-      // Return default plan config
-      return {
-        planId,
-        initialAmount: 4900,
-        recurringAmount: 4900,
-        currency: 'INR',
-        frequency: 'MONTHLY',
-      };
+      this.logger.warn(`Plan ${planId} not found for app ${appId}. Available plans: ${Object.keys(appPlans).join(', ')}`);
+      return null;
     }
 
     return {
@@ -357,6 +345,7 @@ export class PaymentConfigService {
       const saltKey = env[`PHONEPE_${match[1]}_${match[2]}_SALT_KEY`];
       const saltIndex = env[`PHONEPE_${match[1]}_${match[2]}_SALT_INDEX`];
       const webhookSecret = env[`PHONEPE_${match[1]}_${match[2]}_WEBHOOK_SECRET`];
+      const checkoutMode = env[`PHONEPE_${match[1]}_${match[2]}_CHECKOUT_MODE`];
 
       if (!clientSecret) {
         this.logger.warn(`Missing CLIENT_SECRET for PhonePe config: ${key}`);
@@ -378,6 +367,7 @@ export class PaymentConfigService {
         merchantId: merchantId ?? '',
         saltKey: saltKey ?? null,
         saltIndex: saltIndex ?? null,
+        checkoutMode: checkoutMode === 'STANDARD_CHECKOUT' ? 'STANDARD_CHECKOUT' : 'API_INTEGRATION',
       };
 
       this.phonepeConfigs.set(configId, config);
