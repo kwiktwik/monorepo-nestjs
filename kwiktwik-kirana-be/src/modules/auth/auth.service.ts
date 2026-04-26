@@ -15,7 +15,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, gte, sql } from 'drizzle-orm';
+import { eq, and, or, gte, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { AuthUserResponse } from './types';
@@ -750,9 +750,9 @@ export class AuthService {
       .select()
       .from(schema.user)
       .where(
-        and(
+        or(
           eq(schema.user.phoneNumber, normalized),
-          eq(schema.user.isDeleted, false),
+          eq(schema.user.email, tempEmail),
         ),
       )
       .limit(1);
@@ -780,12 +780,22 @@ export class AuthService {
       userRecord = await this.db
         .select()
         .from(schema.user)
-        .where(
-          and(eq(schema.user.id, userId), eq(schema.user.isDeleted, false)),
-        )
+        .where(eq(schema.user.id, userId))
         .limit(1);
     } else {
       userId = userRecord[0].id;
+      // Reactivate if deleted
+      if (userRecord[0].isDeleted) {
+        await this.db
+          .update(schema.user)
+          .set({
+            isDeleted: false,
+            deletedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.user.id, userId));
+      }
+
       const metadata = await this.db
         .select()
         .from(schema.userMetadata)
@@ -1151,14 +1161,14 @@ export class AuthService {
       address: userInfoData.address,
     };
 
-    // Step 4: Find or create user (excluding deleted users)
+    // Find or create user (including deleted users)
     let userRecord = await this.db
       .select()
       .from(schema.user)
       .where(
-        and(
+        or(
           eq(schema.user.phoneNumber, normalized),
-          eq(schema.user.isDeleted, false),
+          eq(schema.user.email, userEmail),
         ),
       )
       .limit(1);
@@ -1212,9 +1222,18 @@ export class AuthService {
           phoneNumberVerified:
             userInfoData.phone_number_verified ??
             userRecord[0].phoneNumberVerified,
+          isDeleted: false,
+          deletedAt: null,
           updatedAt: new Date(),
         })
         .where(eq(schema.user.id, userId));
+      
+      // Re-fetch user record to get updated data (especially if it was deleted)
+      userRecord = await this.db
+        .select()
+        .from(schema.user)
+        .where(eq(schema.user.id, userId))
+        .limit(1);
 
       // Ensure user metadata exists for this app
       const metadata = await this.db
@@ -1524,14 +1543,14 @@ export class AuthService {
         : userInfoData.given_name || userInfoData.family_name) ||
       `User ${phoneNumber?.slice(-4) || 'Unknown'}`;
 
-    // Find or create user (excluding deleted users)
+    // Find or create user (including deleted users)
     let userRecord = await this.db
       .select()
       .from(schema.user)
       .where(
-        and(
+        or(
           eq(schema.user.phoneNumber, normalized),
-          eq(schema.user.isDeleted, false),
+          eq(schema.user.email, userEmail),
         ),
       )
       .limit(1);
@@ -1585,9 +1604,18 @@ export class AuthService {
           phoneNumberVerified:
             userInfoData.phone_number_verified ??
             userRecord[0].phoneNumberVerified,
+          isDeleted: false,
+          deletedAt: null,
           updatedAt: new Date(),
         })
         .where(eq(schema.user.id, userId));
+      
+      // Re-fetch user record to get updated data
+      userRecord = await this.db
+        .select()
+        .from(schema.user)
+        .where(eq(schema.user.id, userId))
+        .limit(1);
 
       // Ensure user metadata exists for this app
       const metadata = await this.db
@@ -1708,13 +1736,11 @@ export class AuthService {
 
       const { email, name, picture } = payload;
 
-      // Find or create user by email (excluding deleted users)
+      // Find or create user by email (including deleted users)
       let userRecord = await this.db
         .select()
         .from(schema.user)
-        .where(
-          and(eq(schema.user.email, email), eq(schema.user.isDeleted, false)),
-        )
+        .where(eq(schema.user.email, email))
         .limit(1);
 
       let userId: string;
@@ -1760,13 +1786,15 @@ export class AuthService {
       } else {
         userId = userRecord[0].id;
 
-        // Update user info
+        // Reactivate if deleted and update info
         await this.db
           .update(schema.user)
           .set({
             name: name || userRecord[0].name,
             image: picture || userRecord[0].image,
             emailVerified: true,
+            isDeleted: false,
+            deletedAt: null,
             updatedAt: new Date(),
           })
           .where(eq(schema.user.id, userId));

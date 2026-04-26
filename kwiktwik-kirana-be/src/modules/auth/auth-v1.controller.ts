@@ -11,6 +11,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   InternalServerErrorException,
+  HttpException,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -352,10 +353,7 @@ export class AuthV1Controller {
       this.metrics.recordLoginFailure(provider, appId, reason);
       this.metrics.recordAuthDuration(`${provider}_login`, (Date.now() - startTime) / 1000);
 
-      if (
-        error instanceof UnauthorizedException ||
-        error instanceof BadRequestException
-      ) {
+      if (error instanceof HttpException) {
         throw error;
       }
 
