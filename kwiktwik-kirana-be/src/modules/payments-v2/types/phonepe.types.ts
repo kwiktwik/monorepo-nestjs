@@ -81,12 +81,22 @@ export const ALL_PHONEPE_ORDER_STATES: readonly PhonePeOrderState[] = [
  * PhonePe payment flow types
  */
 export const PhonePePaymentFlowType = {
+  /** Standard Checkout setup flow */
   SUBSCRIPTION_CHECKOUT_SETUP: 'SUBSCRIPTION_CHECKOUT_SETUP',
+  /** API Integration setup flow */
+  SUBSCRIPTION_SETUP: 'SUBSCRIPTION_SETUP',
+  /** Standard Checkout redemption flow */
   SUBSCRIPTION_CHECKOUT_REDEMPTION: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
+  /** API Integration redemption flow */
   SUBSCRIPTION_REDEMPTION: 'SUBSCRIPTION_REDEMPTION',
 } as const;
 
 export type PhonePePaymentFlowType = typeof PhonePePaymentFlowType[keyof typeof PhonePePaymentFlowType];
+
+/**
+ * PhonePe checkout mode - determines which API endpoints and flow types to use
+ */
+export type PhonePeCheckoutMode = 'STANDARD_CHECKOUT' | 'API_INTEGRATION';
 
 /**
  * PhonePe auth workflow types
@@ -216,7 +226,7 @@ export interface PhonePeSetupSubscriptionRequest {
   readonly merchantOrderId: string;
   readonly amount: number;
   readonly paymentFlow: {
-    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP;
+    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP | typeof PhonePePaymentFlowType.SUBSCRIPTION_SETUP;
     readonly merchantUrls: {
       readonly redirectUrl: string;
     };
@@ -233,7 +243,7 @@ export interface PhonePeNotifyRedemptionRequest {
   readonly merchantOrderId: string;
   readonly amount: number;
   readonly paymentFlow: {
-    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION;
+    readonly type: typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION | typeof PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION;
     readonly merchantSubscriptionId: string;
     readonly redemptionRetryStrategy?: PhonePeRedemptionRetryStrategy;
     readonly autoDebit?: boolean;

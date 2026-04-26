@@ -45,6 +45,7 @@ import {
   PhonePeProductType,
   PhonePeSubscriptionType,
   PhonePePaymentFlowType,
+  type PhonePeCheckoutMode,
   mapPhonePeSubscriptionState,
   toPhonePeFrequency,
 } from '../../types/phonepe.types';
@@ -122,7 +123,12 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
   const endpoints = config.environment === 'PRODUCTION' 
     ? PHONEPE_ENDPOINTS.PRODUCTION 
     : PHONEPE_ENDPOINTS.SANDBOX;
-  
+
+  const isStandardCheckout = (config.checkoutMode ?? 'API_INTEGRATION') === 'STANDARD_CHECKOUT';
+  const subPrefix = isStandardCheckout ? 'checkout/v2/subscriptions' : 'subscriptions/v2';
+  const orderPrefix = isStandardCheckout ? 'checkout/v2/order' : 'subscriptions/v2/order';
+  const setupPath = isStandardCheckout ? 'checkout/v2/pay' : 'subscriptions/v2/setup';
+
   let cachedToken: { token: string; expiresAt: number } | null = null;
   let pendingTokenRequest: Promise<string> | null = null;
 
@@ -201,7 +207,7 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
 
     setupSubscription: async (request: PhonePeSetupSubscriptionRequest) => {
       return fetchWithAuth<PhonePeSetupSubscriptionResponse>(
-        `${endpoints.BASE}/subscriptions/v2/setup`,
+        `${endpoints.BASE}/${setupPath}`,
         {
           method: 'POST',
           body: JSON.stringify(request),
@@ -211,34 +217,34 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
 
     getSubscriptionStatus: async (merchantSubscriptionId: string) => {
       return fetchWithAuth<PhonePeSubscriptionStatusResponse>(
-        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/status`,
+        `${endpoints.BASE}/${subPrefix}/${merchantSubscriptionId}/status`,
       );
     },
 
     cancelSubscription: async (merchantSubscriptionId: string) => {
       return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
-        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/cancel`,
+        `${endpoints.BASE}/${subPrefix}/${merchantSubscriptionId}/cancel`,
         { method: 'POST' },
       );
     },
 
     pauseSubscription: async (merchantSubscriptionId: string) => {
       return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
-        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/pause`,
+        `${endpoints.BASE}/${subPrefix}/${merchantSubscriptionId}/pause`,
         { method: 'POST' },
       );
     },
 
     unpauseSubscription: async (merchantSubscriptionId: string) => {
       return fetchWithAuth<{ state: PhonePeSubscriptionState }>(
-        `${endpoints.BASE}/subscriptions/v2/${merchantSubscriptionId}/unpause`,
+        `${endpoints.BASE}/${subPrefix}/${merchantSubscriptionId}/unpause`,
         { method: 'POST' },
       );
     },
 
     notifyRedemption: async (request: PhonePeNotifyRedemptionRequest) => {
       return fetchWithAuth<PhonePeNotifyRedemptionResponse>(
-        `${endpoints.BASE}/subscriptions/v2/notify`,
+        `${endpoints.BASE}/${subPrefix}/notify`,
         {
           method: 'POST',
           body: JSON.stringify(request),
@@ -248,7 +254,7 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
 
     executeRedemption: async (request: PhonePeExecuteRedemptionRequest) => {
       return fetchWithAuth<PhonePeExecuteRedemptionResponse>(
-        `${endpoints.BASE}/subscriptions/v2/redeem`,
+        `${endpoints.BASE}/${subPrefix}/redeem`,
         {
           method: 'POST',
           body: JSON.stringify(request),
@@ -258,7 +264,7 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
 
     getRedemptionOrderStatus: async (merchantOrderId: string) => {
       return fetchWithAuth<PhonePeRedemptionOrderStatusResponse>(
-        `${endpoints.BASE}/subscriptions/v2/order/${merchantOrderId}/status`,
+        `${endpoints.BASE}/${orderPrefix}/${merchantOrderId}/status`,
       );
     },
 
@@ -291,12 +297,26 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
   readonly provider: PaymentProvider = 'PHONEPE';
   protected config: PhonePeProviderConfig | null = null;
   protected client: PhonePeClient | null = null;
+  protected checkoutMode: PhonePeCheckoutMode = 'API_INTEGRATION';
 
   abstract readonly subscriptionType: SubscriptionType;
 
   initialize(config: PhonePeProviderConfig): void {
     this.config = config;
+    this.checkoutMode = config.checkoutMode ?? 'API_INTEGRATION';
     this.client = createPhonePeClient(config);
+  }
+
+  protected getSetupFlowType(): typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP | typeof PhonePePaymentFlowType.SUBSCRIPTION_SETUP {
+    return this.checkoutMode === 'STANDARD_CHECKOUT'
+      ? PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP
+      : PhonePePaymentFlowType.SUBSCRIPTION_SETUP;
+  }
+
+  protected getRedemptionFlowType(): typeof PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION | typeof PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION {
+    return this.checkoutMode === 'STANDARD_CHECKOUT'
+      ? PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_REDEMPTION
+      : PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION;
   }
 
   getPublicConfig(): Record<string, unknown> {
@@ -640,7 +660,7 @@ export class PhonePeProviderManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.pricing.initialAmount || params.pricing.recurringAmount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP,
+          type: this.getSetupFlowType(),
           merchantUrls: {
             redirectUrl: params.redirectUrl ?? '',
           },
@@ -677,7 +697,7 @@ export class PhonePeProviderManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.amount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION,
+          type: this.getRedemptionFlowType(),
           merchantSubscriptionId: params.merchantSubscriptionId,
           autoDebit: true, // Provider-managed: auto deduct
         },
@@ -872,7 +892,7 @@ export class PhonePeUserManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.pricing.initialAmount || params.pricing.recurringAmount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_CHECKOUT_SETUP,
+          type: this.getSetupFlowType(),
           merchantUrls: {
             redirectUrl: params.redirectUrl ?? '',
           },
@@ -908,7 +928,7 @@ export class PhonePeUserManagedProvider extends BasePhonePeProvider {
         merchantOrderId: params.merchantOrderId,
         amount: params.amount,
         paymentFlow: {
-          type: PhonePePaymentFlowType.SUBSCRIPTION_REDEMPTION,
+          type: this.getRedemptionFlowType(),
           merchantSubscriptionId: params.merchantSubscriptionId,
           autoDebit: false, // User-managed: we control when to execute
         },

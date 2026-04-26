@@ -57,6 +57,8 @@ export interface PhonePeProviderConfig extends ProviderConfig {
   readonly merchantId: string;
   readonly saltKey: string | null;
   readonly saltIndex: string | null;
+  /** Which PhonePe integration flow to use. Defaults to API_INTEGRATION. */
+  readonly checkoutMode?: 'STANDARD_CHECKOUT' | 'API_INTEGRATION';
 }
 
 /**
