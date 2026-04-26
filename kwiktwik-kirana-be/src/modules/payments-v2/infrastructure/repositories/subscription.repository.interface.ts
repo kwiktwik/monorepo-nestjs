@@ -62,6 +62,15 @@ export interface ISubscriptionRepository {
   ): Promise<readonly Subscription[]>;
 
   /**
+   * Find subscriptions by user ID, app ID, and optional status filter
+   */
+  findByUserAndApp(
+    userId: string,
+    appId: string,
+    status?: string,
+  ): Promise<readonly Subscription[]>;
+
+  /**
    * Save subscription (create or update)
    */
   save(subscription: Subscription): Promise<Subscription>;

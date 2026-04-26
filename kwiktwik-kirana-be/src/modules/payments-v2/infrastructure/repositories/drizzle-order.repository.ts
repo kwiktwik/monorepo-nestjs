@@ -6,7 +6,7 @@
  */
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { eq, and, inArray, desc, lte } from 'drizzle-orm';
+import { eq, and, inArray, desc, lte, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   Order,
@@ -92,15 +92,12 @@ export class DrizzleOrderRepository implements IOrderRepository {
         .where(
           and(
             eq(ordersV2.provider, provider as PaymentProvider),
+            sql`${ordersV2.providerData}->>'orderId' = ${providerOrderId}`,
           ),
-        );
+        )
+        .limit(1);
 
-      // Filter in memory for JSONB field
-      const filtered = rows.filter(
-        (row) => row.providerData?.orderId === providerOrderId,
-      );
-
-      return filtered.length > 0 ? this.toDomain(filtered[0]) : null;
+      return rows.length > 0 ? this.toDomain(rows[0]) : null;
     } catch (error) {
       this.logger.error(
         `Failed to find order by provider order ID: ${provider}/${providerOrderId}`,
@@ -254,27 +251,21 @@ export class DrizzleOrderRepository implements IOrderRepository {
 
   /**
    * Save order (create or update)
+   * Uses upsert to avoid race conditions and N+1 queries.
    */
   async save(order: Order): Promise<Order> {
     try {
-      const existing = await this.findById(order.id);
+      const insertData = this.toInsertData(order);
 
-      if (existing) {
-        // Update existing order
-        const updateData = this.toUpdateData(order);
-        await this.db
-          .update(ordersV2)
-          .set(updateData)
-          .where(eq(ordersV2.id, order.id));
+      await this.db
+        .insert(ordersV2)
+        .values(insertData)
+        .onConflictDoUpdate({
+          target: ordersV2.id,
+          set: this.toUpdateData(order),
+        });
 
-        return order;
-      } else {
-        // Create new order
-        const insertData = this.toInsertData(order);
-        await this.db.insert(ordersV2).values(insertData);
-
-        return order;
-      }
+      return order;
     } catch (error) {
       this.logger.error(`Failed to save order: ${order.id}`, error);
       throw error;

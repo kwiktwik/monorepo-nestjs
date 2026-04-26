@@ -161,19 +161,11 @@ export class SubscriptionApiController {
     @AppId() appId: string,
     @Query('status') status?: string,
   ): Promise<SubscriptionStatusDto[]> {
-    let subscriptions: readonly Subscription[];
-    
-    if (status) {
-      subscriptions = await this.subscriptionRepo.findByStatus(status as any);
-      // Filter by user and app
-      subscriptions = subscriptions.filter(
-        (sub) => sub.userId === user.userId && sub.appId === appId,
-      );
-    } else {
-      subscriptions = await this.subscriptionRepo.findByUserId(user.userId);
-      // Filter by app
-      subscriptions = subscriptions.filter((sub) => sub.appId === appId);
-    }
+    const subscriptions = await this.subscriptionRepo.findByUserAndApp(
+      user.userId,
+      appId,
+      status,
+    );
 
     return subscriptions.map((sub) => this.toStatusDto(sub));
   }

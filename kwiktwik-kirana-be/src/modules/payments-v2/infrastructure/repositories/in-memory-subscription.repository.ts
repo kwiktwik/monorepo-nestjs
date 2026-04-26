@@ -70,6 +70,18 @@ export class InMemorySubscriptionRepository implements ISubscriptionRepository {
     return Array.from(this.subscriptions.values()).filter(s => s.status === 'RETRYING');
   }
 
+  async findByUserAndApp(
+    userId: string,
+    appId: string,
+    status?: string,
+  ): Promise<readonly Subscription[]> {
+    return Array.from(this.subscriptions.values()).filter(s => {
+      if (s.userId !== userId || s.appId !== appId) return false;
+      if (status && s.status !== status) return false;
+      return true;
+    });
+  }
+
   async findByStatus(
     status: string | readonly string[],
     options?: SubscriptionQueryOptions,

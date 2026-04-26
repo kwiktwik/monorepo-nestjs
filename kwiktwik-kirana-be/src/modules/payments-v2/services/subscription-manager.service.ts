@@ -5,14 +5,12 @@
  * Handles both provider-managed and user-managed subscriptions.
  */
 
-import { Injectable, Logger, OnModuleInit, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
 import type { IOrderRepository } from '../infrastructure/repositories/order.repository.interface';
-import { InMemorySubscriptionRepository } from '../infrastructure/repositories/in-memory-subscription.repository';
-import { InMemoryOrderRepository } from '../infrastructure/repositories/in-memory-order.repository';
 import type { SubscriptionProvider, AnyProviderConfig } from '../providers/interfaces/subscription-provider.interface';
 import type { Subscription, CreateSubscriptionParams } from '../domain/entities/subscription.entity';
 import type { Order, CreateOrderParams } from '../domain/entities/order.entity';
@@ -132,34 +130,16 @@ export interface CancelSubscriptionResult {
  * Main service for managing subscriptions across providers.
  */
 @Injectable()
-export class SubscriptionManagerService implements OnModuleInit {
+export class SubscriptionManagerService {
   private readonly logger = new Logger(SubscriptionManagerService.name);
 
   constructor(
     private readonly stateMachine: SubscriptionStateMachineService,
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
-    @Inject('ISubscriptionRepository') @Optional() private readonly subscriptionRepository: ISubscriptionRepository,
-    @Inject('IOrderRepository') @Optional() private readonly orderRepository: IOrderRepository,
+    @Inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
+    @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
   ) {}
-
-  onModuleInit(): void {
-    this.configService.initialize();
-  }
-
-  /**
-   * Get subscription repository (with fallback to in-memory)
-   */
-  private getSubscriptionRepo(): ISubscriptionRepository {
-    return this.subscriptionRepository ?? new InMemorySubscriptionRepository();
-  }
-
-  /**
-   * Get order repository (with fallback to in-memory)
-   */
-  private getOrderRepo(): IOrderRepository {
-    return this.orderRepository ?? new InMemoryOrderRepository();
-  }
 
   /**
    * Create a new subscription
@@ -251,7 +231,7 @@ export class SubscriptionManagerService implements OnModuleInit {
         subscription = failedResult.subscription;
 
         // Save failed subscription
-        await this.getSubscriptionRepo().save(subscription);
+        await this.subscriptionRepository.save(subscription);
 
         return {
           success: false,
@@ -294,9 +274,20 @@ export class SubscriptionManagerService implements OnModuleInit {
       const transitionResult = transitionSubscriptionStatus(subscription, targetStatus);
       subscription = transitionResult.subscription;
 
-      // Save to repository
-      await this.getSubscriptionRepo().save(subscription);
-      await this.getOrderRepo().save(order);
+      // Save to repository — subscription first, then order
+      // If order save fails, clean up the subscription to avoid orphaned records
+      await this.subscriptionRepository.save(subscription);
+      try {
+        await this.orderRepository.save(order);
+      } catch (orderSaveError) {
+        this.logger.error(`Failed to save order ${orderId}, rolling back subscription ${subscriptionId}`);
+        try {
+          await this.subscriptionRepository.delete(subscriptionId);
+        } catch (rollbackError) {
+          this.logger.error(`Failed to rollback subscription ${subscriptionId}: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown error'}`);
+        }
+        throw orderSaveError;
+      }
 
       this.logger.log(`Created subscription ${subscriptionId} with status ${subscription.status}`);
 
@@ -322,7 +313,7 @@ export class SubscriptionManagerService implements OnModuleInit {
   async chargeSubscription(input: ChargeSubscriptionInput): Promise<ChargeSubscriptionResult> {
     try {
       // Get subscription from repository
-      const subscription = await this.getSubscriptionRepo().findById(input.subscriptionId);
+      const subscription = await this.subscriptionRepository.findById(input.subscriptionId);
       if (!subscription) {
         return {
           success: false,
@@ -409,7 +400,7 @@ export class SubscriptionManagerService implements OnModuleInit {
       }
 
       // Save order
-      await this.getOrderRepo().save(order);
+      await this.orderRepository.save(order);
 
       this.logger.log(`Charged subscription ${input.subscriptionId}: ${chargeResult.success ? 'success' : 'failed'}`);
 
@@ -438,7 +429,7 @@ export class SubscriptionManagerService implements OnModuleInit {
   async cancelSubscription(input: CancelSubscriptionInput): Promise<CancelSubscriptionResult> {
     try {
       // Get subscription from repository
-      const subscription = await this.getSubscriptionRepo().findById(input.subscriptionId);
+      const subscription = await this.subscriptionRepository.findById(input.subscriptionId);
       if (!subscription) {
         return {
           success: false,
@@ -493,7 +484,7 @@ export class SubscriptionManagerService implements OnModuleInit {
       const updatedSubscription = transitionResult.subscription;
 
       // Save updated subscription
-      await this.getSubscriptionRepo().save(updatedSubscription);
+      await this.subscriptionRepository.save(updatedSubscription);
 
       this.logger.log(`Cancelled subscription ${input.subscriptionId}: ${cancelResult.success ? 'success' : 'failed'}`);
 
@@ -516,35 +507,35 @@ export class SubscriptionManagerService implements OnModuleInit {
    * Get subscription by ID
    */
   async getSubscription(subscriptionId: string): Promise<Subscription | null> {
-    return this.getSubscriptionRepo().findById(subscriptionId);
+    return this.subscriptionRepository.findById(subscriptionId);
   }
 
   /**
    * Get subscription by merchant ID
    */
   async getSubscriptionByMerchantId(merchantSubscriptionId: string): Promise<Subscription | null> {
-    return this.getSubscriptionRepo().findByMerchantId(merchantSubscriptionId);
+    return this.subscriptionRepository.findByMerchantId(merchantSubscriptionId);
   }
 
   /**
    * Get all active subscriptions for a user
    */
   async getActiveSubscriptions(userId: string): Promise<readonly Subscription[]> {
-    return this.getSubscriptionRepo().findActiveByUserId(userId);
+    return this.subscriptionRepository.findActiveByUserId(userId);
   }
 
   /**
    * Get subscriptions needing billing (for scheduled jobs)
    */
   async getSubscriptionsNeedingBilling(): Promise<readonly Subscription[]> {
-    return this.getSubscriptionRepo().findNeedingBilling();
+    return this.subscriptionRepository.findNeedingBilling();
   }
 
   /**
    * Sync subscription status with provider
    */
   async syncSubscriptionStatus(subscriptionId: string): Promise<Subscription | null> {
-    const subscription = await this.getSubscriptionRepo().findById(subscriptionId);
+    const subscription = await this.subscriptionRepository.findById(subscriptionId);
     if (!subscription) {
       return null;
     }
@@ -575,7 +566,7 @@ export class SubscriptionManagerService implements OnModuleInit {
     const updatedSubscription = transitionResult.subscription;
 
     // Save updated subscription
-    await this.getSubscriptionRepo().save(updatedSubscription);
+    await this.subscriptionRepository.save(updatedSubscription);
 
     return updatedSubscription;
   }

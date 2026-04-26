@@ -6,13 +6,12 @@
  */
 
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionStateMachineService } from './subscription-state-machine.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
 import type { IOrderRepository } from '../infrastructure/repositories/order.repository.interface';
-import { InMemorySubscriptionRepository } from '../infrastructure/repositories/in-memory-subscription.repository';
-import { InMemoryOrderRepository } from '../infrastructure/repositories/in-memory-order.repository';
 import type { WebhookEvent } from '../providers/interfaces/subscription-provider.interface';
 import { PaymentProvider } from '../types/provider.enum';
 import { SubscriptionType } from '../types/subscription-type.enum';
@@ -21,6 +20,9 @@ import { transitionSubscriptionStatus, recordSuccessfulPayment, recordPaymentFai
 import { createPaymentFailure } from '../domain/entities/subscription.entity';
 import { mapRazorpaySubscriptionStatus } from '../types/razorpay.types';
 import { mapPhonePeSubscriptionState } from '../types/phonepe.types';
+import { eq, and, sql } from 'drizzle-orm';
+import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
+import { paymentWebhookEvents } from '../database/schema';
 
 // ============================================================================
 // Types
@@ -70,24 +72,11 @@ export class WebhookHandlerService {
     private readonly stateMachine: SubscriptionStateMachineService,
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
-    @Inject('ISubscriptionRepository') @Optional() private readonly subscriptionRepository: ISubscriptionRepository,
-    @Inject('IOrderRepository') @Optional() private readonly orderRepository: IOrderRepository,
+    @Inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
+    @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
+    @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null,
   ) {
     this.registerDefaultHandlers();
-  }
-
-  /**
-   * Get subscription repository (with fallback to in-memory)
-   */
-  private getSubscriptionRepo(): ISubscriptionRepository {
-    return this.subscriptionRepository ?? new InMemorySubscriptionRepository();
-  }
-
-  /**
-   * Get order repository (with fallback to in-memory)
-   */
-  private getOrderRepo(): IOrderRepository {
-    return this.orderRepository ?? new InMemoryOrderRepository();
   }
 
   /**
@@ -135,14 +124,27 @@ export class WebhookHandlerService {
         return this.createErrorResult(event.eventId, 'Invalid webhook signature');
       }
 
+      // Persist the webhook event for audit trail
+      await this.persistWebhookEvent(event, provider);
+
       // Get handler for event type
       const handler = this.getHandler(event.mappedEventType);
+      let result: WebhookProcessResult;
       if (handler) {
-        return handler(event);
+        result = await handler(event);
+      } else {
+        result = await this.handleDefault(event);
       }
 
-      // Default handling
-      return this.handleDefault(event);
+      // Update webhook event status after processing
+      await this.updateWebhookEventStatus(
+        event.eventId,
+        provider,
+        result.success ? 'PROCESSED' : 'FAILED',
+        result.success ? undefined : result.error ?? undefined,
+      );
+
+      return result;
     } catch (error) {
       this.logger.error(`Failed to process webhook: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return this.createErrorResult('processing_error', error instanceof Error ? error.message : 'Unknown error');
@@ -268,12 +270,12 @@ export class WebhookHandlerService {
     this.logger.log(`Subscription charged: ${event.merchantSubscriptionId}`);
     
     // Find subscription and record successful payment
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
-      await this.getSubscriptionRepo().save(updated);
+      await this.subscriptionRepository.save(updated);
     }
     
     return {
@@ -356,7 +358,7 @@ export class WebhookHandlerService {
   private async handlePaymentFailed(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Payment failed for subscription: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
@@ -375,9 +377,9 @@ export class WebhookHandlerService {
       // For provider-managed, the provider handles retries
       if (subscription.subscriptionType === SubscriptionType.USER_MANAGED) {
         const transitionResult = transitionSubscriptionStatus(withFailure, SubscriptionStatus.RETRYING);
-        await this.getSubscriptionRepo().save(transitionResult.subscription);
+        await this.subscriptionRepository.save(transitionResult.subscription);
       } else {
-        await this.getSubscriptionRepo().save(withFailure);
+        await this.subscriptionRepository.save(withFailure);
       }
     }
     
@@ -418,12 +420,12 @@ export class WebhookHandlerService {
   private async handleRedemptionCompleted(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Redemption completed: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
-      await this.getSubscriptionRepo().save(updated);
+      await this.subscriptionRepository.save(updated);
     }
     
     return {
@@ -442,7 +444,7 @@ export class WebhookHandlerService {
   private async handleRedemptionFailed(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Redemption failed: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription && subscription.subscriptionType === SubscriptionType.USER_MANAGED) {
@@ -469,12 +471,12 @@ export class WebhookHandlerService {
   private async handleTransactionCompleted(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Transaction completed: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
-      await this.getSubscriptionRepo().save(updated);
+      await this.subscriptionRepository.save(updated);
     }
     
     return {
@@ -493,7 +495,7 @@ export class WebhookHandlerService {
   private async handleTransactionFailed(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Transaction failed: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.getSubscriptionRepo()
+    const subscription = await this.subscriptionRepository
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
@@ -506,7 +508,7 @@ export class WebhookHandlerService {
       );
       
       const withFailure = recordPaymentFailure(subscription, failure);
-      await this.getSubscriptionRepo().save(withFailure);
+      await this.subscriptionRepository.save(withFailure);
     }
     
     return {
@@ -562,7 +564,7 @@ export class WebhookHandlerService {
   ): Promise<void> {
     if (!merchantSubscriptionId) return;
     
-    const subscription = await this.getSubscriptionRepo().findByMerchantId(merchantSubscriptionId);
+    const subscription = await this.subscriptionRepository.findByMerchantId(merchantSubscriptionId);
     if (!subscription) {
       this.logger.warn(`Subscription not found for webhook update: ${merchantSubscriptionId}`);
       return;
@@ -570,7 +572,82 @@ export class WebhookHandlerService {
     
     const result = transitionSubscriptionStatus(subscription, newStatus);
     if (result.success) {
-      await this.getSubscriptionRepo().save(result.subscription);
+      await this.subscriptionRepository.save(result.subscription);
+    }
+  }
+
+  /**
+   * Persist webhook event to database for audit trail
+   */
+  private async persistWebhookEvent(event: WebhookEvent, provider: PaymentProvider): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      const id = `wh_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      await this.db.insert(paymentWebhookEvents).values({
+        id,
+        provider,
+        appId: event.appId,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        normalizedEventType: event.mappedEventType,
+        status: 'PROCESSING',
+        merchantSubscriptionId: event.merchantSubscriptionId,
+        providerSubscriptionId: event.providerSubscriptionId,
+        merchantOrderId: event.merchantOrderId,
+        providerOrderId: event.providerOrderId,
+        paymentId: event.paymentId,
+        parsedData: event.rawPayload,
+        rawPayload: event.rawPayload,
+        signatureValid: event.signatureValid,
+        eventTimestamp: event.timestamp,
+        processingAttempts: 1,
+        lastProcessingAttemptAt: new Date(),
+      }).onConflictDoUpdate({
+        target: [paymentWebhookEvents.provider, paymentWebhookEvents.eventId],
+        set: {
+          status: 'DUPLICATE' as const,
+          processingAttempts: sql`${paymentWebhookEvents.processingAttempts} + 1`,
+          lastProcessingAttemptAt: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to persist webhook event ${event.eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Update webhook event status after processing
+   */
+  private async updateWebhookEventStatus(
+    eventId: string,
+    provider: PaymentProvider,
+    status: 'PROCESSED' | 'FAILED',
+    processingError?: string,
+  ): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      await this.db
+        .update(paymentWebhookEvents)
+        .set({
+          status,
+          processedAt: status === 'PROCESSED' ? new Date() : undefined,
+          processingError: processingError ?? null,
+        })
+        .where(
+          and(
+            eq(paymentWebhookEvents.provider, provider),
+            eq(paymentWebhookEvents.eventId, eventId),
+          ),
+        );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update webhook event status ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 

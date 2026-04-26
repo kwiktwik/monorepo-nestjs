@@ -6,7 +6,7 @@
  */
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { eq, and, inArray, isNotNull, gt, lte, or, desc } from 'drizzle-orm';
+import { eq, and, inArray, isNotNull, gt, lte, or, desc, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   Subscription,
@@ -95,23 +95,18 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
     providerSubscriptionId: string,
   ): Promise<Subscription | null> {
     try {
-      // Query by provider and check providerData JSONB field
       const rows = await this.db
         .select()
         .from(subscriptionsV2)
         .where(
           and(
             eq(subscriptionsV2.provider, provider as PaymentProvider),
-            // Using raw SQL for JSONB field query
+            sql`${subscriptionsV2.providerData}->>'subscriptionId' = ${providerSubscriptionId}`,
           ),
-        );
+        )
+        .limit(1);
 
-      // Filter in memory for JSONB field
-      const filtered = rows.filter(
-        (row) => row.providerData?.subscriptionId === providerSubscriptionId,
-      );
-
-      return filtered.length > 0 ? this.toDomain(filtered[0]) : null;
+      return rows.length > 0 ? this.toDomain(rows[0]) : null;
     } catch (error) {
       this.logger.error(
         `Failed to find subscription by provider subscription ID: ${provider}/${providerSubscriptionId}`,
@@ -214,6 +209,37 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
   }
 
   /**
+   * Find subscriptions by user ID, app ID, and optional status filter
+   */
+  async findByUserAndApp(
+    userId: string,
+    appId: string,
+    status?: string,
+  ): Promise<readonly Subscription[]> {
+    try {
+      const conditions = [
+        eq(subscriptionsV2.userId, userId),
+        eq(subscriptionsV2.appId, appId),
+      ];
+
+      if (status) {
+        conditions.push(eq(subscriptionsV2.status, status as SubscriptionStatus));
+      }
+
+      const rows = await this.db
+        .select()
+        .from(subscriptionsV2)
+        .where(and(...conditions))
+        .orderBy(desc(subscriptionsV2.createdAt));
+
+      return rows.map((row) => this.toDomain(row));
+    } catch (error) {
+      this.logger.error(`Failed to find subscriptions for user ${userId} in app ${appId}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Find subscriptions in retry state
    */
   async findInRetry(): Promise<readonly Subscription[]> {
@@ -232,27 +258,24 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
 
   /**
    * Save subscription (create or update)
+   * Uses upsert to avoid race conditions and N+1 queries.
    */
   async save(subscription: Subscription): Promise<Subscription> {
     try {
-      const existing = await this.findById(subscription.id);
+      const insertData = this.toInsertData(subscription);
 
-      if (existing) {
-        // Update existing subscription
-        const updateData = this.toUpdateData(subscription);
-        await this.db
-          .update(subscriptionsV2)
-          .set(updateData)
-          .where(eq(subscriptionsV2.id, subscription.id));
+      await this.db
+        .insert(subscriptionsV2)
+        .values(insertData)
+        .onConflictDoUpdate({
+          target: subscriptionsV2.id,
+          set: {
+            ...this.toUpdateFields(subscription),
+            previousStatus: sql`${subscriptionsV2.status}`,
+          },
+        });
 
-        return subscription;
-      } else {
-        // Create new subscription
-        const insertData = this.toInsertData(subscription);
-        await this.db.insert(subscriptionsV2).values(insertData);
-
-        return subscription;
-      }
+      return subscription;
     } catch (error) {
       this.logger.error(`Failed to save subscription: ${subscription.id}`, error);
       throw error;
@@ -509,10 +532,9 @@ export class DrizzleSubscriptionRepository implements ISubscriptionRepository {
   /**
    * Convert domain entity to update data
    */
-  private toUpdateData(subscription: Subscription): Partial<NewSubscriptionV2> {
+  private toUpdateFields(subscription: Subscription): Partial<NewSubscriptionV2> {
     return {
       status: subscription.status,
-      previousStatus: subscription.status,
       billingCycleCount: subscription.billingCycleCount,
       nextBillingDate: subscription.nextBillingDate,
       lastBillingDate: subscription.lastBillingDate,

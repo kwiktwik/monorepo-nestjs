@@ -12,6 +12,7 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  HttpException,
   Logger,
   Req,
 } from '@nestjs/common';
@@ -64,6 +65,10 @@ export class WebhookController {
 
     if (!result.success) {
       this.logger.error(`Razorpay webhook processing failed: ${result.error}`);
+      throw new HttpException(
+        { received: false, eventId: result.eventId, error: result.error },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     return {
@@ -100,6 +105,10 @@ export class WebhookController {
 
     if (!result.success) {
       this.logger.error(`PhonePe webhook processing failed: ${result.error}`);
+      throw new HttpException(
+        { received: false, eventId: result.eventId, error: result.error },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     return {
@@ -133,6 +142,10 @@ export class WebhookController {
 
     if (!result.success) {
       this.logger.error(`PhonePe webhook processing failed: ${result.error}`);
+      throw new HttpException(
+        { received: false, eventId: result.eventId, error: result.error },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     return {
