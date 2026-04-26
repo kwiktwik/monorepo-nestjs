@@ -53,7 +53,6 @@ import {
   generateId,
   unixToDate,
   dateToUnix,
-  createHmacSha256,
   createProviderError,
 } from '../base/provider-utils';
 

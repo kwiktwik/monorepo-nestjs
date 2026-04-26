@@ -33,7 +33,12 @@ import { WebhookProcessorService } from './webhooks/webhook-processor.service';
 import { IdempotencyService, InMemoryIdempotencyStore } from './common/idempotency/idempotency.service';
 
 // Scheduler
-import { BillingSchedulerService } from './scheduler/billing-scheduler.service';
+import { BillingSchedulerService, BILLING_DEAD_LETTER_QUEUE } from './scheduler/billing-scheduler.service';
+
+// Queue
+import { BullModule } from '@nestjs/bullmq';
+import { QueueModule } from '../../queue/queue.module';
+import { isMockMode } from '../../common/utils/is-mock-mode';
 
 // Event Bus
 import { InMemoryEventBus } from './common/events/in-memory-event-bus';
@@ -74,6 +79,9 @@ import { RedisService } from '../../common/redis/redis.service';
 const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
 const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !== 'false';
 const ENABLE_CIRCUIT_BREAKER = process.env.PAYMENT_CIRCUIT_BREAKER_ENABLED !== 'false';
+const ENABLE_BILLING_DLQ = process.env.PAYMENT_BILLING_DLQ_ENABLED !== 'false';
+const BILLING_DLQ_ENABLED =
+  ENABLE_BILLING_DLQ && !!process.env.REDIS_URL && !isMockMode();
 
 // Circuit breaker default configuration
 const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
@@ -111,7 +119,18 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
  */
 @Global()
 @Module({
-  imports: [ConfigModule, ScheduleModule.forRoot()],
+  imports: [
+    ConfigModule,
+    ScheduleModule.forRoot(),
+    ...(BILLING_DLQ_ENABLED ? [QueueModule.forRootIfAvailable()] : []),
+    ...(BILLING_DLQ_ENABLED
+      ? [
+          BullModule.registerQueue({
+            name: BILLING_DEAD_LETTER_QUEUE,
+          }),
+        ]
+      : []),
+  ],
   controllers: [WebhookController, SubscriptionApiController],
   providers: [
     // Configuration

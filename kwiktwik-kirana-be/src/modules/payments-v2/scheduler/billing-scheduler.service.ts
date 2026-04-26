@@ -12,9 +12,10 @@
  * - Update subscription status based on billing results
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Inject } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { SubscriptionManagerService } from '../services/subscription-manager.service';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
@@ -26,6 +27,26 @@ import {
 } from '../domain/entities/subscription.entity';
 import { SubscriptionStatus, StateMachineEvent } from '../types/subscription-status.enum';
 import { SubscriptionType } from '../types/subscription-type.enum';
+
+// ============================================================================
+// Queue (Dead Letter)
+// ============================================================================
+
+export const BILLING_DEAD_LETTER_QUEUE = '{billing-dead-letter}';
+
+export interface BillingDeadLetterJob {
+  readonly subscriptionId: string;
+  readonly userId: string;
+  readonly appId: string;
+  readonly provider: string;
+  readonly subscriptionType: string;
+  readonly reason: string;
+  readonly consecutiveFailures: number;
+  readonly lastFailureAt: Date | null;
+  readonly nextBillingDate: Date | null;
+  readonly billingCycleCount: number;
+  readonly queuedAt: Date;
+}
 
 // ============================================================================
 // Configuration
@@ -47,6 +68,8 @@ export interface BillingSchedulerConfig {
   readonly retryBaseDelayMinutes: number;
   /** Grace period in days before cancelling failed subscriptions */
   readonly gracePeriodDays: number;
+  /** Max dead-letter queue length */
+  readonly deadLetterMaxSize: number;
 }
 
 /**
@@ -59,6 +82,7 @@ const DEFAULT_CONFIG: BillingSchedulerConfig = {
   maxRetryAttempts: 3,
   retryBaseDelayMinutes: 60,
   gracePeriodDays: 7,
+  deadLetterMaxSize: 1000,
 };
 
 // ============================================================================
@@ -112,6 +136,9 @@ export class BillingSchedulerService {
     private readonly stateMachine: SubscriptionStateMachineService,
     @Inject('ISubscriptionRepository')
     private readonly subscriptionRepo: ISubscriptionRepository,
+    @InjectQueue(BILLING_DEAD_LETTER_QUEUE)
+    @Optional()
+    private readonly deadLetterQueue?: Queue<BillingDeadLetterJob>,
   ) {
     this.config = this.loadConfig();
     this.logger.log(`Billing scheduler initialized (enabled: ${this.config.enabled})`);
@@ -444,6 +471,8 @@ export class BillingSchedulerService {
         this.logger.log(
           `Subscription ${subscription.id} transitioned to FAILED status and saved`,
         );
+
+        await this.enqueueDeadLetter(result.subscription, 'Exceeded maximum retry attempts');
       } else {
         this.logger.error(
           `Failed to transition subscription ${subscription.id} to FAILED: ${result.error}`,
@@ -509,6 +538,7 @@ export class BillingSchedulerService {
       maxRetryAttempts: parseInt(process.env.PAYMENT_BILLING_MAX_RETRIES ?? '3', 10),
       retryBaseDelayMinutes: parseInt(process.env.PAYMENT_BILLING_RETRY_DELAY ?? '60', 10),
       gracePeriodDays: parseInt(process.env.PAYMENT_BILLING_GRACE_PERIOD ?? '7', 10),
+      deadLetterMaxSize: parseInt(process.env.PAYMENT_BILLING_DLQ_MAX_SIZE ?? '1000', 10),
     };
   }
 
@@ -526,6 +556,51 @@ export class BillingSchedulerService {
   /**
    * Create an empty result
    */
+  private async enqueueDeadLetter(subscription: Subscription, reason: string): Promise<void> {
+    if (!this.deadLetterQueue) {
+      this.logger.warn(`Dead-letter queue unavailable. Subscription ${subscription.id} not queued.`);
+      return;
+    }
+
+    try {
+      const counts = await this.deadLetterQueue.getJobCounts('wait', 'delayed');
+      const pending = (counts.wait ?? 0) + (counts.delayed ?? 0);
+      if (pending >= this.config.deadLetterMaxSize) {
+        this.logger.warn(`Dead-letter queue full (${pending}). Dropping subscription ${subscription.id}`);
+        return;
+      }
+
+      await this.deadLetterQueue.add(
+        'billing-dead-letter',
+        {
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          appId: subscription.appId,
+          provider: subscription.provider,
+          subscriptionType: subscription.subscriptionType,
+          reason,
+          consecutiveFailures: subscription.consecutiveFailures,
+          lastFailureAt: subscription.paymentFailures.at(-1)?.failedAt ?? null,
+          nextBillingDate: subscription.nextBillingDate,
+          billingCycleCount: subscription.billingCycleCount,
+          queuedAt: new Date(),
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 60_000 },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+
+      this.logger.warn(`Queued subscription ${subscription.id} to billing dead-letter queue`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to enqueue dead-letter for subscription ${subscription.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
   private createEmptyResult(): BillingBatchResult {
     return {
       processed: 0,
