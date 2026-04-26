@@ -138,7 +138,7 @@ interface RazorpaySubscriptionUpdateParams {
  * Create Razorpay client
  */
 function createRazorpayClient(config: RazorpayProviderConfig): RazorpayClient {
-  // Dynamic import to avoid bundling issues
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Razorpay = require('razorpay');
   const client = new Razorpay({
     key_id: config.keyId,

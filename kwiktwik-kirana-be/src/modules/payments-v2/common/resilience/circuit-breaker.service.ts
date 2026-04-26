@@ -838,22 +838,15 @@ export class CircuitBreakerService {
   }
 
   private async recordSuccess(
-    provider: PaymentProvider,
-    operation: string,
-    config: CircuitBreakerConfig,
+    _provider: PaymentProvider,
+    _operation: string,
+    _config: CircuitBreakerConfig,
   ): Promise<void> {
-    const key = this.getKey(provider, operation);
-
-    if (this.redisClient) {
-      // Clear failure window on success (atomic with Lua)
-      const script = `
-        redis.call('DEL', KEYS[1] .. ':failures')
-        return 1
-      `;
-      await this.redisClient.eval(script, 1, key);
-    } else {
-      this.localFailureTimestamps.delete(key);
-    }
+    // In CLOSED state, don't clear the failure set on individual successes.
+    // The sliding window in recordFailure() already expires old failures via
+    // ZREMRANGEBYSCORE. Clearing all failures on a single success masks
+    // flapping providers (e.g., 4 failures then 1 success resets the counter).
+    // In HALF_OPEN state, successes are tracked separately via recordHalfOpenSuccess().
   }
 
   /**

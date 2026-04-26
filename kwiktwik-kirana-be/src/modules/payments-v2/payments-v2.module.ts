@@ -58,6 +58,7 @@ import { InMemorySubscriptionRepository } from './infrastructure/repositories/in
 import { InMemoryOrderRepository } from './infrastructure/repositories/in-memory-order.repository';
 import { DrizzleSubscriptionRepository } from './infrastructure/repositories/drizzle-subscription.repository';
 import { DrizzleOrderRepository } from './infrastructure/repositories/drizzle-order.repository';
+import { DrizzleIdempotencyStore } from './infrastructure/repositories/drizzle-idempotency.store';
 
 // Types
 import type { ISubscriptionRepository } from './infrastructure/repositories/subscription.repository.interface';
@@ -164,7 +165,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     IdempotencyService,
     {
       provide: 'IdempotencyStore',
-      useClass: InMemoryIdempotencyStore,
+      useClass: USE_DATABASE_REPOSITORIES ? DrizzleIdempotencyStore : InMemoryIdempotencyStore,
     },
 
     // Event Bus

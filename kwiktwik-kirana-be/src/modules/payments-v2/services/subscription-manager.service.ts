@@ -6,6 +6,7 @@
  */
 
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
@@ -23,7 +24,9 @@ import { PaymentProvider } from '../types/provider.enum';
 import { SubscriptionType } from '../types/subscription-type.enum';
 import { SubscriptionStatus, StateMachineEvent } from '../types/subscription-status.enum';
 import { OrderStatus } from '../types/order-status.enum';
-import { generateMerchantSubscriptionId, generateMerchantOrderId } from '../providers/base/provider-utils';
+import { generateMerchantSubscriptionId, generateMerchantOrderId, generateId } from '../providers/base/provider-utils';
+import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
+import { paymentTransactions } from '../database/schema';
 
 // ============================================================================
 // Types
@@ -144,6 +147,7 @@ export class SubscriptionManagerService {
     @Inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
     @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @Inject('IEventBus') @Optional() private readonly eventBus: IEventBus | null,
+    @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null,
   ) {}
 
   /**
@@ -475,6 +479,19 @@ export class SubscriptionManagerService {
       // Save order
       await this.orderRepository.save(order);
 
+      // Record payment transaction for audit trail
+      await this.recordPaymentTransaction({
+        orderId: order.id,
+        subscriptionId: input.subscriptionId,
+        provider: subscription.provider,
+        providerTransactionId: chargeResult.transactionId ?? orderId,
+        amount,
+        currency: subscription.pricing.currency,
+        status: chargeResult.success ? 'SUCCESS' : 'FAILED',
+        errorCode: chargeResult.errorCode ?? null,
+        errorMessage: chargeResult.error ?? null,
+      });
+
       this.logger.log(`Charged subscription ${input.subscriptionId}: ${chargeResult.success ? 'success' : 'failed'}`);
 
       // Publish event
@@ -600,6 +617,18 @@ export class SubscriptionManagerService {
 
       this.logger.log(`Cancelled subscription ${input.subscriptionId}: ${cancelResult.success ? 'success' : 'failed'}`);
 
+      // Publish event
+      if (cancelResult.success) {
+        this.publishEvent(PaymentEventTypes.SUBSCRIPTION_CANCELLED, {
+          subscriptionId: subscription.id,
+          merchantSubscriptionId: subscription.merchantSubscriptionId,
+          userId: subscription.userId,
+          appId: subscription.appId,
+          cancelledAt: new Date(),
+          reason: input.reason ?? null,
+        }, subscription.appId, subscription.userId, subscription.provider);
+      }
+
       return {
         success: cancelResult.success,
         subscription: updatedSubscription,
@@ -711,5 +740,67 @@ export class SubscriptionManagerService {
     };
 
     return stateMap[state.toLowerCase()] ?? SubscriptionStatus.CREATED;
+  }
+
+  private async recordPaymentTransaction(params: {
+    orderId: string;
+    subscriptionId: string | null;
+    provider: string;
+    providerTransactionId: string;
+    amount: number;
+    currency: string;
+    status: string;
+    paymentMethod?: string;
+    errorCode?: string | null;
+    errorMessage?: string | null;
+  }): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      await this.db.insert(paymentTransactions).values({
+        id: generateId('txn'),
+        orderId: params.orderId,
+        subscriptionId: params.subscriptionId,
+        provider: params.provider as any,
+        providerTransactionId: params.providerTransactionId,
+        amount: params.amount,
+        currency: params.currency,
+        status: params.status,
+        paymentMethod: params.paymentMethod ?? null,
+        errorCode: params.errorCode ?? null,
+        errorMessage: params.errorMessage ?? null,
+        transactionAt: new Date(),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to record payment transaction for order ${params.orderId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  private publishEvent(
+    eventType: string,
+    payload: Record<string, unknown>,
+    appId: string,
+    userId?: string,
+    provider?: string,
+  ): void {
+    if (!this.eventBus) return;
+
+    try {
+      const event = createPaymentEvent(eventType, payload, {
+        correlationId: generateCorrelationId(),
+        source: 'SubscriptionManagerService',
+        timestamp: new Date(),
+        appId,
+        userId,
+        provider,
+      });
+      this.eventBus.publish(event).catch((err) => {
+        this.logger.error(`Failed to publish event ${eventType}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      });
+    } catch (error) {
+      this.logger.error(`Failed to create event ${eventType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }

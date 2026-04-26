@@ -6,7 +6,7 @@
  */
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { eq, and, inArray, desc, lte, sql } from 'drizzle-orm';
+import { eq, and, inArray, desc, lte, sql, count } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   Order,
@@ -312,12 +312,12 @@ export class DrizzleOrderRepository implements IOrderRepository {
    */
   async countByStatus(status: OrderStatus): Promise<number> {
     try {
-      const rows = await this.db
-        .select({ id: ordersV2.id })
+      const result = await this.db
+        .select({ value: count() })
         .from(ordersV2)
         .where(eq(ordersV2.status, status));
 
-      return rows.length;
+      return result[0]?.value ?? 0;
     } catch (error) {
       this.logger.error(`Failed to count orders by status: ${status}`, error);
       throw error;
