@@ -95,6 +95,21 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
+  'com.slydee.app': {
+    id: 'com.slydee.app',
+    name: 'Slydee',
+    description: 'Slydee companion app',
+    enabled: true,
+    rateLimit: {
+      maxRequests: 100,
+      windowMs: 15 * 60 * 1000,
+    },
+    features: {
+      otpLogin: true,
+      truecallerLogin: true,
+      googleLogin: true,
+    },
+  },
 };
 
 /**

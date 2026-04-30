@@ -1,0 +1,51 @@
+{
+  "targetRequested": 1000,
+  "totalFetched": 29,
+  "pagesFetched": 5,
+  "pageSizeRequested": 100,
+  "userId": "KB1AX9Xv4BdHAmpVZsLojgksBTN2",
+  "startCursor": "f1ad5ca9-f916-4efa-b28b-b3c6a925afb6",
+  "finalCursor": null,
+  "pages": [
+    {
+      "page": 1,
+      "requestCursor": "f1ad5ca9-f916-4efa-b28b-b3c6a925afb6",
+      "nextCursor": "5c0811be-0fa8-40a7-af49-bc47d6a4919f",
+      "count": 6,
+      "hasMore": true,
+      "file": "companion_profiles_dump/pages/page_0001.json"
+    },
+    {
+      "page": 2,
+      "requestCursor": "5c0811be-0fa8-40a7-af49-bc47d6a4919f",
+      "nextCursor": "ed25e85a-d69c-476b-97b1-a2ce56798cd5",
+      "count": 6,
+      "hasMore": true,
+      "file": "companion_profiles_dump/pages/page_0002.json"
+    },
+    {
+      "page": 3,
+      "requestCursor": "ed25e85a-d69c-476b-97b1-a2ce56798cd5",
+      "nextCursor": "d1018a18-81ea-4555-b278-06caa4bdbdc4",
+      "count": 6,
+      "hasMore": true,
+      "file": "companion_profiles_dump/pages/page_0003.json"
+    },
+    {
+      "page": 4,
+      "requestCursor": "d1018a18-81ea-4555-b278-06caa4bdbdc4",
+      "nextCursor": "b5c5da0c-6914-4676-9bc0-b3768ea3f4c2",
+      "count": 6,
+      "hasMore": true,
+      "file": "companion_profiles_dump/pages/page_0004.json"
+    },
+    {
+      "page": 5,
+      "requestCursor": "b5c5da0c-6914-4676-9bc0-b3768ea3f4c2",
+      "nextCursor": null,
+      "count": 5,
+      "hasMore": false,
+      "file": "companion_profiles_dump/pages/page_0005.json"
+    }
+  ]
+}

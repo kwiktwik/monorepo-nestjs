@@ -1069,6 +1069,37 @@ export const APP_CONFIGS = {
         'https://play.google.com/store/apps/details?id=com.dailyattendance.staffbook',
     },
   },
+  'com.slydee.app': {
+    ...baseConfig,
+    app: {
+      ...baseConfig.app,
+      name: 'Slydee',
+      id: 'com.slydee.app',
+    },
+    features: {
+      ...baseConfig.features,
+      subscription: { plan_id: 'plan_S3FaBrk7sjPQEU' } as SubscriptionConfig,
+    },
+    videos: {
+      en: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/English%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/English%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+      hi: {
+        fallback_video:
+          'https://cnd.storyowl.app/assets/alertpay/Fallback%20video/Hindi%20Fallback%20screen%20video%205%20mb.mp4',
+        paywall_video:
+          'https://cnd.storyowl.app/assets/alertpay/Free%20Trial/Hindi%20Free%20Trial%20Video%209%20mb.mp4',
+      },
+    },
+    appUpdate: {
+      ...baseConfig.appUpdate,
+      updateUrl:
+        'https://play.google.com/store/apps/details?id=com.slydee.app',
+    },
+  },
 };
 
 export const PAYWALL_TRANSLATIONS = {

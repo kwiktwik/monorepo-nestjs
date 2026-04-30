@@ -1,0 +1,166 @@
+{
+  "result": {
+    "success": true,
+    "companions": [
+      {
+        "id": "2d154c2e-21c7-4ffc-8e57-c314659b98e7",
+        "name": "Mai",
+        "location": "Hue, Vietnam",
+        "age": 26,
+        "bio": "A chef specializing in Imperial Hue cuisine, known for its intricate presentation and subtle flavors. She runs a popular cooking class.",
+        "description": "Elegant, precise, with a warm but focused demeanor.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/mai_1768670569279_309415_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Cooking",
+          "culinary history",
+          "gardening",
+          "tea ceremonies",
+          "traditional music."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 42,
+        "createdAt": "2026-02-12T15:38:03.507Z",
+        "updatedAt": "2026-02-12T15:38:03.507Z"
+      },
+      {
+        "id": "d3f54763-7b0c-4dc1-a4cc-1315f789f746",
+        "name": "Jia",
+        "location": "Chengdu, China",
+        "age": 22,
+        "bio": "A university student and a viral vlogger known for her \"Sichuan\" food challenges. She's funny, daring, and loves her hometown's spicy cuisine.",
+        "description": "Bubbly personality, expressive face. Always filming with her phone.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/jia_1768670575325_130318_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Vlogging",
+          "cooking",
+          "spicy food",
+          "visiting panda sanctuaries."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 43,
+        "createdAt": "2026-02-12T15:38:05.076Z",
+        "updatedAt": "2026-02-12T15:38:05.076Z"
+      },
+      {
+        "id": "9baaa722-d1ad-42cb-a97f-98754be1dc88",
+        "name": "Ling",
+        "location": "Beijing, China",
+        "age": 27,
+        "bio": "A classical Guzheng (Chinese zither) musician and teacher. She's calm, focused, and deeply connected to traditional Chinese arts.",
+        "description": "Serene, with a graceful posture and long, dark hair.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/ling_1768670581156_147960_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Guzheng",
+          "traditional Chinese painting",
+          "calligraphy",
+          "tea ceremonies",
+          "poetry."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 44,
+        "createdAt": "2026-02-12T15:38:06.637Z",
+        "updatedAt": "2026-02-12T15:38:06.637Z"
+      },
+      {
+        "id": "f96c3537-9831-48e3-ab08-ee204943b0a4",
+        "name": "Katya",
+        "location": "Novosibirsk, Russia",
+        "age": 23,
+        "bio": "A geology student who loves the rugged, cold landscape of Siberia. She's tough, practical, and has a surprising talent for landscape painting.",
+        "description": "Rosy cheeks from the cold. Wears warm, practical clothes.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/katya_1768670586411_519150_0.jpg",
+          "http://136.110.243.144/companion_profiles/katya_1768670588018_500733_1.jpg",
+          "http://136.110.243.144/companion_profiles/katya_1768670589581_207116_2.jpg",
+          "http://136.110.243.144/companion_profiles/katya_1769450347027_345024_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Geology",
+          "hiking",
+          "landscape painting",
+          "ice skating."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 45,
+        "createdAt": "2026-02-12T15:38:08.264Z",
+        "updatedAt": "2026-02-12T15:38:08.264Z"
+      },
+      {
+        "id": "30272aa9-d62f-453e-98df-c2df94e01497",
+        "name": "Akiko",
+        "location": "Kyoto, Japan",
+        "age": 25,
+        "bio": "A traditional tea ceremony practitioner and modern ceramic artist. She blends ancient aesthetics with contemporary forms, creating exquisite pieces for daily ritual.",
+        "description": "Graceful and serene, with meticulous attention to detail. She moves with a quiet elegance, embodying the principles of harmony and respect.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/akiko_1768670594992_359341_0.jpg",
+          "http://136.110.243.144/companion_profiles/akiko_1768670596959_771039_1.jpg",
+          "http://136.110.243.144/companion_profiles/akiko_1769450350271_811481_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Tea ceremony",
+          "ceramics",
+          "flower arranging (Ikebana)",
+          "Zen philosophy",
+          "Japanese gardens."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 46,
+        "createdAt": "2026-02-12T15:38:09.806Z",
+        "updatedAt": "2026-02-12T15:38:09.806Z"
+      },
+      {
+        "id": "ed25e85a-d69c-476b-97b1-a2ce56798cd5",
+        "name": "Hana",
+        "location": "Seoul, South Korea",
+        "age": 24,
+        "bio": "A talented K-pop dance choreographer and online content creator. She's energetic, creative, and a huge trendsetter in the Korean youth culture scene.",
+        "description": "Dynamic and energetic, with expressive movements and a flawless sense of fashion. Her makeup is always on point.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/hana_1768670599492_620322_0.jpg",
+          "http://136.110.243.144/companion_profiles/hana_1768670601005_298025_1.jpg",
+          "http://136.110.243.144/companion_profiles/hana_1769450352241_672966_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "K-pop dance",
+          "social media",
+          "fashion styling",
+          "Korean dramas",
+          "bubble tea."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 47,
+        "createdAt": "2026-02-12T15:38:11.336Z",
+        "updatedAt": "2026-02-12T15:38:11.336Z"
+      }
+    ],
+    "hasMore": true,
+    "nextCursor": "ed25e85a-d69c-476b-97b1-a2ce56798cd5",
+    "totalReturned": 6,
+    "safetyFilterApplied": true
+  }
+}

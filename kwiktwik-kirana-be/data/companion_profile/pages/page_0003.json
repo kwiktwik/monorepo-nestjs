@@ -1,0 +1,180 @@
+{
+  "result": {
+    "success": true,
+    "companions": [
+      {
+        "id": "a3a9e515-2162-47f2-8dfa-88ce6af2bede",
+        "name": "Minh",
+        "location": "Hanoi, Vietnam",
+        "age": 27,
+        "bio": "A passionate street photographer who captures the vibrant daily life of Hanoi, from bustling markets to serene ancient temples. She believes every face tells a story.",
+        "description": "Observant and quietly artistic, with a keen eye for detail. She moves discreetly, often blending into the background.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/minh_1768670603131_482223_0.jpg",
+          "http://136.110.243.144/companion_profiles/minh_1768670604575_512879_1.jpg",
+          "http://136.110.243.144/companion_profiles/minh_1769450354332_591660_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Photography",
+          "travel",
+          "Vietnamese history",
+          "traditional craft markets",
+          "enjoying pho."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 48,
+        "createdAt": "2026-02-12T15:38:12.930Z",
+        "updatedAt": "2026-02-12T15:38:12.930Z"
+      },
+      {
+        "id": "99253dfb-cf93-40e1-aa3a-223cce3a9f87",
+        "name": "Isolde",
+        "location": "Dublin, Ireland",
+        "age": 36,
+        "bio": "A renowned Celtic mythology scholar and university lecturer. Unmarried, she captivates students with her deep knowledge and enchanting storytelling, breathing life into ancient legends.",
+        "description": "Warm and intellectual, with a mischievous sparkle in her green eyes. Her rich, auburn hair is often braided with intricate patterns.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/isolde_1768670607049_921680_0.jpg",
+          "http://136.110.243.144/companion_profiles/isolde_1768670608739_207288_1.jpg",
+          "http://136.110.243.144/companion_profiles/isolde_1769450356439_869000_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Celtic mythology",
+          "Irish literature",
+          "traditional music",
+          "archaeology",
+          "hiking ancient ruins",
+          "pub quizzes."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 49,
+        "createdAt": "2026-02-12T15:38:14.486Z",
+        "updatedAt": "2026-02-12T15:38:14.486Z"
+      },
+      {
+        "id": "7b9350e1-ece7-4391-ad65-97e50b60dbb6",
+        "name": "Ingrid",
+        "location": "Stockholm, Sweden",
+        "age": 42,
+        "bio": "A successful architect specializing in sustainable urban development. Divorced, she balances her innovative projects with raising her two children, creating beautiful, eco-conscious spaces.",
+        "description": "Elegant and understated, with a calm demeanor and a keen eye for minimalist design. Her presence is strong yet serene.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/ingrid_1768670611037_872710_0.jpg",
+          "http://136.110.243.144/companion_profiles/ingrid_1768670612716_925488_1.jpg",
+          "http://136.110.243.144/companion_profiles/ingrid_1769450358703_288515_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Sustainable architecture",
+          "urban planning",
+          "Nordic design",
+          "Fika",
+          "sailing",
+          "organic gardening",
+          "parenting."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 50,
+        "createdAt": "2026-02-12T15:38:15.421Z",
+        "updatedAt": "2026-02-12T15:38:15.421Z"
+      },
+      {
+        "id": "3337a7d3-e7b2-465d-9468-730361bc8ea9",
+        "name": "Chitra",
+        "location": "Jaipur, India",
+        "age": 33,
+        "bio": "A celebrated textile artist and entrepreneur, unmarried, who revitalizes ancient block-printing techniques, creating modern designs that tell stories of Rajasthan.",
+        "description": "Vibrant and artistic, with hands often adorned with intricate henna. Her eyes sparkle with creative energy.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/chitra_1768670614829_903267_0.jpg",
+          "http://136.110.243.144/companion_profiles/chitra_1768670617302_796864_1.jpg",
+          "http://136.110.243.144/companion_profiles/chitra_1768670619755_251934_2.jpg",
+          "http://136.110.243.144/companion_profiles/chitra_1769450360931_228162_0.jpg",
+          "http://136.110.243.144/companion_profiles/chitra_1769450362718_492635_1.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Textile design",
+          "block printing",
+          "art history",
+          "Rajasthani folk music",
+          "camel safaris",
+          "ethical sourcing."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 51,
+        "createdAt": "2026-02-12T15:38:16.324Z",
+        "updatedAt": "2026-02-12T15:38:16.324Z"
+      },
+      {
+        "id": "445aeae8-1c5e-4b0f-81e4-1c2f9c4481e9",
+        "name": "Rana",
+        "location": "Doha, Qatar",
+        "age": 37,
+        "bio": "A visionary architect designing futuristic smart cities that blend Islamic design principles with cutting-edge technology. Divorced, she leads groundbreaking projects in the Middle East.",
+        "description": "Sophisticated and ambitious, with a sharp intellect and an aura of immense power. Her designer abayas are always impeccable.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/rana_1768670622127_374718_0.jpg",
+          "http://136.110.243.144/companion_profiles/rana_1768670624353_750381_1.jpg",
+          "http://136.110.243.144/companion_profiles/rana_1768670626433_599721_2.jpg",
+          "http://136.110.243.144/companion_profiles/rana_1769450365233_342361_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Sustainable architecture",
+          "smart city design",
+          "Islamic art",
+          "equestrian sports",
+          "luxury travel",
+          "fintech."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 52,
+        "createdAt": "2026-02-12T15:38:16.951Z",
+        "updatedAt": "2026-02-12T15:38:16.951Z"
+      },
+      {
+        "id": "d1018a18-81ea-4555-b278-06caa4bdbdc4",
+        "name": "Samira",
+        "location": "Casablanca, Morocco",
+        "age": 35,
+        "bio": "A charismatic chef and culinary anthropologist who explores the diverse flavors of Moroccan cuisine. Unmarried, she runs a popular restaurant that's a fusion of tradition and innovation.",
+        "description": "Vibrant and engaging, with a warm smile and a captivating presence. Her hands are expressive, telling stories as she talks about food.",
+        "imageUrls": [
+          "http://136.110.243.144/companion_profiles/samira_1768670628880_568074_0.jpg"
+        ],
+        "gifUrls": [],
+        "interests": [
+          "Moroccan cuisine",
+          "culinary history",
+          "spice blending",
+          "traditional music",
+          "exploring souks",
+          "food photography."
+        ],
+        "isLocked": true,
+        "isSafeCompatible": true,
+        "freeChatCount": 0,
+        "position": 53,
+        "createdAt": "2026-02-12T15:38:17.568Z",
+        "updatedAt": "2026-02-12T15:38:17.568Z"
+      }
+    ],
+    "hasMore": true,
+    "nextCursor": "d1018a18-81ea-4555-b278-06caa4bdbdc4",
+    "totalReturned": 6,
+    "safetyFilterApplied": true
+  }
+}
