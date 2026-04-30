@@ -77,7 +77,7 @@ export class AuthService {
    */
   private getGoogleClientIdsForApp(appId: string): string[] {
     // Check for app-specific client ID
-    const appSpecificKey = `GOOGLE_CLIENT_ID_${appId.replace(/\./g, '_')}`;
+    const appSpecificKey = `GOOGLE_CLIENT_ID_${appId.replace(/\./g, '_').toUpperCase()}`;
     const appSpecificClientId = process.env[appSpecificKey];
 
     this.logger.log(
