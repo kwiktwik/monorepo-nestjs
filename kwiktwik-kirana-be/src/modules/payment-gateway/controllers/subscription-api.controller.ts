@@ -89,7 +89,7 @@ export class SubscriptionApiController {
     );
 
     // Get plan configuration to determine amounts
-    const planConfig = this.configService.getPlanConfig(appId, dto.planId);
+    const planConfig = await this.configService.getPlanConfig(appId, dto.planId);
     if (!planConfig) {
       throw new BadRequestException(`Plan ${dto.planId} not configured for app ${appId}`);
     }

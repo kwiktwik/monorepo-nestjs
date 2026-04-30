@@ -9,7 +9,9 @@
  * - PHONEPE_{APP_ID}_{ACCOUNT_ID}_CLIENT_SECRET
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { eq, and } from 'drizzle-orm';
 import type { 
   ProviderConfig, 
   RazorpayProviderConfig, 
@@ -17,6 +19,8 @@ import type {
   AnyProviderConfig,
 } from '../providers/interfaces/subscription-provider.interface';
 import { PaymentProvider } from '../types/provider.enum';
+import { plans } from '../database/schema';
+import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 
 // ============================================================================
 // Types
@@ -74,6 +78,10 @@ export class PaymentConfigService {
   private readonly phonepeConfigs: Map<string, PhonePeProviderConfig> = new Map();
   private readonly appConfigs: Map<string, AppPaymentConfig> = new Map();
   private initialized = false;
+
+  constructor(
+    @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null = null,
+  ) {}
 
   /**
    * Initialize the configuration service
@@ -248,57 +256,40 @@ export class PaymentConfigService {
   }
 
   /**
-   * Get plan configuration for an app
-   * Returns plan details including pricing
+   * Get plan configuration for an app from the database
    */
-  getPlanConfig(appId: string, planId: string): {
+  async getPlanConfig(appId: string, planId: string): Promise<{
     planId: string;
     initialAmount: number;
     recurringAmount: number;
     currency: string;
     frequency: string;
-  } | null {
+  } | null> {
     this.ensureInitialized();
 
-    // Default plan configurations
-    // In production, this would be loaded from database or external config
-    const planConfigs: Record<string, Record<string, {
-      initialAmount: number;
-      recurringAmount: number;
-      currency: string;
-      frequency: string;
-    }>> = {
-      'com.paymentalert.app': {
-        'premium_monthly': {
-          initialAmount: 4900, // ₹49
-          recurringAmount: 4900,
-          currency: 'INR',
-          frequency: 'MONTHLY',
-        },
-        'premium_yearly': {
-          initialAmount: 49900, // ₹499
-          recurringAmount: 49900,
-          currency: 'INR',
-          frequency: 'YEARLY',
-        },
-      },
-    };
-
-    const appPlans = planConfigs[appId];
-    if (!appPlans) {
-      this.logger.warn(`No plan configs found for app ${appId}. Plan data should be loaded from the database.`);
+    if (!this.db) {
+      this.logger.warn('Database not available, cannot load plan config');
       return null;
     }
 
-    const plan = appPlans[planId];
-    if (!plan) {
-      this.logger.warn(`Plan ${planId} not found for app ${appId}. Available plans: ${Object.keys(appPlans).join(', ')}`);
+    const rows = await this.db
+      .select()
+      .from(plans)
+      .where(and(eq(plans.id, planId), eq(plans.appId, appId), eq(plans.isActive, true)))
+      .limit(1);
+
+    if (rows.length === 0) {
+      this.logger.warn(`Plan ${planId} not found for app ${appId}`);
       return null;
     }
 
+    const plan = rows[0];
     return {
-      planId,
-      ...plan,
+      planId: plan.id,
+      initialAmount: plan.initialAmount,
+      recurringAmount: plan.recurringAmount,
+      currency: plan.currency,
+      frequency: plan.frequency,
     };
   }
 
@@ -463,7 +454,7 @@ export class PaymentConfigService {
  * Create a configuration service instance
  */
 export function createPaymentConfigService(): PaymentConfigService {
-  const service = new PaymentConfigService();
+  const service = new PaymentConfigService(null);
   service.initialize();
   return service;
 }

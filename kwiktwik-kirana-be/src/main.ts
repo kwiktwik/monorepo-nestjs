@@ -22,14 +22,11 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // Apply raw body parser FIRST for webhook routes (must be before JSON parser)
-  // This ensures Razorpay webhooks get raw body for signature verification
-  app.use(
-    '/api/razorpay/webhook',
-    bodyParser.raw({
-      type: '*/*',
-      limit: '1mb',
-    }),
-  );
+  // This ensures webhook signature verification gets the raw body string
+  const rawBodyParser = bodyParser.raw({ type: '*/*', limit: '1mb' });
+  app.use('/api/razorpay/webhook', rawBodyParser);   // legacy razorpay module
+  app.use('/api/webhooks/razorpay', rawBodyParser);   // payment-gateway module
+  app.use('/api/webhooks/phonepe', rawBodyParser);    // payment-gateway module
 
   // Apply JSON parser for all other routes
   app.use(bodyParser.json({ limit: '10mb' }));

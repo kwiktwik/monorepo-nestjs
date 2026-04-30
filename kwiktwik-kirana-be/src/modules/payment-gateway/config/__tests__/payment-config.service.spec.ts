@@ -291,11 +291,36 @@ describe('PaymentConfigService', () => {
   });
 
   describe('getPlanConfig', () => {
-    it('should return plan config for known app', () => {
-      const service = new PaymentConfigService();
+    it('should return null when database is not available', async () => {
+      const service = new PaymentConfigService(null);
       service.initialize();
 
-      const plan = service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
+      const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
+
+      expect(plan).toBeNull();
+    });
+
+    it('should return plan from database when available', async () => {
+      const mockDb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([{
+          id: 'premium_monthly',
+          appId: 'com.paymentalert.app',
+          name: 'Premium Monthly',
+          initialAmount: 4900,
+          recurringAmount: 4900,
+          currency: 'INR',
+          frequency: 'MONTHLY',
+          isActive: true,
+        }]),
+      } as any;
+
+      const service = new PaymentConfigService(mockDb);
+      service.initialize();
+
+      const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
 
       expect(plan).not.toBeNull();
       expect(plan?.initialAmount).toBe(4900);
@@ -304,20 +329,18 @@ describe('PaymentConfigService', () => {
       expect(plan?.frequency).toBe('MONTHLY');
     });
 
-    it('should return null for unknown app', () => {
-      const service = new PaymentConfigService();
+    it('should return null when plan not found in database', async () => {
+      const mockDb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([]),
+      } as any;
+
+      const service = new PaymentConfigService(mockDb);
       service.initialize();
 
-      const plan = service.getPlanConfig('unknown_app', 'some_plan');
-
-      expect(plan).toBeNull();
-    });
-
-    it('should return null for unknown plan', () => {
-      const service = new PaymentConfigService();
-      service.initialize();
-
-      const plan = service.getPlanConfig('com.paymentalert.app', 'unknown_plan');
+      const plan = await service.getPlanConfig('com.paymentalert.app', 'unknown_plan');
 
       expect(plan).toBeNull();
     });
