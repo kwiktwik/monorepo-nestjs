@@ -80,13 +80,21 @@ export class AuthService {
     const appSpecificKey = `GOOGLE_CLIENT_ID_${appId.replace(/\./g, '_')}`;
     const appSpecificClientId = process.env[appSpecificKey];
 
+    this.logger.log(
+      `[Google Auth] Looking for env var: ${appSpecificKey}, found: ${appSpecificClientId ? 'YES' : 'NO'}`,
+    );
+
     if (appSpecificClientId) {
-      this.logger.debug(`[Google Auth] Using app-specific client ID for ${appId}`);
+      this.logger.log(
+        `[Google Auth] Using app-specific client ID for ${appId}: ${appSpecificClientId}`,
+      );
       return appSpecificClientId.split(',').map((id) => id.trim());
     }
 
     // Fallback to default client IDs
-    this.logger.debug(`[Google Auth] Using default client IDs for ${appId}`);
+    this.logger.log(
+      `[Google Auth] Using default client IDs for ${appId}. Default GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID || 'NOT SET'}`,
+    );
     return this.googleClientIds;
   }
 
@@ -1761,7 +1769,7 @@ export class AuthService {
       }
 
       this.logger.log(
-        `[Google Sign-In] Verifying token for app: ${appId} with ${clientIds.length} client ID(s)`,
+        `[Google Sign-In] Verifying token for app: ${appId} with ${clientIds.length} client ID(s): ${clientIds.join(', ')}`,
       );
 
       // Verify the Google ID token against app-specific client IDs
