@@ -1,6 +1,6 @@
 # KwikTwik Kirana Backend
 
-Clean NestJS backend for ShareStatus app with JWT authentication, OTP, and Google sign-in.
+Multi-tenant NestJS backend powering multiple Android apps (ShareStatus, Payment Alert, StaffBook, etc.) with shared authentication, payments, notifications, and user management services.
 
 ## Tech Stack
 
