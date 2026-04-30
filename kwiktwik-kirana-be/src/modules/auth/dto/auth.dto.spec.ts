@@ -194,9 +194,19 @@ describe('Auth DTOs - Snapshot Tests', () => {
   });
 
   describe('LoginGoogleDto', () => {
-    it('should match snapshot for valid data', async () => {
+    it('should match snapshot for valid data with phoneNumber', async () => {
       const dto = plainToInstance(LoginGoogleDto, {
         phoneNumber: '+919876543210',
+        idToken: 'google.id.token.jwt',
+      });
+
+      const errors = await validate(dto);
+      expect(errors).toHaveLength(0);
+      expect(dto).toMatchSnapshot();
+    });
+
+    it('should match snapshot for valid data without phoneNumber', async () => {
+      const dto = plainToInstance(LoginGoogleDto, {
         idToken: 'google.id.token.jwt',
       });
 
