@@ -66,6 +66,30 @@ export class AuthService {
   private googleClient: OAuth2Client;
   private readonly logger = new Logger(AuthService.name);
 
+  private googleClientIds: string[] = [];
+
+  /**
+   * App-specific Google Client ID mapping
+   * Format: appId -> clientId or comma-separated client IDs
+   * Example:
+   *   GOOGLE_CLIENT_ID_com.kwiktwik.datingai=1056042648374-droqkniegfkl1sg6h8ftr2mnqa8gje4v.apps.googleusercontent.com
+   *   GOOGLE_CLIENT_ID_com.kwiktwik.kirana=1056042648374-xxx.apps.googleusercontent.com
+   */
+  private getGoogleClientIdsForApp(appId: string): string[] {
+    // Check for app-specific client ID
+    const appSpecificKey = `GOOGLE_CLIENT_ID_${appId.replace(/\./g, '_')}`;
+    const appSpecificClientId = process.env[appSpecificKey];
+
+    if (appSpecificClientId) {
+      this.logger.debug(`[Google Auth] Using app-specific client ID for ${appId}`);
+      return appSpecificClientId.split(',').map((id) => id.trim());
+    }
+
+    // Fallback to default client IDs
+    this.logger.debug(`[Google Auth] Using default client IDs for ${appId}`);
+    return this.googleClientIds;
+  }
+
   constructor(
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
@@ -75,6 +99,7 @@ export class AuthService {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (clientId) {
       this.googleClient = new OAuth2Client(clientId);
+      this.googleClientIds = clientId.split(',').map((id) => id.trim());
     }
   }
 
@@ -1726,10 +1751,23 @@ export class AuthService {
     }
 
     try {
-      // Verify the Google ID token
+      // Get app-specific Google Client IDs
+      const clientIds = this.getGoogleClientIdsForApp(appId);
+
+      if (clientIds.length === 0) {
+        throw new BadRequestException(
+          `Google OAuth is not configured for app: ${appId}`,
+        );
+      }
+
+      this.logger.log(
+        `[Google Sign-In] Verifying token for app: ${appId} with ${clientIds.length} client ID(s)`,
+      );
+
+      // Verify the Google ID token against app-specific client IDs
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: clientIds,
       });
 
       const payload = ticket.getPayload();
