@@ -161,6 +161,7 @@ export const ValidStateTransitions: Readonly<Record<SubscriptionStatus, readonly
     SubscriptionStatus.PENDING_AUTH,
     SubscriptionStatus.AUTHENTICATED,
     SubscriptionStatus.ACTIVATION_IN_PROGRESS,
+    SubscriptionStatus.ACTIVE,
     SubscriptionStatus.FAILED,
     SubscriptionStatus.CANCELLED,
   ] as const,

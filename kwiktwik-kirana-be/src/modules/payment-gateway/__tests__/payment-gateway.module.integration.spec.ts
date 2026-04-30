@@ -1,5 +1,5 @@
 /**
- * Payments V2 Module Integration Tests
+ * Payment Gateway Module Integration Tests
  * 
  * Tests the full module integration including:
  * - Module compilation
@@ -7,7 +7,7 @@
  * - Controller endpoints
  * - Repository operations
  * 
- * NOTE: These tests are temporarily disabled while PaymentsV2 module dependencies are being fixed.
+ * NOTE: These tests are temporarily disabled while PaymentGateway module dependencies are being fixed.
  * To re-enable, remove the block comments below.
  */
 
@@ -16,7 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import request from 'supertest';
-import { PaymentsV2Module } from '../payments-v2.module';
+import { PaymentGatewayModule } from '../payment-gateway.module';
 import { SubscriptionManagerService } from '../services/subscription-manager.service';
 import { PaymentConfigService } from '../config/payment-config.service';
 import { BillingSchedulerService } from '../scheduler/billing-scheduler.service';
@@ -30,7 +30,7 @@ import { PaymentProvider } from '../types/provider.enum';
 // Test Setup
 // ============================================================================
 
-describe('PaymentsV2Module (Integration)', () => {
+describe('PaymentGatewayModule (Integration)', () => {
   let app: INestApplication;
   let subscriptionManager: SubscriptionManagerService;
   let configService: PaymentConfigService;
@@ -52,7 +52,7 @@ describe('PaymentsV2Module (Integration)', () => {
     process.env.PHONEPE_COM_PAYMENTALERT_APP_SALT_INDEX = '1';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [PaymentsV2Module],
+      imports: [PaymentGatewayModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -319,7 +319,7 @@ describe('Subscription API Controller (Integration)', () => {
     process.env.RAZORPAY_COM_PAYMENTALERT_APP_WEBHOOK_SECRET = 'test_webhook_secret';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [PaymentsV2Module],
+      imports: [PaymentGatewayModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -371,7 +371,7 @@ describe('Subscription API Controller (Integration)', () => {
 */
 
 // Dummy test to prevent empty test suite error
-describe('PaymentsV2Module (Integration)', () => {
+describe('PaymentGatewayModule (Integration)', () => {
   it('should be temporarily disabled', () => {
     expect(true).toBe(true);
   });

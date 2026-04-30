@@ -2,7 +2,7 @@
  * Subscription API Controller
  * 
  * Provides REST API endpoints for subscription management.
- * Works with the unified payments-v2 module.
+ * Works with the unified payment-gateway module.
  */
 
 import {
@@ -44,7 +44,7 @@ import type { PaymentProvider } from '../types/provider.enum';
 import { HealthMetricsService } from '../../prometheus/health-metrics.service';
 import { PrometheusMetricsInterceptor } from '../../../common/interceptors/prometheus-metrics.interceptor';
 
-@ApiTags('Payments V2 - Subscriptions')
+@ApiTags('Subscriptions')
 @ApiBearerAuth('JWT')
 @ApiHeader({
   name: 'X-App-ID',

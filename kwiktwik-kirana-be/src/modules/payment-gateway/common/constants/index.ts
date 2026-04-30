@@ -1,7 +1,7 @@
 /**
  * Common Constants
  * 
- * Exports all constants for the payments-v2 module.
+ * Exports all constants for the payment-gateway module.
  */
 
 export * from './provider-errors';

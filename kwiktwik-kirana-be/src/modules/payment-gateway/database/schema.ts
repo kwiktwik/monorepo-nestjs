@@ -1,5 +1,5 @@
 /**
- * Unified Payment Schema for payments-v2
+ * Unified Payment Schema for payment-gateway
  * 
  * This schema provides a unified structure for managing payments across
  * multiple providers (Razorpay, PhonePe) while tracking subscription type

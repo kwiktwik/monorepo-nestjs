@@ -1,5 +1,5 @@
 /**
- * Payments V2 Module
+ * Payment Gateway Module
  * 
  * A unified payment module supporting multiple payment providers
  * with both provider-managed and user-managed subscription types.
@@ -20,7 +20,7 @@
 // ============================================================================
 
 // NestJS Module
-export { PaymentsV2Module } from './payments-v2.module';
+export { PaymentGatewayModule } from './payment-gateway.module';
 
 // Types (primary export for all types)
 export * from './types';

@@ -492,7 +492,7 @@ abstract class BasePhonePeProvider implements SubscriptionProvider {
       rawPayload: decoded as unknown as Record<string, unknown>,
       signatureValid,
       errorCode: data.errorCode ?? null,
-      errorMessage: null,
+      errorMessage: data.detailedErrorCode ?? null,
     };
   }
 

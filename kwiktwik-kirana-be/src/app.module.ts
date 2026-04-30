@@ -30,6 +30,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { MessagesModule } from './modules/messages/messages.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AppsModule } from './modules/apps/apps.module';
+import { PaymentGatewayModule } from './modules/payment-gateway/payment-gateway.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -68,6 +69,7 @@ const dbModule =
     } as ConfigService),
     AdminModule,
     AppsModule,
+    PaymentGatewayModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],

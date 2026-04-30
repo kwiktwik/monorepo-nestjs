@@ -195,6 +195,28 @@ export class PaymentConfigService {
   }
 
   /**
+   * Get provider config by its configId (e.g. "razorpay_testapp_default")
+   */
+  getConfigById(configId: string): AnyProviderConfig | null {
+    this.ensureInitialized();
+    return this.razorpayConfigs.get(configId)
+      ?? this.phonepeConfigs.get(configId)
+      ?? null;
+  }
+
+  /**
+   * Get the first available config for a provider (any app)
+   */
+  getFirstConfigForProvider(provider: PaymentProvider): AnyProviderConfig | null {
+    this.ensureInitialized();
+    const configs = provider === PaymentProvider.RAZORPAY
+      ? this.razorpayConfigs
+      : this.phonepeConfigs;
+    const first = configs.values().next();
+    return first.done ? null : first.value;
+  }
+
+  /**
    * Get all registered app IDs
    */
   getRegisteredAppIds(): string[] {

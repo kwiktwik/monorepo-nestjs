@@ -97,11 +97,11 @@ export class WebhookHandlerService {
 
       // Get provider instance (need to determine subscription type from payload)
       const subscriptionType = this.detectSubscriptionType(payload);
-      
-      const config = this.configService.getConfig({
-        appId: '', // Will be extracted from payload
-        provider,
-      });
+
+      // Use the configId from the verification to find the matching config
+      const config = verification.configId
+        ? this.configService.getConfigById(verification.configId)
+        : this.configService.getFirstConfigForProvider(provider);
 
       if (!config) {
         return this.createErrorResult('config_not_found', 'Provider configuration not found');
@@ -165,7 +165,10 @@ export class WebhookHandlerService {
       : this.configService.getPhonePeConfigs();
 
     for (const config of configs) {
-      if (!config.webhookSecret) continue;
+      // PhonePe uses saltKey for signature verification, not webhookSecret
+      const hasVerificationKey = config.webhookSecret
+        || (config.provider === 'PHONEPE' && 'saltKey' in config && (config as any).saltKey);
+      if (!hasVerificationKey) continue;
 
       const providerInstance = this.providerFactory.getProvider(
         provider,
@@ -208,6 +211,15 @@ export class WebhookHandlerService {
    * Register default handlers
    */
   private registerDefaultHandlers(): void {
+    // Subscription setup completed (PhonePe)
+    this.registerHandler('subscription.setup.completed', this.handleSubscriptionActivated.bind(this));
+    
+    // Subscription setup failed (PhonePe)
+    this.registerHandler('subscription.setup.failed', this.handlePaymentFailed.bind(this));
+
+    // Subscription authenticated (Razorpay)
+    this.registerHandler('subscription.authenticated', this.handleSubscriptionAuthenticated.bind(this));
+    
     // Subscription activated
     this.registerHandler('subscription.activated', this.handleSubscriptionActivated.bind(this));
     
@@ -226,6 +238,16 @@ export class WebhookHandlerService {
     // Payment failed
     this.registerHandler('payment.failed', this.handlePaymentFailed.bind(this));
     
+    // Subscription paused
+    this.registerHandler('subscription.paused', this.handleSubscriptionPaused.bind(this));
+    
+    // Subscription unpaused/resumed
+    this.registerHandler('subscription.unpaused', this.handleSubscriptionResumed.bind(this));
+    this.registerHandler('subscription.resumed', this.handleSubscriptionResumed.bind(this));
+    
+    // Subscription completed
+    this.registerHandler('subscription.completed', this.handleSubscriptionCompleted.bind(this));
+    
     // Subscription revoked
     this.registerHandler('subscription.revoked', this.handleSubscriptionRevoked.bind(this));
     
@@ -240,6 +262,27 @@ export class WebhookHandlerService {
     
     // Transaction failed (PhonePe)
     this.registerHandler('subscription.transaction.failed', this.handleTransactionFailed.bind(this));
+  }
+
+  /**
+   * Handle subscription authenticated event (Razorpay)
+   */
+  private async handleSubscriptionAuthenticated(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Subscription authenticated: ${event.merchantSubscriptionId}`);
+    
+    await this.findAndUpdateSubscription(
+      event.merchantSubscriptionId,
+      SubscriptionStatus.AUTHENTICATED,
+    );
+    
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
   }
 
   /**
@@ -382,6 +425,69 @@ export class WebhookHandlerService {
         await this.subscriptionRepository.save(withFailure);
       }
     }
+    
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle subscription paused event
+   */
+  private async handleSubscriptionPaused(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Subscription paused: ${event.merchantSubscriptionId}`);
+    
+    await this.findAndUpdateSubscription(
+      event.merchantSubscriptionId,
+      SubscriptionStatus.PAUSED,
+    );
+    
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle subscription resumed/unpaused event
+   */
+  private async handleSubscriptionResumed(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Subscription resumed: ${event.merchantSubscriptionId}`);
+    
+    await this.findAndUpdateSubscription(
+      event.merchantSubscriptionId,
+      SubscriptionStatus.ACTIVE,
+    );
+    
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle subscription completed event
+   */
+  private async handleSubscriptionCompleted(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Subscription completed: ${event.merchantSubscriptionId}`);
+    
+    await this.findAndUpdateSubscription(
+      event.merchantSubscriptionId,
+      SubscriptionStatus.COMPLETED,
+    );
     
     return {
       success: true,

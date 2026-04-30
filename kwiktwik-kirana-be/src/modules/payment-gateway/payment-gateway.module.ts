@@ -1,5 +1,5 @@
 /**
- * Payments V2 NestJS Module
+ * Unified Payments NestJS Module
  *
  * Provides a unified payment system supporting multiple providers:
  * - Razorpay (subscriptions, one-time payments)
@@ -83,12 +83,12 @@ const ENABLE_BILLING_DLQ = process.env.PAYMENT_BILLING_DLQ_ENABLED !== 'false';
 const BILLING_DLQ_ENABLED =
   ENABLE_BILLING_DLQ && !!process.env.REDIS_URL && !isMockMode();
 
-// Circuit breaker default configuration
+// Circuit breaker configuration (overridable via environment)
 const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
-  failureThreshold: 5,
-  successThreshold: 3,
-  timeoutMs: 30000,
-  failureWindowMs: 60000,
+  failureThreshold: parseInt(process.env.PAYMENT_CB_FAILURE_THRESHOLD ?? '5', 10),
+  successThreshold: parseInt(process.env.PAYMENT_CB_SUCCESS_THRESHOLD ?? '3', 10),
+  timeoutMs: parseInt(process.env.PAYMENT_CB_TIMEOUT_MS ?? '30000', 10),
+  failureWindowMs: parseInt(process.env.PAYMENT_CB_FAILURE_WINDOW_MS ?? '60000', 10),
 };
 
 // Fallback default configuration
@@ -101,7 +101,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
 };
 
 /**
- * Payments V2 Module
+ * Unified Payments Module
  *
  * Provides:
  * - Subscription state machine
@@ -258,7 +258,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     'IOrderRepository',
   ],
 })
-export class PaymentsV2Module implements OnModuleInit {
+export class PaymentGatewayModule implements OnModuleInit {
   constructor(private readonly configService: PaymentConfigService) {}
 
   onModuleInit(): void {

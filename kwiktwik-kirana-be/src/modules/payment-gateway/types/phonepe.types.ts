@@ -168,6 +168,9 @@ export type PhonePeFrequency = typeof PhonePeFrequency[keyof typeof PhonePeFrequ
  */
 export const PhonePePaymentMode = {
   UPI_MANDATE: 'UPI_MANDATE',
+  UPI_AUTO_PAY: 'UPI_AUTO_PAY',
+  UPI_QR: 'UPI_QR',
+  UPI_INTENT: 'UPI_INTENT',
 } as const;
 
 export type PhonePePaymentMode = typeof PhonePePaymentMode[keyof typeof PhonePePaymentMode];
@@ -447,6 +450,11 @@ export interface PhonePeDecodedWebhookPayload {
       readonly type?: string;
       readonly merchantSubscriptionId?: string;
       readonly subscriptionId?: string;
+      readonly redemptionRetryStrategy?: string;
+      readonly autoDebit?: boolean;
+      readonly validAfter?: number;
+      readonly validUpto?: number;
+      readonly notifiedAt?: number;
     };
     readonly paymentDetails?: readonly PhonePePaymentDetail[];
   };

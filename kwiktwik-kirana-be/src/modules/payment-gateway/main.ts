@@ -1,11 +1,11 @@
 /**
- * Payments V2 Standalone Service Bootstrap
+ * Payment Gateway Standalone Service Bootstrap
  *
- * Entry point for running the payments-v2 module as an independent service.
+ * Entry point for running the payment-gateway module as an independent service.
  * This allows the payment system to be deployed separately from the main application.
  *
  * Usage:
- *   npx ts-node -P tsconfig.json src/modules/payments-v2/main.ts
+ *   npx ts-node -P tsconfig.json src/modules/payment-gateway/main.ts
  *
  * Environment Variables:
  *   PORT - Server port (default: 3001)
@@ -18,14 +18,17 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
-import { PaymentsV2Module } from './payments-v2.module';
+import { PaymentGatewayModule } from './payment-gateway.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   // Create NestJS application
-  const app = await NestFactory.create(PaymentsV2Module, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  const isProduction = process.env.NODE_ENV === 'production';
+  const app = await NestFactory.create(PaymentGatewayModule, {
+    logger: isProduction
+      ? ['error', 'warn', 'log']
+      : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
   // Enable CORS
@@ -40,12 +43,12 @@ async function bootstrap() {
 
   // Setup Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('Payments V2 API')
+    .setTitle('Payment Gateway API')
     .setDescription(
-      'Unified payment service supporting Razorpay and PhonePe providers. ' +
+      'Unified payment gateway supporting Razorpay and PhonePe providers. ' +
         'Supports both provider-managed and user-managed subscriptions.',
     )
-    .setVersion('2.0.0')
+    .setVersion('1.0.0')
     .addBearerAuth()
     .addApiKey({ type: 'apiKey', name: 'X-App-ID', in: 'header' }, 'app-id')
     .build();
@@ -59,7 +62,7 @@ async function bootstrap() {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: '2.0.0',
+      version: '1.0.0',
     });
   });
 
@@ -71,7 +74,7 @@ async function bootstrap() {
 
   logger.log(`
 ╔════════════════════════════════════════════════════════════════╗
-║                    Payments V2 Service Started                  ║
+║                  Payment Gateway Service Started                 ║
 ╠════════════════════════════════════════════════════════════════╣
 ║  API:      http://localhost:${port}/api                           ║
 ║  Health:   http://localhost:${port}/health                        ║
@@ -85,6 +88,6 @@ async function bootstrap() {
 
 // Run bootstrap
 bootstrap().catch((error) => {
-  console.error('Failed to start Payments V2 service:', error);
+  console.error('Failed to start Payment Gateway service:', error);
   process.exit(1);
 });

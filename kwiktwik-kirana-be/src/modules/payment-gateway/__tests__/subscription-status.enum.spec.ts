@@ -129,8 +129,8 @@ describe('isValidTransition', () => {
       expect(isValidTransition(SubscriptionStatus.CREATED, SubscriptionStatus.CANCELLED)).toBe(true);
     });
 
-    it('should not allow CREATED → ACTIVE directly', () => {
-      expect(isValidTransition(SubscriptionStatus.CREATED, SubscriptionStatus.ACTIVE)).toBe(false);
+    it('should allow CREATED → ACTIVE directly (e.g. PhonePe setup completed)', () => {
+      expect(isValidTransition(SubscriptionStatus.CREATED, SubscriptionStatus.ACTIVE)).toBe(true);
     });
   });
 
@@ -216,7 +216,8 @@ describe('getValidTargetStatuses', () => {
     expect(targets).toContain(SubscriptionStatus.ACTIVATION_IN_PROGRESS);
     expect(targets).toContain(SubscriptionStatus.FAILED);
     expect(targets).toContain(SubscriptionStatus.CANCELLED);
-    expect(targets).toHaveLength(5);
+    expect(targets).toContain(SubscriptionStatus.ACTIVE);
+    expect(targets).toHaveLength(6);
   });
 
   it('should return empty array for CANCELLED', () => {
@@ -248,7 +249,7 @@ describe('attemptTransition', () => {
   });
 
   it('should fail for invalid transition', () => {
-    const result = attemptTransition(SubscriptionStatus.CREATED, SubscriptionStatus.ACTIVE);
+    const result = attemptTransition(SubscriptionStatus.CREATED, SubscriptionStatus.PAUSED);
     expect(result.success).toBe(false);
     expect(result.previousStatus).toBe(SubscriptionStatus.CREATED);
     expect(result.newStatus).toBe(SubscriptionStatus.CREATED);
@@ -294,8 +295,13 @@ describe('getTransitionEvent', () => {
     expect(event).toBe(StateMachineEvent.RETRY_EXHAUSTED);
   });
 
-  it('should return null for invalid transition', () => {
+  it('should return ACTIVATE for CREATED → ACTIVE transition', () => {
     const event = getTransitionEvent(SubscriptionStatus.CREATED, SubscriptionStatus.ACTIVE);
+    expect(event).toBe(StateMachineEvent.ACTIVATE);
+  });
+
+  it('should return null for invalid transition', () => {
+    const event = getTransitionEvent(SubscriptionStatus.CREATED, SubscriptionStatus.PAUSED);
     expect(event).toBeNull();
   });
 });
