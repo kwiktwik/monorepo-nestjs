@@ -31,6 +31,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AppsModule } from './modules/apps/apps.module';
 import { PaymentGatewayModule } from './modules/payment-gateway/payment-gateway.module';
+import { VoiceModule } from './modules/voice/voice.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -70,6 +71,7 @@ const dbModule =
     AdminModule,
     AppsModule,
     PaymentGatewayModule,
+    VoiceModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],
