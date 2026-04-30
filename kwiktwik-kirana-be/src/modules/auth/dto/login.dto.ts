@@ -67,7 +67,20 @@ export class LoginTruecallerDto {
   client_id: string;
 }
 
-export class LoginGoogleDto extends LoginBaseDto {
+export class LoginGoogleDto {
+  @ApiProperty({
+    example: '+919876543210',
+    description:
+      'Phone number in E.164 format (optional for Google login, used for kirana-fe detection)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @Matches(/^[+][1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format (e.g., +919876543210)',
+  })
+  phoneNumber?: string;
+
   @ApiProperty({
     example: 'google_id_token_jwt',
     description: 'Google ID token from Google Sign-In',

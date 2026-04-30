@@ -559,26 +559,28 @@ export class AuthV1Controller {
     dto: LoginGoogleDto,
     appId: string,
   ): Promise<UnifiedLoginResponse> {
-    // Check for kirana-fe user detection first
-    const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
-
-    const isMigrated = await this.isUserMigrated(normalizedPhone);
+    // Check for kirana-fe user detection first (only if phone number is provided)
     let skipLegacyCheck = false;
 
-    if (isMigrated) {
-      this.logger.log(
-        `[Google Login] User ${normalizedPhone} already migrated, proceeding with login`,
-      );
-      skipLegacyCheck = true;
-    } else {
-      const isKiranaFeUser =
-        await this.authService.checkKiranaFeUser(normalizedPhone);
+    if (dto.phoneNumber) {
+      const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
+      const isMigrated = await this.isUserMigrated(normalizedPhone);
 
-      if (isKiranaFeUser) {
+      if (isMigrated) {
         this.logger.log(
-          `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
+          `[Google Login] User ${normalizedPhone} already migrated, proceeding with login`,
         );
-        return this.createAlternateBackendResponse();
+        skipLegacyCheck = true;
+      } else {
+        const isKiranaFeUser =
+          await this.authService.checkKiranaFeUser(normalizedPhone);
+
+        if (isKiranaFeUser) {
+          this.logger.log(
+            `[Google Login] Kirana-FE user detected: ${normalizedPhone}`,
+          );
+          return this.createAlternateBackendResponse();
+        }
       }
     }
 
