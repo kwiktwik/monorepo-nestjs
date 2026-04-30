@@ -63,18 +63,7 @@ export class WebhookController {
       headers,
     );
 
-    if (!result.success) {
-      this.logger.error(`Razorpay webhook processing failed: ${result.error}`);
-      throw new HttpException(
-        { received: false, eventId: result.eventId, error: result.error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    return {
-      received: true,
-      eventId: result.eventId,
-    };
+    return this.respondToResult('Razorpay', result);
   }
 
   /**
@@ -103,18 +92,7 @@ export class WebhookController {
       headers,
     );
 
-    if (!result.success) {
-      this.logger.error(`PhonePe webhook processing failed: ${result.error}`);
-      throw new HttpException(
-        { received: false, eventId: result.eventId, error: result.error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    return {
-      received: true,
-      eventId: result.eventId,
-    };
+    return this.respondToResult('PhonePe', result);
   }
 
   /**
@@ -140,23 +118,38 @@ export class WebhookController {
       headers,
     );
 
-    if (!result.success) {
-      this.logger.error(`PhonePe webhook processing failed: ${result.error}`);
-      throw new HttpException(
-        { received: false, eventId: result.eventId, error: result.error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    return {
-      received: true,
-      eventId: result.eventId,
-    };
+    return this.respondToResult('PhonePe', result);
   }
 
   // ============================================================================
   // Private Methods
   // ============================================================================
+
+  /**
+   * Return the appropriate response for a webhook result.
+   *
+   * - Signature/auth failures  -> 401 (tells provider the config is wrong, no point retrying)
+   * - Processing failures      -> 200 (we received it; retrying the same payload won't help)
+   * - Success                  -> 200
+   */
+  private respondToResult(
+    provider: string,
+    result: { success: boolean; eventId: string; error: string | null },
+  ): { received: boolean; eventId: string } {
+    if (!result.success && result.eventId === 'invalid_signature') {
+      this.logger.warn(`${provider} webhook rejected: invalid signature`);
+      throw new HttpException(
+        { received: false, eventId: result.eventId, error: 'Invalid signature' },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (!result.success) {
+      this.logger.error(`${provider} webhook processing failed: ${result.error}`, { eventId: result.eventId });
+    }
+
+    return { received: true, eventId: result.eventId };
+  }
 
   /**
    * Get raw body from request
@@ -165,12 +158,16 @@ export class WebhookController {
     req: Request,
     body: Record<string, unknown> | string,
   ): string | Record<string, unknown> {
-    // Try to get raw body from request
-    if ('rawBody' in req && typeof req.rawBody === 'string') {
-      return req.rawBody;
+    // body-parser.raw() stores the body as a Buffer on req.body
+    if (Buffer.isBuffer(req.body)) {
+      return req.body.toString('utf-8');
     }
 
-    // Return parsed body
+    // Fallback: check for rawBody property (some middleware patterns)
+    if ('rawBody' in req && (typeof req.rawBody === 'string' || Buffer.isBuffer(req.rawBody))) {
+      return Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf-8') : req.rawBody;
+    }
+
     return body;
   }
 
