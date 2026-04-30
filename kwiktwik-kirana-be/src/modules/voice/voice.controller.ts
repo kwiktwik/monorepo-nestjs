@@ -17,12 +17,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AppId } from '../../common/decorators/app-id.decorator';
-import { AuthenticatedUser } from '../../common/types';
+import type { AuthenticatedUser } from '../../common/types';
 import { VoiceProvider } from './interfaces/voice-provider.interface';
 import { VoiceConfigService } from './config/voice-config.service';
 import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
@@ -96,9 +96,9 @@ export class VoiceController {
     @Headers('x-app-id') appId: string,
     @Headers('accept-language') language: string,
     @Headers('x-voice-name') voiceName: string | undefined,
-    @CurrentUser() user: AuthenticatedUser | undefined,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
-    const userId = user?.userId || user?.id || 'anonymous';
+    const userId = user?.userId || 'anonymous';
     const apiVersion = 'v1';
 
     this.logger.log(`Voice stream request - user: ${userId}, app: ${appId}, version: ${apiVersion}`);
