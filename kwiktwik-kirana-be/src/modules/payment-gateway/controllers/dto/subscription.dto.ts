@@ -71,7 +71,7 @@ export class CreateSubscriptionDto {
 /**
  * Subscription Response DTO
  */
-export class SubscriptionResponseDto {
+export class PaymentGatewaySubscriptionResponseDto {
   @ApiProperty({
     description: 'Whether the operation was successful',
     example: true,
@@ -137,7 +137,7 @@ export class SubscriptionResponseDto {
 /**
  * Subscription Status DTO
  */
-export class SubscriptionStatusDto {
+export class PaymentGatewaySubscriptionStatusDto {
   @ApiProperty({
     description: 'Internal subscription ID',
     example: 'sub_abc123',

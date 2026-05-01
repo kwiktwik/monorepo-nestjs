@@ -36,7 +36,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AppId } from '../../../common/decorators/app-id.decorator';
 import { SubscriptionManagerService } from '../services/subscription-manager.service';
 import { PaymentConfigService } from '../config/payment-config.service';
-import { CreateSubscriptionDto, SubscriptionResponseDto, SubscriptionStatusDto } from './dto/subscription.dto';
+import { CreateSubscriptionDto, PaymentGatewaySubscriptionResponseDto as SubscriptionResponseDto, PaymentGatewaySubscriptionStatusDto as SubscriptionStatusDto } from './dto/subscription.dto';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
 import type { Subscription } from '../domain/entities/subscription.entity';

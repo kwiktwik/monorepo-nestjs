@@ -109,7 +109,7 @@ export class NotifyRedemptionDto {
   metadata?: Record<string, unknown>;
 }
 
-export class PhonePeSubscriptionResponseDto {
+export class SubscriptionResponseDto {
   @ApiProperty({
     description: 'PhonePe order ID',
     example: 'OM2401241327446521266639W',
@@ -190,7 +190,7 @@ export class RedemptionResponseDto {
   expireAt: Date;
 }
 
-export class PhonePeSubscriptionStatusDto {
+export class SubscriptionStatusDto {
   @ApiProperty()
   merchantSubscriptionId: string;
 
