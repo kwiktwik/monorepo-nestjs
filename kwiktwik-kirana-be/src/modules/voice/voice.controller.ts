@@ -242,7 +242,7 @@ export class VoiceController {
     let provider: VoiceProvider;
     switch (config.provider) {
       case 'gemini':
-        provider = new GeminiVoiceProvider(config.apiKey, config.model);
+        provider = new GeminiVoiceProvider(config.apiKey);
         break;
       default:
         throw new ServiceUnavailableException(`Unknown provider: ${config.provider}`);
