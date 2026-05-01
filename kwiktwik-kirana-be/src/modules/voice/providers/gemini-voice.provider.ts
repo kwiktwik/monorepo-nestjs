@@ -232,38 +232,34 @@ export class GeminiVoiceProvider implements VoiceProvider {
       });
     });
 
-    // Send setup message and wait for setup ack (mirrors Python: await ws.recv() after setup send)
+    // Send setup message and wait for setup ack — mirrors Python's `await ws.recv()` (accepts first message)
     const setupMessage = this.buildSetupMessage(config);
     ws.send(JSON.stringify(setupMessage));
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        ws.off('message', onFirstMessage);
+        ws.off('close', onClose);
         reject(new Error('Gemini Live API setup acknowledgement timeout'));
-      }, 5000);
+      }, 10000);
 
-      const onSetupAck = (data: WebSocket.RawData) => {
-        try {
-          const msg = JSON.parse(data.toString());
-          // First message back is the setup complete ack
-          if (msg.setupComplete !== undefined || msg.serverContent !== undefined || msg.error !== undefined) {
-            clearTimeout(timeout);
-            ws.off('message', onSetupAck);
-            if (msg.error) {
-              reject(new Error(`Gemini setup error: ${JSON.stringify(msg.error)}`));
-            } else {
-              this.logger.log('Gemini Live API setup acknowledged');
-              resolve();
-            }
-          }
-        } catch {
-          // non-JSON ack, treat as success
-          clearTimeout(timeout);
-          ws.off('message', onSetupAck);
-          resolve();
-        }
+      const onFirstMessage = (data: WebSocket.RawData) => {
+        clearTimeout(timeout);
+        ws.off('message', onFirstMessage);
+        ws.off('close', onClose);
+        // Log raw ack for debugging, then proceed unconditionally (mirrors Python)
+        this.logger.log(`Gemini setup ack: ${data.toString().slice(0, 120)}`);
+        resolve();
       };
 
-      ws.on('message', onSetupAck);
+      const onClose = (code: number, reason: Buffer) => {
+        clearTimeout(timeout);
+        ws.off('message', onFirstMessage);
+        reject(new Error(`Gemini WS closed during setup: ${code} ${reason}`));
+      };
+
+      ws.once('message', onFirstMessage);
+      ws.once('close', onClose);
     });
 
     this.logger.log(`Gemini Live API stream created for user: ${config.userId}`);
