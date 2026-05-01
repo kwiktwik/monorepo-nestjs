@@ -13,4 +13,5 @@ import { VoiceConfigService } from './config/voice-config.service';
   providers: [VoiceConfigService],
   exports: [VoiceConfigService],
 })
+// WebSocket support pending
 export class VoiceModule {}

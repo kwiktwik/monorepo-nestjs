@@ -250,7 +250,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   async isAvailable(): Promise<boolean> {
     try {
       // Simple health check - try to connect and immediately close
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
       const ws = new WebSocket(wsUrl);
 
       return new Promise((resolve) => {
@@ -278,7 +278,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   private buildWebSocketUrl(config: VoiceSessionConfig): string {
     // Gemini Live API WebSocket endpoint
     // Reference: https://ai.google.dev/gemini-api/docs/live-api
-    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
