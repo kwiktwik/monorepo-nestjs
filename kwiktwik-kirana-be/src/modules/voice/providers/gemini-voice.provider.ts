@@ -21,10 +21,7 @@ class GeminiVoiceStream implements VoiceStream {
   private closeCallback?: () => void;
   private readonly logger: Logger;
 
-  constructor(
-    ws: WebSocket,
-    logger: Logger,
-  ) {
+  constructor(ws: WebSocket, logger: Logger) {
     this.ws = ws;
     this.logger = logger;
     this.setupEventHandlers();
@@ -59,8 +56,6 @@ class GeminiVoiceStream implements VoiceStream {
   }
 
   private handleGeminiMessage(message: unknown): void {
-    // Gemini Live API message format
-    // Based on Gemini Live API documentation
     const msg = message as {
       serverContent?: {
         modelTurn?: {
@@ -72,6 +67,7 @@ class GeminiVoiceStream implements VoiceStream {
         turnComplete?: boolean;
         interrupted?: boolean;
       };
+      setupComplete?: Record<string, unknown>;
       error?: { message: string; code: string };
     };
 
@@ -81,23 +77,26 @@ class GeminiVoiceStream implements VoiceStream {
       return;
     }
 
-    // Handle audio output
+    // setupComplete is just an ack — nothing to do here
+    if (msg.setupComplete) {
+      this.logger.log('Gemini setup confirmed via serverContent');
+      return;
+    }
+
+    // Handle audio output + transcript
     if (msg.serverContent?.modelTurn?.parts) {
       for (const part of msg.serverContent.modelTurn.parts) {
-        // Audio data
         if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
           const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
           this.audioOutputCallback?.(audioBuffer);
         }
 
-        // Text transcript
         if (part.text && this.transcriptCallback) {
-          this.transcriptCallback(part.text, msg.serverContent.turnComplete || false);
+          this.transcriptCallback(part.text, msg.serverContent.turnComplete ?? false);
         }
       }
     }
 
-    // Handle interruption
     if (msg.serverContent?.interrupted) {
       this.logger.log('Gemini generation interrupted');
     }
@@ -109,16 +108,13 @@ class GeminiVoiceStream implements VoiceStream {
       return;
     }
 
-    // Python reference uses realtimeInput.media_chunks array format
-    // { realtime_input: { media_chunks: [{ data, mime_type }] } }
     const base64Audio = chunk.toString('base64');
     const message = {
       realtimeInput: {
         mediaChunks: [
           {
             data: base64Audio,
-            mimeType: 'audio/pcm;rate=16000'
-
+            mimeType: 'audio/pcm;rate=16000',
           },
         ],
       },
@@ -153,10 +149,10 @@ class GeminiVoiceStream implements VoiceStream {
       return;
     }
 
+    // Signal end of user turn without any content
     const message = {
       clientContent: {
         turnComplete: true,
-        interrupted: true,
       },
     };
 
@@ -194,6 +190,10 @@ class GeminiVoiceStream implements VoiceStream {
 /**
  * Gemini Live API Voice Provider
  * Implements VoiceProvider interface for Gemini
+ *
+ * Model ↔ API version matrix:
+ *   gemini-2.5-flash-preview-native-audio  → v1alpha
+ *   gemini-2.0-flash-live-001 (GA)         → v1beta
  */
 @Injectable()
 export class GeminiVoiceProvider implements VoiceProvider {
@@ -201,13 +201,16 @@ export class GeminiVoiceProvider implements VoiceProvider {
   readonly name = 'gemini';
   private readonly logger = new Logger(GeminiVoiceProvider.name);
 
+  // Choose the model that is live in your region/project:
+  //   'gemini-2.5-flash-preview-native-audio'  (preview, v1alpha)
+  //   'gemini-2.0-flash-live-001'               (GA, v1beta)
   constructor(
     private readonly apiKey: string,
-    private readonly model = 'gemini-live-2.5-flash-native-audio'
+    private readonly model = 'gemini-2.0-flash-live-001',
   ) { }
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
-    const wsUrl = this.buildWebSocketUrl(config);
+    const wsUrl = this.buildWebSocketUrl();
     this.logger.log(`Connecting to Gemini Live API: ${wsUrl.replace(this.apiKey, '***')}`);
 
     const ws = new WebSocket(wsUrl, {
@@ -216,31 +219,34 @@ export class GeminiVoiceProvider implements VoiceProvider {
       },
     });
 
-    // Wait for connection or timeout
+    // Wait for TCP/TLS connection
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        ws.terminate();
         reject(new Error('Gemini Live API connection timeout'));
       }, 10000);
 
-      ws.on('open', () => {
+      ws.once('open', () => {
         clearTimeout(timeout);
         resolve();
       });
 
-      ws.on('error', (error) => {
+      ws.once('error', (error) => {
         clearTimeout(timeout);
         reject(error);
       });
     });
 
-    // Send setup message and wait for setup ack — mirrors Python's `await ws.recv()` (accepts first message)
+    // Send setup message
     const setupMessage = this.buildSetupMessage(config);
     ws.send(JSON.stringify(setupMessage));
 
+    // Wait for the setupComplete ack (first message back from the server)
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         ws.off('message', onFirstMessage);
         ws.off('close', onClose);
+        ws.terminate();
         reject(new Error('Gemini Live API setup acknowledgement timeout'));
       }, 10000);
 
@@ -248,8 +254,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
         clearTimeout(timeout);
         ws.off('message', onFirstMessage);
         ws.off('close', onClose);
-        // Log raw ack for debugging, then proceed unconditionally (mirrors Python)
-        this.logger.log(`Gemini setup ack: ${data.toString().slice(0, 120)}`);
+        this.logger.log(`Gemini setup ack: ${data.toString().slice(0, 200)}`);
         resolve();
       };
 
@@ -269,13 +274,12 @@ export class GeminiVoiceProvider implements VoiceProvider {
 
   async isAvailable(): Promise<boolean> {
     try {
-      // Simple health check - try to connect and immediately close
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+      const wsUrl = this.buildWebSocketUrl();
       const ws = new WebSocket(wsUrl);
 
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
-          ws.close();
+          ws.terminate();
           resolve(false);
         }, 5000);
 
@@ -290,34 +294,59 @@ export class GeminiVoiceProvider implements VoiceProvider {
           resolve(false);
         });
       });
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
-  private buildWebSocketUrl(config: VoiceSessionConfig): string {
-    // gemini-2.0-flash-live-001 (GA model) requires v1beta
-    // gemini-2.0-flash-exp (experimental) uses v1alpha — Python example uses that
-    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+  /**
+   * Derive the correct API version from the model name.
+   *
+   * v1alpha — preview / experimental models (gemini-2.5-flash-preview-native-audio, etc.)
+   * v1beta  — GA models (gemini-2.0-flash-live-001)
+   */
+  private buildWebSocketUrl(): string {
+    const isPreview =
+      this.model.includes('preview') ||
+      this.model.includes('exp') ||
+      this.model.includes('2.5');
+
+    const apiVersion = isPreview ? 'v1alpha' : 'v1beta';
+
+    return (
+      `wss://generativelanguage.googleapis.com/ws/` +
+      `google.ai.generativelanguage.${apiVersion}.GenerativeService.BidiGenerateContent` +
+      `?key=${this.apiKey}`
+    );
   }
 
+  /**
+   * Build the setup payload.
+   *
+   * IMPORTANT: Top-level key MUST be "setup" (not "config").
+   * Field names must be snake_case to match the REST/WS JSON mapping.
+   * Model name must be prefixed with "models/".
+   */
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
-    // Gemini Live API v1beta setup message format
-    // responseModalities and speechConfig go inside generationConfig
     return {
       setup: {
         model: `models/${this.model}`,
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: config.voiceName || 'Puck',
+        generation_config: {
+          response_modalities: ['AUDIO'],
+          speech_config: {
+            voice_config: {
+              prebuilt_voice_config: {
+                voice_name: config.voiceName || 'Puck',
               },
             },
           },
         },
-      }
+        system_instruction: {
+          parts: [
+            { text: this.getSystemInstruction(config.language) },
+          ],
+        },
+      },
     };
   }
 
@@ -329,6 +358,6 @@ export class GeminiVoiceProvider implements VoiceProvider {
       'hi': 'आप एक सहायक voice assistant हैं। कृपया हिंदी में प्राकृतिक रूप से जवाब दें।',
     };
 
-    return instructions[language] || instructions['en-US'];
+    return instructions[language] ?? instructions['en-US'];
   }
 }
