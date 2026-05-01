@@ -27,10 +27,13 @@ class GeminiVoiceStream implements VoiceStream {
     this.setupEventHandlers();
   }
 
+  private audioChunksReceived = 0;
+  private textChunksReceived = 0;
+
   private setupEventHandlers(): void {
     this.ws.on('open', () => {
       this.state = VoiceConnectionState.CONNECTED;
-      this.logger.log('Gemini Live API WebSocket connected');
+      this.logger.log('[LIVE VOICE API] Gemini Live API WebSocket connected and ready');
     });
 
     this.ws.on('message', (data: WebSocket.RawData) => {
@@ -241,12 +244,16 @@ export class GeminiVoiceProvider implements VoiceProvider {
     });
 
     // Send setup message
+    this.logger.log('[LIVE VOICE API] Sending setup message...');
     const setupMessage = this.buildSetupMessage(config);
+    this.logger.log(`[LIVE VOICE API] Setup payload: ${JSON.stringify(setupMessage).slice(0, 300)}...`);
     ws.send(JSON.stringify(setupMessage));
 
     // Wait for the setupComplete ack (first message back from the server)
+    this.logger.log('[LIVE VOICE API] Waiting for setup acknowledgement...');
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.logger.error('[LIVE VOICE API] Setup acknowledgement timeout after 10000ms');
         ws.off('message', onFirstMessage);
         ws.off('close', onClose);
         ws.terminate();
@@ -257,13 +264,20 @@ export class GeminiVoiceProvider implements VoiceProvider {
         clearTimeout(timeout);
         ws.off('message', onFirstMessage);
         ws.off('close', onClose);
-        this.logger.log(`Gemini setup ack: ${data.toString().slice(0, 200)}`);
+        const ackData = data.toString();
+        this.logger.log(`[LIVE VOICE API] Gemini setup acknowledgement received: ${ackData.slice(0, 200)}`);
+        if (ackData.includes('setupComplete') || ackData.includes('error')) {
+          this.logger.log('[LIVE VOICE API] Setup handshake completed successfully');
+        } else {
+          this.logger.warn(`[LIVE VOICE API] Unexpected setup response: ${ackData.slice(0, 200)}`);
+        }
         resolve();
       };
 
       const onClose = (code: number, reason: Buffer) => {
         clearTimeout(timeout);
         ws.off('message', onFirstMessage);
+        this.logger.error(`[LIVE VOICE API] WebSocket closed during setup: code=${code}, reason=${reason}`);
         reject(new Error(`Gemini WS closed during setup: ${code} ${reason}`));
       };
 
@@ -271,7 +285,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
       ws.once('close', onClose);
     });
 
-    this.logger.log(`Gemini Live API stream created for user: ${config.userId}`);
+    this.logger.log(`[LIVE VOICE API] Stream created successfully for user: ${config.userId}`);
     return new GeminiVoiceStream(ws, this.logger);
   }
 
