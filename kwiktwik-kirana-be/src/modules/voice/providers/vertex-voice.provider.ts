@@ -157,9 +157,11 @@ export class VertexVoiceProvider implements VoiceProvider {
   // -------------------------------------------------------------------------
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
+    this.logger.log(`[LIVE VOICE API] Starting Vertex AI stream creation for user: ${config.userId}, app: ${config.appId}`);
     const token = await this.getAccessToken();
     const wsUrl = this.buildWebSocketUrl();
-    this.logger.log(`Connecting to Vertex AI: ${wsUrl}`);
+    this.logger.log(`[LIVE VOICE API] Connecting to Vertex AI: ${wsUrl}`);
+    this.logger.log(`[LIVE VOICE API] Vertex config - model: ${this.model}, voice: ${config.voiceName || 'default'}, language: ${config.language}`);
 
     const ws = new WebSocket(wsUrl, {
       headers: {
