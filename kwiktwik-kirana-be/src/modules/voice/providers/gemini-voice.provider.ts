@@ -117,7 +117,8 @@ class GeminiVoiceStream implements VoiceStream {
         mediaChunks: [
           {
             data: base64Audio,
-            mimeType: 'audio/pcm',
+            mimeType: 'audio/pcm;rate=16000'
+
           },
         ],
       },
@@ -202,8 +203,8 @@ export class GeminiVoiceProvider implements VoiceProvider {
 
   constructor(
     private readonly apiKey: string,
-    private readonly model: string = 'gemini-2.0-flash-exp',
-  ) {}
+    private readonly model = 'gemini-live-2.5-flash-native-audio'
+  ) { }
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
     const wsUrl = this.buildWebSocketUrl(config);
@@ -295,8 +296,9 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   private buildWebSocketUrl(config: VoiceSessionConfig): string {
-    // Python working example uses v1alpha — v1beta does NOT support BidiGenerateContent
-    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+    // gemini-2.0-flash-live-001 (GA model) requires v1beta
+    // gemini-2.0-flash-exp (experimental) uses v1alpha — Python example uses that
+    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
@@ -304,7 +306,15 @@ export class GeminiVoiceProvider implements VoiceProvider {
     return {
       setup: {
         model: `models/${this.model}`,
-      },
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: config.voiceName || 'Puck',
+            },
+          },
+        },
+      }
     };
   }
 
