@@ -124,7 +124,13 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const userId = payload.userId;
+      let userId = payload.userId;
+      
+      // Fallback to query param if token doesn't have userId
+      if (!userId) {
+        userId = client.handshake.query.userId as string;
+      }
+      
       if (!userId) {
         this.logger.warn(`[VOICE WEBSOCKET] Token missing userId: ${clientId}`);
         client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid token payload' });
