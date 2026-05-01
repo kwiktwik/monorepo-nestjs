@@ -117,8 +117,9 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
       let payload: JwtPayload;
       try {
         payload = this.jwtService.verify(token) as JwtPayload;
+        this.logger.log(`[VOICE WEBSOCKET] JWT verified successfully. Payload keys: ${Object.keys(payload).join(', ')}`);
       } catch (error) {
-        this.logger.warn(`[VOICE WEBSOCKET] Invalid token: ${clientId}`);
+        this.logger.warn(`[VOICE WEBSOCKET] Invalid token: ${clientId}, error: ${error instanceof Error ? error.message : String(error)}`);
         client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid authentication token' });
         client.disconnect(true);
         return;
@@ -126,14 +127,21 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       let userId = payload.userId;
       
+      // Fallback to sub claim if userId is not present
+      if (!userId && payload.sub) {
+        userId = payload.sub as string;
+        this.logger.log(`[VOICE WEBSOCKET] Using 'sub' claim as userId: ${userId}`);
+      }
+      
       // Fallback to query param if token doesn't have userId
       if (!userId) {
         userId = client.handshake.query.userId as string;
+        this.logger.log(`[VOICE WEBSOCKET] Falling back to query param userId: ${userId}`);
       }
       
       if (!userId) {
-        this.logger.warn(`[VOICE WEBSOCKET] Token missing userId: ${clientId}`);
-        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid token payload' });
+        this.logger.warn(`[VOICE WEBSOCKET] No userId found in token or query params. Payload: ${JSON.stringify(payload)}, query: ${JSON.stringify(client.handshake.query)}`);
+        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid token payload - missing userId' });
         client.disconnect(true);
         return;
       }
