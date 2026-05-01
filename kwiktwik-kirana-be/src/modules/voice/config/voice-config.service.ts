@@ -11,20 +11,20 @@ import { AudioFormat, VoiceRateLimitConfig } from '../types/voice.types';
  * Configuration for a specific API version
  */
 export interface VoiceVersionConfig {
-  /** API version (v1, v2, etc.) */
   version: string;
-  /** Provider name (gemini, openai, etc.) */
   provider: string;
-  /** Provider-specific API key */
+  model: string;
   apiKey: string;
-  /** Default voice name */
   defaultVoice: string;
-  /** Input audio format */
   inputFormat: AudioFormat;
-  /** Output audio format */
   outputFormat: AudioFormat;
-  /** Rate limiting configuration */
   rateLimit: VoiceRateLimitConfig;
+  /** Vertex AI: GCP project ID */
+  projectId: string;
+  /** Vertex AI: GCP region */
+  region: string;
+  /** Vertex AI: path to service account JSON */
+  serviceAccountPath: string;
 }
 
 @Injectable()
@@ -40,7 +40,8 @@ export class VoiceConfigService {
 
     return {
       version: apiVersion,
-      provider: this.configService.get<string>(`VOICE_PROVIDER_${version}`, 'gemini'),
+      provider: this.configService.get<string>(`VOICE_PROVIDER_${version}`, 'vertex'),
+      model: this.configService.get<string>(`VOICE_MODEL_${version}`, 'gemini-2.0-flash-live-001'),
       apiKey: this.configService.get<string>(`GEMINI_API_KEY_${version}`, ''),
       defaultVoice: this.configService.get<string>(`GEMINI_VOICE_${version}`, 'Puck'),
       inputFormat: {
@@ -58,6 +59,13 @@ export class VoiceConfigService {
         sessionTimeoutMs: this.configService.get<number>(`VOICE_SESSION_TIMEOUT_MS_${version}`, 300000),
         maxChunkSize: this.configService.get<number>(`VOICE_MAX_CHUNK_SIZE_${version}`, 65536),
       },
+      // Vertex AI
+      projectId: this.configService.get<string>(`VERTEX_PROJECT_ID_${version}`, 'storyowl-kwiktwik'),
+      region: this.configService.get<string>(`VERTEX_REGION_${version}`, 'us-central1'),
+      serviceAccountPath: this.configService.get<string>(
+        `VERTEX_SA_KEY_PATH_${version}`,
+        './secrets/vertex-ai-storyowl-key.json',
+      ),
     };
   }
 

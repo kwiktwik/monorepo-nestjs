@@ -26,6 +26,7 @@ import type { AuthenticatedUser } from '../../common/types';
 import { VoiceProvider } from './interfaces/voice-provider.interface';
 import { VoiceConfigService } from './config/voice-config.service';
 import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
+import { VertexVoiceProvider } from './providers/vertex-voice.provider';
 import { VoiceSessionConfig } from './types/voice.types';
 
 /**
@@ -106,17 +107,20 @@ export class VoiceController {
     // Get version configuration
     const config = this.voiceConfigService.getVersionConfig(apiVersion);
 
-    // Validate API key is configured
-    if (!config.apiKey) {
-      this.logger.error(`Gemini API key not configured for version ${apiVersion}`);
-      throw new ServiceUnavailableException('Voice service not configured');
-    }
-
     // Create provider instance
     let provider: VoiceProvider;
     switch (config.provider) {
       case 'gemini':
-        provider = new GeminiVoiceProvider(config.apiKey);
+        if (!config.apiKey) throw new ServiceUnavailableException('Gemini API key not configured');
+        provider = new GeminiVoiceProvider(config.apiKey, config.model);
+        break;
+      case 'vertex':
+        provider = new VertexVoiceProvider(
+          config.projectId,
+          config.region,
+          config.model,
+          config.serviceAccountPath,
+        );
         break;
       default:
         throw new BadRequestException(`Unsupported voice provider: ${config.provider}`);
@@ -235,14 +239,19 @@ export class VoiceController {
     const apiVersion = 'v1';
     const config = this.voiceConfigService.getVersionConfig(apiVersion);
 
-    if (!config.apiKey) {
-      throw new ServiceUnavailableException('Voice service not configured');
-    }
-
     let provider: VoiceProvider;
     switch (config.provider) {
       case 'gemini':
-        provider = new GeminiVoiceProvider(config.apiKey);
+        if (!config.apiKey) throw new ServiceUnavailableException('Gemini API key not configured');
+        provider = new GeminiVoiceProvider(config.apiKey, config.model);
+        break;
+      case 'vertex':
+        provider = new VertexVoiceProvider(
+          config.projectId,
+          config.region,
+          config.model,
+          config.serviceAccountPath,
+        );
         break;
       default:
         throw new ServiceUnavailableException(`Unknown provider: ${config.provider}`);

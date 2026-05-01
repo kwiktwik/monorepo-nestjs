@@ -1,5 +1,0 @@
-.DS_Store
-node_modules/
-
-# Secrets / credentials — never commit these
-kwiktwik-kirana-be/secrets/
