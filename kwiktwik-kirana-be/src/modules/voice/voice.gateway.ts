@@ -27,9 +27,11 @@ import { VoiceProvider, VoiceStream } from './interfaces/voice-provider.interfac
 import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
 import { VertexVoiceProvider } from './providers/vertex-voice.provider';
 import { VoiceSessionConfig } from './types/voice.types';
+import {
+  VoiceMessageType,
+} from './dto/voice-websocket.dto';
 import type {
   VoiceWebSocketMessage,
-  VoiceMessageType,
   AudioInputMessage,
   StartSessionMessage,
   InterruptMessage,
