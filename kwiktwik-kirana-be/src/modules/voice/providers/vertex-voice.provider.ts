@@ -22,6 +22,9 @@ class VertexVoiceStream implements VoiceStream {
   private errorCallback?: (error: Error) => void;
   private closeCallback?: () => void;
   private readonly logger: Logger;
+  private audioChunksSent = 0;
+  private audioChunksReceived = 0;
+  private textChunksReceived = 0;
 
   constructor(ws: WebSocket, logger: Logger) {
     this.ws = ws;
@@ -32,26 +35,27 @@ class VertexVoiceStream implements VoiceStream {
   private setupEventHandlers(): void {
     this.ws.on('open', () => {
       this.state = VoiceConnectionState.CONNECTED;
-      this.logger.log('Vertex AI WebSocket connected');
+      this.logger.log('[LIVE VOICE API] Vertex AI WebSocket connected and ready');
     });
 
     this.ws.on('message', (data: WebSocket.RawData) => {
       try {
         this.handleMessage(JSON.parse(data.toString()));
       } catch (err) {
-        this.logger.error('Failed to parse Vertex AI message:', err);
+        this.logger.error('[LIVE VOICE API] Failed to parse Vertex AI message:', err);
       }
     });
 
     this.ws.on('error', (error) => {
       this.state = VoiceConnectionState.ERROR;
-      this.logger.error('Vertex AI WebSocket error:', error);
+      this.logger.error('[LIVE VOICE API] Vertex AI WebSocket error:', error.message || error);
       this.errorCallback?.(error);
     });
 
     this.ws.on('close', (code, reason) => {
       this.state = VoiceConnectionState.DISCONNECTED;
-      this.logger.log(`Vertex AI WebSocket closed: ${code} - ${reason}`);
+      this.logger.log(`[LIVE VOICE API] Vertex AI WebSocket closed: code=${code}, reason=${reason || 'N/A'}`);
+      this.logger.log(`[LIVE VOICE API] Vertex session summary - audio sent: ${this.audioChunksSent}, audio received: ${this.audioChunksReceived}, text received: ${this.textChunksReceived}`);
       this.closeCallback?.();
     });
   }
@@ -59,7 +63,7 @@ class VertexVoiceStream implements VoiceStream {
   private handleMessage(msg: Record<string, unknown>): void {
     // setupComplete ack — nothing to do
     if (msg.setupComplete) {
-      this.logger.log('Vertex AI setup confirmed');
+      this.logger.log('[LIVE VOICE API] Vertex AI setup confirmed');
       return;
     }
 
@@ -72,28 +76,44 @@ class VertexVoiceStream implements VoiceStream {
     if (serverContent?.modelTurn?.parts) {
       for (const part of serverContent.modelTurn.parts) {
         if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
-          this.audioOutputCallback?.(Buffer.from(part.inlineData.data, 'base64'));
+          const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
+          this.audioChunksReceived++;
+          if (this.audioChunksReceived <= 5 || this.audioChunksReceived % 10 === 0) {
+            this.logger.log(`[LIVE VOICE API] Vertex audio chunk #${this.audioChunksReceived} received (${audioBuffer.length} bytes)`);
+          }
+          this.audioOutputCallback?.(audioBuffer);
         }
         if (part.text) {
+          this.textChunksReceived++;
+          this.logger.log(`[LIVE VOICE API] Vertex transcript chunk #${this.textChunksReceived}: ${part.text.slice(0, 100)}${part.text.length > 100 ? '...' : ''}`);
           this.transcriptCallback?.(part.text, serverContent.turnComplete ?? false);
         }
       }
     }
 
+    if (serverContent?.turnComplete) {
+      this.logger.log('[LIVE VOICE API] Vertex AI turn complete');
+    }
+
     if (serverContent?.interrupted) {
-      this.logger.log('Vertex AI generation interrupted');
+      this.logger.log('[LIVE VOICE API] Vertex AI generation interrupted');
     }
 
     const error = msg.error as { message: string; code: string } | undefined;
     if (error) {
+      this.logger.error(`[LIVE VOICE API] Vertex AI error: ${error.code} - ${error.message}`);
       this.errorCallback?.(new Error(`${error.code}: ${error.message}`));
     }
   }
 
   sendAudio(chunk: Buffer): void {
     if (this.state !== VoiceConnectionState.CONNECTED) {
-      this.logger.warn('Cannot send audio: WebSocket not connected');
+      this.logger.warn(`[LIVE VOICE API] Cannot send audio to Vertex: WebSocket state is ${this.state}`);
       return;
+    }
+    this.audioChunksSent++;
+    if (this.audioChunksSent <= 5 || this.audioChunksSent % 20 === 0) {
+      this.logger.log(`[LIVE VOICE API] Sending audio to Vertex chunk #${this.audioChunksSent} (${chunk.length} bytes)`);
     }
     this.ws.send(JSON.stringify({
       realtimeInput: {

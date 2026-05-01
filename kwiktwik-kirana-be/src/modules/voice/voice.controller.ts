@@ -102,19 +102,28 @@ export class VoiceController {
     const userId = user?.userId || 'anonymous';
     const apiVersion = 'v1';
 
-    this.logger.log(`Voice stream request - user: ${userId}, app: ${appId}, version: ${apiVersion}`);
+    this.logger.log(`[LIVE VOICE API] Voice stream request received - user: ${userId}, app: ${appId}, version: ${apiVersion}`);
+    this.logger.log(`[LIVE VOICE API] Request headers - language: ${language || 'en-US'}, voiceName: ${voiceName || 'default'}`);
 
     // Get version configuration
+    this.logger.log(`[LIVE VOICE API] Getting version config for API version: ${apiVersion}`);
     const config = this.voiceConfigService.getVersionConfig(apiVersion);
+    this.logger.log(`[LIVE VOICE API] Config loaded - provider: ${config.provider}, model: ${config.model}, defaultVoice: ${config.defaultVoice}`);
 
     // Create provider instance
+    this.logger.log(`[LIVE VOICE API] Creating voice provider: ${config.provider}`);
     let provider: VoiceProvider;
     switch (config.provider) {
       case 'gemini':
-        if (!config.apiKey) throw new ServiceUnavailableException('Gemini API key not configured');
+        if (!config.apiKey) {
+          this.logger.error('[LIVE VOICE API] Gemini API key not configured');
+          throw new ServiceUnavailableException('Gemini API key not configured');
+        }
+        this.logger.log('[LIVE VOICE API] Initializing GeminiVoiceProvider');
         provider = new GeminiVoiceProvider(config.apiKey, config.model);
         break;
       case 'vertex':
+        this.logger.log('[LIVE VOICE API] Initializing VertexVoiceProvider');
         provider = new VertexVoiceProvider(
           config.projectId,
           config.region,
@@ -123,14 +132,18 @@ export class VoiceController {
         );
         break;
       default:
+        this.logger.error(`[LIVE VOICE API] Unsupported voice provider: ${config.provider}`);
         throw new BadRequestException(`Unsupported voice provider: ${config.provider}`);
     }
 
     // Check provider availability
+    this.logger.log(`[LIVE VOICE API] Checking ${config.provider} provider availability...`);
     const isAvailable = await provider.isAvailable();
     if (!isAvailable) {
+      this.logger.error(`[LIVE VOICE API] ${config.provider} provider is not available`);
       throw new ServiceUnavailableException('Voice provider not available');
     }
+    this.logger.log(`[LIVE VOICE API] ${config.provider} provider is available`);
 
     // Build session configuration
     const sessionConfig: VoiceSessionConfig = {
@@ -144,36 +157,46 @@ export class VoiceController {
     };
 
     // Create voice stream
+    this.logger.log(`[LIVE VOICE API] Creating voice stream with session config: ${JSON.stringify(sessionConfig)}`);
     const voiceStream = await provider.createStream(sessionConfig);
+    this.logger.log(`[LIVE VOICE API] Voice stream created successfully`);
 
     // Set response headers for HTTP/2 streaming
+    const sessionId = `${Date.now()}-${userId}`;
     res.setHeader('Content-Type', 'audio/pcm16;rate=24000;channels=1');
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('X-Voice-Provider', config.provider);
     res.setHeader('X-Voice-Version', apiVersion);
-    res.setHeader('X-Voice-Session-Id', `${Date.now()}-${userId}`);
+    res.setHeader('X-Voice-Session-Id', sessionId);
+    this.logger.log(`[LIVE VOICE API] Response headers set - sessionId: ${sessionId}`);
 
     // Track connection state
     let isClosed = false;
     let bytesReceived = 0;
     let bytesSent = 0;
+    let chunksReceived = 0;
+    let chunksSent = 0;
 
     // Handle audio output from provider -> mobile
     voiceStream.onAudioOutput((audioChunk: Buffer) => {
       if (!isClosed && res.writable) {
         res.write(audioChunk);
         bytesSent += audioChunk.length;
+        chunksSent++;
+        if (chunksSent <= 5 || chunksSent % 10 === 0) {
+          this.logger.log(`[LIVE VOICE API] Audio output chunk #${chunksSent} sent to client (${audioChunk.length} bytes)`);
+        }
       }
     });
 
     // Handle transcription (optional - log only for now)
     voiceStream.onTranscript((text: string, isFinal: boolean) => {
-      this.logger.debug(`Transcript [${isFinal ? 'final' : 'partial'}]: ${text}`);
+      this.logger.log(`[LIVE VOICE API] Transcript [${isFinal ? 'final' : 'partial'}]: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`);
     });
 
     // Handle errors
     voiceStream.onError((error: Error) => {
-      this.logger.error(`Voice stream error for user ${userId}:`, error.message);
+      this.logger.error(`[LIVE VOICE API] Voice stream error for user ${userId}: ${error.message}`);
       if (!isClosed) {
         isClosed = true;
         res.status(500).end();
@@ -182,7 +205,7 @@ export class VoiceController {
 
     // Handle stream close
     voiceStream.onClose(() => {
-      this.logger.log(`Voice stream closed - user: ${userId}, received: ${bytesReceived} bytes, sent: ${bytesSent} bytes`);
+      this.logger.log(`[LIVE VOICE API] Voice stream closed - user: ${userId}, chunks received: ${chunksReceived}, chunks sent: ${chunksSent}, bytes received: ${bytesReceived}, bytes sent: ${bytesSent}`);
       if (!isClosed) {
         isClosed = true;
         res.end();
@@ -191,7 +214,7 @@ export class VoiceController {
 
     // Handle mobile disconnect
     req.on('close', () => {
-      this.logger.log(`Client disconnected - user: ${userId}`);
+      this.logger.log(`[LIVE VOICE API] Client disconnected - user: ${userId}`);
       if (!isClosed) {
         isClosed = true;
         voiceStream.close();
@@ -202,19 +225,23 @@ export class VoiceController {
     req.on('data', (chunk: Buffer) => {
       if (!isClosed) {
         bytesReceived += chunk.length;
+        chunksReceived++;
+        if (chunksReceived <= 5 || chunksReceived % 20 === 0) {
+          this.logger.log(`[LIVE VOICE API] Audio input chunk #${chunksReceived} received from client (${chunk.length} bytes)`);
+        }
         voiceStream.sendAudio(chunk);
       }
     });
 
     // Handle request end
     req.on('end', () => {
-      this.logger.log(`Audio input ended - user: ${userId}, total received: ${bytesReceived} bytes`);
+      this.logger.log(`[LIVE VOICE API] Audio input ended - user: ${userId}, total chunks: ${chunksReceived}, total bytes: ${bytesReceived}`);
       // Keep connection open for response - Gemini will continue generating audio
     });
 
     // Handle request errors
     req.on('error', (error: Error) => {
-      this.logger.error(`Request error for user ${userId}:`, error.message);
+      this.logger.error(`[LIVE VOICE API] Request error for user ${userId}: ${error.message}`);
       if (!isClosed) {
         isClosed = true;
         voiceStream.close();
@@ -223,7 +250,7 @@ export class VoiceController {
     });
 
     // Log stream start
-    this.logger.log(`Voice stream started - user: ${userId}, provider: ${config.provider}`);
+    this.logger.log(`[LIVE VOICE API] Voice stream fully started and ready - user: ${userId}, provider: ${config.provider}, sessionId: ${sessionId}`);
   }
 
   /**
@@ -236,13 +263,18 @@ export class VoiceController {
   @ApiResponse({ status: 200, description: 'Service healthy' })
   @ApiResponse({ status: 503, description: 'Service unavailable' })
   async healthCheck(): Promise<{ status: string; provider: string; version: string }> {
+    this.logger.log('[LIVE VOICE API] Health check initiated');
     const apiVersion = 'v1';
     const config = this.voiceConfigService.getVersionConfig(apiVersion);
+    this.logger.log(`[LIVE VOICE API] Health check - provider: ${config.provider}, model: ${config.model}`);
 
     let provider: VoiceProvider;
     switch (config.provider) {
       case 'gemini':
-        if (!config.apiKey) throw new ServiceUnavailableException('Gemini API key not configured');
+        if (!config.apiKey) {
+          this.logger.error('[LIVE VOICE API] Health check failed: Gemini API key not configured');
+          throw new ServiceUnavailableException('Gemini API key not configured');
+        }
         provider = new GeminiVoiceProvider(config.apiKey, config.model);
         break;
       case 'vertex':
@@ -254,14 +286,18 @@ export class VoiceController {
         );
         break;
       default:
+        this.logger.error(`[LIVE VOICE API] Health check failed: Unknown provider: ${config.provider}`);
         throw new ServiceUnavailableException(`Unknown provider: ${config.provider}`);
     }
 
+    this.logger.log(`[LIVE VOICE API] Health check - checking ${config.provider} availability...`);
     const isAvailable = await provider.isAvailable();
     if (!isAvailable) {
+      this.logger.error(`[LIVE VOICE API] Health check failed: ${config.provider} provider is not available`);
       throw new ServiceUnavailableException('Voice provider not available');
     }
 
+    this.logger.log(`[LIVE VOICE API] Health check passed - ${config.provider} is healthy`);
     return {
       status: 'healthy',
       provider: config.provider,
