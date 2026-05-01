@@ -318,7 +318,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Send session started acknowledgment
       client.emit('session_started', {
         type: VoiceMessageType.SESSION_STARTED,
-        sessionId,
+        sessionId: sessionId!,
         provider: config.provider,
         apiVersion,
         voiceName: sessionConfig.voiceName,
