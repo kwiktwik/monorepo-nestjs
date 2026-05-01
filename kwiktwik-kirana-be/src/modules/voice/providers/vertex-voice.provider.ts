@@ -279,17 +279,19 @@ export class VertexVoiceProvider implements VoiceProvider {
   // -------------------------------------------------------------------------
 
   private buildWebSocketUrl(): string {
-    // Vertex AI BidiGenerateContent endpoint
+    // Vertex AI BidiGenerateContent endpoint - using v1 instead of v1beta1
     return (
       `wss://${this.region}-aiplatform.googleapis.com/ws/` +
-      `google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`
+      `google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent`
     );
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
+    const modelPath = `projects/${this.projectId}/locations/${this.region}/publishers/google/models/${this.model}`;
+    this.logger.log(`[LIVE VOICE API] Setup message model path: ${modelPath}`);
     return {
       setup: {
-        model: `projects/${this.projectId}/locations/${this.region}/publishers/google/models/${this.model}`,
+        model: modelPath,
         generation_config: {
           response_modalities: ['AUDIO'],
           speech_config: {

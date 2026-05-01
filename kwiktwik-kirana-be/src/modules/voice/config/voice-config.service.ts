@@ -36,7 +36,7 @@ export class VoiceConfigService {
     return {
       version: apiVersion,
       provider: 'vertex',
-      model: 'gemini-2.0-flash-live-preview',
+      model: 'gemini-live-2.5-flash-native-audio',
       apiKey: '',
       defaultVoice: 'Puck',
       inputFormat: {
@@ -56,7 +56,7 @@ export class VoiceConfigService {
       },
       // Vertex AI - hardcoded configuration
       projectId: 'storyowl-kwiktwik',
-      region: 'us-central1',
+      region: 'us-east1',
       serviceAccountPath: './secrets/vertex-ai-storyowl-key.json',
     };
   }
