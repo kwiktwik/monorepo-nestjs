@@ -27,7 +27,7 @@ import { VoiceProvider, VoiceStream } from './interfaces/voice-provider.interfac
 import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
 import { VertexVoiceProvider } from './providers/vertex-voice.provider';
 import { VoiceSessionConfig } from './types/voice.types';
-import {
+import type {
   VoiceWebSocketMessage,
   VoiceMessageType,
   AudioInputMessage,
@@ -35,6 +35,8 @@ import {
   InterruptMessage,
   ClientToServerEvents,
   ServerToClientEvents,
+  SocketData,
+  InterServerEvents,
 } from './dto/voice-websocket.dto';
 
 /**
@@ -48,14 +50,10 @@ interface JwtPayload {
 /**
  * Socket with user data
  */
-interface AuthenticatedSocket extends Socket {
-  data: {
-    userId?: string;
-    appId?: string;
+interface AuthenticatedSocket extends Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData> {
+  data: SocketData & {
     voiceStream?: VoiceStream;
     sessionConfig?: VoiceSessionConfig;
-    sessionId?: string;
-    isAuthenticated?: boolean;
   };
 }
 
@@ -101,14 +99,14 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       if (!token) {
         this.logger.warn(`[VOICE WEBSOCKET] Connection rejected - no token: ${clientId}`);
-        client.emit('error', { code: 'AUTH_ERROR', message: 'Authentication token required' });
+        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Authentication token required' });
         client.disconnect(true);
         return;
       }
 
       if (!appId) {
         this.logger.warn(`[VOICE WEBSOCKET] Connection rejected - no appId: ${clientId}`);
-        client.emit('error', { code: 'AUTH_ERROR', message: 'X-App-ID header required' });
+        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'X-App-ID header required' });
         client.disconnect(true);
         return;
       }
@@ -119,7 +117,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
         payload = this.jwtService.verify(token) as JwtPayload;
       } catch (error) {
         this.logger.warn(`[VOICE WEBSOCKET] Invalid token: ${clientId}`);
-        client.emit('error', { code: 'AUTH_ERROR', message: 'Invalid authentication token' });
+        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid authentication token' });
         client.disconnect(true);
         return;
       }
@@ -127,7 +125,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const userId = payload.userId;
       if (!userId) {
         this.logger.warn(`[VOICE WEBSOCKET] Token missing userId: ${clientId}`);
-        client.emit('error', { code: 'AUTH_ERROR', message: 'Invalid token payload' });
+        client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Invalid token payload' });
         client.disconnect(true);
         return;
       }
@@ -142,14 +140,15 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Send connection acknowledgment
       client.emit('connected', {
-        sessionId: client.data.sessionId,
+        type: VoiceMessageType.CONNECTED,
+        sessionId: client.data.sessionId!,
         apiVersion,
         message: 'Connected to voice service. Send "start_session" to begin.',
       });
 
     } catch (error) {
       this.logger.error(`[VOICE WEBSOCKET] Connection error: ${error instanceof Error ? error.message : String(error)}`);
-      client.emit('error', { code: 'CONNECTION_ERROR', message: 'Failed to establish connection' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'CONNECTION_ERROR', message: 'Failed to establish connection' });
       client.disconnect(true);
     }
   }
@@ -189,7 +188,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const sessionId = client.data.sessionId;
 
     if (!userId || !appId) {
-      client.emit('error', { code: 'AUTH_ERROR', message: 'Not authenticated' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Not authenticated' });
       return;
     }
 
@@ -293,6 +292,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.logger.error(`[VOICE WEBSOCKET] Voice stream error for user ${userId}: ${error.message}`);
         if (client.connected) {
           client.emit('error', {
+            type: VoiceMessageType.ERROR,
             code: 'STREAM_ERROR',
             message: error.message,
             timestamp: new Date().toISOString(),
@@ -333,6 +333,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       this.logger.error(`[VOICE WEBSOCKET] Failed to start session: ${error instanceof Error ? error.message : String(error)}`);
       client.emit('error', {
+        type: VoiceMessageType.ERROR,
         code: 'SESSION_ERROR',
         message: error instanceof Error ? error.message : 'Failed to start voice session',
         timestamp: new Date().toISOString(),
@@ -353,12 +354,12 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const voiceStream = client.data.voiceStream;
 
     if (!userId) {
-      client.emit('error', { code: 'AUTH_ERROR', message: 'Not authenticated' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Not authenticated' });
       return;
     }
 
     if (!voiceStream) {
-      client.emit('error', { code: 'SESSION_ERROR', message: 'No active voice session. Send "start_session" first.' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'SESSION_ERROR', message: 'No active voice session. Send "start_session" first.' });
       return;
     }
 
