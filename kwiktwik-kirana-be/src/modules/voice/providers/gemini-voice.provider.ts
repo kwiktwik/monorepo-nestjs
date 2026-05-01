@@ -190,10 +190,6 @@ class GeminiVoiceStream implements VoiceStream {
 /**
  * Gemini Live API Voice Provider
  * Implements VoiceProvider interface for Gemini
- *
- * Model ↔ API version matrix:
- *   gemini-2.5-flash-preview-native-audio  → v1alpha
- *   gemini-2.0-flash-live-001 (GA)         → v1beta
  */
 @Injectable()
 export class GeminiVoiceProvider implements VoiceProvider {
@@ -201,9 +197,6 @@ export class GeminiVoiceProvider implements VoiceProvider {
   readonly name = 'gemini';
   private readonly logger = new Logger(GeminiVoiceProvider.name);
 
-  // Choose the model that is live in your region/project:
-  //   'gemini-2.5-flash-preview-native-audio'  (preview, v1alpha)
-  //   'gemini-2.0-flash-live-001'               (GA, v1beta)
   constructor(
     private readonly apiKey: string,
     private readonly model = 'gemini-2.5-flash-live-preview',
@@ -299,12 +292,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
     }
   }
 
-  /**
-   * Derive the correct API version from the model name.
-   *
-   * v1alpha — preview / experimental models (gemini-2.5-flash-preview-native-audio, etc.)
-   * v1beta  — GA models (gemini-2.0-flash-live-001)
-   */
+
   private buildWebSocketUrl(): string {
 
     return (
