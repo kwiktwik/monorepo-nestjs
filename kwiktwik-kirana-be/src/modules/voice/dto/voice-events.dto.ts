@@ -29,7 +29,7 @@ export class StartVoiceStreamDto {
 
   /**
    * Optional voice name to use
-   * For Gemini: Puck, Charon, Kore, Fenrir, Aoede
+   * For Gemini: Achernar, Puck, Charon, Kore, Fenrir, Aoede
    */
   @IsOptional()
   @IsString()

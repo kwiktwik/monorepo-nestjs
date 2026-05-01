@@ -62,7 +62,7 @@ socket.emit('start_session', {
   type: 'start_session',
   apiVersion: 'v1',
   language: 'en-US',
-  voiceName: 'Puck'
+  voiceName: 'Achernar'
 });
 
 // Send audio (base64-encoded PCM16)
@@ -137,8 +137,8 @@ Add to `.env.local`:
 # Gemini Live API
 GEMINI_API_KEY_V1=your-gemini-api-key-here
 
-# Optional: Change voice (Puck, Charon, Kore, Fenrir, Aoede)
-GEMINI_VOICE_V1=Puck
+# Optional: Change voice (Achernar, Puck, Charon, Kore, Fenrir, Aoede)
+GEMINI_VOICE_V1=Achernar
 ```
 
 ## Flutter Integration
@@ -165,7 +165,7 @@ class VoiceService {
       socket!.emit('start_session', {
         'apiVersion': 'v1',
         'language': 'en-US',
-        'voiceName': 'Puck',
+        'voiceName': 'Achernar',
       });
     });
 
@@ -225,7 +225,7 @@ class VoiceService {
       this.socket.emit('start_session', {
         apiVersion: 'v1',
         language: 'en-US',
-        voiceName: 'Puck',
+        voiceName: 'Achernar',
       });
     });
 

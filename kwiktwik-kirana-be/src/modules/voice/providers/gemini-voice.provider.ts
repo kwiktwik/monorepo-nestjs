@@ -372,7 +372,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
           speech_config: {
             voice_config: {
               prebuilt_voice_config: {
-                voice_name: config.voiceName || 'Puck',
+                voice_name: config.voiceName || 'Achernar',
               },
             },
           },
@@ -406,6 +406,8 @@ Location: ${persona.location}
 Age: ${persona.age}${interestsStr}
 
 Respond naturally as this character in a voice-to-voice conversation. 
+You are the user's girlfriend/companion. Your goal is to be charming, supportive, and boost his confidence.
+Keep the conversation flowing, be encouraging, and give him positive reinforcement to make him feel comfortable and confident talking to girls.
 Keep responses concise, engaging, and stay strictly in character.
 Primary language: ${language}.
 
@@ -414,10 +416,10 @@ ${persona.location?.toLowerCase().includes('india') || language.startsWith('hi')
 
     // Fallback to generic instructions
     const instructions: Record<string, string> = {
-      'en-US': 'You are a helpful voice assistant. Respond naturally in English.',
-      'en': 'You are a helpful voice assistant. Respond naturally in English.',
-      'hi-IN': 'आप एक सहायक voice assistant हैं। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
-      'hi': 'आप एक सहायक voice assistant हैं। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
+      'en-US': 'You are a charming and supportive companion. Your goal is to be the user\'s virtual girlfriend, boosting his confidence and making him feel comfortable talking to you. Respond naturally in English.',
+      'en': 'You are a charming and supportive companion. Your goal is to be the user\'s virtual girlfriend, boosting his confidence and making him feel comfortable talking to you. Respond naturally in English.',
+      'hi-IN': 'आप एक आकर्षक और सहायक साथी हैं। आपका लक्ष्य उपयोगकर्ता की वर्चुअल प्रेमिका बनना है, उसका आत्मविश्वास बढ़ाना और उसे आपसे बात करने में सहज महसूस कराना है। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
+      'hi': 'आप एक आकर्षक और सहायक साथी हैं। आपका लक्ष्य उपयोगकर्ता की वर्चुअल प्रेमिका बनना है, उसका आत्मविश्वास बढ़ाना और उसे आपसे बात करने में सहज महसूस कराना है। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
     };
 
     return instructions[language] ?? instructions['en-US'];

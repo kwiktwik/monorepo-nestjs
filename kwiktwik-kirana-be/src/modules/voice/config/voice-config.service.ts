@@ -38,7 +38,7 @@ export class VoiceConfigService {
       provider: 'vertex',
       model: 'gemini-live-2.5-flash-native-audio',
       apiKey: '',
-      defaultVoice: 'Puck',
+      defaultVoice: 'Achernar',
       inputFormat: {
         encoding: 'pcm16',
         sampleRate: 24000,
