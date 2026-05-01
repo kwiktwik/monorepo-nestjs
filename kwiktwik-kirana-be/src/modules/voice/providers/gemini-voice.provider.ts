@@ -206,7 +206,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   //   'gemini-2.0-flash-live-001'               (GA, v1beta)
   constructor(
     private readonly apiKey: string,
-    private readonly model = 'gemini-2.0-flash-live-001',
+    private readonly model = 'gemini-2.5-flash-live-preview',
   ) { }
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
@@ -306,16 +306,10 @@ export class GeminiVoiceProvider implements VoiceProvider {
    * v1beta  — GA models (gemini-2.0-flash-live-001)
    */
   private buildWebSocketUrl(): string {
-    const isPreview =
-      this.model.includes('preview') ||
-      this.model.includes('exp') ||
-      this.model.includes('2.5');
-
-    const apiVersion = isPreview ? 'v1alpha' : 'v1beta';
 
     return (
       `wss://generativelanguage.googleapis.com/ws/` +
-      `google.ai.generativelanguage.${apiVersion}.GenerativeService.BidiGenerateContent` +
+      `google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent` +
       `?key=${this.apiKey}`
     );
   }
@@ -330,7 +324,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
     return {
       setup: {
-        model: `models/${this.model}`,
+        model: `models/${this.model}`,   // e.g. "models/gemini-2.5-flash-live-preview"
         generation_config: {
           response_modalities: ['AUDIO'],
           speech_config: {
@@ -342,9 +336,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
           },
         },
         system_instruction: {
-          parts: [
-            { text: this.getSystemInstruction(config.language) },
-          ],
+          parts: [{ text: this.getSystemInstruction(config.language) }],
         },
       },
     };
