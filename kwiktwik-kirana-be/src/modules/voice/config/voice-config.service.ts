@@ -15,8 +15,6 @@ export interface VoiceVersionConfig {
   version: string;
   /** Provider name (gemini, openai, etc.) */
   provider: string;
-  /** Model name */
-  model: string;
   /** Provider-specific API key */
   apiKey: string;
   /** Default voice name */
