@@ -273,26 +273,29 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
-    // Official docs: top-level `config` key with responseModalities and speechConfig
-    // at the same level as model — NOT nested under generationConfig.
-    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
+    // BidiGenerateContentClientMessage: first message must be BidiGenerateContentSetup.
+    // Structure: { setup: { config: { model, responseModalities, speechConfig, systemInstruction } } }
+    // The model config is nested under setup.config — NOT directly on setup.
+    // Reference: https://ai.google.dev/gemini-api/docs/live-api
     return {
-      config: {
-        model: `models/${this.model}`,
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: config.voiceName || 'Puck',
+      setup: {
+        config: {
+          model: `models/${this.model}`,
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: config.voiceName || 'Puck',
+              },
             },
           },
-        },
-        systemInstruction: {
-          parts: [
-            {
-              text: this.getSystemInstruction(config.language),
-            },
-          ],
+          systemInstruction: {
+            parts: [
+              {
+                text: this.getSystemInstruction(config.language),
+              },
+            ],
+          },
         },
       },
     };
