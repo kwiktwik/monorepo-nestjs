@@ -33,6 +33,14 @@ class VertexVoiceStream implements VoiceStream {
     this.ws = ws;
     this.logger = logger;
     this.setupEventHandlers();
+    // If WebSocket is already open (happens when created after await in createStream),
+    // update state immediately since the 'open' event already fired
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.state = VoiceConnectionState.CONNECTED;
+      this.logger.log('[LIVE VOICE API] Vertex AI WebSocket already open, state set to CONNECTED');
+      // Flush any buffered audio chunks
+      this.flushAudioBuffer();
+    }
   }
 
   private setupEventHandlers(): void {
