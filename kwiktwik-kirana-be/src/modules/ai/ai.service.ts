@@ -1,5 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { GoogleAuth } from 'google-auth-library';
 
 export interface AiSuggestRequest {
   context: string;
@@ -25,22 +26,34 @@ export interface AiAnalyzeImageRequest {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly apiKey: string;
-  private readonly apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  private readonly auth: GoogleAuth;
+  private readonly projectId = 'storyowl-kwiktwik';
+  private readonly region = 'us-east1';
+  private readonly model = 'gemini-1.5-flash';
+  private readonly apiUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('GEMINI_API_KEY') || 
-                  this.configService.get<string>('GEMINI_API_KEY_V1') || '';
-    
-    if (!this.apiKey) {
-      this.logger.warn('GEMINI_API_KEY not configured. AI suggestions will fail.');
+    this.auth = new GoogleAuth({
+      keyFile: './secrets/vertex-ai-storyowl-key.json',
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+
+    this.apiUrl = `https://${this.region}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.region}/publishers/google/models/${this.model}:generateContent`;
+  }
+
+  private async getAccessToken(): Promise<string> {
+    try {
+      const client = await this.auth.getClient();
+      const tokenResponse = await client.getAccessToken();
+      if (!tokenResponse.token) throw new Error('Token is empty');
+      return tokenResponse.token;
+    } catch (error) {
+      this.logger.error('Failed to get Vertex AI token:', error);
+      throw new HttpException('AI service auth failed', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
   async generateSuggestion(data: AiSuggestRequest): Promise<AiSuggestResponse> {
-    if (!this.apiKey) {
-      throw new HttpException('AI service not configured', HttpStatus.SERVICE_UNAVAILABLE);
-    }
 
     const { context, category, companionId } = data;
 
@@ -59,10 +72,12 @@ export class AiService {
     this.logger.debug(`Generating AI suggestion for category: ${category}`);
     
     try {
-      const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+      const token = await this.getAccessToken();
+      const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           contents: [
@@ -107,10 +122,6 @@ export class AiService {
   }
 
   async analyzeImage(data: AiAnalyzeImageRequest): Promise<AiSuggestResponse> {
-    if (!this.apiKey) {
-      throw new HttpException('AI service not configured', HttpStatus.SERVICE_UNAVAILABLE);
-    }
-
     const { image, mimeType = 'image/jpeg', prompt = 'Analyze this image and provide a relevant suggestion or description.', category } = data;
 
     let systemInstruction = prompt;
@@ -128,10 +139,12 @@ export class AiService {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     
     try {
-      const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+      const token = await this.getAccessToken();
+      const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           contents: [
