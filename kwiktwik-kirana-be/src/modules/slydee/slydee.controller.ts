@@ -1,7 +1,7 @@
 import { Controller, Get, Logger, Param, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SlydeeService } from './slydee.service';
-import type { CompanionResponse, CompanionProfile } from './slydee.service';
+import type { CompanionResponse, CompanionProfile } from './slydee.types';
 
 @ApiTags('slydee')
 @Controller('slydee')

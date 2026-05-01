@@ -1,30 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-
-export interface CompanionProfile {
-  id: string;
-  name: string;
-  location: string;
-  age: number;
-  bio: string;
-  description: string;
-  imageUrls: string[];
-  gifUrls: string[];
-  interests: string[];
-  isLocked: boolean;
-  isSafeCompatible: boolean;
-  freeChatCount: number;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CompanionResponse {
-  success: boolean;
-  data: CompanionProfile[];
-  count: number;
-}
+import type { CompanionProfile, CompanionResponse } from './slydee.types';
 
 @Injectable()
 export class SlydeeService implements OnModuleInit {

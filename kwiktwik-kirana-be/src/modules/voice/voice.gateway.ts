@@ -17,22 +17,18 @@ import {
 import { Server, Socket } from 'socket.io';
 import {
   Logger,
-  UseGuards,
-  BadRequestException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { VoiceConfigService } from './config/voice-config.service';
 import { SlydeeService } from '../slydee/slydee.service';
-import { VoiceProvider, VoiceStream } from './interfaces/voice-provider.interface';
-import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
+import { VoiceStream } from './interfaces/voice-provider.interface';
 import { VertexVoiceProvider } from './providers/vertex-voice.provider';
 import { VoiceSessionConfig } from './types/voice.types';
 import {
   VoiceMessageType,
 } from './dto/voice-websocket.dto';
 import type {
-  VoiceWebSocketMessage,
   AudioInputMessage,
   StartSessionMessage,
   InterruptMessage,
@@ -230,34 +226,9 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
 
-      // Get version configuration
-      this.logger.log(`[VOICE WEBSOCKET] Getting config for version: ${apiVersion}`);
       const config = this.voiceConfigService.getVersionConfig(apiVersion);
-      this.logger.log(`[VOICE WEBSOCKET] Config loaded - provider: ${config.provider}, model: ${config.model}`);
 
-      // Create provider instance
-      this.logger.log(`[VOICE WEBSOCKET] Creating voice provider: ${config.provider}`);
-      let provider: VoiceProvider;
-      switch (config.provider) {
-        case 'gemini':
-          if (!config.apiKey) {
-            throw new ServiceUnavailableException('Gemini API key not configured');
-          }
-          provider = new GeminiVoiceProvider(config.apiKey, config.model);
-          break;
-        case 'vertex':
-          provider = new VertexVoiceProvider(
-            config.projectId,
-            config.region,
-            config.model,
-            config.serviceAccountPath,
-          );
-          break;
-        default:
-          throw new BadRequestException(`Unsupported voice provider: ${config.provider}`);
-      }
-
-      // Check provider availability
+      const provider = new VertexVoiceProvider(config.model);
       const isAvailable = await provider.isAvailable();
       if (!isAvailable) {
         throw new ServiceUnavailableException('Voice provider not available');
@@ -350,7 +321,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('session_started', {
         type: VoiceMessageType.SESSION_STARTED,
         sessionId: sessionId!,
-        provider: config.provider,
+        provider: 'vertex',
         apiVersion,
         voiceName: sessionConfig.voiceName,
         audioFormat: {
