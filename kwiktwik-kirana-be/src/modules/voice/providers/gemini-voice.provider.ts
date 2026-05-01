@@ -109,17 +109,15 @@ class GeminiVoiceStream implements VoiceStream {
       return;
     }
 
-    // Gemini Live API expects realtimeInput for streaming audio chunks
-    // Use 16kHz PCM16 LE — required input format for Gemini Live API
+    // Official docs: realtimeInput.audio with data + mimeType (raw 16-bit PCM, 16kHz, little-endian)
+    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
     const base64Audio = chunk.toString('base64');
     const message = {
       realtimeInput: {
-        mediaChunks: [
-          {
-            mimeType: 'audio/pcm;rate=16000',
-            data: base64Audio,
-          },
-        ],
+        audio: {
+          data: base64Audio,
+          mimeType: 'audio/pcm;rate=16000',
+        },
       },
     };
 
@@ -202,7 +200,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
 
   constructor(
     private readonly apiKey: string,
-    private readonly model: string = 'gemini-2.0-flash-live-001',
+    private readonly model: string = 'gemini-3.1-flash-live-preview',
   ) {}
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
@@ -243,7 +241,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   async isAvailable(): Promise<boolean> {
     try {
       // Simple health check - try to connect and immediately close
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
       const ws = new WebSocket(wsUrl);
 
       return new Promise((resolve) => {
@@ -269,22 +267,23 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   private buildWebSocketUrl(config: VoiceSessionConfig): string {
-    // Gemini Live API WebSocket endpoint
-    // Reference: https://ai.google.dev/gemini-api/docs/live-api
-    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+    // Gemini Live API WebSocket endpoint (v1beta per official docs)
+    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
+    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
+    // Official docs: top-level `config` key with responseModalities and speechConfig
+    // at the same level as model — NOT nested under generationConfig.
+    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
     return {
-      setup: {
+      config: {
         model: `models/${this.model}`,
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: config.voiceName || 'Puck',
-              },
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: config.voiceName || 'Puck',
             },
           },
         },
