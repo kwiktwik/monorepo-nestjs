@@ -40,8 +40,8 @@ export class VoiceConfigService {
 
     return {
       version: apiVersion,
-      provider: this.configService.get<string>(`VOICE_PROVIDER_${version}`, 'vertex'),
-      model: this.configService.get<string>(`VOICE_MODEL_${version}`, 'gemini-2.0-flash-live-001'),
+      provider: 'vertex',
+      model: this.configService.get<string>(`VOICE_MODEL_${version}`, 'gemini-2.5-flash-live-preview'),
       apiKey: this.configService.get<string>(`GEMINI_API_KEY_${version}`, ''),
       defaultVoice: this.configService.get<string>(`GEMINI_VOICE_${version}`, 'Puck'),
       inputFormat: {

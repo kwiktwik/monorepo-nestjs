@@ -142,7 +142,7 @@ export class VertexVoiceProvider implements VoiceProvider {
   constructor(
     private readonly projectId: string,
     private readonly region: string = 'us-central1',
-    private readonly model = 'gemini-2.0-flash-live-001',
+    private readonly model = 'gemini-2.5-flash-live-preview',
     /** Absolute or relative path to service-account JSON, or leave empty to use ADC */
     serviceAccountPath?: string,
   ) {
