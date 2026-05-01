@@ -2,6 +2,13 @@
  * Voice Controller
  * HTTP/2 streaming endpoint for voice-to-voice conversations
  * API Version: v1
+ *
+ * @deprecated This HTTP/2 streaming endpoint is deprecated in favor of WebSocket.
+ * Use VoiceGateway (WebSocket) for new implementations. This controller is kept
+ * for backward compatibility only and may be removed in future versions.
+ *
+ * WebSocket endpoint: ws://host/voice
+ * See voice.gateway.ts for WebSocket implementation
  */
 
 import {
