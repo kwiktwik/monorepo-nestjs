@@ -10,6 +10,7 @@ import { DrizzleTestModule } from './database/drizzle-test.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MigrationModule } from './modules/migration/migration.module';
 import { ConfigModule } from './modules/config/config.module';
+import { AppConfigModule } from './modules/app-config/app-config.module';
 import { UserModule } from './modules/user/user.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { RazorpayModule } from './modules/razorpay/razorpay.module';
@@ -33,6 +34,7 @@ import { AppsModule } from './modules/apps/apps.module';
 import { PaymentGatewayModule } from './modules/payment-gateway/payment-gateway.module';
 import { VoiceModule } from './modules/voice/voice.module';
 import { SlydeeModule } from './modules/slydee/slydee.module';
+import { AiModule } from './modules/ai/ai.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -50,6 +52,7 @@ const dbModule =
     AuthModule,
     MigrationModule,
     ConfigModule,
+    AppConfigModule,
     UserModule,
     UploadModule,
     RazorpayModule,
@@ -74,6 +77,7 @@ const dbModule =
     PaymentGatewayModule,
     VoiceModule,
     SlydeeModule,
+    AiModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],
