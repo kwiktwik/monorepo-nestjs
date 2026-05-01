@@ -3,6 +3,8 @@
  * Supports API versioning and provider abstraction
  */
 
+import { CompanionProfile } from '../../slydee/slydee.service';
+
 /**
  * Audio format configuration
  */
@@ -33,6 +35,10 @@ export interface VoiceSessionConfig {
   inputFormat: AudioFormat;
   /** Output audio format */
   outputFormat: AudioFormat;
+  /** Optional persona/companion profile for personalization */
+  persona?: CompanionProfile;
+  /** Optional manual system instruction */
+  systemInstruction?: string;
 }
 
 /**

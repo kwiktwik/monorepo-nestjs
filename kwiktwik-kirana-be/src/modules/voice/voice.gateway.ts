@@ -23,6 +23,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { VoiceConfigService } from './config/voice-config.service';
+import { SlydeeService } from '../slydee/slydee.service';
 import { VoiceProvider, VoiceStream } from './interfaces/voice-provider.interface';
 import { GeminiVoiceProvider } from './providers/gemini-voice.provider';
 import { VertexVoiceProvider } from './providers/vertex-voice.provider';
@@ -83,6 +84,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly voiceConfigService: VoiceConfigService,
     private readonly jwtService: JwtService,
+    private readonly slydeeService: SlydeeService,
   ) {}
 
   /**
@@ -214,6 +216,19 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const apiVersion = data.apiVersion || 'v1';
       const language = data.language || 'en-US';
       const voiceName = data.voiceName;
+      const companionId = data.companionId;
+
+      // Fetch persona if companionId is provided
+      let persona;
+      if (companionId) {
+        this.logger.log(`[VOICE WEBSOCKET] Fetching persona for companion: ${companionId}`);
+        persona = this.slydeeService.getCompanionById(companionId);
+        if (persona) {
+          this.logger.log(`[VOICE WEBSOCKET] Persona found: ${persona.name}`);
+        } else {
+          this.logger.warn(`[VOICE WEBSOCKET] Companion not found: ${companionId}`);
+        }
+      }
 
       // Get version configuration
       this.logger.log(`[VOICE WEBSOCKET] Getting config for version: ${apiVersion}`);
@@ -257,6 +272,8 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
         voiceName: voiceName || config.defaultVoice,
         inputFormat: config.inputFormat,
         outputFormat: config.outputFormat,
+        persona: persona || undefined,
+        systemInstruction: data.systemInstruction,
       };
 
       client.data.sessionConfig = sessionConfig;

@@ -378,18 +378,46 @@ export class GeminiVoiceProvider implements VoiceProvider {
           },
         },
         system_instruction: {
-          parts: [{ text: this.getSystemInstruction(config.language) }],
+          parts: [{ text: this.getSystemInstruction(config) }],
         },
       },
     };
   }
 
-  private getSystemInstruction(language: string): string {
+  private getSystemInstruction(config: VoiceSessionConfig): string {
+    const language = config.language;
+    const persona = config.persona;
+
+    // If a manual system instruction is provided, use it
+    if (config.systemInstruction) {
+      return config.systemInstruction;
+    }
+
+    // If we have a persona, build a detailed prompt
+    if (persona) {
+      const interestsStr = persona.interests?.length > 0
+        ? ` Your interests include: ${persona.interests.join(', ')}.`
+        : '';
+
+      return `You are ${persona.name}. 
+Role Description: ${persona.bio}
+Visual/Personality Context: ${persona.description}
+Location: ${persona.location}
+Age: ${persona.age}${interestsStr}
+
+Respond naturally as this character in a voice-to-voice conversation. 
+Keep responses concise, engaging, and stay strictly in character.
+Primary language: ${language}.
+
+${persona.location?.toLowerCase().includes('india') || language.startsWith('hi') ? 'Note: Use common Indian expressions and cultural nuances where appropriate. If the user speaks in a mix of Hindi and English (Hinglish), respond in a similar natural Hinglish style.' : ''}`;
+    }
+
+    // Fallback to generic instructions
     const instructions: Record<string, string> = {
       'en-US': 'You are a helpful voice assistant. Respond naturally in English.',
       'en': 'You are a helpful voice assistant. Respond naturally in English.',
-      'hi-IN': 'आप एक सहायक voice assistant हैं। कृपया हिंदी में प्राकृतिक रूप से जवाब दें।',
-      'hi': 'आप एक सहायक voice assistant हैं। कृपया हिंदी में प्राकृतिक रूप से जवाब दें।',
+      'hi-IN': 'आप एक सहायक voice assistant हैं। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
+      'hi': 'आप एक सहायक voice assistant हैं। कृपया हिंदी और अंग्रेजी के मिश्रण (Hinglish) में प्राकृतिक रूप से जवाब दें।',
     };
 
     return instructions[language] ?? instructions['en-US'];

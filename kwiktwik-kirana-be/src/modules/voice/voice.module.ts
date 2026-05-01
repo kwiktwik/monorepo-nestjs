@@ -13,10 +13,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { VoiceController } from './voice.controller';
 import { VoiceGateway } from './voice.gateway';
 import { VoiceConfigService } from './config/voice-config.service';
+import { SlydeeModule } from '../slydee/slydee.module';
 
 @Module({
   imports: [
     ConfigModule,
+    SlydeeModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

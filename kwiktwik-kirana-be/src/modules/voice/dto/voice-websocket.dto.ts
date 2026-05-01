@@ -48,6 +48,8 @@ export interface StartSessionMessage extends VoiceWebSocketMessage {
   voiceName?: string;
   /** System instruction/prompt */
   systemInstruction?: string;
+  /** Companion ID for personalized persona */
+  companionId?: string;
 }
 
 /**
