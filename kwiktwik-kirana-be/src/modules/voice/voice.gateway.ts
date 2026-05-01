@@ -378,6 +378,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       this.logger.error(`[VOICE WEBSOCKET] Error processing audio input: ${error instanceof Error ? error.message : String(error)}`);
       client.emit('error', {
+        type: VoiceMessageType.ERROR,
         code: 'AUDIO_ERROR',
         message: 'Failed to process audio input',
         timestamp: new Date().toISOString(),
@@ -397,12 +398,12 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const voiceStream = client.data.voiceStream;
 
     if (!userId) {
-      client.emit('error', { code: 'AUTH_ERROR', message: 'Not authenticated' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Not authenticated' });
       return;
     }
 
     if (!voiceStream) {
-      client.emit('error', { code: 'SESSION_ERROR', message: 'No active voice session' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'SESSION_ERROR', message: 'No active voice session' });
       return;
     }
 
@@ -417,6 +418,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       this.logger.error(`[VOICE WEBSOCKET] Error handling interrupt: ${error instanceof Error ? error.message : String(error)}`);
       client.emit('error', {
+        type: VoiceMessageType.ERROR,
         code: 'INTERRUPT_ERROR',
         message: 'Failed to process interrupt',
         timestamp: new Date().toISOString(),
@@ -435,7 +437,7 @@ export class VoiceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const voiceStream = client.data.voiceStream;
 
     if (!userId) {
-      client.emit('error', { code: 'AUTH_ERROR', message: 'Not authenticated' });
+      client.emit('error', { type: VoiceMessageType.ERROR, code: 'AUTH_ERROR', message: 'Not authenticated' });
       return;
     }
 
