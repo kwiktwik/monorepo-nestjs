@@ -49,6 +49,8 @@ export class AiService {
       Generate a helpful response for the category: ${category}.`;
     }
 
+    this.logger.debug(`Generating AI suggestion for category: ${category}`);
+    
     try {
       const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
         method: 'POST',
@@ -69,9 +71,16 @@ export class AiService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        this.logger.error('Gemini API error:', JSON.stringify(errorData));
-        throw new HttpException('Failed to generate suggestion', HttpStatus.INTERNAL_SERVER_ERROR);
+        let errorDetails: string;
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData);
+        } catch (parseError) {
+          const errorText = await response.text();
+          errorDetails = errorText || `HTTP ${response.status} ${response.statusText}`;
+        }
+        this.logger.error(`Gemini API error (status: ${response.status}): ${errorDetails}`);
+        throw new HttpException(`AI service error: ${response.statusText || 'Unknown error'}`, HttpStatus.INTERNAL_SERVER_ERROR);
       }
 
       const result = await response.json();
