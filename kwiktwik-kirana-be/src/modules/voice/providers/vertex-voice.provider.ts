@@ -28,16 +28,18 @@ class VertexVoiceStream implements VoiceStream {
   private audioBuffer: Buffer[] = [];
   private maxBufferSize = 100; // Max 100 chunks to prevent memory issues
   private bufferedChunksDropped = 0;
+  private readonly sampleRate: number;
 
-  constructor(ws: WebSocket, logger: Logger) {
+  constructor(ws: WebSocket, logger: Logger, sampleRate: number = 24000) {
     this.ws = ws;
     this.logger = logger;
+    this.sampleRate = sampleRate;
     this.setupEventHandlers();
     // If WebSocket is already open (happens when created after await in createStream),
     // update state immediately since the 'open' event already fired
     if (this.ws.readyState === WebSocket.OPEN) {
       this.state = VoiceConnectionState.CONNECTED;
-      this.logger.log('[LIVE VOICE API] Vertex AI WebSocket already open, state set to CONNECTED');
+      this.logger.log(`[LIVE VOICE API] Vertex AI WebSocket already open, state set to CONNECTED (sampleRate: ${this.sampleRate}Hz)`);
       // Flush any buffered audio chunks
       this.flushAudioBuffer();
     }
@@ -78,9 +80,23 @@ class VertexVoiceStream implements VoiceStream {
   }
 
   private handleMessage(msg: Record<string, unknown>): void {
+    // Debug: Log all message keys received
+    const msgKeys = Object.keys(msg);
+    this.logger.debug(`[LIVE VOICE API] Received message with keys: ${msgKeys.join(', ')}`);
+
     // setupComplete ack — nothing to do
     if (msg.setupComplete) {
       this.logger.log('[LIVE VOICE API] Vertex AI setup confirmed');
+      return;
+    }
+
+    // Check for toolCall / toolCallCancellation (not handled yet, but log them)
+    if (msg.toolCall) {
+      this.logger.log('[LIVE VOICE API] Vertex AI toolCall received (not implemented)');
+      return;
+    }
+    if (msg.toolCallCancellation) {
+      this.logger.log('[LIVE VOICE API] Vertex AI toolCallCancellation received');
       return;
     }
 
@@ -90,21 +106,33 @@ class VertexVoiceStream implements VoiceStream {
       interrupted?: boolean;
     } | undefined;
 
-    if (serverContent?.modelTurn?.parts) {
-      for (const part of serverContent.modelTurn.parts) {
-        if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
-          const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
-          this.audioChunksReceived++;
-          if (this.audioChunksReceived <= 5 || this.audioChunksReceived % 10 === 0) {
-            this.logger.log(`[LIVE VOICE API] Vertex audio chunk #${this.audioChunksReceived} received (${audioBuffer.length} bytes)`);
+    if (serverContent) {
+      this.logger.debug(`[LIVE VOICE API] serverContent received - turnComplete: ${serverContent.turnComplete}, hasModelTurn: ${!!serverContent.modelTurn}`);
+
+      if (serverContent.modelTurn?.parts) {
+        this.logger.debug(`[LIVE VOICE API] Processing ${serverContent.modelTurn.parts.length} parts in modelTurn`);
+        for (const part of serverContent.modelTurn.parts) {
+          // Debug: Log what we see in each part
+          this.logger.debug(`[LIVE VOICE API] Part keys: ${Object.keys(part).join(', ')}, hasInlineData: ${!!part.inlineData}, hasText: ${!!part.text}`);
+
+          if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
+            const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
+            this.audioChunksReceived++;
+            if (this.audioChunksReceived <= 5 || this.audioChunksReceived % 10 === 0) {
+              this.logger.log(`[LIVE VOICE API] Vertex audio chunk #${this.audioChunksReceived} received (${audioBuffer.length} bytes)`);
+            }
+            this.audioOutputCallback?.(audioBuffer);
+          } else if (part.inlineData) {
+            this.logger.debug(`[LIVE VOICE API] Part has inlineData but mimeType is: ${part.inlineData.mimeType}`);
           }
-          this.audioOutputCallback?.(audioBuffer);
+          if (part.text) {
+            this.textChunksReceived++;
+            this.logger.log(`[LIVE VOICE API] Vertex transcript chunk #${this.textChunksReceived}: ${part.text.slice(0, 100)}${part.text.length > 100 ? '...' : ''}`);
+            this.transcriptCallback?.(part.text, serverContent.turnComplete ?? false);
+          }
         }
-        if (part.text) {
-          this.textChunksReceived++;
-          this.logger.log(`[LIVE VOICE API] Vertex transcript chunk #${this.textChunksReceived}: ${part.text.slice(0, 100)}${part.text.length > 100 ? '...' : ''}`);
-          this.transcriptCallback?.(part.text, serverContent.turnComplete ?? false);
-        }
+      } else if (serverContent.modelTurn) {
+        this.logger.debug(`[LIVE VOICE API] modelTurn exists but has no parts`);
       }
     }
 
@@ -145,11 +173,13 @@ class VertexVoiceStream implements VoiceStream {
   private sendAudioChunk(chunk: Buffer): void {
     this.audioChunksSent++;
     if (this.audioChunksSent <= 5 || this.audioChunksSent % 20 === 0) {
-      this.logger.log(`[LIVE VOICE API] Sending audio to Vertex chunk #${this.audioChunksSent} (${chunk.length} bytes)`);
+      this.logger.log(`[LIVE VOICE API] Sending audio to Vertex chunk #${this.audioChunksSent} (${chunk.length} bytes, ${this.sampleRate}Hz)`);
     }
+    // IMPORTANT: Audio format must match the config sample rate
+    // The Android client sends audio at the configured sample rate (default 24000 Hz)
     this.ws.send(JSON.stringify({
       realtimeInput: {
-        mediaChunks: [{ data: chunk.toString('base64'), mimeType: 'audio/pcm;rate=16000' }],
+        mediaChunks: [{ data: chunk.toString('base64'), mimeType: `audio/pcm;rate=${this.sampleRate}` }],
       },
     }));
   }
@@ -297,8 +327,8 @@ export class VertexVoiceProvider implements VoiceProvider {
       ws.once('close', onClose);
     });
 
-    this.logger.log(`[LIVE VOICE API] Vertex AI stream created successfully for user: ${config.userId}`);
-    return new VertexVoiceStream(ws, this.logger);
+    this.logger.log(`[LIVE VOICE API] Vertex AI stream created successfully for user: ${config.userId} with sampleRate: ${config.inputFormat?.sampleRate || 24000}Hz`);
+    return new VertexVoiceStream(ws, this.logger, config.inputFormat?.sampleRate || 24000);
   }
 
   async isAvailable(): Promise<boolean> {
@@ -334,7 +364,9 @@ export class VertexVoiceProvider implements VoiceProvider {
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
     const modelPath = `projects/${this.projectId}/locations/${this.region}/publishers/google/models/${this.model}`;
     this.logger.log(`[LIVE VOICE API] Setup message model path: ${modelPath}`);
-    return {
+    this.logger.log(`[LIVE VOICE API] Voice config - voiceName: ${config.voiceName || 'Puck (default)'}, language: ${config.language}`);
+
+    const setupMessage = {
       setup: {
         model: modelPath,
         generation_config: {
@@ -352,6 +384,9 @@ export class VertexVoiceProvider implements VoiceProvider {
         },
       },
     };
+
+    this.logger.log(`[LIVE VOICE API] Full setup message: ${JSON.stringify(setupMessage)}`);
+    return setupMessage;
   }
 
   private getSystemInstruction(language: string): string {

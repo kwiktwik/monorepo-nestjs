@@ -36,7 +36,7 @@ export class VoiceConfigService {
     return {
       version: apiVersion,
       provider: 'vertex',
-      model: 'gemini-live-2.5-flash-native-audio',
+      model: 'gemini-2.5-flash-live-preview',
       apiKey: '',
       defaultVoice: 'Puck',
       inputFormat: {
