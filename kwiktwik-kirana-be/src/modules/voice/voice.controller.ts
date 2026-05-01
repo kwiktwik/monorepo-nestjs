@@ -181,6 +181,10 @@ export class VoiceController {
     voiceStream.onAudioOutput((audioChunk: Buffer) => {
       if (!isClosed && res.writable) {
         res.write(audioChunk);
+        // Explicitly flush to ensure real-time streaming (needed for HTTP chunked encoding)
+        if (typeof (res as unknown as { flush: () => void }).flush === 'function') {
+          (res as unknown as { flush: () => void }).flush();
+        }
         bytesSent += audioChunk.length;
         chunksSent++;
         if (chunksSent <= 5 || chunksSent % 10 === 0) {
