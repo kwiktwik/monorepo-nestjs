@@ -35,7 +35,7 @@ class GetUserSubscriptionsDto {
   appId!: string;
 }
 
-class GetSubscriptionStatusDto {
+class RazorpayAdminGetSubscriptionStatusDto {
   @IsString()
   @IsNotEmpty()
   appId!: string;
@@ -45,7 +45,7 @@ class GetSubscriptionStatusDto {
   userId!: string;
 }
 
-class GetOrderStatusDto {
+class RazorpayAdminGetOrderStatusDto {
   @IsString()
   @IsNotEmpty()
   appId!: string;
@@ -55,7 +55,7 @@ class GetOrderStatusDto {
   userId!: string;
 }
 
-class CancelSubscriptionDto {
+class RazorpayAdminCancelSubscriptionDto {
   @IsOptional()
   cancelAtCycleEnd?: boolean;
 
@@ -63,7 +63,7 @@ class CancelSubscriptionDto {
   reason?: string;
 }
 
-class CreateSubscriptionDto {
+class RazorpayAdminCreateSubscriptionDto {
   @IsString()
   @IsOptional()
   planId?: string;
@@ -133,7 +133,7 @@ export class RazorpayAdminController {
   @ApiOperation({ summary: 'Get live subscription status from Razorpay' })
   async getRazorpaySubscriptionStatus(
     @Param('razorpaySubscriptionId') razorpaySubscriptionId: string,
-    @Query() query: GetSubscriptionStatusDto,
+    @Query() query: RazorpayAdminGetSubscriptionStatusDto,
   ) {
     try {
       const status = await this.razorpayService.getSubscriptionStatus(
@@ -198,7 +198,7 @@ export class RazorpayAdminController {
   @ApiOperation({ summary: 'Get live order status from Razorpay' })
   async getRazorpayOrderStatus(
     @Param('razorpayOrderId') razorpayOrderId: string,
-    @Query() query: GetOrderStatusDto,
+    @Query() query: RazorpayAdminGetOrderStatusDto,
   ) {
     try {
       const status = await this.razorpayService.getOrderStatus(
@@ -251,7 +251,7 @@ export class RazorpayAdminController {
   async cancelSubscription(
     @Param('subscriptionId') subscriptionId: string,
     @Query('appId') appId: string,
-    @Body() body: CancelSubscriptionDto,
+    @Body() body: RazorpayAdminCancelSubscriptionDto,
   ) {
     const subscriptions = await this.db
       .select()

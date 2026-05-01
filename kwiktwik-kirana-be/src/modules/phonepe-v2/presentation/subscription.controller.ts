@@ -23,9 +23,9 @@ import { AppId } from '../../../common/decorators/app-id.decorator';
 import {
   SetupSubscriptionDto,
   NotifyRedemptionDto,
-  SubscriptionResponseDto,
+  PhonePeSubscriptionResponseDto as SubscriptionResponseDto,
   RedemptionResponseDto,
-  SubscriptionStatusDto,
+  PhonePeSubscriptionStatusDto as SubscriptionStatusDto,
   OrderStatusDto,
   SyncStatusRequestDto,
 } from './dto/subscription.dto';
