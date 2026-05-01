@@ -29,7 +29,7 @@ export class AiService {
   private readonly auth: GoogleAuth;
   private readonly projectId = 'storyowl-kwiktwik';
   private readonly region = 'us-east1';
-  private readonly model = 'gemini-1.5-flash-002';
+  private readonly model = 'gemini-2.5-flash-lite';
   private readonly apiUrl: string;
 
   constructor(private readonly configService: ConfigService) {
@@ -70,7 +70,7 @@ export class AiService {
     }
 
     this.logger.debug(`Generating AI suggestion for category: ${category}`);
-    
+
     try {
       const token = await this.getAccessToken();
       const response = await fetch(this.apiUrl, {
@@ -134,10 +134,10 @@ export class AiService {
     }
 
     this.logger.debug(`Analyzing image for category: ${category || 'general'}`);
-    
+
     // Clean base64 string if it has data URI prefix
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    
+
     try {
       const token = await this.getAccessToken();
       const response = await fetch(this.apiUrl, {
