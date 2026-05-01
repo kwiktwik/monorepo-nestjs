@@ -29,7 +29,7 @@ export class AiService {
   private readonly auth: GoogleAuth;
   private readonly projectId = 'storyowl-kwiktwik';
   private readonly region = 'us-east1';
-  private readonly model = 'gemini-1.5-flash';
+  private readonly model = 'gemini-1.5-flash-002';
   private readonly apiUrl: string;
 
   constructor(private readonly configService: ConfigService) {
