@@ -109,15 +109,17 @@ class GeminiVoiceStream implements VoiceStream {
       return;
     }
 
-    // Official docs: realtimeInput.audio with data + mimeType (raw 16-bit PCM, 16kHz, little-endian)
-    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
+    // Python reference uses realtimeInput.media_chunks array format
+    // { realtime_input: { media_chunks: [{ data, mime_type }] } }
     const base64Audio = chunk.toString('base64');
     const message = {
       realtimeInput: {
-        audio: {
-          data: base64Audio,
-          mimeType: 'audio/pcm;rate=16000',
-        },
+        mediaChunks: [
+          {
+            data: base64Audio,
+            mimeType: 'audio/pcm',
+          },
+        ],
       },
     };
 
@@ -200,7 +202,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
 
   constructor(
     private readonly apiKey: string,
-    private readonly model: string = 'gemini-3.1-flash-live-preview',
+    private readonly model: string = 'gemini-2.0-flash-exp',
   ) {}
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
@@ -230,9 +232,39 @@ export class GeminiVoiceProvider implements VoiceProvider {
       });
     });
 
-    // Send setup message with configuration
+    // Send setup message and wait for setup ack (mirrors Python: await ws.recv() after setup send)
     const setupMessage = this.buildSetupMessage(config);
     ws.send(JSON.stringify(setupMessage));
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Gemini Live API setup acknowledgement timeout'));
+      }, 5000);
+
+      const onSetupAck = (data: WebSocket.RawData) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          // First message back is the setup complete ack
+          if (msg.setupComplete !== undefined || msg.serverContent !== undefined || msg.error !== undefined) {
+            clearTimeout(timeout);
+            ws.off('message', onSetupAck);
+            if (msg.error) {
+              reject(new Error(`Gemini setup error: ${JSON.stringify(msg.error)}`));
+            } else {
+              this.logger.log('Gemini Live API setup acknowledged');
+              resolve();
+            }
+          }
+        } catch {
+          // non-JSON ack, treat as success
+          clearTimeout(timeout);
+          ws.off('message', onSetupAck);
+          resolve();
+        }
+      };
+
+      ws.on('message', onSetupAck);
+    });
 
     this.logger.log(`Gemini Live API stream created for user: ${config.userId}`);
     return new GeminiVoiceStream(ws, this.logger);
@@ -241,7 +273,7 @@ export class GeminiVoiceProvider implements VoiceProvider {
   async isAvailable(): Promise<boolean> {
     try {
       // Simple health check - try to connect and immediately close
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
       const ws = new WebSocket(wsUrl);
 
       return new Promise((resolve) => {
@@ -267,36 +299,15 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   private buildWebSocketUrl(config: VoiceSessionConfig): string {
-    // Gemini Live API WebSocket endpoint (v1beta per official docs)
-    // Reference: https://ai.google.dev/gemini-api/docs/live-api-web-sockets
-    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+    // Python working example uses v1alpha — v1beta does NOT support BidiGenerateContent
+    return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
-    // BidiGenerateContentClientMessage: first message must be BidiGenerateContentSetup.
-    // Structure: { setup: { config: { model, responseModalities, speechConfig, systemInstruction } } }
-    // The model config is nested under setup.config — NOT directly on setup.
-    // Reference: https://ai.google.dev/gemini-api/docs/live-api
+    // Python reference: { setup: { model: "models/..." } } — model is DIRECTLY on setup, not nested under config
     return {
       setup: {
-        config: {
-          model: `models/${this.model}`,
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: config.voiceName || 'Puck',
-              },
-            },
-          },
-          systemInstruction: {
-            parts: [
-              {
-                text: this.getSystemInstruction(config.language),
-              },
-            ],
-          },
-        },
+        model: `models/${this.model}`,
       },
     };
   }
