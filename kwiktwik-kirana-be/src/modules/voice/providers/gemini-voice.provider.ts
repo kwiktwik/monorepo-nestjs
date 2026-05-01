@@ -302,15 +302,18 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   private buildSetupMessage(config: VoiceSessionConfig): unknown {
-    // Python reference: { setup: { model: "models/..." } } — model is DIRECTLY on setup, not nested under config
+    // Gemini Live API v1beta setup message format
+    // responseModalities and speechConfig go inside generationConfig
     return {
       setup: {
         model: `models/${this.model}`,
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: config.voiceName || 'Puck',
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: config.voiceName || 'Puck',
+              },
             },
           },
         },
