@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+admin-ui/node_modules/
+
+# Build output
+dist/
+build/
+bundle/
+*.tsbuildinfo
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+secrets/
+firebase-service-account.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage/
+.nyc_output
+
+# IDEs and editors
+.idea/
+.vscode/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Misc
+.cache
+.turbo
+*.pid
+*.pid.lock
+*.seed
