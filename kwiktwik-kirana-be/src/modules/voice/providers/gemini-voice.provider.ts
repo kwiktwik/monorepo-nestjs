@@ -47,13 +47,14 @@ class GeminiVoiceStream implements VoiceStream {
 
     this.ws.on('error', (error) => {
       this.state = VoiceConnectionState.ERROR;
-      this.logger.error('Gemini Live API WebSocket error:', error);
+      this.logger.error('[LIVE VOICE API] Gemini Live API WebSocket error:', error.message || error);
       this.errorCallback?.(error);
     });
 
     this.ws.on('close', (code, reason) => {
       this.state = VoiceConnectionState.DISCONNECTED;
-      this.logger.log(`Gemini Live API WebSocket closed: ${code} - ${reason}`);
+      this.logger.log(`[LIVE VOICE API] Gemini Live API WebSocket closed: code=${code}, reason=${reason || 'N/A'}`);
+      this.logger.log(`[LIVE VOICE API] Session summary - audio sent: ${this.audioChunksSent}, audio received: ${this.audioChunksReceived}, text received: ${this.textChunksReceived}`);
       this.closeCallback?.();
     });
   }
