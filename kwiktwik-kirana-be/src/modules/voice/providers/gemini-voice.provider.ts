@@ -116,10 +116,17 @@ class GeminiVoiceStream implements VoiceStream {
     }
   }
 
+  private audioChunksSent = 0;
+
   sendAudio(chunk: Buffer): void {
     if (this.state !== VoiceConnectionState.CONNECTED) {
-      this.logger.warn('Cannot send audio: WebSocket not connected');
+      this.logger.warn(`[LIVE VOICE API] Cannot send audio: WebSocket state is ${this.state}`);
       return;
+    }
+
+    this.audioChunksSent++;
+    if (this.audioChunksSent <= 5 || this.audioChunksSent % 20 === 0) {
+      this.logger.log(`[LIVE VOICE API] Sending audio chunk #${this.audioChunksSent} (${chunk.length} bytes)`);
     }
 
     const base64Audio = chunk.toString('base64');
