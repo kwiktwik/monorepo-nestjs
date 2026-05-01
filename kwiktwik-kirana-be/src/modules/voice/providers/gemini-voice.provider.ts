@@ -204,7 +204,9 @@ export class GeminiVoiceProvider implements VoiceProvider {
 
   async createStream(config: VoiceSessionConfig): Promise<VoiceStream> {
     const wsUrl = this.buildWebSocketUrl();
-    this.logger.log(`Connecting to Gemini Live API: ${wsUrl.replace(this.apiKey, '***')}`);
+    this.logger.log(`[LIVE VOICE API] Starting stream creation for user: ${config.userId}, app: ${config.appId}`);
+    this.logger.log(`[LIVE VOICE API] Connecting to Gemini Live API: ${wsUrl.replace(this.apiKey, '***')}`);
+    this.logger.log(`[LIVE VOICE API] Config - model: ${this.model}, voice: ${config.voiceName || 'default'}, language: ${config.language}`);
 
     const ws = new WebSocket(wsUrl, {
       headers: {
@@ -213,20 +215,28 @@ export class GeminiVoiceProvider implements VoiceProvider {
     });
 
     // Wait for TCP/TLS connection
+    this.logger.log('[LIVE VOICE API] Waiting for WebSocket TCP/TLS connection...');
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.logger.error('[LIVE VOICE API] WebSocket connection timeout after 10000ms');
         ws.terminate();
         reject(new Error('Gemini Live API connection timeout'));
       }, 10000);
 
       ws.once('open', () => {
         clearTimeout(timeout);
+        this.logger.log('[LIVE VOICE API] WebSocket TCP/TLS connection established');
         resolve();
       });
 
       ws.once('error', (error) => {
         clearTimeout(timeout);
+        this.logger.error('[LIVE VOICE API] WebSocket connection error:', error.message);
         reject(error);
+      });
+
+      ws.once('close', (code, reason) => {
+        this.logger.warn(`[LIVE VOICE API] WebSocket closed during connection: code=${code}, reason=${reason}`);
       });
     });
 
@@ -266,28 +276,39 @@ export class GeminiVoiceProvider implements VoiceProvider {
   }
 
   async isAvailable(): Promise<boolean> {
+    this.logger.log('[LIVE VOICE API CHECK] Starting availability check for Gemini Live API...');
     try {
       const wsUrl = this.buildWebSocketUrl();
+      this.logger.log(`[LIVE VOICE API CHECK] Connecting to: ${wsUrl.replace(this.apiKey, '***')}`);
+
       const ws = new WebSocket(wsUrl);
 
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
+          this.logger.error('[LIVE VOICE API CHECK] Connection timeout after 5000ms');
           ws.terminate();
           resolve(false);
         }, 5000);
 
         ws.on('open', () => {
           clearTimeout(timeout);
+          this.logger.log('[LIVE VOICE API CHECK] Gemini Live API connection successful');
           ws.close();
           resolve(true);
         });
 
-        ws.on('error', () => {
+        ws.on('error', (error) => {
           clearTimeout(timeout);
+          this.logger.error('[LIVE VOICE API CHECK] Gemini Live API connection failed:', error.message);
           resolve(false);
         });
+
+        ws.on('close', (code, reason) => {
+          this.logger.warn(`[LIVE VOICE API CHECK] Connection closed: code=${code}, reason=${reason}`);
+        });
       });
-    } catch {
+    } catch (error) {
+      this.logger.error('[LIVE VOICE API CHECK] Exception during availability check:', error);
       return false;
     }
   }
