@@ -15,6 +15,13 @@ export interface AiSuggestResponse {
   };
 }
 
+export interface AiAnalyzeImageRequest {
+  image: string;
+  mimeType?: string;
+  prompt?: string;
+  category?: string;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -94,6 +101,83 @@ export class AiService {
       };
     } catch (error) {
       this.logger.error('Error generating AI suggestion:', error);
+      if (error instanceof HttpException) throw error;
+      throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async analyzeImage(data: AiAnalyzeImageRequest): Promise<AiSuggestResponse> {
+    if (!this.apiKey) {
+      throw new HttpException('AI service not configured', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    const { image, mimeType = 'image/jpeg', prompt = 'Analyze this image and provide a relevant suggestion or description.', category } = data;
+
+    let systemInstruction = prompt;
+    if (category === 'flirt') {
+      systemInstruction = `You are a smooth, charming, and witty dating assistant. 
+      Analyze the provided screenshot of a conversation or profile.
+      ${prompt !== 'Analyze this image and provide a relevant suggestion or description.' ? `Additional context: ${prompt}` : ''}
+      Generate a short, engaging, and flirtatious response, icebreaker, or conversation suggestion based on this image. 
+      Keep it natural, playful, and not too creepy. Just the suggestion text, no labels.`;
+    }
+
+    this.logger.debug(`Analyzing image for category: ${category || 'general'}`);
+    
+    // Clean base64 string if it has data URI prefix
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    
+    try {
+      const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: systemInstruction },
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                  }
+                }
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.8,
+            maxOutputTokens: 200,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        let errorDetails: string;
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData);
+        } catch (parseError) {
+          const errorText = await response.text();
+          errorDetails = errorText || `HTTP ${response.status} ${response.statusText}`;
+        }
+        this.logger.error(`Gemini API error (status: ${response.status}): ${errorDetails}`);
+        throw new HttpException(`AI service error: ${response.statusText || 'Unknown error'}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      const result = await response.json();
+      const suggestion = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+      const tokens = result.usageMetadata?.totalTokenCount || 0;
+
+      return {
+        success: true,
+        suggestion,
+        usage: { tokens },
+      };
+    } catch (error) {
+      this.logger.error('Error analyzing image:', error);
       if (error instanceof HttpException) throw error;
       throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
     }
