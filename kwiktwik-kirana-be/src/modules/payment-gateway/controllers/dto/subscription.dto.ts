@@ -232,9 +232,9 @@ export class PaymentGatewaySubscriptionStatusDto {
 export class SubscriptionListResponseDto {
   @ApiProperty({
     description: 'List of subscriptions',
-    type: [SubscriptionStatusDto],
+    type: [PaymentGatewaySubscriptionStatusDto],
   })
-  readonly subscriptions: SubscriptionStatusDto[];
+  readonly subscriptions: PaymentGatewaySubscriptionStatusDto[];
 
   @ApiProperty({
     description: 'Total count',
