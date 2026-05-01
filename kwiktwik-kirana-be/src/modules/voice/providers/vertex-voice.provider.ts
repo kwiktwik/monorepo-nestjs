@@ -25,6 +25,9 @@ class VertexVoiceStream implements VoiceStream {
   private audioChunksSent = 0;
   private audioChunksReceived = 0;
   private textChunksReceived = 0;
+  private audioBuffer: Buffer[] = [];
+  private maxBufferSize = 100; // Max 100 chunks to prevent memory issues
+  private bufferedChunksDropped = 0;
 
   constructor(ws: WebSocket, logger: Logger) {
     this.ws = ws;
@@ -36,6 +39,8 @@ class VertexVoiceStream implements VoiceStream {
     this.ws.on('open', () => {
       this.state = VoiceConnectionState.CONNECTED;
       this.logger.log('[LIVE VOICE API] Vertex AI WebSocket connected and ready');
+      // Flush any buffered audio chunks
+      this.flushAudioBuffer();
     });
 
     this.ws.on('message', (data: WebSocket.RawData) => {
@@ -54,7 +59,11 @@ class VertexVoiceStream implements VoiceStream {
 
     this.ws.on('close', (code, reason) => {
       this.state = VoiceConnectionState.DISCONNECTED;
+      const remainingBuffer = this.audioBuffer.length;
       this.logger.log(`[LIVE VOICE API] Vertex AI WebSocket closed: code=${code}, reason=${reason || 'N/A'}`);
+      if (remainingBuffer > 0) {
+        this.logger.warn(`[LIVE VOICE API] ${remainingBuffer} audio chunks were buffered but never sent before connection closed`);
+      }
       this.logger.log(`[LIVE VOICE API] Vertex session summary - audio sent: ${this.audioChunksSent}, audio received: ${this.audioChunksReceived}, text received: ${this.textChunksReceived}`);
       this.closeCallback?.();
     });
@@ -107,10 +116,25 @@ class VertexVoiceStream implements VoiceStream {
   }
 
   sendAudio(chunk: Buffer): void {
+    // Buffer audio if not connected yet
     if (this.state !== VoiceConnectionState.CONNECTED) {
-      this.logger.warn(`[LIVE VOICE API] Cannot send audio to Vertex: WebSocket state is ${this.state}`);
+      if (this.audioBuffer.length < this.maxBufferSize) {
+        this.audioBuffer.push(chunk);
+        if (this.audioBuffer.length === 1 || this.audioBuffer.length % 20 === 0) {
+          this.logger.log(`[LIVE VOICE API] Buffering audio chunk #${this.audioBuffer.length} while Vertex connection is ${this.state} (${chunk.length} bytes)`);
+        }
+      } else {
+        this.bufferedChunksDropped++;
+        if (this.bufferedChunksDropped === 1 || this.bufferedChunksDropped % 50 === 0) {
+          this.logger.warn(`[LIVE VOICE API] Audio buffer full, dropped ${this.bufferedChunksDropped} chunks. Vertex state: ${this.state}`);
+        }
+      }
       return;
     }
+    this.sendAudioChunk(chunk);
+  }
+
+  private sendAudioChunk(chunk: Buffer): void {
     this.audioChunksSent++;
     if (this.audioChunksSent <= 5 || this.audioChunksSent % 20 === 0) {
       this.logger.log(`[LIVE VOICE API] Sending audio to Vertex chunk #${this.audioChunksSent} (${chunk.length} bytes)`);
@@ -120,6 +144,19 @@ class VertexVoiceStream implements VoiceStream {
         mediaChunks: [{ data: chunk.toString('base64'), mimeType: 'audio/pcm;rate=16000' }],
       },
     }));
+  }
+
+  private flushAudioBuffer(): void {
+    if (this.audioBuffer.length === 0) return;
+
+    const chunksToSend = this.audioBuffer.length;
+    this.logger.log(`[LIVE VOICE API] Flushing ${chunksToSend} buffered audio chunks to Vertex AI (dropped: ${this.bufferedChunksDropped})`);
+
+    for (const chunk of this.audioBuffer) {
+      this.sendAudioChunk(chunk);
+    }
+    this.audioBuffer = [];
+    this.bufferedChunksDropped = 0;
   }
 
   sendText(text: string): void {
