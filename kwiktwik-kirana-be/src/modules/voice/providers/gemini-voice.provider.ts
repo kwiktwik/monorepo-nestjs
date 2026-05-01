@@ -76,13 +76,14 @@ class GeminiVoiceStream implements VoiceStream {
 
     // Handle errors
     if (msg.error) {
+      this.logger.error(`[LIVE VOICE API] Gemini API error: ${msg.error.code} - ${msg.error.message}`);
       this.errorCallback?.(new Error(`${msg.error.code}: ${msg.error.message}`));
       return;
     }
 
     // setupComplete is just an ack — nothing to do here
     if (msg.setupComplete) {
-      this.logger.log('Gemini setup confirmed via serverContent');
+      this.logger.log('[LIVE VOICE API] Gemini setup confirmed via serverContent');
       return;
     }
 
@@ -91,17 +92,27 @@ class GeminiVoiceStream implements VoiceStream {
       for (const part of msg.serverContent.modelTurn.parts) {
         if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
           const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
+          this.audioChunksReceived++;
+          if (this.audioChunksReceived <= 5 || this.audioChunksReceived % 10 === 0) {
+            this.logger.log(`[LIVE VOICE API] Audio chunk #${this.audioChunksReceived} received (${audioBuffer.length} bytes)`);
+          }
           this.audioOutputCallback?.(audioBuffer);
         }
 
         if (part.text && this.transcriptCallback) {
+          this.textChunksReceived++;
+          this.logger.log(`[LIVE VOICE API] Transcript chunk #${this.textChunksReceived}: ${part.text.slice(0, 100)}${part.text.length > 100 ? '...' : ''}`);
           this.transcriptCallback(part.text, msg.serverContent.turnComplete ?? false);
         }
       }
     }
 
+    if (msg.serverContent?.turnComplete) {
+      this.logger.log('[LIVE VOICE API] Turn complete - all chunks received');
+    }
+
     if (msg.serverContent?.interrupted) {
-      this.logger.log('Gemini generation interrupted');
+      this.logger.log('[LIVE VOICE API] Gemini generation interrupted');
     }
   }
 
