@@ -4,6 +4,7 @@ import * as schema from '../../database/schema';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 import type { AppConfigResponse, AppSettings, UnifiedPlanFromDb } from './types/app-config.types';
+import { plans } from '../payment-gateway/database/schema';
 
 @Injectable()
 export class AppConfigService {
@@ -154,9 +155,6 @@ export class AppConfigService {
    * Fetch plan from database
    */
   private async getPlanFromDb(planId: string) {
-    // Import plans from payment-gateway schema
-    const { plans } = await import('../payment-gateway/database/schema');
-    
     const result = await this.db
       .select()
       .from(plans)

@@ -1,6 +1,7 @@
 import { Controller, Post, Body, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AiService, AiSuggestRequest, AiSuggestResponse } from './ai.service';
+import { AiService } from './ai.service';
+import type { AiSuggestRequest, AiSuggestResponse } from './ai.service';
 
 @ApiTags('ai')
 @Controller('ai')

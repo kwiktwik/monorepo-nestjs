@@ -124,8 +124,8 @@ export interface AppConfigResponse {
     };
   };
   videos?: Record<string, {
-    fallback_video: string;
-    paywall_video: string;
+    fallback_video?: string;
+    paywall_video?: string;
   }>;
   api: {
     timeout: number;
