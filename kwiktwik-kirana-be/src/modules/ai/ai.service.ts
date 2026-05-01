@@ -82,6 +82,7 @@ export class AiService {
         body: JSON.stringify({
           contents: [
             {
+              role: "user",   // ✅ REQUIRED
               parts: [{ text: prompt }],
             },
           ],
