@@ -171,18 +171,36 @@ export class VertexVoiceProvider implements VoiceProvider {
     });
 
     // 1. Wait for TCP/TLS open
+    this.logger.log('[LIVE VOICE API] Waiting for Vertex AI WebSocket connection...');
     await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(() => { ws.terminate(); reject(new Error('Vertex AI connection timeout')); }, 10000);
-      ws.once('open', () => { clearTimeout(t); resolve(); });
-      ws.once('error', (e) => { clearTimeout(t); reject(e); });
+      const t = setTimeout(() => {
+        this.logger.error('[LIVE VOICE API] Vertex AI connection timeout after 10000ms');
+        ws.terminate();
+        reject(new Error('Vertex AI connection timeout'));
+      }, 10000);
+      ws.once('open', () => {
+        clearTimeout(t);
+        this.logger.log('[LIVE VOICE API] Vertex AI WebSocket connected');
+        resolve();
+      });
+      ws.once('error', (e) => {
+        clearTimeout(t);
+        this.logger.error('[LIVE VOICE API] Vertex AI WebSocket connection error:', e.message || e);
+        reject(e);
+      });
     });
 
     // 2. Send setup
-    ws.send(JSON.stringify(this.buildSetupMessage(config)));
+    this.logger.log('[LIVE VOICE API] Sending Vertex AI setup message...');
+    const setupMsg = this.buildSetupMessage(config);
+    this.logger.log(`[LIVE VOICE API] Vertex setup payload: ${JSON.stringify(setupMsg).slice(0, 300)}...`);
+    ws.send(JSON.stringify(setupMsg));
 
     // 3. Wait for first message (setupComplete ack) — mirrors Python's await ws.recv()
+    this.logger.log('[LIVE VOICE API] Waiting for Vertex AI setup acknowledgement...');
     await new Promise<void>((resolve, reject) => {
       const t = setTimeout(() => {
+        this.logger.error('[LIVE VOICE API] Vertex AI setup acknowledgement timeout after 10000ms');
         ws.off('message', onMsg);
         ws.off('close', onClose);
         ws.terminate();
@@ -193,13 +211,20 @@ export class VertexVoiceProvider implements VoiceProvider {
         clearTimeout(t);
         ws.off('message', onMsg);
         ws.off('close', onClose);
-        this.logger.log(`Vertex AI setup ack: ${data.toString().slice(0, 200)}`);
+        const ackData = data.toString();
+        this.logger.log(`[LIVE VOICE API] Vertex AI setup acknowledgement: ${ackData.slice(0, 200)}`);
+        if (ackData.includes('setupComplete') || ackData.includes('error')) {
+          this.logger.log('[LIVE VOICE API] Vertex AI setup handshake completed');
+        } else {
+          this.logger.warn(`[LIVE VOICE API] Vertex AI unexpected setup response: ${ackData.slice(0, 200)}`);
+        }
         resolve();
       };
 
       const onClose = (code: number, reason: Buffer) => {
         clearTimeout(t);
         ws.off('message', onMsg);
+        this.logger.error(`[LIVE VOICE API] Vertex AI WS closed during setup: code=${code}, reason=${reason}`);
         reject(new Error(`Vertex AI WS closed during setup: ${code} ${reason}`));
       };
 
@@ -207,15 +232,24 @@ export class VertexVoiceProvider implements VoiceProvider {
       ws.once('close', onClose);
     });
 
-    this.logger.log(`Vertex AI stream created for user: ${config.userId}`);
+    this.logger.log(`[LIVE VOICE API] Vertex AI stream created successfully for user: ${config.userId}`);
     return new VertexVoiceStream(ws, this.logger);
   }
 
   async isAvailable(): Promise<boolean> {
+    this.logger.log('[LIVE VOICE API CHECK] Starting availability check for Vertex AI...');
     try {
-      await this.getAccessToken();
-      return true;
-    } catch {
+      this.logger.log('[LIVE VOICE API CHECK] Requesting access token...');
+      const token = await this.getAccessToken();
+      if (token) {
+        this.logger.log('[LIVE VOICE API CHECK] Vertex AI access token obtained successfully');
+        return true;
+      } else {
+        this.logger.error('[LIVE VOICE API CHECK] Vertex AI access token is empty');
+        return false;
+      }
+    } catch (error) {
+      this.logger.error('[LIVE VOICE API CHECK] Vertex AI availability check failed:', error);
       return false;
     }
   }
