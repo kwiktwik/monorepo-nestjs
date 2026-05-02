@@ -115,7 +115,7 @@ export class MockRazorpayService {
       vpa?: string;
       notes: {
         email: string;
-        contact: string;
+        contact?: string;
         name?: string;
         description?: string;
         image?: string;
@@ -164,7 +164,7 @@ export class MockRazorpayService {
         prefill: {
           name: notes.name,
           email: notes.email,
-          contact: notes.contact,
+          contact: notes.contact || '9999999999',
         },
         notes,
         theme: { color: '#F37254' },

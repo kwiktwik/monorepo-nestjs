@@ -103,9 +103,9 @@ describe('RazorpayController', () => {
       expect(response.body.subscription).toBeDefined();
     });
 
-    it('should handle missing email and contact', async () => {
+    it('should handle missing email', async () => {
       (razorpayService.createSubscriptionV2 as jest.Mock).mockRejectedValue(
-        new BadRequestException('email and contact are required'),
+        new BadRequestException('email is required in notes'),
       );
 
       const res = await request(app.getHttpServer())

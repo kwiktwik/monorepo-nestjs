@@ -141,7 +141,7 @@ export class RazorpayService {
       vpa?: string;
       notes: {
         email: string;
-        contact: string;
+        contact?: string;
         name?: string;
         description?: string;
         image?: string;
@@ -152,15 +152,15 @@ export class RazorpayService {
     const { quantity = 1, flow = 'intent', vpa, notes: rawNotes } = dto;
     const notes = { ...rawNotes, db: 'kirana-kwiktwik-be' };
     const email = notes.email;
-    const contact = notes.contact;
+    const contact = notes.contact || '9999999999';
 
     const plan_id = dto.plan_id || this.getDefaultPlanId(appId);
 
-    if (!email || !contact) {
+    if (!email) {
       this.logger.warn(
-        `[createSubscriptionV2] ❌ Missing email or contact | email=${email} contact=${contact}`,
+        `[createSubscriptionV2] ❌ Missing email | email=${email}`,
       );
-      throw new BadRequestException('email and contact are required in notes');
+      throw new BadRequestException('email is required in notes');
     }
 
     if (flow === 'collect' && !vpa) {

@@ -13,9 +13,10 @@ class NotesDto {
   @IsString()
   email: string;
 
-  @ApiProperty({ example: '+919876543210' })
+  @ApiPropertyOptional({ example: '+919876543210' })
+  @IsOptional()
   @IsString()
-  contact: string;
+  contact?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
