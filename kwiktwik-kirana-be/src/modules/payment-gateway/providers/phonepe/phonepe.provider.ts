@@ -46,6 +46,9 @@ import {
   PhonePeSubscriptionType,
   PhonePePaymentFlowType,
   type PhonePeCheckoutMode,
+  type PhonePeCreatePaymentRequest,
+  type PhonePeCreatePaymentResponse,
+  type PhonePeCheckoutOrderStatusResponse,
   mapPhonePeSubscriptionState,
   toPhonePeFrequency,
 } from '../../types/phonepe.types';
@@ -81,6 +84,10 @@ interface PhonePeClient {
   
   // Refund APIs
   refund(params: RefundParams): Promise<RefundResponse>;
+
+  // One-time payment APIs (PG Checkout)
+  createPayment(request: PhonePeCreatePaymentRequest): Promise<PhonePeCreatePaymentResponse>;
+  getCheckoutOrderStatus(merchantOrderId: string): Promise<PhonePeCheckoutOrderStatusResponse>;
 }
 
 /**
@@ -289,6 +296,22 @@ function createPhonePeClient(config: PhonePeProviderConfig): PhonePeClient {
             amount: params.amount,
           }),
         },
+      );
+    },
+
+    createPayment: async (request: PhonePeCreatePaymentRequest) => {
+      return fetchWithAuth<PhonePeCreatePaymentResponse>(
+        `${endpoints.BASE}/checkout/v2/pay`,
+        {
+          method: 'POST',
+          body: JSON.stringify(request),
+        },
+      );
+    },
+
+    getCheckoutOrderStatus: async (merchantOrderId: string) => {
+      return fetchWithAuth<PhonePeCheckoutOrderStatusResponse>(
+        `${endpoints.BASE}/checkout/v2/order/${merchantOrderId}/status`,
       );
     },
   };
@@ -1112,6 +1135,191 @@ export class PhonePeUserManagedProvider extends BasePhonePeProvider {
       ...baseEvent,
       subscriptionType: 'USER_MANAGED',
     };
+  }
+}
+
+// ============================================================================
+// One-Time Order Provider
+// ============================================================================
+
+import type {
+  OneTimeOrderProvider,
+  CreateOneTimeOrderParams,
+  CreateOneTimeOrderResult,
+  VerifyPaymentParams,
+  VerifyPaymentResult,
+} from '../interfaces/order-provider.interface';
+import type {
+  RefundPaymentParams,
+  RefundPaymentResult,
+} from '../interfaces/subscription-provider.interface';
+
+/**
+ * PhonePe One-Time Order Provider
+ *
+ * Uses PhonePe PG Checkout flow for standalone one-time payments.
+ */
+export class PhonePeOneTimeOrderProvider implements OneTimeOrderProvider {
+  readonly provider: PaymentProvider = 'PHONEPE';
+  private config: PhonePeProviderConfig | null = null;
+  private client: PhonePeClient | null = null;
+
+  initialize(config: PhonePeProviderConfig): void {
+    this.config = config as PhonePeProviderConfig;
+    this.client = createPhonePeClient(this.config);
+  }
+
+  getPublicConfig(): Record<string, unknown> {
+    if (!this.config) throw new Error('Provider not initialized');
+    return { merchantId: this.config.merchantId, provider: 'PHONEPE' };
+  }
+
+  private ensureInitialized(): void {
+    if (!this.config || !this.client) {
+      throw createProviderError('Provider not initialized', 'NOT_INITIALIZED', 'PHONEPE');
+    }
+  }
+
+  async createOrder(params: CreateOneTimeOrderParams): Promise<CreateOneTimeOrderResult> {
+    this.ensureInitialized();
+
+    try {
+      const request: PhonePeCreatePaymentRequest = {
+        merchantOrderId: params.merchantOrderId,
+        amount: params.amount,
+        paymentFlow: {
+          type: PhonePePaymentFlowType.PG_CHECKOUT,
+          merchantUrls: {
+            redirectUrl: params.redirectUrl ?? '',
+          },
+        },
+        metaInfo: params.notes
+          ? { udf1: params.notes.udf1, udf2: params.notes.udf2 }
+          : undefined,
+      };
+
+      const response = await this.client!.createPayment(request);
+
+      return {
+        success: true,
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: response.orderId,
+        redirectUrl: response.redirectUrl,
+        checkoutConfig: {
+          merchantId: this.config!.merchantId,
+          orderId: response.orderId,
+          redirectUrl: response.redirectUrl,
+        },
+        state: response.state,
+        expiresAt: unixToDate(response.expireAt),
+        error: null,
+        errorCode: null,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create payment';
+      return {
+        success: false,
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: '',
+        redirectUrl: null,
+        checkoutConfig: {},
+        state: 'failed',
+        expiresAt: null,
+        error: message,
+        errorCode: 'CREATE_FAILED',
+      };
+    }
+  }
+
+  async getOrderStatus(params: GetOrderStatusParams): Promise<OrderStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const response = await this.client!.getCheckoutOrderStatus(params.merchantOrderId);
+      const stateMap: Record<string, string> = {
+        PENDING: 'PENDING',
+        COMPLETED: 'CAPTURED',
+        FAILED: 'FAILED',
+      };
+
+      const paymentDetails = (response.paymentDetails ?? []).map((pd) => ({
+        transactionId: pd.transactionId,
+        paymentMode: pd.paymentMode,
+        timestamp: unixToDate(pd.timestamp),
+        amount: pd.amount,
+        state: pd.state,
+      }));
+
+      return {
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: response.orderId,
+        providerState: response.state,
+        mappedStatus: stateMap[response.state] ?? response.state,
+        amount: response.amount,
+        currency: 'INR',
+        expiresAt: response.expireAt ? unixToDate(response.expireAt) : null,
+        paymentDetails,
+        providerData: { response },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to get order status',
+        'ORDER_STATUS_FAILED',
+        'PHONEPE',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async verifyPayment(params: VerifyPaymentParams): Promise<VerifyPaymentResult> {
+    this.ensureInitialized();
+
+    try {
+      const status = await this.client!.getCheckoutOrderStatus(params.merchantOrderId);
+      const verified = status.state === 'COMPLETED';
+
+      return {
+        verified,
+        orderId: status.orderId,
+        paymentId: status.paymentDetails?.[0]?.transactionId ?? params.providerPaymentId,
+        error: verified ? null : `Order state is ${status.state}`,
+      };
+    } catch (error) {
+      return {
+        verified: false,
+        orderId: params.providerOrderId ?? '',
+        paymentId: params.providerPaymentId,
+        error: error instanceof Error ? error.message : 'Verification failed',
+      };
+    }
+  }
+
+  async refundPayment(params: RefundPaymentParams): Promise<RefundPaymentResult> {
+    this.ensureInitialized();
+
+    try {
+      const result = await this.client!.refund({
+        merchantRefundId: params.merchantRefundId,
+        originalMerchantOrderId: params.providerPaymentId,
+        amount: params.amount ?? 0,
+      });
+
+      return {
+        success: true,
+        refundId: result.refundId,
+        amount: params.amount ?? 0,
+        status: result.state,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        refundId: '',
+        amount: params.amount ?? 0,
+        status: 'FAILED',
+        error: error instanceof Error ? error.message : 'Refund failed',
+      };
+    }
   }
 }
 

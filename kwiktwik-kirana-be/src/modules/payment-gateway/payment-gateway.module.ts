@@ -25,6 +25,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 // Services
 import { SubscriptionStateMachineService } from './services/subscription-state-machine.service';
 import { SubscriptionManagerService } from './services/subscription-manager.service';
+import { OrderManagerService } from './services/order-manager.service';
 import { WebhookHandlerService } from './services/webhook-handler.service';
 import { PaymentConfigService } from './config/payment-config.service';
 
@@ -57,6 +58,7 @@ import { ProviderFactory } from './providers/factory/provider.factory';
 // Controllers
 import { WebhookController } from './controllers/webhook.controller';
 import { SubscriptionApiController } from './controllers/subscription-api.controller';
+import { OrderApiController } from './controllers/order-api.controller';
 
 // Repositories
 import { InMemorySubscriptionRepository } from './infrastructure/repositories/in-memory-subscription.repository';
@@ -131,7 +133,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
         ]
       : []),
   ],
-  controllers: [WebhookController, SubscriptionApiController],
+  controllers: [WebhookController, SubscriptionApiController, OrderApiController],
   providers: [
     // Configuration
     PaymentConfigService,
@@ -175,6 +177,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     // Core Services
     SubscriptionStateMachineService,
     SubscriptionManagerService,
+    OrderManagerService,
     WebhookHandlerService,
 
     // Webhook Processing
@@ -235,6 +238,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     // Core Services
     SubscriptionStateMachineService,
     SubscriptionManagerService,
+    OrderManagerService,
     WebhookHandlerService,
 
     // Webhook Processing

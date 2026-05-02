@@ -89,6 +89,8 @@ export const PhonePePaymentFlowType = {
   SUBSCRIPTION_CHECKOUT_REDEMPTION: 'SUBSCRIPTION_CHECKOUT_REDEMPTION',
   /** API Integration redemption flow */
   SUBSCRIPTION_REDEMPTION: 'SUBSCRIPTION_REDEMPTION',
+  /** PG Checkout flow for one-time payments */
+  PG_CHECKOUT: 'PG_CHECKOUT',
 } as const;
 
 export type PhonePePaymentFlowType = typeof PhonePePaymentFlowType[keyof typeof PhonePePaymentFlowType];
@@ -376,6 +378,65 @@ export interface PhonePeMetaInfo {
   readonly udf13?: string;
   readonly udf14?: string;
   readonly udf15?: string;
+}
+
+// ============================================================================
+// One-Time Payment Types (PG Checkout)
+// ============================================================================
+
+/**
+ * PhonePe create payment request (PG Checkout)
+ */
+export interface PhonePeCreatePaymentRequest {
+  readonly merchantOrderId: string;
+  readonly amount: number;
+  readonly expireAfter?: number;
+  readonly paymentFlow: {
+    readonly type: typeof PhonePePaymentFlowType.PG_CHECKOUT;
+    readonly message?: string;
+    readonly merchantUrls: {
+      readonly redirectUrl: string;
+    };
+  };
+  readonly metaInfo?: PhonePeMetaInfo;
+}
+
+/**
+ * PhonePe create payment response (PG Checkout)
+ */
+export interface PhonePeCreatePaymentResponse {
+  readonly orderId: string;
+  readonly state: 'PENDING';
+  readonly expireAt: number;
+  readonly redirectUrl: string;
+}
+
+/**
+ * PhonePe checkout order status response
+ */
+export interface PhonePeCheckoutOrderStatusResponse {
+  readonly orderId: string;
+  readonly merchantOrderId: string;
+  readonly state: PhonePeOrderState;
+  readonly amount: number;
+  readonly expireAt?: number;
+  readonly errorCode?: string;
+  readonly detailedErrorCode?: string;
+  readonly paymentDetails?: readonly PhonePeCheckoutPaymentDetail[];
+  readonly metaInfo?: PhonePeMetaInfo;
+}
+
+/**
+ * PhonePe checkout payment detail (simpler than subscription payment detail)
+ */
+export interface PhonePeCheckoutPaymentDetail {
+  readonly paymentMode: string;
+  readonly transactionId: string;
+  readonly timestamp: number;
+  readonly amount: number;
+  readonly state: 'COMPLETED' | 'FAILED' | 'PENDING';
+  readonly errorCode?: string;
+  readonly detailedErrorCode?: string;
 }
 
 // ============================================================================

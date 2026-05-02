@@ -832,6 +832,169 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
 }
 
 // ============================================================================
+// One-Time Order Provider
+// ============================================================================
+
+import type {
+  OneTimeOrderProvider,
+  CreateOneTimeOrderParams,
+  CreateOneTimeOrderResult,
+  VerifyPaymentParams,
+  VerifyPaymentResult,
+} from '../interfaces/order-provider.interface';
+import type { RefundPaymentParams, RefundPaymentResult } from '../interfaces/subscription-provider.interface';
+
+/**
+ * Razorpay One-Time Order Provider
+ *
+ * Uses Razorpay Orders API for standalone one-time payments.
+ */
+export class RazorpayOneTimeOrderProvider implements OneTimeOrderProvider {
+  readonly provider: PaymentProvider = 'RAZORPAY';
+  private config: RazorpayProviderConfig | null = null;
+  private client: RazorpayClient | null = null;
+
+  initialize(config: RazorpayProviderConfig): void {
+    this.config = config;
+    this.client = createRazorpayClient(config);
+  }
+
+  getPublicConfig(): Record<string, unknown> {
+    if (!this.config) throw new Error('Provider not initialized');
+    return { keyId: this.config.keyId, provider: 'RAZORPAY' };
+  }
+
+  private ensureInitialized(): void {
+    if (!this.config || !this.client) {
+      throw createProviderError('Provider not initialized', 'NOT_INITIALIZED', 'RAZORPAY');
+    }
+  }
+
+  async createOrder(params: CreateOneTimeOrderParams): Promise<CreateOneTimeOrderResult> {
+    this.ensureInitialized();
+
+    try {
+      const order = await this.client!.orders.create({
+        amount: params.amount,
+        currency: params.currency,
+        receipt: params.receipt ?? params.merchantOrderId,
+        notes: params.notes,
+        payment_capture: true,
+      });
+
+      return {
+        success: true,
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: order.id,
+        redirectUrl: null,
+        checkoutConfig: {
+          keyId: this.config!.keyId,
+          orderId: order.id,
+          amount: order.amount,
+          currency: order.currency,
+        },
+        state: order.status,
+        expiresAt: null,
+        error: null,
+        errorCode: null,
+      };
+    } catch (error) {
+      const err = error as { error?: { description?: string; code?: string } };
+      return {
+        success: false,
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: '',
+        redirectUrl: null,
+        checkoutConfig: {},
+        state: 'failed',
+        expiresAt: null,
+        error: err.error?.description ?? 'Failed to create order',
+        errorCode: err.error?.code ?? 'CREATE_FAILED',
+      };
+    }
+  }
+
+  async getOrderStatus(params: GetOrderStatusParams): Promise<OrderStatusResult> {
+    this.ensureInitialized();
+
+    try {
+      const order = await this.client!.orders.fetch(params.providerOrderId);
+      const payments = await this.client!.orders.fetchPayments(params.providerOrderId);
+      const mappedStatus = mapRazorpayOrderStatus(order.status);
+
+      const paymentDetails = payments.map((p: RazorpayPaymentEntity) => ({
+        transactionId: p.id,
+        paymentMode: p.method,
+        timestamp: unixToDate(p.created_at),
+        amount: p.amount,
+        state: p.status,
+      }));
+
+      return {
+        merchantOrderId: params.merchantOrderId,
+        providerOrderId: order.id,
+        providerState: order.status,
+        mappedStatus,
+        amount: order.amount,
+        currency: order.currency,
+        expiresAt: null,
+        paymentDetails,
+        providerData: { order, payments },
+      };
+    } catch (error) {
+      throw createProviderError(
+        'Failed to get order status',
+        'ORDER_STATUS_FAILED',
+        'RAZORPAY',
+        error instanceof Error ? error : null,
+      );
+    }
+  }
+
+  async verifyPayment(params: VerifyPaymentParams): Promise<VerifyPaymentResult> {
+    this.ensureInitialized();
+
+    const payload = `${params.providerOrderId ?? ''}|${params.providerPaymentId}`;
+    const verified = verifyHmacSha256(payload, params.signature, this.config!.keySecret);
+
+    return {
+      verified,
+      orderId: params.providerOrderId ?? '',
+      paymentId: params.providerPaymentId,
+      error: verified ? null : 'Invalid payment signature',
+    };
+  }
+
+  async refundPayment(params: RefundPaymentParams): Promise<RefundPaymentResult> {
+    this.ensureInitialized();
+
+    try {
+      const refund = await this.client!.payments.refund(params.providerPaymentId, {
+        amount: params.amount ?? undefined,
+        notes: params.reason ? { reason: params.reason } : undefined,
+      });
+
+      return {
+        success: true,
+        refundId: refund.id,
+        amount: params.amount ?? 0,
+        status: 'PENDING',
+        error: null,
+      };
+    } catch (error) {
+      const err = error as { error?: { description?: string } };
+      return {
+        success: false,
+        refundId: '',
+        amount: params.amount ?? 0,
+        status: 'FAILED',
+        error: err.error?.description ?? 'Refund failed',
+      };
+    }
+  }
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 

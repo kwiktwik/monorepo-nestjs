@@ -29,8 +29,9 @@ import type {
   ParseWebhookParams,
   WebhookEvent,
 } from '../interfaces/subscription-provider.interface';
-import { RazorpayProviderManagedProvider, RazorpayUserManagedProvider } from '../razorpay/razorpay.provider';
-import { PhonePeProviderManagedProvider, PhonePeUserManagedProvider } from '../phonepe/phonepe.provider';
+import { RazorpayProviderManagedProvider, RazorpayUserManagedProvider, RazorpayOneTimeOrderProvider } from '../razorpay/razorpay.provider';
+import { PhonePeProviderManagedProvider, PhonePeUserManagedProvider, PhonePeOneTimeOrderProvider } from '../phonepe/phonepe.provider';
+import type { OneTimeOrderProvider } from '../interfaces/order-provider.interface';
 import {
   CircuitBreakerService,
   CircuitOpenError,
@@ -192,6 +193,7 @@ export function hasProvider(
 export class ProviderFactory {
   private readonly logger = new Logger(ProviderFactory.name);
   private readonly providers: ProviderRegistry = new Map();
+  private readonly orderProviders: Map<string, OneTimeOrderProvider> = new Map();
   private readonly fallbackFactory: FallbackStrategyFactory;
 
   constructor(
@@ -270,6 +272,37 @@ export class ProviderFactory {
   ): boolean {
     const key = createProviderKey(provider, subscriptionType, configId);
     return this.providers.has(key);
+  }
+
+  /**
+   * Get or create a one-time order provider
+   */
+  getOneTimeOrderProvider(
+    provider: PaymentProvider,
+    config: AnyProviderConfig,
+  ): OneTimeOrderProvider {
+    const key = `${provider}_ONE_TIME_${config.configId}`;
+
+    let instance = this.orderProviders.get(key);
+    if (!instance) {
+      instance = this.createOneTimeOrderProvider(provider);
+      instance.initialize(config);
+      this.orderProviders.set(key, instance);
+      this.logger.debug(`Created one-time order provider: ${provider}`);
+    }
+
+    return instance;
+  }
+
+  private createOneTimeOrderProvider(provider: PaymentProvider): OneTimeOrderProvider {
+    switch (provider) {
+      case 'RAZORPAY':
+        return new RazorpayOneTimeOrderProvider();
+      case 'PHONEPE':
+        return new PhonePeOneTimeOrderProvider();
+      default:
+        throw new Error(`Unsupported provider for one-time orders: ${provider}`);
+    }
   }
 
   /**
