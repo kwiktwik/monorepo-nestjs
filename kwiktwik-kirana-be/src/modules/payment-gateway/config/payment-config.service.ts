@@ -3,26 +3,24 @@
  * 
  * Manages payment provider configurations for multiple apps and accounts.
  * 
- * Configuration is loaded from the database (provider_configs table).
- * Secrets (API keys, webhook secrets) are still read from environment variables
- * using the naming convention:
- * - RAZORPAY_{NORMALIZED_APP_ID}_{ACCOUNT_ID}_KEY_SECRET
- * - PHONEPE_{NORMALIZED_APP_ID}_{ACCOUNT_ID}_CLIENT_SECRET
+ * Configuration is loaded from environment variables by scanning for patterns:
+ * - RAZORPAY_{APP_ID}_{ACCOUNT_ID}_KEY_ID / _KEY_SECRET / _WEBHOOK_SECRET
+ * - PHONEPE_{APP_ID}_{ACCOUNT_ID}_CLIENT_ID / _CLIENT_SECRET / ...
  * 
- * Falls back to env-only scanning when the database is unavailable.
+ * APP_ID uses dots-to-underscores uppercase (e.g. com.kwiktwik.datingai -> COM_KWIKTWIK_DATINGAI).
+ * ACCOUNT_ID of DEFAULT, MAIN, or PRIMARY marks the config as the default for that app.
  */
 
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and } from 'drizzle-orm';
 import type { 
-  ProviderConfig, 
   RazorpayProviderConfig, 
   PhonePeProviderConfig,
   AnyProviderConfig,
 } from '../providers/interfaces/subscription-provider.interface';
 import { PaymentProvider } from '../types/provider.enum';
-import { plans, providerConfigs } from '../database/schema';
+import { plans } from '../database/schema';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 
 // ============================================================================
@@ -97,20 +95,8 @@ export class PaymentConfigService {
       return;
     }
 
-    if (this.db) {
-      try {
-        await this.loadConfigsFromDatabase();
-      } catch (error) {
-        this.logger.warn(
-          `Failed to load configs from database: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Always scan env vars as supplements (won't overwrite DB-loaded configs)
     this.loadRazorpayConfigs();
     this.loadPhonePeConfigs();
-
     this.loadAppConfigs();
     this.initialized = true;
 
@@ -344,105 +330,6 @@ export class PaymentConfigService {
     return segment.toLowerCase().replace(/_/g, '.');
   }
 
-  /**
-   * Load provider configurations from the database.
-   * Non-secret fields come from the DB row; secrets come from env vars.
-   */
-  private async loadConfigsFromDatabase(): Promise<void> {
-    const rows = await this.db!
-      .select()
-      .from(providerConfigs)
-      .where(eq(providerConfigs.status, 'ACTIVE'));
-
-    this.logger.log(`Found ${rows.length} provider config(s) in database`);
-
-    for (const row of rows) {
-      const creds = (row.credentials ?? {}) as Record<string, unknown>;
-      const accountId = (creds.accountId as string) ?? 'DEFAULT';
-      const envPrefix = `${row.provider}_${this.normalizeAppIdForEnv(row.appId)}_${accountId.toUpperCase()}`;
-
-      if (row.provider === 'RAZORPAY') {
-        this.loadRazorpayFromDbRow(row, creds, envPrefix);
-      } else if (row.provider === 'PHONEPE') {
-        this.loadPhonePeFromDbRow(row, creds, envPrefix);
-      }
-    }
-  }
-
-  private loadRazorpayFromDbRow(
-    row: typeof providerConfigs.$inferSelect,
-    creds: Record<string, unknown>,
-    envPrefix: string,
-  ): void {
-    const keyId = (creds.keyId as string | undefined) ?? process.env[`${envPrefix}_KEY_ID`];
-    const keySecret = process.env[`${envPrefix}_KEY_SECRET`];
-    const webhookSecret =
-      process.env[`${envPrefix}_WEBHOOK_SECRET`] ?? row.webhookSecret ?? null;
-
-    if (!keyId || !keySecret) {
-      this.logger.warn(
-        `Skipping Razorpay config ${row.id}: missing keyId in DB credentials or ${envPrefix}_KEY_SECRET env var`,
-      );
-      return;
-    }
-
-    const config: RazorpayProviderConfig = {
-      configId: row.id,
-      provider: PaymentProvider.RAZORPAY,
-      appId: row.appId,
-      environment: row.environment === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX',
-      enabled: row.isEnabled,
-      isDefault: row.isDefault,
-      webhookSecret,
-      keyId,
-      keySecret,
-      accountId: (creds.accountId as string) ?? null,
-    };
-
-    this.razorpayConfigs.set(row.id, config);
-    this.logger.debug(`Loaded Razorpay config from DB: ${row.id} (app: ${row.appId})`);
-  }
-
-  private loadPhonePeFromDbRow(
-    row: typeof providerConfigs.$inferSelect,
-    creds: Record<string, unknown>,
-    envPrefix: string,
-  ): void {
-    const clientId = creds.clientId as string | undefined;
-    const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
-    const webhookSecret =
-      process.env[`${envPrefix}_WEBHOOK_SECRET`] ?? row.webhookSecret ?? null;
-    const saltKey = process.env[`${envPrefix}_SALT_KEY`] ?? (creds.saltKey as string) ?? null;
-
-    if (!clientId || !clientSecret) {
-      this.logger.warn(
-        `Skipping PhonePe config ${row.id}: missing clientId in DB credentials or ${envPrefix}_CLIENT_SECRET env var`,
-      );
-      return;
-    }
-
-    const checkoutMode = creds.checkoutMode as string | undefined;
-    const config: PhonePeProviderConfig = {
-      configId: row.id,
-      provider: PaymentProvider.PHONEPE,
-      appId: row.appId,
-      environment: row.environment === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX',
-      enabled: row.isEnabled,
-      isDefault: row.isDefault,
-      webhookSecret,
-      clientId,
-      clientSecret,
-      clientVersion: (creds.clientVersion as number) ?? 1,
-      merchantId: (creds.merchantId as string) ?? '',
-      saltKey,
-      saltIndex: (creds.saltIndex as string) ?? null,
-      checkoutMode: checkoutMode === 'STANDARD_CHECKOUT' ? 'STANDARD_CHECKOUT' : 'API_INTEGRATION',
-    };
-
-    this.phonepeConfigs.set(row.id, config);
-    this.logger.debug(`Loaded PhonePe config from DB: ${row.id} (app: ${row.appId})`);
-  }
-
   private loadRazorpayConfigs(): void {
     const env = process.env;
     const pattern = /^RAZORPAY_(.+)_(.+)_KEY_ID$/;
@@ -463,12 +350,6 @@ export class PaymentConfigService {
       }
 
       const configId = `razorpay_${appId}_${accountId}`;
-
-      // Skip if already loaded from DB
-      if (this.razorpayConfigs.has(configId)) {
-        continue;
-      }
-
       const config: RazorpayProviderConfig = {
         configId,
         provider: PaymentProvider.RAZORPAY,
@@ -512,12 +393,6 @@ export class PaymentConfigService {
       }
 
       const configId = `phonepe_${appId}_${accountId}`;
-
-      // Skip if already loaded from DB
-      if (this.phonepeConfigs.has(configId)) {
-        continue;
-      }
-
       const config: PhonePeProviderConfig = {
         configId,
         provider: PaymentProvider.PHONEPE,
