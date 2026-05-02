@@ -407,20 +407,26 @@ describe('PaymentConfigService', () => {
     });
 
     it('should return plan from database when available', async () => {
+      const planResult = [{
+        id: 'premium_monthly',
+        appId: 'com.paymentalert.app',
+        name: 'Premium Monthly',
+        initialAmount: 4900,
+        recurringAmount: 4900,
+        currency: 'INR',
+        frequency: 'MONTHLY',
+        isActive: true,
+      }];
+      // where() must be thenable for the init call (resolves to [])
+      // and must have .limit() for the plan query
+      const whereResult = {
+        then: (resolve: (v: unknown[]) => void) => Promise.resolve(resolve([])),
+        limit: jest.fn().mockResolvedValue(planResult),
+      };
       const mockDb = {
         select: jest.fn().mockReturnThis(),
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([{
-          id: 'premium_monthly',
-          appId: 'com.paymentalert.app',
-          name: 'Premium Monthly',
-          initialAmount: 4900,
-          recurringAmount: 4900,
-          currency: 'INR',
-          frequency: 'MONTHLY',
-          isActive: true,
-        }]),
+        where: jest.fn().mockReturnValue(whereResult),
       } as any;
 
       const service = new PaymentConfigService(mockDb);
@@ -436,11 +442,14 @@ describe('PaymentConfigService', () => {
     });
 
     it('should return null when plan not found in database', async () => {
+      const whereResult = {
+        then: (resolve: (v: unknown[]) => void) => Promise.resolve(resolve([])),
+        limit: jest.fn().mockResolvedValue([]),
+      };
       const mockDb = {
         select: jest.fn().mockReturnThis(),
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
+        where: jest.fn().mockReturnValue(whereResult),
       } as any;
 
       const service = new PaymentConfigService(mockDb);
