@@ -51,8 +51,8 @@ export class MigrationCronService {
       this.logger.log('Stale migration cleanup completed');
     } catch (error) {
       this.logger.error(
-        'Failed to cleanup stale migrations:',
-        error instanceof Error ? error.message : 'Unknown error',
+        `Failed to cleanup stale migrations: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }
@@ -70,8 +70,8 @@ export class MigrationCronService {
       this.logStatsReport(stats);
     } catch (error) {
       this.logger.error(
-        'Failed to collect daily migration stats:',
-        error instanceof Error ? error.message : 'Unknown error',
+        `Failed to collect daily migration stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }

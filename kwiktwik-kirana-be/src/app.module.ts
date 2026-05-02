@@ -42,6 +42,8 @@ import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit
 const dbModule =
   process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
 
+const migrationEnabled = process.env.MIGRATION_ENABLED !== 'false';
+
 @Module({
   imports: [
     SentryModule.forRoot(),
@@ -52,7 +54,7 @@ const dbModule =
     dbModule,
     DbDebugModule,
     AuthModule,
-    MigrationModule,
+    ...(migrationEnabled ? [MigrationModule] : []),
     ConfigModule,
     AppConfigModule,
     UserModule,
