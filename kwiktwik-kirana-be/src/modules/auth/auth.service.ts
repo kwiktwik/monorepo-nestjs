@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid';
 import { AuthUserResponse } from './types';
 export type { AuthUserResponse } from './types';
 import { isMockMode } from '../../common/utils/is-mock-mode';
+import { getTempEmailDomain } from '../../common/config/apps.config';
 import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
 import * as admin from 'firebase-admin';
 
@@ -553,7 +554,7 @@ export class AuthService {
     if (userRecord.length === 0) {
       // Create new user
       const cleanPhone = normalized.replace(/\D/g, '');
-      const tempEmail = `${cleanPhone}@kiranaapps.local`;
+      const tempEmail = `${cleanPhone}@${getTempEmailDomain(appId)}`;
       const tempName = `User ${cleanPhone.slice(-4)}`;
 
       userId = nanoid();
@@ -688,7 +689,7 @@ export class AuthService {
   ): Promise<{ token: string; user: AuthUserResponse }> {
     const normalized = AuthService.TEST_PHONE;
     const cleanPhone = normalized.replace(/\D/g, '');
-    const tempEmail = `${cleanPhone}@kiranaapps.local`;
+    const tempEmail = `${cleanPhone}@${getTempEmailDomain(appId)}`;
     const tempName = `User ${cleanPhone.slice(-4)}`;
 
     let userRecord = await this.db
@@ -777,7 +778,7 @@ export class AuthService {
   private async mockTruecallerSignin(appId: string) {
     const normalized = '+919999999998';
     const cleanPhone = normalized.replace(/\D/g, '');
-    const tempEmail = `${cleanPhone}@kiranaapps.local`;
+    const tempEmail = `${cleanPhone}@${getTempEmailDomain(appId)}`;
     const tempName = 'Test Truecaller User';
 
     let userRecord = await this.db
@@ -1113,7 +1114,7 @@ export class AuthService {
     const phoneNumber = userInfoData.phone_number;
     const userEmail =
       userInfoData.email ||
-      `${phoneNumber?.replace(/\D/g, '') || 'unknown'}@kiranaapps.local`;
+      `${phoneNumber?.replace(/\D/g, '') || 'unknown'}@${getTempEmailDomain(appId)}`;
     const userName =
       (userInfoData.given_name && userInfoData.family_name
         ? `${userInfoData.given_name} ${userInfoData.family_name}`
@@ -1573,7 +1574,7 @@ export class AuthService {
 
     const userEmail =
       userInfoData.email ||
-      `${phoneNumber?.replace(/\D/g, '') || 'unknown'}@kiranaapps.local`;
+      `${phoneNumber?.replace(/\D/g, '') || 'unknown'}@${getTempEmailDomain(appId)}`;
     const userName =
       (userInfoData.given_name && userInfoData.family_name
         ? `${userInfoData.given_name} ${userInfoData.family_name}`
@@ -2188,7 +2189,7 @@ export class AuthService {
             phoneNumberVerified: true,
             isAnonymous: false,
             name: `User ${cleanPhone.slice(-4)}`,
-            email: `${cleanPhone}@kiranaapps.local`,
+            email: `${cleanPhone}@${getTempEmailDomain(appId)}`,
             updatedAt: new Date(),
           })
           .where(eq(schema.user.id, anonymousUserId));

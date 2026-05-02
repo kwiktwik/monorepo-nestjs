@@ -169,6 +169,17 @@ export function getRegisteredAppIdsWithWebhooks(): string[] {
 }
 
 /**
+ * Derive a temp-email domain from an app's package name.
+ * e.g. "com.sharestatus.app" -> "sharestatus.local"
+ *      "com.kiranaapps.app"  -> "kiranaapps.local"
+ */
+export function getTempEmailDomain(appId: string): string {
+  const parts = appId.split('.');
+  const brand = parts.length >= 2 ? parts[1] : appId;
+  return `${brand}.local`;
+}
+
+/**
  * Validate that all registered apps have proper webhook configuration
  * Throws error if any app is missing webhook secret env var (at runtime)
  */
