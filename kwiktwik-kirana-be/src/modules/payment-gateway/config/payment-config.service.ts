@@ -470,7 +470,8 @@ export class PaymentConfigService {
   }
 
   private isDefaultAccount(accountId: string): boolean {
-    return accountId === 'DEFAULT' || accountId === 'MAIN' || accountId === 'PRIMARY';
+    const id = accountId.toUpperCase();
+    return id === 'DEFAULT' || id === 'MAIN' || id === 'PRIMARY';
   }
 }
 
