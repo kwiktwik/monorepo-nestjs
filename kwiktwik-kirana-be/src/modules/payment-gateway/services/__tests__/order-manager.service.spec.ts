@@ -6,7 +6,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { OrderManagerService } from '../order-manager.service';
 import { ProviderFactory } from '../../providers/factory/provider.factory';
 import { PaymentConfigService } from '../../config/payment-config.service';
-import { IdempotencyService, InMemoryIdempotencyStore } from '../../common/idempotency/idempotency.service';
+
 import { InMemoryOrderRepository } from '../../infrastructure/repositories/in-memory-order.repository';
 import { InMemoryEventBus } from '../../common/events/in-memory-event-bus';
 import { DRIZZLE_TOKEN } from '../../../../database/drizzle.module';
@@ -97,8 +97,6 @@ describe('OrderManagerService', () => {
             getConfig: jest.fn().mockReturnValue(mockConfig),
           },
         },
-        IdempotencyService,
-        { provide: 'IdempotencyStore', useClass: InMemoryIdempotencyStore },
         { provide: 'IOrderRepository', useClass: InMemoryOrderRepository },
         { provide: 'IEventBus', useClass: InMemoryEventBus },
         { provide: DRIZZLE_TOKEN, useValue: null },

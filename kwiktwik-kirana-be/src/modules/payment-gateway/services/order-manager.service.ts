@@ -9,7 +9,7 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
-import { IdempotencyService, IdempotencyOperationType } from '../common/idempotency/idempotency.service';
+
 import type { IEventBus } from '../common/events/event-bus.interface';
 import { PaymentEventTypes, createPaymentEvent, generateCorrelationId } from '../common/events/event-bus.interface';
 import type { IOrderRepository } from '../infrastructure/repositories/order.repository.interface';
@@ -80,33 +80,13 @@ export class OrderManagerService {
   constructor(
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
-    private readonly idempotencyService: IdempotencyService,
     @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @Inject('IEventBus') @Optional() private readonly eventBus: IEventBus | null,
     @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null,
   ) {}
 
   async createOrder(input: CreateOneTimeOrderInput): Promise<CreateOneTimeOrderResult> {
-    const idempotencyKey = this.idempotencyService.generateKey(
-      IdempotencyOperationType.ORDER_CREATE,
-      `${input.userId}:${input.appId}:${input.amount}:${input.provider}`,
-    );
-    const requestHash = this.idempotencyService.generateRequestHash({
-      userId: input.userId,
-      appId: input.appId,
-      amount: input.amount,
-      provider: input.provider,
-    });
-
-    const idempotentResult = await this.idempotencyService.execute<CreateOneTimeOrderResult>(
-      idempotencyKey,
-      IdempotencyOperationType.ORDER_CREATE,
-      () => this.executeCreateOrder(input),
-      requestHash,
-      { provider: input.provider, appId: input.appId },
-    );
-
-    return idempotentResult.result;
+    return this.executeCreateOrder(input);
   }
 
   private async executeCreateOrder(input: CreateOneTimeOrderInput): Promise<CreateOneTimeOrderResult> {
