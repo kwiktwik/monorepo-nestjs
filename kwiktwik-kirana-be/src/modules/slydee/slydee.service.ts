@@ -1,15 +1,27 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
+import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../database/schema';
+import { sql } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { CompanionProfile, CompanionResponse } from './slydee.types';
+
+export const SLYDEE_APP_ID = 'com.kwiktwik.datingai';
 
 @Injectable()
 export class SlydeeService implements OnModuleInit {
   private readonly logger = new Logger(SlydeeService.name);
   private companionData: CompanionProfile[] = [];
 
-  onModuleInit(): void {
+  constructor(
+    @Inject(DRIZZLE_TOKEN) private db: NodePgDatabase<typeof schema>,
+  ) {}
+
+  async onModuleInit(): Promise<void> {
     this.loadCompanionData();
+    await this.seedAppEntry();
+    await this.seedCompanionUsers();
   }
 
   private loadCompanionData(): void {
@@ -39,6 +51,50 @@ export class SlydeeService implements OnModuleInit {
         `Failed to load companion data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       this.companionData = [];
+    }
+  }
+
+  private async seedAppEntry(): Promise<void> {
+    try {
+      await this.db
+        .insert(schema.apps)
+        .values({
+          id: SLYDEE_APP_ID,
+          name: 'Slydee',
+          slug: 'slydee',
+          description: 'AI Dating Companion App',
+          isActive: true,
+        })
+        .onConflictDoNothing();
+      this.logger.log('Slydee app entry ensured');
+    } catch (error) {
+      this.logger.warn(
+        `App entry seed skipped: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async seedCompanionUsers(): Promise<void> {
+    if (this.companionData.length === 0) return;
+
+    try {
+      const values = this.companionData.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: `${c.id}@companion.slydee`,
+        emailVerified: true,
+        isAnonymous: false,
+        image: c.imageUrls?.[0] ?? null,
+      }));
+
+      await this.db.insert(schema.user).values(values).onConflictDoNothing();
+      this.logger.log(
+        `Seeded ${values.length} companion user entries (conflicts ignored)`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Companion user seeding issue: ${(error as Error).message}`,
+      );
     }
   }
 
