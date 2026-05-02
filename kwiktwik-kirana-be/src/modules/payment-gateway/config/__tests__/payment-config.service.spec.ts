@@ -81,111 +81,45 @@ describe('PaymentConfigService', () => {
       expect(service.getRazorpayConfigs()).toHaveLength(0);
     });
 
-    it('should load Razorpay config from database', async () => {
-      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_KEY_SECRET = 'db_secret';
-      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_WEBHOOK_SECRET = 'db_wh_secret';
+    it('should load Razorpay config with dotted app ID from env', async () => {
+      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_KEY_ID = 'rzp_live_123';
+      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_KEY_SECRET = 'secret_123';
+      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_WEBHOOK_SECRET = 'wh_secret_123';
 
-      const mockDb = {
-        select: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([
-          {
-            id: 'razorpay_datingai_default',
-            provider: 'RAZORPAY',
-            appId: 'com.kwiktwik.datingai',
-            environment: 'PRODUCTION',
-            isEnabled: true,
-            isDefault: true,
-            status: 'ACTIVE',
-            credentials: { keyId: 'rzp_live_db', accountId: 'DEFAULT' },
-            webhookSecret: null,
-            webhookUrl: null,
-            supportedPaymentMethods: [],
-            metadata: {},
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastUsedAt: null,
-          },
-        ]),
-      } as any;
-
-      const service = new PaymentConfigService(mockDb);
+      const service = new PaymentConfigService();
       await service.initialize();
 
       const configs = service.getRazorpayConfigs();
       expect(configs).toHaveLength(1);
       expect(configs[0].appId).toBe('com.kwiktwik.datingai');
-      expect(configs[0].keyId).toBe('rzp_live_db');
-      expect(configs[0].keySecret).toBe('db_secret');
-      expect(configs[0].webhookSecret).toBe('db_wh_secret');
+      expect(configs[0].keyId).toBe('rzp_live_123');
+      expect(configs[0].keySecret).toBe('secret_123');
+      expect(configs[0].webhookSecret).toBe('wh_secret_123');
       expect(configs[0].isDefault).toBe(true);
 
       const appConfig = service.getAppConfigs('com.kwiktwik.datingai');
       expect(appConfig).not.toBeNull();
     });
 
-    it('should load PhonePe config from database', async () => {
-      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CLIENT_SECRET = 'pp_db_secret';
+    it('should load PhonePe config with dotted app ID from env', async () => {
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CLIENT_ID = 'pp_client_123';
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CLIENT_SECRET = 'pp_secret_123';
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_MERCHANT_ID = 'M_123';
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CLIENT_VERSION = '2';
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_SALT_INDEX = '1';
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CHECKOUT_MODE = 'STANDARD_CHECKOUT';
 
-      const mockDb = {
-        select: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([
-          {
-            id: 'phonepe_datingai_default',
-            provider: 'PHONEPE',
-            appId: 'com.kwiktwik.datingai',
-            environment: 'SANDBOX',
-            isEnabled: true,
-            isDefault: true,
-            status: 'ACTIVE',
-            credentials: {
-              clientId: 'pp_client_db',
-              merchantId: 'M_DB',
-              clientVersion: 2,
-              saltIndex: '1',
-              checkoutMode: 'STANDARD_CHECKOUT',
-            },
-            webhookSecret: null,
-            webhookUrl: null,
-            supportedPaymentMethods: [],
-            metadata: {},
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastUsedAt: null,
-          },
-        ]),
-      } as any;
-
-      const service = new PaymentConfigService(mockDb);
+      const service = new PaymentConfigService();
       await service.initialize();
 
       const configs = service.getPhonePeConfigs();
       expect(configs).toHaveLength(1);
       expect(configs[0].appId).toBe('com.kwiktwik.datingai');
-      expect(configs[0].clientId).toBe('pp_client_db');
-      expect(configs[0].clientSecret).toBe('pp_db_secret');
-      expect(configs[0].merchantId).toBe('M_DB');
+      expect(configs[0].clientId).toBe('pp_client_123');
+      expect(configs[0].clientSecret).toBe('pp_secret_123');
+      expect(configs[0].merchantId).toBe('M_123');
       expect(configs[0].clientVersion).toBe(2);
       expect(configs[0].checkoutMode).toBe('STANDARD_CHECKOUT');
-    });
-
-    it('should fall back to env vars when DB query fails', async () => {
-      process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_ID = 'rzp_env_fallback';
-      process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_SECRET = 'secret_env';
-
-      const mockDb = {
-        select: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockRejectedValue(new Error('DB connection failed')),
-      } as any;
-
-      const service = new PaymentConfigService(mockDb);
-      await service.initialize();
-
-      const configs = service.getRazorpayConfigs();
-      expect(configs).toHaveLength(1);
-      expect(configs[0].keyId).toBe('rzp_env_fallback');
     });
   });
 
