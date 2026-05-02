@@ -8,6 +8,7 @@ export interface JwtPayload {
   appId: string;
   userType?: string;
   deeplink?: string;
+  isAnonymous?: boolean;
   iat: number;
   exp: number;
 }
@@ -40,6 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       appId: payload.appId,
       userType: payload.userType,
       deeplink: payload.deeplink,
+      isAnonymous: payload.isAnonymous,
     };
   }
 }

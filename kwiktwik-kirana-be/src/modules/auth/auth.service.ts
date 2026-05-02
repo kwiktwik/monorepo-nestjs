@@ -22,6 +22,7 @@ import { AuthUserResponse } from './types';
 export type { AuthUserResponse } from './types';
 import { isMockMode } from '../../common/utils/is-mock-mode';
 import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
+import * as admin from 'firebase-admin';
 
 /** Kirana-FE (legacy Flutter app) app IDs */
 const KIRANA_FE_APP_IDS = ['com.kiranaapps.app'];
@@ -1924,5 +1925,423 @@ export class AuthService {
       this.logger.error('[Google Sign-In] Error:', error);
       throw new UnauthorizedException('Invalid Google ID token');
     }
+  }
+
+  /**
+   * Anonymous Login: Verify Firebase anonymous token and create/find local user
+   */
+  async anonymousLogin(
+    firebaseToken: string,
+    appId: string,
+  ): Promise<{ token: string; user: AuthUserResponse }> {
+    // Verify the Firebase ID token
+    let decodedToken: admin.auth.DecodedIdToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    } catch (error) {
+      this.logger.error(
+        '[Anonymous Login] Firebase token verification failed:',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+      throw new UnauthorizedException('Invalid Firebase token');
+    }
+
+    // Confirm this is an anonymous user
+    if (decodedToken.firebase.sign_in_provider !== 'anonymous') {
+      throw new BadRequestException(
+        'Token is not from an anonymous Firebase user',
+      );
+    }
+
+    const firebaseUid = decodedToken.uid;
+
+    // Check if a local user already exists for this Firebase UID (idempotent)
+    const existingAccount = await this.db
+      .select()
+      .from(schema.account)
+      .where(
+        and(
+          eq(schema.account.accountId, firebaseUid),
+          eq(schema.account.providerId, 'anonymous'),
+          eq(schema.account.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    if (existingAccount.length > 0) {
+      const existingUser = await this.db
+        .select()
+        .from(schema.user)
+        .where(
+          and(
+            eq(schema.user.id, existingAccount[0].userId),
+            eq(schema.user.isDeleted, false),
+          ),
+        )
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        const token = this.jwtService.sign({
+          sub: existingUser[0].id,
+          appId,
+          isAnonymous: true,
+        });
+
+        return {
+          token,
+          user: {
+            id: existingUser[0].id,
+            name: existingUser[0].name,
+            email: existingUser[0].email,
+          },
+        };
+      }
+    }
+
+    // Create new anonymous user
+    const userId = nanoid();
+    const anonEmail = `anon_${userId}@anonymous.local`;
+
+    await this.db.insert(schema.user).values({
+      id: userId,
+      name: 'Anonymous User',
+      email: anonEmail,
+      emailVerified: false,
+      phoneNumber: null,
+      isAnonymous: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create account row linking Firebase UID
+    await this.db.insert(schema.account).values({
+      id: nanoid(),
+      accountId: firebaseUid,
+      providerId: 'anonymous',
+      userId,
+      appId,
+      idToken: firebaseUid,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create user metadata
+    await this.db.insert(schema.userMetadata).values({
+      userId,
+      appId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const token = this.jwtService.sign({
+      sub: userId,
+      appId,
+      isAnonymous: true,
+    });
+
+    this.logger.log(
+      `[Anonymous Login] Created anonymous user ${userId} for Firebase UID ${firebaseUid}`,
+    );
+
+    return {
+      token,
+      user: {
+        id: userId,
+        name: 'Anonymous User',
+        email: anonEmail,
+      },
+    };
+  }
+
+  /**
+   * Link a real credential to an anonymous user (upgrade flow)
+   */
+  async linkCredential(
+    anonymousUserId: string,
+    provider: string,
+    credentials: {
+      phoneNumber?: string;
+      code?: string;
+      idToken?: string;
+      code_verifier?: string;
+      client_id?: string;
+    },
+    appId: string,
+  ): Promise<{ token: string; user: AuthUserResponse }> {
+    // Verify the user is anonymous
+    const anonUser = await this.db
+      .select()
+      .from(schema.user)
+      .where(
+        and(
+          eq(schema.user.id, anonymousUserId),
+          eq(schema.user.isAnonymous, true),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
+      .limit(1);
+
+    if (anonUser.length === 0) {
+      throw new BadRequestException(
+        'Account is not anonymous or does not exist',
+      );
+    }
+
+    switch (provider) {
+      case 'otp': {
+        if (!credentials.phoneNumber || !credentials.code) {
+          throw new BadRequestException(
+            'phoneNumber and code are required for OTP linking',
+          );
+        }
+
+        const normalized = normalizePhoneNumber(credentials.phoneNumber);
+
+        // Verify OTP (reuse existing logic but extract the validation part)
+        const otpRecords = await this.db
+          .select()
+          .from(schema.otpCodes)
+          .where(
+            and(
+              eq(schema.otpCodes.phoneNumber, normalized),
+              eq(schema.otpCodes.verified, false),
+            ),
+          )
+          .orderBy(sql`${schema.otpCodes.createdAt} DESC`)
+          .limit(1);
+
+        if (otpRecords.length === 0) {
+          throw new UnauthorizedException('Invalid or expired OTP');
+        }
+
+        const otpRecord = otpRecords[0];
+        if (new Date() > new Date(otpRecord.expiresAt)) {
+          throw new UnauthorizedException('OTP has expired');
+        }
+        if (otpRecord.attempts >= 5) {
+          throw new UnauthorizedException(
+            'Too many failed attempts. Please request a new OTP',
+          );
+        }
+
+        const isValid = await bcrypt.compare(
+          credentials.code,
+          otpRecord.codeHash,
+        );
+        if (!isValid) {
+          await this.db
+            .update(schema.otpCodes)
+            .set({ attempts: otpRecord.attempts + 1 })
+            .where(eq(schema.otpCodes.id, otpRecord.id));
+          throw new UnauthorizedException('Invalid OTP code');
+        }
+
+        // Mark OTP as verified
+        await this.db
+          .update(schema.otpCodes)
+          .set({ verified: true })
+          .where(eq(schema.otpCodes.id, otpRecord.id));
+
+        // Check if another real user already has this phone number
+        const existingRealUser = await this.db
+          .select()
+          .from(schema.user)
+          .where(
+            and(
+              eq(schema.user.phoneNumber, normalized),
+              eq(schema.user.isAnonymous, false),
+              eq(schema.user.isDeleted, false),
+            ),
+          )
+          .limit(1);
+
+        if (existingRealUser.length > 0) {
+          // Merge anonymous data into the existing real user
+          await this.transferAnonymousData(
+            existingRealUser[0].id,
+            anonymousUserId,
+          );
+
+          const token = this.jwtService.sign({
+            sub: existingRealUser[0].id,
+            appId,
+          });
+
+          return {
+            token,
+            user: {
+              id: existingRealUser[0].id,
+              name: existingRealUser[0].name,
+              email: existingRealUser[0].email,
+              phoneNumber: normalized,
+              phoneNumberVerified: true,
+            },
+          };
+        }
+
+        // No conflict: upgrade in-place
+        const cleanPhone = normalized.replace(/\D/g, '');
+        await this.db
+          .update(schema.user)
+          .set({
+            phoneNumber: normalized,
+            phoneNumberVerified: true,
+            isAnonymous: false,
+            name: `User ${cleanPhone.slice(-4)}`,
+            email: `${cleanPhone}@kiranaapps.local`,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.user.id, anonymousUserId));
+
+        const updatedUser = await this.db
+          .select()
+          .from(schema.user)
+          .where(eq(schema.user.id, anonymousUserId))
+          .limit(1);
+
+        const token = this.jwtService.sign({ sub: anonymousUserId, appId });
+
+        return {
+          token,
+          user: {
+            id: anonymousUserId,
+            name: updatedUser[0].name,
+            email: updatedUser[0].email,
+            phoneNumber: normalized,
+            phoneNumberVerified: true,
+          },
+        };
+      }
+
+      case 'google': {
+        if (!credentials.idToken) {
+          throw new BadRequestException(
+            'idToken is required for Google linking',
+          );
+        }
+        // Reuse googleSignin which creates/finds user and returns token
+        // But we need to merge instead, so call it and then merge
+        const googleResult = await this.googleSignin(
+          credentials.idToken,
+          appId,
+        );
+
+        // If google created/found a different user, merge anonymous data into it
+        if (googleResult.user.id !== anonymousUserId) {
+          await this.transferAnonymousData(
+            googleResult.user.id,
+            anonymousUserId,
+          );
+        } else {
+          // Same user (shouldn't happen but handle gracefully)
+          await this.db
+            .update(schema.user)
+            .set({ isAnonymous: false, updatedAt: new Date() })
+            .where(eq(schema.user.id, anonymousUserId));
+        }
+
+        return googleResult;
+      }
+
+      default:
+        throw new BadRequestException(`Unsupported provider: ${provider}`);
+    }
+  }
+
+  /**
+   * Merge anonymous user data into a real user via link token (cross-platform)
+   */
+  async mergeAnonymousUser(
+    realUserId: string,
+    linkToken: string,
+  ): Promise<void> {
+    let decoded: { sub: string };
+    try {
+      decoded = this.jwtService.verify(linkToken) as { sub: string };
+    } catch {
+      this.logger.warn('[mergeAnonymousUser] Invalid link token');
+      return;
+    }
+
+    const anonUserId = decoded.sub;
+    if (anonUserId === realUserId) return;
+
+    const anonUser = await this.db
+      .select()
+      .from(schema.user)
+      .where(
+        and(
+          eq(schema.user.id, anonUserId),
+          eq(schema.user.isAnonymous, true),
+          eq(schema.user.isDeleted, false),
+        ),
+      )
+      .limit(1);
+
+    if (anonUser.length === 0) {
+      this.logger.log(
+        `[mergeAnonymousUser] No anonymous user found for ${anonUserId}`,
+      );
+      return;
+    }
+
+    await this.transferAnonymousData(realUserId, anonUserId);
+    this.logger.log(
+      `[mergeAnonymousUser] Merged anonymous user ${anonUserId} into ${realUserId}`,
+    );
+  }
+
+  /**
+   * Transfer all data from anonymous user to real user and soft-delete the anonymous user
+   */
+  private async transferAnonymousData(
+    realUserId: string,
+    anonUserId: string,
+  ): Promise<void> {
+    // Transfer subscriptions
+    await this.db
+      .update(schema.subscriptions)
+      .set({ userId: realUserId })
+      .where(eq(schema.subscriptions.userId, anonUserId));
+
+    // Transfer PhonePe subscriptions
+    await this.db
+      .update(schema.phonepeSubscriptions)
+      .set({ userId: realUserId })
+      .where(eq(schema.phonepeSubscriptions.userId, anonUserId));
+
+    // Transfer orders
+    await this.db
+      .update(schema.orders)
+      .set({ userId: realUserId })
+      .where(eq(schema.orders.userId, anonUserId));
+
+    // Transfer PhonePe orders
+    await this.db
+      .update(schema.phonepeOrders)
+      .set({ userId: realUserId })
+      .where(eq(schema.phonepeOrders.userId, anonUserId));
+
+    // Transfer PhonePe redemptions
+    await this.db
+      .update(schema.phonepeRedemptions)
+      .set({ userId: realUserId })
+      .where(eq(schema.phonepeRedemptions.userId, anonUserId));
+
+    // Transfer webhook logs
+    await this.db
+      .update(schema.webhookLogs)
+      .set({ userId: realUserId })
+      .where(eq(schema.webhookLogs.userId, anonUserId));
+
+    // Soft-delete the anonymous user
+    await this.db
+      .update(schema.user)
+      .set({
+        isDeleted: true,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.user.id, anonUserId));
   }
 }

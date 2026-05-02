@@ -124,6 +124,7 @@ export const user = pgTable('user', {
   phoneNumber: text('phoneNumber'),
   phoneNumberVerified: boolean('phoneNumberVerified'),
   image: text('image'),
+  isAnonymous: boolean('is_anonymous').default(false).notNull(),
   isDeleted: boolean('is_deleted').default(false).notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true })

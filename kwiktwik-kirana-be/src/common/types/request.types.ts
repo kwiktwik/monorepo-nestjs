@@ -12,6 +12,7 @@ export interface AuthenticatedUser {
   userId: string;
   appId: string;
   phoneNumber?: string;
+  isAnonymous?: boolean;
 }
 
 /**

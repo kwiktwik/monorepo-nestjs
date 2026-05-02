@@ -1,5 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import {
   ConfigModule as NestConfigModule,
   ConfigService,
@@ -74,6 +76,11 @@ const dbModule =
     } as ConfigService),
     AdminModule,
     AppsModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'public', 'anonymous'),
+      serveRoot: '/anonymous',
+      serveStaticOptions: { index: ['index.html'] },
+    }),
     PaymentGatewayModule,
     VoiceModule,
     SlydeeModule,

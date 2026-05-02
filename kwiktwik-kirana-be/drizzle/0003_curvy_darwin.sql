@@ -1,0 +1,2 @@
+ALTER TABLE "subscriptions_v2" ALTER COLUMN "provider_data" SET DEFAULT '{"subscriptionId":"","orderId":null,"customerId":null,"planId":"","mandateId":null,"raw":{},"lastSyncedAt":"2026-05-02T10:19:50.972Z"}'::jsonb;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN "is_anonymous" boolean DEFAULT false NOT NULL;

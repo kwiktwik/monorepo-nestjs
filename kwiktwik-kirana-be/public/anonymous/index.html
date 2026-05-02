@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anonymous Login Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 24px; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 16px; margin-bottom: 12px; color: #555; }
+    button { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-secondary { background: #6b7280; }
+    .btn-secondary:hover { background: #4b5563; }
+    input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+    label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+    .status { padding: 12px; border-radius: 6px; font-size: 13px; font-family: monospace; word-break: break-all; }
+    .status-anon { background: #fef3c7; border: 1px solid #f59e0b; }
+    .status-linked { background: #d1fae5; border: 1px solid #10b981; }
+    .status-none { background: #f3f4f6; border: 1px solid #d1d5db; }
+    .log { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .hidden { display: none; }
+    .config-note { font-size: 12px; color: #ef4444; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Anonymous Login Demo</h1>
+    <p class="subtitle">Test Firebase anonymous auth + account linking</p>
+
+    <!-- Firebase Config -->
+    <div class="card">
+      <h2>1. Firebase Config</h2>
+      <label>API Key</label>
+      <input type="text" id="fbApiKey" placeholder="AIzaSy...">
+      <label>Auth Domain</label>
+      <input type="text" id="fbAuthDomain" placeholder="your-project.firebaseapp.com">
+      <label>Project ID</label>
+      <input type="text" id="fbProjectId" placeholder="your-project-id">
+      <label>X-App-ID</label>
+      <input type="text" id="appId" placeholder="com.paymentalert.app" value="com.paymentalert.app">
+      <label>Backend URL</label>
+      <input type="text" id="backendUrl" placeholder="http://localhost:3000" value="">
+      <button onclick="initFirebase()">Initialize Firebase</button>
+      <p class="config-note" id="configNote">Firebase not initialized yet</p>
+    </div>
+
+    <!-- Auth Status -->
+    <div class="card">
+      <h2>2. Auth Status</h2>
+      <div id="authStatus" class="status status-none">Not logged in</div>
+    </div>
+
+    <!-- Anonymous Login -->
+    <div class="card">
+      <h2>3. Anonymous Login</h2>
+      <button id="btnAnonLogin" onclick="doAnonymousLogin()" disabled>Login Anonymously</button>
+    </div>
+
+    <!-- Link Account -->
+    <div class="card hidden" id="linkSection">
+      <h2>4. Link Account (Upgrade)</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">Send OTP first, then link with the code</p>
+      <label>Phone Number</label>
+      <input type="text" id="linkPhone" placeholder="+919876543210">
+      <div class="row">
+        <button onclick="sendOtp()" class="btn-secondary">Send OTP</button>
+      </div>
+      <label>OTP Code</label>
+      <input type="text" id="linkCode" placeholder="123456">
+      <button onclick="doLinkCredential()">Link OTP Account</button>
+    </div>
+
+    <!-- Token Display -->
+    <div class="card hidden" id="tokenSection">
+      <h2>Token (for X-Link-Token)</h2>
+      <div class="row">
+        <input type="text" id="tokenDisplay" readonly>
+        <button onclick="copyToken()" class="btn-secondary">Copy</button>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card">
+      <h2>Log</h2>
+      <div class="log" id="logOutput">Ready.\n</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (compat for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <script>
+    let backendJwt = null;
+    let firebaseReady = false;
+
+    function log(msg) {
+      const el = document.getElementById('logOutput');
+      el.textContent += new Date().toLocaleTimeString() + ' ' + msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function getBackendUrl() {
+      const val = document.getElementById('backendUrl').value.trim();
+      return val || window.location.origin;
+    }
+
+    function getAppId() {
+      return document.getElementById('appId').value.trim() || 'com.paymentalert.app';
+    }
+
+    function updateStatus() {
+      const el = document.getElementById('authStatus');
+      if (!backendJwt) {
+        el.className = 'status status-none';
+        el.textContent = 'Not logged in';
+        document.getElementById('linkSection').classList.add('hidden');
+        document.getElementById('tokenSection').classList.add('hidden');
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(atob(backendJwt.split('.')[1]));
+        if (payload.isAnonymous) {
+          el.className = 'status status-anon';
+          el.textContent = 'Anonymous | User ID: ' + payload.sub + ' | App: ' + payload.appId;
+          document.getElementById('linkSection').classList.remove('hidden');
+        } else {
+          el.className = 'status status-linked';
+          el.textContent = 'Linked | User ID: ' + payload.sub + ' | App: ' + payload.appId;
+          document.getElementById('linkSection').classList.add('hidden');
+        }
+        document.getElementById('tokenSection').classList.remove('hidden');
+        document.getElementById('tokenDisplay').value = backendJwt;
+      } catch {
+        el.className = 'status status-none';
+        el.textContent = 'Invalid token';
+      }
+    }
+
+    function initFirebase() {
+      const apiKey = document.getElementById('fbApiKey').value.trim();
+      const authDomain = document.getElementById('fbAuthDomain').value.trim();
+      const projectId = document.getElementById('fbProjectId').value.trim();
+
+      if (!apiKey || !authDomain || !projectId) {
+        log('ERROR: All Firebase config fields are required');
+        return;
+      }
+
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp({ apiKey, authDomain, projectId });
+        }
+        firebaseReady = true;
+        document.getElementById('btnAnonLogin').disabled = false;
+        document.getElementById('configNote').textContent = 'Firebase initialized';
+        document.getElementById('configNote').style.color = '#10b981';
+        log('Firebase initialized with project: ' + projectId);
+      } catch (err) {
+        log('ERROR initializing Firebase: ' + err.message);
+      }
+    }
+
+    async function doAnonymousLogin() {
+      if (!firebaseReady) { log('Firebase not initialized'); return; }
+
+      try {
+        log('Signing in anonymously with Firebase...');
+        const result = await firebase.auth().signInAnonymously();
+        const firebaseToken = await result.user.getIdToken();
+        log('Firebase anonymous UID: ' + result.user.uid);
+
+        log('Sending Firebase token to backend...');
+        const res = await fetch(getBackendUrl() + '/v1/auth/login/anonymous', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-ID': getAppId(),
+          },
+          body: JSON.stringify({ firebaseToken }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.token) {
+          backendJwt = data.token;
+          log('Anonymous login OK. User: ' + data.user.id);
+          updateStatus();
+        } else {
+          log('Backend error: ' + JSON.stringify(data));
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message);
+      }
+    }
+
+    async function sendOtp() {
+      const phone = document.getElementById('linkPhone').value.trim();
+      if (!phone) { log('Enter a phone number first'); return; }
+
+      try {
+        log('Sending OTP to ' + phone + '...');
+        const res = await fetch(getBackendUrl() + '/v1/auth/send-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-ID': getAppId(),
+          },
+          body: JSON.stringify({ phoneNumber: phone }),
+        });
+        const data = await res.json();
+        log('Send OTP response: ' + JSON.stringify(data));
+      } catch (err) {
+        log('ERROR: ' + err.message);
+      }
+    }
+
+    async function doLinkCredential() {
+      if (!backendJwt) { log('Login anonymously first'); return; }
+
+      const phone = document.getElementById('linkPhone').value.trim();
+      const code = document.getElementById('linkCode').value.trim();
+      if (!phone || !code) { log('Enter phone and OTP code'); return; }
+
+      try {
+        log('Linking OTP credential...');
+        const res = await fetch(getBackendUrl() + '/v1/auth/link-credential', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-ID': getAppId(),
+            'Authorization': 'Bearer ' + backendJwt,
+          },
+          body: JSON.stringify({
+            provider: 'otp',
+            phoneNumber: phone,
+            code: code,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.token) {
+          backendJwt = data.token;
+          log('Account linked! User: ' + data.user.id + ', Phone: ' + (data.user.phoneNumber || 'N/A'));
+          updateStatus();
+        } else {
+          log('Link error: ' + JSON.stringify(data));
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message);
+      }
+    }
+
+    function copyToken() {
+      const el = document.getElementById('tokenDisplay');
+      el.select();
+      navigator.clipboard.writeText(el.value);
+      log('Token copied to clipboard');
+    }
+
+    // Auto-detect backend URL
+    document.getElementById('backendUrl').value = window.location.origin;
+  </script>
+</body>
+</html>

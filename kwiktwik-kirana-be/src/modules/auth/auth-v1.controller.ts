@@ -40,12 +40,15 @@ import {
   LoginOtpDto,
   LoginTruecallerDto,
   LoginGoogleDto,
+  LoginAnonymousDto,
+  LinkCredentialDto,
 } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { HealthMetricsService } from '../prometheus/health-metrics.service';
 import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
-
-type ProviderType = 'otp' | 'truecaller' | 'google';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+type ProviderType = 'otp' | 'truecaller' | 'google' | 'anonymous';
 
 interface UnifiedLoginResponse {
   success: boolean;
@@ -290,8 +293,14 @@ export class AuthV1Controller {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async unifiedLogin(
     @Param('provider') provider: ProviderType,
-    @Body() credentials: LoginOtpDto | LoginTruecallerDto | LoginGoogleDto,
+    @Body()
+    credentials:
+      | LoginOtpDto
+      | LoginTruecallerDto
+      | LoginGoogleDto
+      | LoginAnonymousDto,
     @AppId() appId: string,
+    @Req() req: Request,
   ): Promise<UnifiedLoginResponse> {
     this.logger.log(`[Unified Login] Provider: ${provider}, App: ${appId}`);
     this.logger.log(
@@ -299,9 +308,9 @@ export class AuthV1Controller {
     );
 
     // Validate provider
-    if (!['otp', 'truecaller', 'google'].includes(provider)) {
+    if (!['otp', 'truecaller', 'google', 'anonymous'].includes(provider)) {
       throw new BadRequestException(
-        `Invalid provider: ${provider}. Must be one of: otp, truecaller, google`,
+        `Invalid provider: ${provider}. Must be one of: otp, truecaller, google, anonymous`,
       );
     }
 
@@ -329,8 +338,37 @@ export class AuthV1Controller {
             appId,
           );
           break;
+        case 'anonymous':
+          result = await this.loginAnonymous(
+            credentials as LoginAnonymousDto,
+            appId,
+          );
+          break;
         default:
           throw new BadRequestException('Invalid provider');
+      }
+
+      // Handle X-Link-Token for cross-platform anonymous merge
+      if (provider !== 'anonymous' && result.token && result.user?.id) {
+        const linkToken = req.headers['x-link-token'] as string | undefined;
+        if (linkToken) {
+          try {
+            await this.authService.mergeAnonymousUser(
+              result.user.id,
+              linkToken,
+            );
+            this.logger.log(
+              `[Unified Login] Merged anonymous user via X-Link-Token for user ${result.user.id}`,
+            );
+          } catch (mergeError) {
+            this.logger.warn(
+              `[Unified Login] X-Link-Token merge failed:`,
+              mergeError instanceof Error
+                ? mergeError.message
+                : 'Unknown error',
+            );
+          }
+        }
       }
 
       // Record successful login
@@ -599,6 +637,78 @@ export class AuthV1Controller {
       token: result.token,
       user: result.user,
       authProvider: 'google',
+    };
+  }
+
+  private async loginAnonymous(
+    dto: LoginAnonymousDto,
+    appId: string,
+  ): Promise<UnifiedLoginResponse> {
+    const result = await this.authService.anonymousLogin(
+      dto.firebaseToken,
+      appId,
+    );
+
+    this.logger.log(
+      `[Anonymous Login] Success for user: ${result.user.id}`,
+    );
+
+    return {
+      success: true,
+      token: result.token,
+      user: result.user,
+      authProvider: 'anonymous',
+    };
+  }
+
+  @Post('link-credential')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Link credential to anonymous account',
+    description:
+      'Upgrade an anonymous user by linking a real credential (OTP or Google). Requires anonymous JWT in Authorization header.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account linked successfully, returns new JWT token',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Account is not anonymous or invalid provider',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid or expired token / OTP' })
+  async linkCredential(
+    @Body() dto: LinkCredentialDto,
+    @CurrentUser() user: { userId: string; appId: string; isAnonymous?: boolean },
+    @AppId() appId: string,
+  ): Promise<UnifiedLoginResponse> {
+    this.logger.log(
+      `[Link Credential] Provider: ${dto.provider}, User: ${user.userId}, App: ${appId}`,
+    );
+
+    const result = await this.authService.linkCredential(
+      user.userId,
+      dto.provider,
+      {
+        phoneNumber: dto.phoneNumber,
+        code: dto.code,
+        idToken: dto.idToken,
+        code_verifier: dto.code_verifier,
+        client_id: dto.client_id,
+      },
+      appId,
+    );
+
+    this.logger.log(
+      `[Link Credential] Success for user: ${result.user.id}`,
+    );
+
+    return {
+      success: true,
+      token: result.token,
+      user: result.user,
+      authProvider: dto.provider,
     };
   }
 }
