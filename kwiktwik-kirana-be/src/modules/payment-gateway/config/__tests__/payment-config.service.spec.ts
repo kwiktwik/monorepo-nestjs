@@ -19,7 +19,7 @@ describe('PaymentConfigService', () => {
   });
 
   describe('initialization', () => {
-    it('should initialize with no configs when env vars are not set', () => {
+    it('should initialize with no configs when env vars are not set', async () => {
       // Clear relevant env vars
       Object.keys(process.env)
         .filter((key) => key.startsWith('RAZORPAY_') || key.startsWith('PHONEPE_'))
@@ -28,34 +28,33 @@ describe('PaymentConfigService', () => {
         });
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       expect(service.getRazorpayConfigs()).toHaveLength(0);
       expect(service.getPhonePeConfigs()).toHaveLength(0);
     });
 
-    it('should load Razorpay configurations from environment', () => {
+    it('should load Razorpay configurations from environment', async () => {
       process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_SECRET = 'secret_123';
       process.env.RAZORPAY_TESTAPP_DEFAULT_WEBHOOK_SECRET = 'wh_secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const configs = service.getRazorpayConfigs();
       expect(configs).toHaveLength(1);
       expect(configs[0].appId).toBe('testapp');
       expect(configs[0].keyId).toBe('rzp_test_123');
-      // Note: accountId is lowercased, so 'default' won't match 'DEFAULT' in isDefaultAccount
     });
 
-    it('should load PhonePe configurations from environment', () => {
+    it('should load PhonePe configurations from environment', async () => {
       process.env.PHONEPE_TESTAPP_DEFAULT_CLIENT_ID = 'client_123';
       process.env.PHONEPE_TESTAPP_DEFAULT_CLIENT_SECRET = 'secret_123';
       process.env.PHONEPE_TESTAPP_DEFAULT_MERCHANT_ID = 'merchant_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const configs = service.getPhonePeConfigs();
       expect(configs).toHaveLength(1);
@@ -63,42 +62,149 @@ describe('PaymentConfigService', () => {
       expect(configs[0].clientId).toBe('client_123');
     });
 
-    it('should not load config if secret is missing', () => {
+    it('should not load config if secret is missing', async () => {
       process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       // Missing KEY_SECRET
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       expect(service.getRazorpayConfigs()).toHaveLength(0);
     });
 
-    it('should only initialize once', () => {
+    it('should only initialize once', async () => {
       const service = new PaymentConfigService();
-      service.initialize();
-      service.initialize();
+      await service.initialize();
+      await service.initialize();
 
       // Should not throw or duplicate
       expect(service.getRazorpayConfigs()).toHaveLength(0);
     });
+
+    it('should load Razorpay config from database', async () => {
+      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_KEY_SECRET = 'db_secret';
+      process.env.RAZORPAY_COM_KWIKTWIK_DATINGAI_DEFAULT_WEBHOOK_SECRET = 'db_wh_secret';
+
+      const mockDb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([
+          {
+            id: 'razorpay_datingai_default',
+            provider: 'RAZORPAY',
+            appId: 'com.kwiktwik.datingai',
+            environment: 'PRODUCTION',
+            isEnabled: true,
+            isDefault: true,
+            status: 'ACTIVE',
+            credentials: { keyId: 'rzp_live_db', accountId: 'DEFAULT' },
+            webhookSecret: null,
+            webhookUrl: null,
+            supportedPaymentMethods: [],
+            metadata: {},
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastUsedAt: null,
+          },
+        ]),
+      } as any;
+
+      const service = new PaymentConfigService(mockDb);
+      await service.initialize();
+
+      const configs = service.getRazorpayConfigs();
+      expect(configs).toHaveLength(1);
+      expect(configs[0].appId).toBe('com.kwiktwik.datingai');
+      expect(configs[0].keyId).toBe('rzp_live_db');
+      expect(configs[0].keySecret).toBe('db_secret');
+      expect(configs[0].webhookSecret).toBe('db_wh_secret');
+      expect(configs[0].isDefault).toBe(true);
+
+      const appConfig = service.getAppConfigs('com.kwiktwik.datingai');
+      expect(appConfig).not.toBeNull();
+    });
+
+    it('should load PhonePe config from database', async () => {
+      process.env.PHONEPE_COM_KWIKTWIK_DATINGAI_DEFAULT_CLIENT_SECRET = 'pp_db_secret';
+
+      const mockDb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([
+          {
+            id: 'phonepe_datingai_default',
+            provider: 'PHONEPE',
+            appId: 'com.kwiktwik.datingai',
+            environment: 'SANDBOX',
+            isEnabled: true,
+            isDefault: true,
+            status: 'ACTIVE',
+            credentials: {
+              clientId: 'pp_client_db',
+              merchantId: 'M_DB',
+              clientVersion: 2,
+              saltIndex: '1',
+              checkoutMode: 'STANDARD_CHECKOUT',
+            },
+            webhookSecret: null,
+            webhookUrl: null,
+            supportedPaymentMethods: [],
+            metadata: {},
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastUsedAt: null,
+          },
+        ]),
+      } as any;
+
+      const service = new PaymentConfigService(mockDb);
+      await service.initialize();
+
+      const configs = service.getPhonePeConfigs();
+      expect(configs).toHaveLength(1);
+      expect(configs[0].appId).toBe('com.kwiktwik.datingai');
+      expect(configs[0].clientId).toBe('pp_client_db');
+      expect(configs[0].clientSecret).toBe('pp_db_secret');
+      expect(configs[0].merchantId).toBe('M_DB');
+      expect(configs[0].clientVersion).toBe(2);
+      expect(configs[0].checkoutMode).toBe('STANDARD_CHECKOUT');
+    });
+
+    it('should fall back to env vars when DB query fails', async () => {
+      process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_ID = 'rzp_env_fallback';
+      process.env.RAZORPAY_TESTAPP_DEFAULT_KEY_SECRET = 'secret_env';
+
+      const mockDb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockRejectedValue(new Error('DB connection failed')),
+      } as any;
+
+      const service = new PaymentConfigService(mockDb);
+      await service.initialize();
+
+      const configs = service.getRazorpayConfigs();
+      expect(configs).toHaveLength(1);
+      expect(configs[0].keyId).toBe('rzp_env_fallback');
+    });
   });
 
   describe('getConfig', () => {
-    it('should return null for unknown app', () => {
+    it('should return null for unknown app', async () => {
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const config = service.getConfig({ appId: 'unknown_app' });
 
       expect(config).toBeNull();
     });
 
-    it('should return default config for app', () => {
+    it('should return default config for app', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const config = service.getConfig({ appId: 'myapp' });
 
@@ -106,14 +212,14 @@ describe('PaymentConfigService', () => {
       expect(config?.provider).toBe(PaymentProvider.RAZORPAY);
     });
 
-    it('should return specific provider config', () => {
+    it('should return specific provider config', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
       process.env.PHONEPE_MYAPP_DEFAULT_CLIENT_ID = 'client_123';
       process.env.PHONEPE_MYAPP_DEFAULT_CLIENT_SECRET = 'secret_456';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const razorpayConfig = service.getConfig({
         appId: 'myapp',
@@ -128,14 +234,14 @@ describe('PaymentConfigService', () => {
       expect(phonepeConfig?.provider).toBe(PaymentProvider.PHONEPE);
     });
 
-    it('should return config for specific account', () => {
+    it('should return config for specific account', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_default';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_default';
       process.env.RAZORPAY_MYAPP_SECONDARY_KEY_ID = 'rzp_secondary';
       process.env.RAZORPAY_MYAPP_SECONDARY_KEY_SECRET = 'secret_secondary';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const defaultConfig = service.getConfig({
         appId: 'myapp',
@@ -152,12 +258,12 @@ describe('PaymentConfigService', () => {
   });
 
   describe('getAppConfigs', () => {
-    it('should return app configuration', () => {
+    it('should return app configuration', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const appConfig = service.getAppConfigs('myapp');
 
@@ -167,9 +273,9 @@ describe('PaymentConfigService', () => {
       expect(appConfig?.defaultProvider).toBe(PaymentProvider.RAZORPAY);
     });
 
-    it('should return null for unknown app', () => {
+    it('should return null for unknown app', async () => {
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const appConfig = service.getAppConfigs('unknown_app');
 
@@ -178,42 +284,42 @@ describe('PaymentConfigService', () => {
   });
 
   describe('isProviderEnabled', () => {
-    it('should return true when provider is configured', () => {
+    it('should return true when provider is configured', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       expect(service.isProviderEnabled('myapp', PaymentProvider.RAZORPAY)).toBe(true);
       expect(service.isProviderEnabled('myapp', PaymentProvider.PHONEPE)).toBe(false);
     });
 
-    it('should return false when no configs exist', () => {
+    it('should return false when no configs exist', async () => {
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       expect(service.isProviderEnabled('unknown_app', PaymentProvider.RAZORPAY)).toBe(false);
     });
   });
 
   describe('getWebhookSecret', () => {
-    it('should return webhook secret for Razorpay config', () => {
+    it('should return webhook secret for Razorpay config', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_WEBHOOK_SECRET = 'wh_secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const secret = service.getWebhookSecret('razorpay_myapp_default');
 
       expect(secret).toBe('wh_secret_123');
     });
 
-    it('should return null for unknown config', () => {
+    it('should return null for unknown config', async () => {
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const secret = service.getWebhookSecret('unknown_config');
 
@@ -222,14 +328,14 @@ describe('PaymentConfigService', () => {
   });
 
   describe('getRegisteredAppIds', () => {
-    it('should return all registered app IDs', () => {
+    it('should return all registered app IDs', async () => {
       process.env.RAZORPAY_APP1_DEFAULT_KEY_ID = 'rzp_1';
       process.env.RAZORPAY_APP1_DEFAULT_KEY_SECRET = 'secret_1';
       process.env.RAZORPAY_APP2_DEFAULT_KEY_ID = 'rzp_2';
       process.env.RAZORPAY_APP2_DEFAULT_KEY_SECRET = 'secret_2';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const appIds = service.getRegisteredAppIds();
 
@@ -293,7 +399,7 @@ describe('PaymentConfigService', () => {
   describe('getPlanConfig', () => {
     it('should return null when database is not available', async () => {
       const service = new PaymentConfigService(null);
-      service.initialize();
+      await service.initialize();
 
       const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
 
@@ -318,7 +424,7 @@ describe('PaymentConfigService', () => {
       } as any;
 
       const service = new PaymentConfigService(mockDb);
-      service.initialize();
+      await service.initialize();
 
       const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
 
@@ -338,7 +444,7 @@ describe('PaymentConfigService', () => {
       } as any;
 
       const service = new PaymentConfigService(mockDb);
-      service.initialize();
+      await service.initialize();
 
       const plan = await service.getPlanConfig('com.paymentalert.app', 'unknown_plan');
 
@@ -347,12 +453,12 @@ describe('PaymentConfigService', () => {
   });
 
   describe('getProviderConfig', () => {
-    it('should return provider config', () => {
+    it('should return provider config', async () => {
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_ID = 'rzp_test_123';
       process.env.RAZORPAY_MYAPP_DEFAULT_KEY_SECRET = 'secret_123';
 
       const service = new PaymentConfigService();
-      service.initialize();
+      await service.initialize();
 
       const config = service.getProviderConfig('myapp', PaymentProvider.RAZORPAY);
 
@@ -363,8 +469,8 @@ describe('PaymentConfigService', () => {
 });
 
 describe('createPaymentConfigService', () => {
-  it('should create and initialize service', () => {
-    const service = createPaymentConfigService();
+  it('should create and initialize service', async () => {
+    const service = await createPaymentConfigService();
 
     expect(service).toBeInstanceOf(PaymentConfigService);
     expect(service.getRegisteredAppIds()).toBeDefined();

@@ -265,7 +265,7 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
 export class PaymentGatewayModule implements OnModuleInit {
   constructor(private readonly configService: PaymentConfigService) {}
 
-  onModuleInit(): void {
-    this.configService.initialize();
+  async onModuleInit(): Promise<void> {
+    await this.configService.initialize();
   }
 }

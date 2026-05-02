@@ -123,7 +123,7 @@ export async function createTestApp(): Promise<TestContext> {
 
   // Initialize config (reads env vars for provider credentials)
   const configService = module.get(PaymentConfigService);
-  configService.initialize();
+  await configService.initialize();
 
   return {
     module,
