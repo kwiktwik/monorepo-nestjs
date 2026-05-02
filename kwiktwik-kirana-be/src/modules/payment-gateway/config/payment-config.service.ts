@@ -97,29 +97,25 @@ export class PaymentConfigService {
       return;
     }
 
-    let loadedFromDb = false;
-
     if (this.db) {
       try {
         await this.loadConfigsFromDatabase();
-        loadedFromDb = true;
       } catch (error) {
         this.logger.warn(
-          `Failed to load configs from database, falling back to env vars: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Failed to load configs from database: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       }
     }
 
-    if (!loadedFromDb) {
-      this.loadRazorpayConfigs();
-      this.loadPhonePeConfigs();
-    }
+    // Always scan env vars as supplements (won't overwrite DB-loaded configs)
+    this.loadRazorpayConfigs();
+    this.loadPhonePeConfigs();
 
     this.loadAppConfigs();
     this.initialized = true;
 
     this.logger.log(
-      `Initialized with ${this.razorpayConfigs.size} Razorpay configs, ${this.phonepeConfigs.size} PhonePe configs (source: ${loadedFromDb ? 'database' : 'env'})`,
+      `Initialized with ${this.razorpayConfigs.size} Razorpay configs, ${this.phonepeConfigs.size} PhonePe configs`,
     );
   }
 
@@ -341,6 +337,14 @@ export class PaymentConfigService {
   }
 
   /**
+   * Reverse of normalizeAppIdForEnv.
+   * e.g. "COM_KWIKTWIK_DATINGAI" → "com.kwiktwik.datingai"
+   */
+  private envSegmentToAppId(segment: string): string {
+    return segment.toLowerCase().replace(/_/g, '.');
+  }
+
+  /**
    * Load provider configurations from the database.
    * Non-secret fields come from the DB row; secrets come from env vars.
    */
@@ -370,7 +374,7 @@ export class PaymentConfigService {
     creds: Record<string, unknown>,
     envPrefix: string,
   ): void {
-    const keyId = creds.keyId as string | undefined;
+    const keyId = (creds.keyId as string | undefined) ?? process.env[`${envPrefix}_KEY_ID`];
     const keySecret = process.env[`${envPrefix}_KEY_SECRET`];
     const webhookSecret =
       process.env[`${envPrefix}_WEBHOOK_SECRET`] ?? row.webhookSecret ?? null;
@@ -447,7 +451,7 @@ export class PaymentConfigService {
       const match = key.match(pattern);
       if (!match || !value) continue;
 
-      const appId = match[1].toLowerCase();
+      const appId = this.envSegmentToAppId(match[1]);
       const accountId = match[2].toLowerCase();
 
       const keySecret = env[`RAZORPAY_${match[1]}_${match[2]}_KEY_SECRET`];
@@ -459,6 +463,12 @@ export class PaymentConfigService {
       }
 
       const configId = `razorpay_${appId}_${accountId}`;
+
+      // Skip if already loaded from DB
+      if (this.razorpayConfigs.has(configId)) {
+        continue;
+      }
+
       const config: RazorpayProviderConfig = {
         configId,
         provider: PaymentProvider.RAZORPAY,
@@ -473,7 +483,7 @@ export class PaymentConfigService {
       };
 
       this.razorpayConfigs.set(configId, config);
-      this.logger.debug(`Loaded Razorpay config: ${configId}`);
+      this.logger.debug(`Loaded Razorpay config from env: ${configId}`);
     }
   }
 
@@ -485,7 +495,7 @@ export class PaymentConfigService {
       const match = key.match(pattern);
       if (!match || !value) continue;
 
-      const appId = match[1].toLowerCase();
+      const appId = this.envSegmentToAppId(match[1]);
       const accountId = match[2].toLowerCase();
 
       const clientSecret = env[`PHONEPE_${match[1]}_${match[2]}_CLIENT_SECRET`];
@@ -502,6 +512,12 @@ export class PaymentConfigService {
       }
 
       const configId = `phonepe_${appId}_${accountId}`;
+
+      // Skip if already loaded from DB
+      if (this.phonepeConfigs.has(configId)) {
+        continue;
+      }
+
       const config: PhonePeProviderConfig = {
         configId,
         provider: PaymentProvider.PHONEPE,
@@ -520,7 +536,7 @@ export class PaymentConfigService {
       };
 
       this.phonepeConfigs.set(configId, config);
-      this.logger.debug(`Loaded PhonePe config: ${configId}`);
+      this.logger.debug(`Loaded PhonePe config from env: ${configId}`);
     }
   }
 
