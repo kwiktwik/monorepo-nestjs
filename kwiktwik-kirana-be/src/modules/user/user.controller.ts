@@ -234,6 +234,54 @@ export class UserController {
     }
   }
 
+  @Post()
+  @Version('2')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update user profile (v2)',
+    description:
+      'Updates user profile information including name, phone, email, UPI VPA, profile images, and clientData. Performs phone number uniqueness validation and syncs images to user_images table. The clientData field allows storing arbitrary JSON data for client application use.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Bad Request - Invalid input data or phone number already in use',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing JWT token',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUserV2(
+    @CurrentUser() user: AuthUser,
+    @AppId() appId: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    const endpoint = 'POST /v2/user';
+    const startTime = this.logRequestStart(endpoint, user.userId, appId);
+    try {
+      const userData = await this.userService.updateUserProfile(
+        user.userId,
+        appId,
+        updateUserDto,
+      );
+
+      this.logRequestSuccess(endpoint, user.userId, startTime);
+      return {
+        success: true,
+        message: 'User updated successfully',
+        data: userData,
+      };
+    } catch (error) {
+      this.logRequestFailure(endpoint, user.userId, startTime, error);
+      throw error;
+    }
+  }
+
   @Delete('v1')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete user account' })
