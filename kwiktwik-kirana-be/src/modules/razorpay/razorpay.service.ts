@@ -130,6 +130,114 @@ export class RazorpayService {
     return credentials.key_secret;
   }
 
+  async createOrder(
+    userId: string,
+    appId: string,
+    dto: {
+      amount: number;
+      currency?: string;
+      receipt?: string;
+      notes?: Record<string, string>;
+    },
+  ) {
+    const { amount, currency = 'INR', receipt, notes: rawNotes } = dto;
+
+    const razorpay = this.getRazorpayInstance(appId);
+    const keyId = this.getKeyId(appId);
+    const orderId = nanoid(8);
+    const notes: Record<string, string> = { ...rawNotes, db: 'kirana-kwiktwik-be' };
+    const receiptId = receipt || `rcpt_${orderId}`;
+
+    this.logger.log(
+      `[createOrder] Creating Razorpay order | userId=${userId} appId=${appId} amount=${amount} currency=${currency}`,
+    );
+
+    let razorpayOrder: {
+      id: string;
+      entity: string;
+      amount: number;
+      amount_paid: number;
+      amount_due: number;
+      currency: string;
+      receipt: string | null;
+      offer_id: string | null;
+      status: string;
+      attempts: number;
+      notes: Record<string, string> | null;
+      created_at: number;
+    };
+
+    try {
+      razorpayOrder = (await razorpay.orders.create({
+        amount,
+        currency,
+        receipt: receiptId,
+        notes,
+      })) as typeof razorpayOrder;
+      this.logger.log(
+        `[createOrder] Razorpay order created | razorpayOrderId=${razorpayOrder.id}`,
+      );
+    } catch (error) {
+      const err = error as { error?: { description?: string } };
+      this.logger.error(
+        `[createOrder] Failed to create Razorpay order`,
+        err,
+      );
+      throw new BadRequestException(
+        err?.error?.description || 'Failed to create order',
+      );
+    }
+
+    try {
+      await this.db.insert(schema.orders).values({
+        id: orderId,
+        razorpayOrderId: razorpayOrder.id,
+        userId,
+        appId,
+        customerId: notes.email || userId,
+        amount,
+        currency,
+        status: 'created',
+        notes: JSON.stringify(notes),
+        paymentMetadata: razorpayOrder,
+      });
+      this.logger.log(
+        `[createOrder] DB insert success | orderId=${orderId} razorpayOrderId=${razorpayOrder.id}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[createOrder] DB insert failed | orderId=${orderId} razorpayOrderId=${razorpayOrder.id}`,
+        error,
+      );
+      throw error;
+    }
+
+    return {
+      orderId,
+      razorpayOrder,
+      razorpayCheckout: {
+        key: keyId,
+        order_id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: notes.name || 'KwikTwik',
+        description: notes.description || 'Payment',
+        image: notes.image || undefined,
+        callback_url: notes.callback_url || undefined,
+        prefill: {
+          email: notes.email || undefined,
+          contact: notes.contact || undefined,
+          name: notes.name || undefined,
+        },
+        notes,
+        theme: {
+          color: '#F37254',
+        },
+      },
+      message: 'Order created successfully. Proceed with payment.',
+    };
+  }
+
   async createSubscriptionV2(
     userId: string,
     appId: string,

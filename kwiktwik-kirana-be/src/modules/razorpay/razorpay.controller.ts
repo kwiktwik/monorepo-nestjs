@@ -8,6 +8,7 @@ import {
   UseGuards,
   Logger,
   Headers,
+  Version,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AppId } from '../../common/decorators/app-id.decorator';
 import { CreateSubscriptionV2Dto } from './dto/create-subscription.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 
 @ApiTags('razorpay')
@@ -43,6 +45,65 @@ export class RazorpayController {
   private readonly logger = new Logger(RazorpayController.name);
 
   constructor(private readonly razorpayService: RazorpayService) {}
+
+  @Post('order')
+  @Version('1')
+  @ApiOperation({
+    summary: 'Create a one-time Razorpay order',
+    description:
+      'Creates a Razorpay order for one-time payment. Returns order details and checkout options for client-side Razorpay SDK.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Order created successfully',
+    schema: {
+      example: {
+        orderId: 'abc12345',
+        razorpayOrder: {
+          id: 'order_RB58MiP5SPFYyM',
+          entity: 'order',
+          amount: 29900,
+          amount_paid: 0,
+          amount_due: 29900,
+          currency: 'INR',
+          receipt: 'rcpt_abc12345',
+          status: 'created',
+          attempts: 0,
+          notes: { email: 'user@example.com' },
+          created_at: 1756455561,
+        },
+        razorpayCheckout: {
+          key: 'rzp_live_...',
+          order_id: 'order_RB58MiP5SPFYyM',
+          amount: 29900,
+          currency: 'INR',
+          name: 'KwikTwik',
+          description: 'Payment',
+          prefill: { email: 'user@example.com' },
+          theme: { color: '#F37254' },
+        },
+        message: 'Order created successfully. Proceed with payment.',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createOrder(
+    @CurrentUser() user: { userId: string },
+    @AppId() appId: string,
+    @Body() dto: CreateOrderDto,
+  ) {
+    this.logger.log(
+      `[createOrder] userId=${user.userId} appId=${appId} amount=${dto.amount} currency=${dto.currency || 'INR'}`,
+    );
+
+    return this.razorpayService.createOrder(user.userId, appId, {
+      amount: dto.amount,
+      currency: dto.currency,
+      receipt: dto.receipt,
+      notes: dto.notes,
+    });
+  }
 
   @Post('subscriptions/v2')
   @ApiOperation({

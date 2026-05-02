@@ -104,6 +104,76 @@ export class MockRazorpayService {
     private db: NodePgDatabase<typeof schema>,
   ) {}
 
+  async createOrder(
+    userId: string,
+    appId: string,
+    dto: {
+      amount: number;
+      currency?: string;
+      receipt?: string;
+      notes?: Record<string, string>;
+    },
+  ) {
+    const { amount, currency = 'INR', notes = {} } = dto;
+    const orderId = nanoid(8);
+    const fakeRazorpayOrderId = `order_mock_${nanoid(14)}`;
+    const receiptId = dto.receipt || `rcpt_${orderId}`;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    this.logger.log(
+      `[MOCK Razorpay] createOrder for user=${userId} app=${appId} amount=${amount}`,
+    );
+
+    const razorpayOrder = {
+      id: fakeRazorpayOrderId,
+      entity: 'order' as const,
+      amount,
+      amount_paid: 0,
+      amount_due: amount,
+      currency,
+      receipt: receiptId,
+      offer_id: null,
+      status: 'created',
+      attempts: 0,
+      notes,
+      created_at: nowSeconds,
+    };
+
+    await this.db.insert(schema.orders).values({
+      id: orderId,
+      razorpayOrderId: fakeRazorpayOrderId,
+      userId,
+      appId,
+      customerId: notes.email || userId,
+      amount,
+      currency,
+      status: 'created',
+      notes: JSON.stringify(notes),
+      paymentMetadata: razorpayOrder,
+    });
+
+    return {
+      orderId,
+      razorpayOrder,
+      razorpayCheckout: {
+        key: 'rzp_test_mock',
+        order_id: fakeRazorpayOrderId,
+        amount,
+        currency,
+        name: notes.name || 'KwikTwik',
+        description: notes.description || 'Payment',
+        prefill: {
+          email: notes.email || undefined,
+          contact: notes.contact || undefined,
+          name: notes.name || undefined,
+        },
+        notes,
+        theme: { color: '#F37254' },
+      },
+      message: '[MOCK] Order created. No real charges will occur.',
+    };
+  }
+
   async createSubscriptionV2(
     userId: string,
     appId: string,
