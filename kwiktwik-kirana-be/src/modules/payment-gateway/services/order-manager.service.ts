@@ -33,6 +33,7 @@ export interface CreateOneTimeOrderInput {
   readonly receipt?: string;
   readonly notes?: Record<string, string>;
   readonly redirectUrl?: string;
+  readonly contact?: string;
 }
 
 export interface CreateOneTimeOrderResult {
@@ -110,6 +111,7 @@ export class OrderManagerService {
         receipt: input.receipt,
         notes: input.notes,
         redirectUrl: input.redirectUrl,
+        contact: input.contact,
       });
 
       const order = createOrder({
@@ -249,30 +251,41 @@ export class OrderManagerService {
       return order;
     }
 
+    if (!order.providerData.orderId) {
+      this.logger.warn(`Order ${orderId} has no provider order ID, cannot sync`);
+      return order;
+    }
+
     const config = this.configService.getConfig({
       appId: order.appId,
       provider: order.provider,
     });
     if (!config) return order;
 
-    const provider = this.providerFactory.getOneTimeOrderProvider(order.provider, config);
+    try {
+      const provider = this.providerFactory.getOneTimeOrderProvider(order.provider, config);
 
-    const statusResult = await provider.getOrderStatus({
-      merchantOrderId: order.merchantOrderId,
-      providerOrderId: order.providerData.orderId,
-    });
+      const statusResult = await provider.getOrderStatus({
+        merchantOrderId: order.merchantOrderId,
+        providerOrderId: order.providerData.orderId,
+      });
 
-    if (statusResult.mappedStatus === 'CAPTURED') {
-      const paymentId = statusResult.paymentDetails[0]?.transactionId ?? '';
-      const updated = markOrderAsPaid(order, paymentId);
-      await this.orderRepository.save(updated);
-      return updated;
-    }
+      if (statusResult.mappedStatus === 'CAPTURED') {
+        const paymentId = statusResult.paymentDetails[0]?.transactionId ?? '';
+        const updated = markOrderAsPaid(order, paymentId);
+        await this.orderRepository.save(updated);
+        return updated;
+      }
 
-    if (statusResult.mappedStatus === 'FAILED' && order.status !== 'FAILED') {
-      const updated = markOrderAsFailed(order, 'Provider reported failure');
-      await this.orderRepository.save(updated);
-      return updated;
+      if (statusResult.mappedStatus === 'FAILED' && order.status !== 'FAILED') {
+        const updated = markOrderAsFailed(order, 'Provider reported failure');
+        await this.orderRepository.save(updated);
+        return updated;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to sync order ${orderId} with provider: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
 
     return order;

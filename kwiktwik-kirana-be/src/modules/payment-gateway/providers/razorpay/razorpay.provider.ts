@@ -892,6 +892,7 @@ export class RazorpayOneTimeOrderProvider implements OneTimeOrderProvider {
           orderId: order.id,
           amount: order.amount,
           currency: order.currency,
+          contact: params.contact ?? '9999999999',
         },
         state: order.status,
         expiresAt: null,

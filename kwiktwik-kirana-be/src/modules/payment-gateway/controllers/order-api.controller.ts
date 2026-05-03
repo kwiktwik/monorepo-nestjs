@@ -72,6 +72,11 @@ class CreateOneTimeOrderDto {
   @IsOptional()
   @IsString()
   readonly redirectUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Customer contact number for checkout prefill', example: '9876543210' })
+  @IsOptional()
+  @IsString()
+  readonly contact?: string;
 }
 
 class VerifyPaymentDto {
@@ -141,6 +146,7 @@ export class OrderApiController {
       receipt: dto.receipt,
       notes: dto.notes,
       redirectUrl: dto.redirectUrl,
+      contact: dto.contact,
     });
 
     if (!result.success) {

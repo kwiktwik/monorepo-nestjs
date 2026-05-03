@@ -25,6 +25,7 @@ export interface CreateOneTimeOrderParams {
   readonly receipt?: string;
   readonly notes?: Record<string, string>;
   readonly redirectUrl?: string;
+  readonly contact?: string;
 }
 
 export interface CreateOneTimeOrderResult {
