@@ -365,6 +365,40 @@ describe('OrderManagerService', () => {
       const synced = await service.syncOrderStatus(order.id);
       expect(synced!.status).toBe('CREATED');
     });
+
+    it('should return order unchanged when providerData.orderId is empty', async () => {
+      // Simulate an order that failed provider creation (empty provider order ID)
+      const failedOrder = createOrder({
+        id: 'ord_no_provider',
+        merchantOrderId: 'MORD_no_provider',
+        userId: 'user_1',
+        appId: 'app_test',
+        orderType: 'ONE_TIME',
+        subscriptionType: 'USER_MANAGED',
+        provider: 'RAZORPAY',
+        configId: 'config_1',
+        environment: 'SANDBOX',
+        amount: 5000,
+        providerData: { orderId: '' },
+      });
+      await orderRepo.save(failedOrder);
+
+      mockProvider.getOrderStatus.mockClear();
+      const synced = await service.syncOrderStatus(failedOrder.id);
+
+      expect(synced).not.toBeNull();
+      expect(synced!.status).toBe('CREATED');
+      expect(mockProvider.getOrderStatus).not.toHaveBeenCalled();
+    });
+
+    it('should return order unchanged when provider throws', async () => {
+      mockProvider.getOrderStatus.mockRejectedValueOnce(new Error('Razorpay API unreachable'));
+
+      const synced = await service.syncOrderStatus(order.id);
+
+      expect(synced).not.toBeNull();
+      expect(synced!.status).toBe('CREATED');
+    });
   });
 
   // ──────────────────────────────────────────────────────────────
