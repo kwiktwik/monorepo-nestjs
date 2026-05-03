@@ -18,6 +18,7 @@ import { SubscriptionType } from '../types/subscription-type.enum';
 import { SubscriptionStatus, StateMachineEvent } from '../types/subscription-status.enum';
 import { transitionSubscriptionStatus, recordSuccessfulPayment, recordPaymentFailure } from '../domain/entities/subscription.entity';
 import { createPaymentFailure } from '../domain/entities/subscription.entity';
+import { markOrderAsPaid } from '../domain/entities/order.entity';
 import { mapRazorpaySubscriptionStatus } from '../types/razorpay.types';
 import { mapPhonePeSubscriptionState } from '../types/phonepe.types';
 import { eq, and, sql } from 'drizzle-orm';
@@ -271,6 +272,9 @@ export class WebhookHandlerService {
     // Subscription halted/failed
     this.registerHandler('subscription.halted', this.handleSubscriptionHalted.bind(this));
     
+    // Payment captured (one-time order)
+    this.registerHandler('payment.captured', this.handlePaymentCaptured.bind(this));
+
     // Payment failed
     this.registerHandler('payment.failed', this.handlePaymentFailed.bind(this));
     
@@ -298,6 +302,70 @@ export class WebhookHandlerService {
     
     // Transaction failed (PhonePe)
     this.registerHandler('subscription.transaction.failed', this.handleTransactionFailed.bind(this));
+  }
+
+  /**
+   * Handle payment captured event (one-time orders)
+   */
+  private async handlePaymentCaptured(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const providerOrderId = event.merchantOrderId ?? event.providerOrderId;
+    this.logger.log(`Payment captured | providerOrderId=${providerOrderId} | paymentId=${event.paymentId}`);
+
+    if (!providerOrderId) {
+      this.logger.warn('Payment captured event has no order ID, skipping order update');
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: null,
+        error: null,
+      };
+    }
+
+    const order = await this.orderRepository.findByProviderOrderId(
+      event.provider,
+      providerOrderId,
+    );
+
+    if (!order) {
+      this.logger.warn(`Order not found for payment captured | providerOrderId=${providerOrderId}`);
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: null,
+        error: null,
+      };
+    }
+
+    if (order.status === 'CAPTURED') {
+      this.logger.log(`Order already captured, skipping | orderId=${order.id}`);
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: order.id,
+        error: null,
+      };
+    }
+
+    const updated = markOrderAsPaid(order, event.paymentId ?? '', {
+      paymentId: event.paymentId,
+    });
+    await this.orderRepository.save(updated);
+    this.logger.log(`Order marked as CAPTURED via webhook | orderId=${order.id} | paymentId=${event.paymentId}`);
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: order.id,
+      error: null,
+    };
   }
 
   /**
