@@ -151,6 +151,7 @@ describe('RazorpayOneTimeOrderProvider', () => {
         orderId: 'order_test_123',
         amount: 10000,
         currency: 'INR',
+        contact: '9999999999',
       });
       expect(result.redirectUrl).toBeNull();
       expect(mock.orders.create).toHaveBeenCalledWith({
