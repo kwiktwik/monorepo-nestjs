@@ -43,13 +43,6 @@
       "when": 1777780656882,
       "tag": "0005_add-plan-type-and-one-time-support",
       "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1777780656883,
-      "tag": "0006_apply-plan-type-schema-changes",
-      "breakpoints": true
     }
   ]
 }
