@@ -37,6 +37,7 @@ import { PaymentGatewayModule } from './modules/payment-gateway/payment-gateway.
 import { VoiceModule } from './modules/voice/voice.module';
 import { SlydeeModule } from './modules/slydee/slydee.module';
 import { AiModule } from './modules/ai/ai.module';
+import { PaywallModule } from './modules/paywall/paywall.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -87,6 +88,7 @@ const migrationEnabled = process.env.MIGRATION_ENABLED !== 'false';
     VoiceModule,
     SlydeeModule,
     AiModule,
+    PaywallModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],
