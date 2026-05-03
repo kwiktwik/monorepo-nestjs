@@ -51,7 +51,7 @@ export class WebhookController {
     @Headers('x-razorpay-signature') signature: string,
     @Req() req: Request,
   ): Promise<{ received: boolean; eventId: string }> {
-    this.logger.debug('Received Razorpay webhook');
+    this.logger.log(`[Razorpay] Webhook received | signature_present=${!!signature} | content_type=${req.headers['content-type']} | body_type=${typeof body}`);
 
     const rawBody = this.getRawBody(req, body);
     const headers = this.extractHeaders(req);
@@ -63,6 +63,7 @@ export class WebhookController {
       headers,
     );
 
+    this.logger.log(`[Razorpay] Webhook processed | eventId=${result.eventId} | success=${result.success} | error=${result.error ?? 'none'}`);
     return this.respondToResult('Razorpay', result);
   }
 
@@ -80,7 +81,7 @@ export class WebhookController {
     @Headers('authorization') signature: string,
     @Req() req: Request,
   ): Promise<{ received: boolean; eventId: string }> {
-    this.logger.debug('Received PhonePe webhook');
+    this.logger.log(`[PhonePe] Webhook received | auth_present=${!!signature} | content_type=${req.headers['content-type']} | body_type=${typeof body}`);
 
     const rawBody = this.getRawBody(req, body);
     const headers = this.extractHeaders(req);
@@ -92,6 +93,7 @@ export class WebhookController {
       headers,
     );
 
+    this.logger.log(`[PhonePe] Webhook processed | eventId=${result.eventId} | success=${result.success} | error=${result.error ?? 'none'}`);
     return this.respondToResult('PhonePe', result);
   }
 
@@ -106,7 +108,7 @@ export class WebhookController {
     @Headers('authorization') signature: string,
     @Req() req: Request,
   ): Promise<{ received: boolean; eventId: string }> {
-    this.logger.debug(`Received PhonePe webhook for app: ${appId}`);
+    this.logger.log(`[PhonePe] Webhook received | appId=${appId} | auth_present=${!!signature} | content_type=${req.headers['content-type']} | body_type=${typeof body}`);
 
     const rawBody = this.getRawBody(req, body);
     const headers = this.extractHeaders(req);
@@ -118,6 +120,7 @@ export class WebhookController {
       headers,
     );
 
+    this.logger.log(`[PhonePe] Webhook processed | appId=${appId} | eventId=${result.eventId} | success=${result.success} | error=${result.error ?? 'none'}`);
     return this.respondToResult('PhonePe', result);
   }
 
