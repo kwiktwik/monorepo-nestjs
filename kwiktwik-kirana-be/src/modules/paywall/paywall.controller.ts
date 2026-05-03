@@ -22,7 +22,7 @@ import { PaywallService, type PlanTypeFilter } from './paywall.service';
 
 @ApiTags('paywall')
 @ApiBearerAuth('JWT')
-@Controller('paywall')
+@Controller('v1/paywall')
 @UseGuards(AppIdGuard, JwtAuthGuard)
 @UseInterceptors(PrometheusMetricsInterceptor)
 export class PaywallController {
@@ -30,9 +30,15 @@ export class PaywallController {
 
   @Get('plans')
   @ApiOperation({
-    summary: 'Get all active plans',
+    summary: 'Get all active plans (backend-driven)',
     description:
-      'Returns all active plans for the current app. Optionally filter by plan type.',
+      'Returns screen-level text and all active plans with display metadata (badge, features, pricing, CTA). The client renders the paywall entirely from this response.',
+  })
+  @ApiQuery({
+    name: 'language',
+    required: false,
+    description: 'Language code for localized content (default: en)',
+    example: 'en',
   })
   @ApiQuery({
     name: 'type',
@@ -44,10 +50,15 @@ export class PaywallController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getPlans(
     @AppId() appId: string,
+    @Query('language') language?: string,
     @Query('type') type?: PlanTypeFilter,
   ) {
-    const plans = await this.paywallService.getPlans(appId, type);
-    return { success: true, data: plans };
+    const config = await this.paywallService.getPaywallConfig(
+      appId,
+      language ?? 'en',
+      type,
+    );
+    return { success: true, data: config };
   }
 
   @Get('plans/:planId')
