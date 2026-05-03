@@ -20,6 +20,7 @@
 
 import { Module, Global, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { ScheduleModule } from '@nestjs/schedule';
 
 // Services
@@ -32,6 +33,7 @@ import { PaymentConfigService } from './config/payment-config.service';
 // New Services
 import { WebhookProcessorService } from './webhooks/webhook-processor.service';
 import { IdempotencyService, InMemoryIdempotencyStore } from './common/idempotency/idempotency.service';
+import { EntitlementService } from './services/entitlement.service';
 
 // Scheduler
 import { BillingSchedulerService, BILLING_DEAD_LETTER_QUEUE } from './scheduler/billing-scheduler.service';
@@ -42,7 +44,7 @@ import { QueueModule } from '../../queue/queue.module';
 import { isMockMode } from '../../common/utils/is-mock-mode';
 
 // Event Bus
-import { InMemoryEventBus } from './common/events/in-memory-event-bus';
+import { RedisEventBus } from './common/events/redis-event-bus';
 import type { IEventBus } from './common/events/event-bus.interface';
 
 // Security
@@ -60,9 +62,7 @@ import { WebhookController } from './controllers/webhook.controller';
 import { SubscriptionApiController } from './controllers/subscription-api.controller';
 import { OrderApiController } from './controllers/order-api.controller';
 
-// Repositories
-import { InMemorySubscriptionRepository } from './infrastructure/repositories/in-memory-subscription.repository';
-import { InMemoryOrderRepository } from './infrastructure/repositories/in-memory-order.repository';
+// Repositories (always Drizzle — no in-memory for production)
 import { DrizzleSubscriptionRepository } from './infrastructure/repositories/drizzle-subscription.repository';
 import { DrizzleOrderRepository } from './infrastructure/repositories/drizzle-order.repository';
 import { DrizzleIdempotencyStore } from './infrastructure/repositories/drizzle-idempotency.store';
@@ -78,7 +78,6 @@ import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { RedisService } from '../../common/redis/redis.service';
 
 // Feature flags
-const USE_DATABASE_REPOSITORIES = process.env.PAYMENT_USE_DB_REPOS !== 'false';
 const ENABLE_BILLING_SCHEDULER = process.env.PAYMENT_BILLING_SCHEDULER_ENABLED !== 'false';
 const ENABLE_CIRCUIT_BREAKER = process.env.PAYMENT_CIRCUIT_BREAKER_ENABLED !== 'false';
 const ENABLE_BILLING_DLQ = process.env.PAYMENT_BILLING_DLQ_ENABLED !== 'false';
@@ -187,14 +186,19 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     IdempotencyService,
     {
       provide: 'IdempotencyStore',
-      useClass: USE_DATABASE_REPOSITORIES ? DrizzleIdempotencyStore : InMemoryIdempotencyStore,
+      useClass: DrizzleIdempotencyStore,
     },
 
-    // Event Bus
+    // Event Bus (Redis-backed with DB persistence)
     {
       provide: 'IEventBus',
-      useClass: InMemoryEventBus,
+      useFactory: (redisService: RedisService, db: NodePgDatabase) =>
+        new RedisEventBus(redisService, db),
+      inject: [RedisService, DRIZZLE_TOKEN],
     },
+
+    // Entitlement
+    EntitlementService,
 
     // Encryption
     EncryptionService,
@@ -202,28 +206,15 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
     // Billing Scheduler (conditionally added based on feature flag)
     ...(ENABLE_BILLING_SCHEDULER ? [BillingSchedulerService] : []),
 
-    // Repositories - use Drizzle for production, in-memory for development
-    ...(USE_DATABASE_REPOSITORIES
-      ? [
-          {
-            provide: 'ISubscriptionRepository',
-            useClass: DrizzleSubscriptionRepository,
-          },
-          {
-            provide: 'IOrderRepository',
-            useClass: DrizzleOrderRepository,
-          },
-        ]
-      : [
-          {
-            provide: 'ISubscriptionRepository',
-            useClass: InMemorySubscriptionRepository,
-          },
-          {
-            provide: 'IOrderRepository',
-            useClass: InMemoryOrderRepository,
-          },
-        ]),
+    // Repositories (always Drizzle)
+    {
+      provide: 'ISubscriptionRepository',
+      useClass: DrizzleSubscriptionRepository,
+    },
+    {
+      provide: 'IOrderRepository',
+      useClass: DrizzleOrderRepository,
+    },
   ],
   exports: [
     // Configuration
@@ -250,6 +241,9 @@ const DEFAULT_FALLBACK_CONFIG: Partial<PaymentFallbackConfig> = {
 
     // Event Bus
     'IEventBus',
+
+    // Entitlement
+    EntitlementService,
 
     // Encryption
     EncryptionService,

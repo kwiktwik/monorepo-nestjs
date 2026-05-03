@@ -269,6 +269,7 @@ export class PaymentConfigService {
     recurringAmount: number | null;
     currency: string;
     frequency: string;
+    premiumDurationDays: number | null;
   } | null> {
     this.ensureInitialized();
 
@@ -295,6 +296,7 @@ export class PaymentConfigService {
       recurringAmount: plan.recurringAmount,
       currency: plan.currency,
       frequency: plan.frequency,
+      premiumDurationDays: plan.premiumDurationDays ?? null,
     };
   }
 

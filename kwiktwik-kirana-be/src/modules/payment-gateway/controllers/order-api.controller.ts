@@ -35,6 +35,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AppId } from '../../../common/decorators/app-id.decorator';
 import { OrderManagerService } from '../services/order-manager.service';
+import { EntitlementService } from '../services/entitlement.service';
 import { PrometheusMetricsInterceptor } from '../../../common/interceptors/prometheus-metrics.interceptor';
 import type { PaymentProvider } from '../types/provider.enum';
 
@@ -77,6 +78,11 @@ class CreateOneTimeOrderDto {
   @IsOptional()
   @IsString()
   readonly contact?: string;
+
+  @ApiPropertyOptional({ description: 'Plan ID to associate with this order (enables premium entitlement on capture)', example: 'plan_yearly_399' })
+  @IsOptional()
+  @IsString()
+  readonly planId?: string;
 }
 
 class VerifyPaymentDto {
@@ -121,7 +127,10 @@ class RefundOrderDto {
 export class OrderApiController {
   private readonly logger = new Logger(OrderApiController.name);
 
-  constructor(private readonly orderManager: OrderManagerService) {}
+  constructor(
+    private readonly orderManager: OrderManagerService,
+    private readonly entitlementService: EntitlementService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -147,6 +156,7 @@ export class OrderApiController {
       notes: dto.notes,
       redirectUrl: dto.redirectUrl,
       contact: dto.contact,
+      planId: dto.planId,
     });
 
     if (!result.success) {
@@ -195,11 +205,15 @@ export class OrderApiController {
       throw new BadRequestException(result.error ?? 'Payment verification failed');
     }
 
+    const entitlement = await this.entitlementService.getActiveEntitlement(user.userId, appId);
+
     return {
       success: true,
       orderId: result.order!.id,
       status: result.order!.status,
       paidAt: result.order!.paidAt,
+      isPremium: !!entitlement,
+      premiumExpiresAt: entitlement?.validUntil ?? null,
     };
   }
 
@@ -221,6 +235,8 @@ export class OrderApiController {
       throw new NotFoundException('Order not found');
     }
 
+    const entitlement = await this.entitlementService.getActiveEntitlement(user.userId, appId);
+
     return {
       orderId: order.id,
       merchantOrderId: order.merchantOrderId,
@@ -230,6 +246,8 @@ export class OrderApiController {
       provider: order.provider,
       paidAt: order.paidAt,
       createdAt: order.createdAt,
+      isPremium: !!entitlement,
+      premiumExpiresAt: entitlement?.validUntil ?? null,
     };
   }
 

@@ -8,6 +8,7 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionStateMachineService } from './subscription-state-machine.service';
+import { EntitlementService } from './entitlement.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
 import type { ISubscriptionRepository } from '../infrastructure/repositories/subscription.repository.interface';
@@ -73,6 +74,7 @@ export class WebhookHandlerService {
     private readonly stateMachine: SubscriptionStateMachineService,
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
+    private readonly entitlementService: EntitlementService,
     @Inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
     @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null,
@@ -358,6 +360,20 @@ export class WebhookHandlerService {
     await this.orderRepository.save(updated);
     this.logger.log(`Order marked as CAPTURED via webhook | orderId=${order.id} | paymentId=${event.paymentId}`);
 
+    // Grant entitlement for ONE_TIME orders with a plan
+    if (order.orderType === 'ONE_TIME' && order.planId) {
+      const planConfig = await this.configService.getPlanConfig(order.appId, order.planId);
+      if (planConfig?.premiumDurationDays) {
+        await this.entitlementService.grantFromOrder({
+          orderId: order.id,
+          userId: order.userId,
+          appId: order.appId,
+          planId: order.planId,
+          durationDays: planConfig.premiumDurationDays,
+        });
+      }
+    }
+
     return {
       success: true,
       eventId: event.eventId,
@@ -395,10 +411,23 @@ export class WebhookHandlerService {
   private async handleSubscriptionActivated(event: WebhookEvent): Promise<WebhookProcessResult> {
     this.logger.log(`Subscription activated: ${event.merchantSubscriptionId}`);
     
-    const subscription = await this.findAndUpdateSubscription(
+    await this.findAndUpdateSubscription(
       event.merchantSubscriptionId,
       SubscriptionStatus.ACTIVE,
     );
+
+    // Grant premium entitlement
+    if (event.merchantSubscriptionId) {
+      const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+      if (sub) {
+        await this.entitlementService.grantFromSubscription({
+          subscriptionId: sub.id,
+          userId: sub.userId,
+          appId: sub.appId,
+          planId: sub.planId,
+        });
+      }
+    }
     
     return {
       success: true,
@@ -448,6 +477,13 @@ export class WebhookHandlerService {
       event.merchantSubscriptionId,
       SubscriptionStatus.CANCELLED,
     );
+
+    if (event.merchantSubscriptionId) {
+      const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+      if (sub) {
+        await this.entitlementService.revokeFromSubscription(sub.id, 'subscription_cancelled');
+      }
+    }
     
     return {
       success: true,
@@ -469,6 +505,13 @@ export class WebhookHandlerService {
       event.merchantSubscriptionId,
       SubscriptionStatus.EXPIRED,
     );
+
+    if (event.merchantSubscriptionId) {
+      const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+      if (sub) {
+        await this.entitlementService.revokeFromSubscription(sub.id, 'subscription_expired');
+      }
+    }
     
     return {
       success: true,
@@ -491,6 +534,13 @@ export class WebhookHandlerService {
       event.merchantSubscriptionId,
       SubscriptionStatus.EXPIRED,
     );
+
+    if (event.merchantSubscriptionId) {
+      const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+      if (sub) {
+        await this.entitlementService.revokeFromSubscription(sub.id, 'subscription_halted');
+      }
+    }
     
     return {
       success: true,
@@ -620,6 +670,13 @@ export class WebhookHandlerService {
       event.merchantSubscriptionId,
       SubscriptionStatus.REVOKED,
     );
+
+    if (event.merchantSubscriptionId) {
+      const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+      if (sub) {
+        await this.entitlementService.revokeFromSubscription(sub.id, 'subscription_revoked');
+      }
+    }
     
     return {
       success: true,

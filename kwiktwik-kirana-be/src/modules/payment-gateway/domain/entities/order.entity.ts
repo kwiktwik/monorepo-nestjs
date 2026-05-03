@@ -151,6 +151,10 @@ export interface Order {
   /** Subscription ID (if this is a subscription-related order) */
   readonly subscriptionId: string | null;
 
+  // === Plan Reference ===
+  /** Plan ID (for ONE_TIME orders linked to a plan) */
+  readonly planId: string | null;
+
   // === Order Details ===
   /** Amount in smallest currency unit (paise) */
   readonly amount: number;
@@ -199,6 +203,7 @@ export interface CreateOrderParams {
   readonly configId: string;
   readonly environment: 'SANDBOX' | 'PRODUCTION';
   readonly subscriptionId?: string;
+  readonly planId?: string;
   readonly amount: number;
   readonly currency?: string;
   readonly providerData?: Partial<ProviderOrderData>;
@@ -243,6 +248,7 @@ export function createOrder(params: CreateOrderParams): Order {
     configId: params.configId,
     environment: params.environment,
     subscriptionId: params.subscriptionId ?? null,
+    planId: params.planId ?? null,
     amount: params.amount,
     currency: params.currency ?? 'INR',
     status: 'CREATED',
@@ -462,6 +468,7 @@ export function reconstructOrder(data: {
   readonly configId: string;
   readonly environment: 'SANDBOX' | 'PRODUCTION';
   readonly subscriptionId: string | null;
+  readonly planId: string | null;
   readonly amount: number;
   readonly currency: string;
   readonly status: OrderStatus;

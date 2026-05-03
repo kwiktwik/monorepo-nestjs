@@ -9,6 +9,7 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
+import { EntitlementService } from './entitlement.service';
 
 import type { IEventBus } from '../common/events/event-bus.interface';
 import { PaymentEventTypes, createPaymentEvent, generateCorrelationId } from '../common/events/event-bus.interface';
@@ -34,6 +35,7 @@ export interface CreateOneTimeOrderInput {
   readonly notes?: Record<string, string>;
   readonly redirectUrl?: string;
   readonly contact?: string;
+  readonly planId?: string;
 }
 
 export interface CreateOneTimeOrderResult {
@@ -81,6 +83,7 @@ export class OrderManagerService {
   constructor(
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
+    private readonly entitlementService: EntitlementService,
     @Inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @Inject('IEventBus') @Optional() private readonly eventBus: IEventBus | null,
     @Inject(DRIZZLE_TOKEN) @Optional() private readonly db: NodePgDatabase<any> | null,
@@ -126,6 +129,7 @@ export class OrderManagerService {
         environment: config.environment,
         amount: input.amount,
         currency: input.currency,
+        planId: input.planId,
         providerData: {
           orderId: providerResult.providerOrderId,
         },
@@ -220,6 +224,20 @@ export class OrderManagerService {
         currency: order.currency,
         status: 'SUCCESS',
       });
+
+      // Grant entitlement for ONE_TIME orders with a plan
+      if (order.orderType === 'ONE_TIME' && order.planId) {
+        const planConfig = await this.configService.getPlanConfig(order.appId, order.planId);
+        if (planConfig?.premiumDurationDays) {
+          await this.entitlementService.grantFromOrder({
+            orderId: order.id,
+            userId: order.userId,
+            appId: order.appId,
+            planId: order.planId,
+            durationDays: planConfig.premiumDurationDays,
+          });
+        }
+      }
 
       this.publishEvent(PaymentEventTypes.PAYMENT_SUCCESSFUL, {
         orderId: updatedOrder.id,
@@ -326,6 +344,11 @@ export class OrderManagerService {
 
       const updatedOrder = markOrderAsRefunded(order, refundResult.refundId);
       await this.orderRepository.save(updatedOrder);
+
+      // Revoke entitlement on refund
+      if (order.orderType === 'ONE_TIME' && order.planId) {
+        await this.entitlementService.revokeFromOrder(order.id, 'order_refunded');
+      }
 
       await this.recordPaymentTransaction({
         orderId: updatedOrder.id,

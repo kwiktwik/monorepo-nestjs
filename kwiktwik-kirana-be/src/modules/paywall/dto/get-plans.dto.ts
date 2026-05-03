@@ -52,6 +52,8 @@ export interface PlanDisplayMetadata {
   isPopular?: boolean;
   /** Sort order (lower = first). Default 0 */
   sortOrder?: number;
+  /** Number of premium days granted when this plan is purchased (ONE_TIME only) */
+  premiumDurationDays?: number;
   /** Per-language overrides keyed by language code */
   i18n?: Record<
     string,

@@ -188,6 +188,7 @@ describe('BillingSchedulerService', () => {
           configId: 'config_test',
           environment: 'SANDBOX',
           subscriptionId: 'sub_test123',
+          planId: null,
           amount: 4900,
           currency: 'INR',
           status: 'CAPTURED',

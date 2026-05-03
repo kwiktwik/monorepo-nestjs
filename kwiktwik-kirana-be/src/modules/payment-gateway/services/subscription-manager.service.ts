@@ -8,6 +8,7 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionStateMachineService } from '../services/subscription-state-machine.service';
+import { EntitlementService } from './entitlement.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { PaymentConfigService } from '../config/payment-config.service';
 import { IdempotencyService, IdempotencyOperationType } from '../common/idempotency/idempotency.service';
@@ -141,6 +142,7 @@ export class SubscriptionManagerService {
 
   constructor(
     private readonly stateMachine: SubscriptionStateMachineService,
+    private readonly entitlementService: EntitlementService,
     private readonly providerFactory: ProviderFactory,
     private readonly configService: PaymentConfigService,
     private readonly idempotencyService: IdempotencyService,
@@ -327,6 +329,16 @@ export class SubscriptionManagerService {
       }
 
       this.logger.log(`Created subscription ${subscriptionId} with status ${subscription.status}`);
+
+      // Grant entitlement if subscription is immediately active
+      if (subscription.status === SubscriptionStatus.ACTIVE) {
+        await this.entitlementService.grantFromSubscription({
+          subscriptionId: subscription.id,
+          userId: input.userId,
+          appId: input.appId,
+          planId: input.planId,
+        });
+      }
 
       // Publish event
       this.publishEvent(PaymentEventTypes.SUBSCRIPTION_CREATED, {
@@ -703,11 +715,31 @@ export class SubscriptionManagerService {
 
     // Map and update status
     const mappedStatus = statusResult.mappedStatus as SubscriptionStatus;
+    const previousStatus = subscription.status;
     const transitionResult = transitionSubscriptionStatus(subscription, mappedStatus);
     const updatedSubscription = transitionResult.subscription;
 
     // Save updated subscription
     await this.subscriptionRepository.save(updatedSubscription);
+
+    // Grant/revoke entitlement based on status change
+    if (previousStatus !== mappedStatus) {
+      if (mappedStatus === SubscriptionStatus.ACTIVE) {
+        await this.entitlementService.grantFromSubscription({
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          appId: subscription.appId,
+          planId: subscription.planId,
+        });
+      } else if (
+        mappedStatus === SubscriptionStatus.CANCELLED ||
+        mappedStatus === SubscriptionStatus.EXPIRED ||
+        mappedStatus === SubscriptionStatus.REVOKED ||
+        mappedStatus === SubscriptionStatus.FAILED
+      ) {
+        await this.entitlementService.revokeFromSubscription(subscription.id, `subscription_${mappedStatus.toLowerCase()}`);
+      }
+    }
 
     return updatedSubscription;
   }

@@ -136,6 +136,16 @@ export const planTypeEnum = pgEnum('plan_type', [
 ]);
 
 /**
+ * Entitlement source type enum
+ */
+export const entitlementSourceTypeEnum = pgEnum('entitlement_source_type', [
+  'SUBSCRIPTION',
+  'ONE_TIME_ORDER',
+  'PROMO',
+  'ADMIN',
+]);
+
+/**
  * Webhook event status enum
  */
 export const webhookEventStatusEnum = pgEnum('webhook_event_status', [
@@ -256,6 +266,9 @@ export const plans = pgTable(
       .notNull()
       .default({}),
     
+    // Premium duration (for ONE_TIME plans: how many days of premium the purchase grants)
+    premiumDurationDays: integer('premium_duration_days'),
+
     // Status
     isActive: boolean('is_active').notNull().default(true),
     
@@ -456,6 +469,9 @@ export const ordersV2 = pgTable(
     
     // === Subscription Reference ===
     subscriptionId: text('subscription_id'),
+
+    // === Plan Reference (for ONE_TIME orders linked to a plan) ===
+    planId: text('plan_id'),
     
     // === Order Details ===
     amount: integer('amount').notNull(), // in paise
@@ -696,6 +712,64 @@ export const paymentTransactions = pgTable(
 ).enableRLS();
 
 // ============================================================================
+// Payment Events Table (for durable event bus)
+// ============================================================================
+
+export const paymentEvents = pgTable(
+  'payment_events',
+  {
+    id: text('id').primaryKey(),
+    eventType: varchar('event_type', { length: 100 }).notNull(),
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    eventTypeIdx: index('payment_events_event_type_idx').on(table.eventType),
+    createdAtIdx: index('payment_events_created_at_idx').on(table.createdAt),
+  }),
+).enableRLS();
+
+// ============================================================================
+// Premium Entitlements Table
+// ============================================================================
+
+export const premiumEntitlements = pgTable(
+  'premium_entitlements',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    appId: text('app_id').notNull(),
+    sourceType: entitlementSourceTypeEnum('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    planId: text('plan_id'),
+    isActive: boolean('is_active').notNull().default(true),
+    validFrom: timestamp('valid_from', { withTimezone: true }).notNull(),
+    validUntil: timestamp('valid_until', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revocationReason: text('revocation_reason'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userAppActiveIdx: index('premium_entitlements_user_app_active_idx').on(
+      table.userId,
+      table.appId,
+      table.isActive,
+    ),
+    sourceIdx: index('premium_entitlements_source_idx').on(
+      table.sourceType,
+      table.sourceId,
+    ),
+    uniqueSource: unique('premium_entitlements_source_unique').on(
+      table.sourceType,
+      table.sourceId,
+    ),
+  }),
+).enableRLS();
+
+// ============================================================================
 // Relations
 // ============================================================================
 
@@ -783,3 +857,9 @@ export type NewIdempotencyKey = typeof idempotencyKeys.$inferInsert;
 
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 export type NewPaymentTransaction = typeof paymentTransactions.$inferInsert;
+
+export type PaymentEvent = typeof paymentEvents.$inferSelect;
+export type NewPaymentEvent = typeof paymentEvents.$inferInsert;
+
+export type PremiumEntitlement = typeof premiumEntitlements.$inferSelect;
+export type NewPremiumEntitlement = typeof premiumEntitlements.$inferInsert;
