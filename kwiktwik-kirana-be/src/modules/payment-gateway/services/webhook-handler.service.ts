@@ -353,7 +353,7 @@ export class WebhookHandlerService {
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
-      this.logger.log(`Recording successful payment | merchantSubscriptionId=${event.merchantSubscriptionId} | paymentId=${event.paymentId} | paidCount=${subscription.paidCount}`);
+      this.logger.log(`Recording successful payment | merchantSubscriptionId=${event.merchantSubscriptionId} | paymentId=${event.paymentId} | billingCycleCount=${subscription.billingCycleCount}`);
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
       await this.subscriptionRepository.save(updated);
     } else {
@@ -444,7 +444,7 @@ export class WebhookHandlerService {
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
-      this.logger.log(`Recording payment failure | merchantSubscriptionId=${event.merchantSubscriptionId} | subscriptionType=${subscription.subscriptionType} | currentStatus=${subscription.status} | failureCount=${subscription.failureCount}`);
+      this.logger.log(`Recording payment failure | merchantSubscriptionId=${event.merchantSubscriptionId} | subscriptionType=${subscription.subscriptionType} | currentStatus=${subscription.status} | consecutiveFailures=${subscription.consecutiveFailures}`);
       // Record the failure
       const failure = createPaymentFailure(
         'payment_failed',
@@ -573,7 +573,7 @@ export class WebhookHandlerService {
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
-      this.logger.log(`Recording redemption payment | merchantSubscriptionId=${event.merchantSubscriptionId} | paidCount=${subscription.paidCount}`);
+      this.logger.log(`Recording redemption payment | merchantSubscriptionId=${event.merchantSubscriptionId} | billingCycleCount=${subscription.billingCycleCount}`);
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
       await this.subscriptionRepository.save(updated);
     } else {
@@ -629,7 +629,7 @@ export class WebhookHandlerService {
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
-      this.logger.log(`Recording transaction payment | merchantSubscriptionId=${event.merchantSubscriptionId} | paidCount=${subscription.paidCount}`);
+      this.logger.log(`Recording transaction payment | merchantSubscriptionId=${event.merchantSubscriptionId} | billingCycleCount=${subscription.billingCycleCount}`);
       const updated = recordSuccessfulPayment(subscription, event.paymentId ?? '');
       await this.subscriptionRepository.save(updated);
     } else {
@@ -656,7 +656,7 @@ export class WebhookHandlerService {
       .findByMerchantId(event.merchantSubscriptionId ?? '');
     
     if (subscription) {
-      this.logger.log(`Recording transaction failure | merchantSubscriptionId=${event.merchantSubscriptionId} | failureCount=${subscription.failureCount}`);
+      this.logger.log(`Recording transaction failure | merchantSubscriptionId=${event.merchantSubscriptionId} | consecutiveFailures=${subscription.consecutiveFailures}`);
       const failure = createPaymentFailure(
         'transaction_failed',
         event.errorCode ?? null,
