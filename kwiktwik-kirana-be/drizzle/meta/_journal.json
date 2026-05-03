@@ -43,6 +43,13 @@
       "when": 1777780656882,
       "tag": "0005_add-plan-type-and-one-time-support",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777796725648,
+      "tag": "0006_awesome_liz_osborn",
+      "breakpoints": true
     }
   ]
 }
