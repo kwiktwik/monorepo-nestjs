@@ -266,7 +266,7 @@ export class PaymentConfigService {
   async getPlanConfig(appId: string, planId: string): Promise<{
     planId: string;
     initialAmount: number;
-    recurringAmount: number;
+    recurringAmount: number | null;
     currency: string;
     frequency: string;
   } | null> {

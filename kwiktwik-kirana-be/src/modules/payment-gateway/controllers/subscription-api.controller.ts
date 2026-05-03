@@ -101,7 +101,7 @@ export class SubscriptionApiController {
       provider: dto.provider as PaymentProvider,
       subscriptionType: dto.subscriptionType ?? 'PROVIDER_MANAGED',
       initialAmount: planConfig.initialAmount,
-      recurringAmount: planConfig.recurringAmount,
+      recurringAmount: planConfig.recurringAmount ?? planConfig.initialAmount,
       frequency: planConfig.frequency,
       customerEmail: dto.email,
       customerPhone: dto.phone,

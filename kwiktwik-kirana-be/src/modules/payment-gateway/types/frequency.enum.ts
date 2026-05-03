@@ -27,6 +27,8 @@ export const BillingFrequency = {
   YEARLY: 'YEARLY',
   /** On-demand (manual trigger) */
   ON_DEMAND: 'ON_DEMAND',
+  /** One-time payment (no recurrence) */
+  ONE_TIME: 'ONE_TIME',
 } as const;
 
 export type BillingFrequency = typeof BillingFrequency[keyof typeof BillingFrequency];
@@ -44,6 +46,7 @@ export const ALL_BILLING_FREQUENCIES: readonly BillingFrequency[] = [
   BillingFrequency.HALF_YEARLY,
   BillingFrequency.YEARLY,
   BillingFrequency.ON_DEMAND,
+  BillingFrequency.ONE_TIME,
 ] as const;
 
 /**
@@ -66,7 +69,8 @@ export const FrequencyToDays: Readonly<Record<BillingFrequency, number>> = {
   [BillingFrequency.QUARTERLY]: 90,
   [BillingFrequency.HALF_YEARLY]: 180,
   [BillingFrequency.YEARLY]: 365,
-  [BillingFrequency.ON_DEMAND]: 0, // Manual trigger
+  [BillingFrequency.ON_DEMAND]: 0,
+  [BillingFrequency.ONE_TIME]: 0,
 } as const;
 
 /**
@@ -102,7 +106,8 @@ export const FrequencyCyclesPerYear: Readonly<Record<BillingFrequency, number>> 
   [BillingFrequency.QUARTERLY]: 4,
   [BillingFrequency.HALF_YEARLY]: 2,
   [BillingFrequency.YEARLY]: 1,
-  [BillingFrequency.ON_DEMAND]: 0, // Unlimited
+  [BillingFrequency.ON_DEMAND]: 0,
+  [BillingFrequency.ONE_TIME]: 1,
 } as const;
 
 /**
@@ -126,6 +131,7 @@ export const PhonePeFrequencyMap: Readonly<Record<BillingFrequency, string>> = {
   [BillingFrequency.HALF_YEARLY]: 'HALFYEARLY',
   [BillingFrequency.YEARLY]: 'YEARLY',
   [BillingFrequency.ON_DEMAND]: 'ONDEMAND',
+  [BillingFrequency.ONE_TIME]: 'ONE_TIME',
 } as const;
 
 /**
@@ -166,6 +172,7 @@ export const RazorpayPeriodMap: Readonly<Record<BillingFrequency, { readonly per
   [BillingFrequency.HALF_YEARLY]: { period: 'monthly', interval: 6 },
   [BillingFrequency.YEARLY]: { period: 'yearly', interval: 1 },
   [BillingFrequency.ON_DEMAND]: { period: 'monthly', interval: 1 }, // Special handling needed
+  [BillingFrequency.ONE_TIME]: { period: 'daily', interval: 0 },
 } as const;
 
 /**

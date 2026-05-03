@@ -23,8 +23,9 @@ import {
   pgEnum,
   unique,
   integer,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ============================================================================
 // Enums
@@ -123,6 +124,15 @@ export const billingFrequencyEnum = pgEnum('billing_frequency', [
   'SEMIANNUALLY',
   'YEARLY',
   'ONDEMAND',
+  'ONE_TIME',
+]);
+
+/**
+ * Plan type enum
+ */
+export const planTypeEnum = pgEnum('plan_type', [
+  'ONE_TIME',
+  'SUBSCRIPTION',
 ]);
 
 /**
@@ -226,17 +236,19 @@ export const plans = pgTable(
   {
     id: text('id').primaryKey(),
     appId: text('app_id').notNull(),
+    planType: planTypeEnum('plan_type').notNull().default('SUBSCRIPTION'),
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     
     // Pricing
-    initialAmount: integer('initial_amount').notNull(), // in paise
-    recurringAmount: integer('recurring_amount').notNull(), // in paise
+    amount: integer('amount'), // price in paise (used for ONE_TIME plans)
+    initialAmount: integer('initial_amount').notNull(), // trial/auth amount in paise
+    recurringAmount: integer('recurring_amount'), // recurring charge in paise (null for ONE_TIME)
     currency: varchar('currency', { length: 3 }).notNull().default('INR'),
     
     // Billing
     frequency: billingFrequencyEnum('frequency').notNull(),
-    totalCycles: integer('total_cycles'), // null = unlimited
+    totalCycles: integer('total_cycles'), // null = unlimited, 1 for ONE_TIME
     
     // Provider mappings
     providerPlanIds: jsonb('provider_plan_ids')
@@ -257,6 +269,22 @@ export const plans = pgTable(
   (table) => ({
     appIdIdx: index('plans_app_id_idx').on(table.appId),
     activeIdx: index('plans_active_idx').on(table.isActive),
+    planTypeIdx: index('plans_plan_type_idx').on(table.planType),
+    // SUBSCRIPTION plans must have recurring_amount
+    subscriptionRecurringCheck: check(
+      'plans_subscription_recurring_check',
+      sql`${table.planType} != 'SUBSCRIPTION' OR ${table.recurringAmount} IS NOT NULL`,
+    ),
+    // ONE_TIME plans must have amount
+    oneTimeAmountCheck: check(
+      'plans_one_time_amount_check',
+      sql`${table.planType} != 'ONE_TIME' OR ${table.amount} IS NOT NULL`,
+    ),
+    // ONE_TIME plans must use ONE_TIME frequency
+    oneTimeFrequencyCheck: check(
+      'plans_one_time_frequency_check',
+      sql`${table.planType} != 'ONE_TIME' OR ${table.frequency} = 'ONE_TIME'`,
+    ),
   }),
 ).enableRLS();
 

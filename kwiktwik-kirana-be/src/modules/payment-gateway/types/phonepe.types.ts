@@ -627,6 +627,7 @@ export function toPhonePeFrequency(frequency: BillingFrequency): PhonePeFrequenc
     [BillingFrequency.HALF_YEARLY]: PhonePeFrequency.HALFYEARLY,
     [BillingFrequency.YEARLY]: PhonePeFrequency.YEARLY,
     [BillingFrequency.ON_DEMAND]: PhonePeFrequency.ONDEMAND,
+    [BillingFrequency.ONE_TIME]: PhonePeFrequency.ONDEMAND,
   };
 
   return mapping[frequency];

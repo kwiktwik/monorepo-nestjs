@@ -60,8 +60,12 @@ export class AppConfigService {
     const displayContent = planMetadata.displayContent as Record<string, string> || {};
 
     // 7. Format pricing amounts
+    const isOneTime = plan.planType === 'ONE_TIME';
     const initialAmountFormatted = this.formatAmount(plan.initialAmount);
-    const recurringAmountFormatted = this.formatAmount(plan.recurringAmount);
+    const priceAmount = isOneTime
+      ? (plan.amount ?? plan.initialAmount)
+      : (plan.recurringAmount ?? plan.initialAmount);
+    const recurringAmountFormatted = this.formatAmount(priceAmount);
 
     // 8. Build the config response (similar to v4 structure)
     const config: AppConfigResponse = {
@@ -229,6 +233,7 @@ export class AppConfigService {
       'SEMIANNUALLY': '6 months',
       'YEARLY': 'year',
       'ONDEMAND': 'on demand',
+      'ONE_TIME': 'one time',
     };
     return frequencyMap[frequency] || 'month';
   }

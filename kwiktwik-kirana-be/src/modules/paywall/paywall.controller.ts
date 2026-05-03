@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -11,12 +12,13 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrometheusMetricsInterceptor } from '../../common/interceptors/prometheus-metrics.interceptor';
 import { AppId } from '../../common/decorators/app-id.decorator';
-import { PaywallService } from './paywall.service';
+import { PaywallService, type PlanTypeFilter } from './paywall.service';
 
 @ApiTags('paywall')
 @ApiBearerAuth('JWT')
@@ -30,12 +32,21 @@ export class PaywallController {
   @ApiOperation({
     summary: 'Get all active plans',
     description:
-      'Returns all active subscription plans available for the current app.',
+      'Returns all active plans for the current app. Optionally filter by plan type.',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['ONE_TIME', 'SUBSCRIPTION'],
+    description: 'Filter by plan type',
   })
   @ApiResponse({ status: 200, description: 'Plans returned successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPlans(@AppId() appId: string) {
-    const plans = await this.paywallService.getPlans(appId);
+  async getPlans(
+    @AppId() appId: string,
+    @Query('type') type?: PlanTypeFilter,
+  ) {
+    const plans = await this.paywallService.getPlans(appId, type);
     return { success: true, data: plans };
   }
 
