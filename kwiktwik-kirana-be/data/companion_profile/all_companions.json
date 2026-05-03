@@ -16,7 +16,7 @@
       "calligraphy",
       "drinking lotus tea."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 37,
@@ -39,7 +39,7 @@
       "Science",
       "Conservation"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 38,
@@ -64,7 +64,7 @@
       "herbal medicine",
       "traditional music."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 38,
@@ -90,7 +90,7 @@
       "Fado music",
       "baking pastéis de nata."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 39,
@@ -114,7 +114,7 @@
       "Gastronomy",
       "Meaningful Connections"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 40,
@@ -138,7 +138,7 @@
       "reading romantic novels",
       "exploring caves."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 41,
@@ -163,7 +163,7 @@
       "tea ceremonies",
       "traditional music."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 42,
@@ -187,7 +187,7 @@
       "spicy food",
       "visiting panda sanctuaries."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 43,
@@ -212,7 +212,7 @@
       "tea ceremonies",
       "poetry."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 44,
@@ -239,7 +239,7 @@
       "landscape painting",
       "ice skating."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 45,
@@ -266,7 +266,7 @@
       "Zen philosophy",
       "Japanese gardens."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 46,
@@ -293,7 +293,7 @@
       "Korean dramas",
       "bubble tea."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 47,
@@ -320,7 +320,7 @@
       "traditional craft markets",
       "enjoying pho."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 48,
@@ -348,7 +348,7 @@
       "hiking ancient ruins",
       "pub quizzes."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 49,
@@ -377,7 +377,7 @@
       "organic gardening",
       "parenting."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 50,
@@ -407,7 +407,7 @@
       "camel safaris",
       "ethical sourcing."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 51,
@@ -436,7 +436,7 @@
       "luxury travel",
       "fintech."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 52,
@@ -462,7 +462,7 @@
       "exploring souks",
       "food photography."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 53,
@@ -489,7 +489,7 @@
       "traditional music",
       "exploring bazaars."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 54,
@@ -515,7 +515,7 @@
       "traditional crafts",
       "culinary exploration."
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 55,
@@ -540,7 +540,7 @@
       "Health",
       "Empowerment"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 56,
@@ -564,7 +564,7 @@
       "Culture",
       "Heritage"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 57,
@@ -588,7 +588,7 @@
       "Social Impact",
       "Tradition"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 58,
@@ -612,7 +612,7 @@
       "Ancient Wisdom",
       "Holistic Health"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 59,
@@ -636,7 +636,7 @@
       "Mountains",
       "Cultural Exchange"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 60,
@@ -660,7 +660,7 @@
       "Community Service",
       "Healing"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 61,
@@ -684,7 +684,7 @@
       "Nature",
       "Outdoor Activities"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 62,
@@ -707,7 +707,7 @@
       "night walks",
       "soft music"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 63,
@@ -730,7 +730,7 @@
       "minimalist aesthetics",
       "personal branding"
     ],
-    "isLocked": true,
+    "isLocked": false,
     "isSafeCompatible": true,
     "freeChatCount": 0,
     "position": 64,

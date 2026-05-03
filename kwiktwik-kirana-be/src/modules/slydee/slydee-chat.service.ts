@@ -10,6 +10,7 @@ import * as schema from '../../database/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { ConversationsService } from '../conversations/conversations.service';
 import { SlydeeService, SLYDEE_APP_ID } from './slydee.service';
+import { EntitlementService } from '../payment-gateway/services/entitlement.service';
 import {
   VERTEX_AI_CONFIG,
   getVertexAccessToken,
@@ -32,6 +33,7 @@ export class SlydeeChatService {
     @Inject(DRIZZLE_TOKEN) private db: NodePgDatabase<typeof schema>,
     private conversationsService: ConversationsService,
     private slydeeService: SlydeeService,
+    private entitlementService: EntitlementService,
   ) {
     const { region, projectId } = VERTEX_AI_CONFIG;
     this.apiUrl = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${MODEL}:generateContent`;
@@ -127,11 +129,19 @@ export class SlydeeChatService {
   // ---------------------------------------------------------------------------
 
   async discover(userId: string, appId: string, safeOnly?: boolean) {
+    // Ensure the free companion is always matched before returning cards
+    await this.ensureFreeCompanionMatched(userId, appId);
+
     const { swipes } = await this.getSlydeeData(userId, appId);
     const swipedIds = new Set(swipes.map((s: any) => s.companionId));
 
     const all = this.slydeeService.getAllCompanions().data;
-    let cards = all.filter((c) => !swipedIds.has(c.id) && !c.isLocked);
+    const freeCompanion = this.slydeeService.getFreeCompanion();
+
+    // Show all companions except already-swiped and the free one (already auto-matched)
+    let cards = all.filter(
+      (c) => !swipedIds.has(c.id) && c.id !== freeCompanion?.id,
+    );
 
     if (safeOnly) {
       cards = cards.filter((c) => c.isSafeCompatible);
@@ -161,6 +171,19 @@ export class SlydeeChatService {
     if (dto.direction === 'left') {
       await this.saveSlydeeData(userId, appId, slydeeData);
       return { success: true, direction: 'left', matched: false };
+    }
+
+    // Right swipe → only premium users can match (free companion is auto-matched separately)
+    const isPremium = await this.entitlementService.isUserPremium(userId, appId);
+    if (!isPremium) {
+      await this.saveSlydeeData(userId, appId, slydeeData);
+      return {
+        success: false,
+        direction: 'right',
+        matched: false,
+        requiresPremium: true,
+        companionId: companion.id,
+      };
     }
 
     // Right swipe → create match
@@ -259,8 +282,92 @@ export class SlydeeChatService {
   // ---------------------------------------------------------------------------
 
   async getMatches(userId: string, appId: string) {
+    await this.ensureFreeCompanionMatched(userId, appId);
+
     const { matches } = await this.getSlydeeData(userId, appId);
-    return { success: true, matches, count: matches.length };
+    const isPremium = await this.entitlementService.isUserPremium(userId, appId);
+    const freeCompanion = this.slydeeService.getFreeCompanion();
+
+    const enrichedMatches = matches.map((m: any) => ({
+      ...m,
+      isFreeCompanion: m.companionId === freeCompanion?.id,
+    }));
+
+    return {
+      success: true,
+      matches: enrichedMatches,
+      count: enrichedMatches.length,
+      isPremium,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auto-match the free companion
+  // ---------------------------------------------------------------------------
+
+  private async ensureFreeCompanionMatched(
+    userId: string,
+    appId: string,
+  ): Promise<void> {
+    const freeCompanion = this.slydeeService.getFreeCompanion();
+    if (!freeCompanion) return;
+
+    const slydeeData = await this.getSlydeeData(userId, appId);
+    const alreadyMatched = slydeeData.matches.some(
+      (m: any) => m.companionId === freeCompanion.id,
+    );
+    if (alreadyMatched) return;
+
+    this.logger.log(
+      `Auto-matching free companion ${freeCompanion.name} for user ${userId}`,
+    );
+
+    const conversation =
+      await this.conversationsService.getOrCreateDirectConversation(
+        appId,
+        userId,
+        freeCompanion.id,
+      );
+
+    // Generate an AI greeting
+    const systemPrompt = this.buildSystemInstruction(freeCompanion);
+    const greeting = await this.callVertexAi(systemPrompt, [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: 'Send a short, charming first message to start the conversation. Introduce yourself briefly.',
+          },
+        ],
+      },
+    ]);
+
+    await this.db
+      .insert(schema.messages)
+      .values({
+        id: uuidv4(),
+        conversationId: conversation.id,
+        appId,
+        senderId: freeCompanion.id,
+        content: greeting,
+        type: 'text',
+      });
+
+    await this.conversationsService.updateLastMessage(
+      conversation.id,
+      greeting,
+    );
+
+    slydeeData.matches.push({
+      companionId: freeCompanion.id,
+      companionName: freeCompanion.name,
+      companionImage: freeCompanion.imageUrls?.[0] ?? null,
+      conversationId: conversation.id,
+      matchedAt: new Date().toISOString(),
+      isFreeCompanion: true,
+    });
+
+    await this.saveSlydeeData(userId, appId, slydeeData);
   }
 
   // ---------------------------------------------------------------------------

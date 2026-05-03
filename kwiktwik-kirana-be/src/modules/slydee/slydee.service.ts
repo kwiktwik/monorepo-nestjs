@@ -117,6 +117,16 @@ export class SlydeeService implements OnModuleInit {
   }
 
   /**
+   * Returns the companion that is auto-matched for free (lowest position).
+   */
+  getFreeCompanion(): CompanionProfile | null {
+    if (this.companionData.length === 0) return null;
+    return this.companionData.reduce((min, c) =>
+      c.position < min.position ? c : min,
+    );
+  }
+
+  /**
    * Get a random companion, excluding given IDs.
    * Only returns unlocked companions by default.
    */
