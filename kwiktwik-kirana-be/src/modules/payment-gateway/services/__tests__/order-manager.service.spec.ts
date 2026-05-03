@@ -6,6 +6,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { OrderManagerService } from '../order-manager.service';
 import { ProviderFactory } from '../../providers/factory/provider.factory';
 import { PaymentConfigService } from '../../config/payment-config.service';
+import { EntitlementService } from '../entitlement.service';
 
 import { InMemoryOrderRepository } from '../../infrastructure/repositories/in-memory-order.repository';
 import { InMemoryEventBus } from '../../common/events/in-memory-event-bus';
@@ -95,6 +96,17 @@ describe('OrderManagerService', () => {
           provide: PaymentConfigService,
           useValue: {
             getConfig: jest.fn().mockReturnValue(mockConfig),
+          },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            grantFromSubscription: jest.fn(),
+            revokeFromSubscription: jest.fn(),
+            grantFromOrder: jest.fn(),
+            revokeFromOrder: jest.fn(),
+            isUserPremium: jest.fn().mockResolvedValue(false),
+            getActiveEntitlement: jest.fn().mockResolvedValue(null),
           },
         },
         { provide: 'IOrderRepository', useClass: InMemoryOrderRepository },

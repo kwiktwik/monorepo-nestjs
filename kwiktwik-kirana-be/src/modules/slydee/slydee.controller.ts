@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   Logger,
   Param,
   UseGuards,
@@ -20,7 +21,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AppId } from '../../common/decorators/app-id.decorator';
-import { CompanionChatDto } from './dto/companion-chat.dto';
+import {
+  CompanionChatDto,
+  RandomMatchDto,
+  SwipeDto,
+} from './dto/companion-chat.dto';
 import type { CompanionResponse, CompanionProfile } from './slydee.types';
 
 @ApiTags('slydee')
@@ -68,6 +73,85 @@ export class SlydeeController {
   reloadData(): CompanionResponse {
     this.logger.log('Reloading companion data');
     return this.slydeeService.reloadData();
+  }
+
+  @Get('discover')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiBearerAuth('JWT')
+  @ApiHeader({ name: 'X-App-ID', required: true })
+  @ApiOperation({
+    summary: 'Get companion cards to swipe',
+    description:
+      'Returns companion profiles the user has not swiped on yet. Use the safeOnly query param to filter.',
+  })
+  @ApiResponse({ status: 200, description: 'List of unswiped companions' })
+  async discover(
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+    @Query('safeOnly') safeOnly?: string,
+  ) {
+    return this.slydeeChatService.discover(
+      user.userId,
+      appId,
+      safeOnly === 'true',
+    );
+  }
+
+  @Post('swipe')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiBearerAuth('JWT')
+  @ApiHeader({ name: 'X-App-ID', required: true })
+  @ApiOperation({
+    summary: 'Swipe on a companion',
+    description:
+      'Records a left (skip) or right (like) swipe. Right swipe creates a match, conversation, and AI greeting.',
+  })
+  @ApiResponse({ status: 201, description: 'Swipe recorded' })
+  async swipe(
+    @Body() dto: SwipeDto,
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    this.logger.log(
+      `Swipe: user=${user.userId} companion=${dto.companionId} dir=${dto.direction}`,
+    );
+    return this.slydeeChatService.handleSwipe(user.userId, appId, dto);
+  }
+
+  @Get('matches')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiBearerAuth('JWT')
+  @ApiHeader({ name: 'X-App-ID', required: true })
+  @ApiOperation({
+    summary: 'Get user match history',
+    description:
+      'Returns the list of AI companions the user has been matched with, stored in userMetadata.',
+  })
+  @ApiResponse({ status: 200, description: 'Match history returned' })
+  async getMatches(
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    return this.slydeeChatService.getMatches(user.userId, appId);
+  }
+
+  @Post('random-match')
+  @UseGuards(AppIdGuard, JwtAuthGuard)
+  @ApiBearerAuth('JWT')
+  @ApiHeader({ name: 'X-App-ID', required: true })
+  @ApiOperation({
+    summary: 'Randomly match user with an AI companion',
+    description:
+      'Picks a random AI companion the user has not chatted with yet, creates a conversation, and returns an AI-generated greeting.',
+  })
+  @ApiResponse({ status: 201, description: 'Match created with greeting' })
+  async randomMatch(
+    @Body() dto: RandomMatchDto,
+    @CurrentUser() user: any,
+    @AppId() appId: string,
+  ) {
+    this.logger.log(`Random match: user=${user.userId}`);
+    return this.slydeeChatService.randomMatch(user.userId, appId, dto);
   }
 
   @Post('companion-chat')

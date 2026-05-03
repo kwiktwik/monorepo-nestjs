@@ -23,6 +23,7 @@ import { EncryptionService } from '../../common/security/encryption.service';
 import { CircuitBreakerService } from '../../common/resilience/circuit-breaker.service';
 import { ProviderFactory } from '../../providers/factory/provider.factory';
 import { BillingSchedulerService } from '../../scheduler/billing-scheduler.service';
+import { EntitlementService } from '../../services/entitlement.service';
 
 // Repositories (in-memory for tests)
 import { InMemorySubscriptionRepository } from '../../infrastructure/repositories/in-memory-subscription.repository';
@@ -103,6 +104,19 @@ export async function createTestApp(): Promise<TestContext> {
 
       // Event bus
       { provide: 'IEventBus', useClass: InMemoryEventBus },
+
+      // Entitlements (mock — no real DB in tests)
+      {
+        provide: EntitlementService,
+        useValue: {
+          grantFromSubscription: jest.fn(),
+          revokeFromSubscription: jest.fn(),
+          grantFromOrder: jest.fn(),
+          revokeFromOrder: jest.fn(),
+          isUserPremium: jest.fn().mockResolvedValue(false),
+          getActiveEntitlement: jest.fn().mockResolvedValue(null),
+        },
+      },
 
       // Security
       EncryptionService,

@@ -7,7 +7,7 @@ import {
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../database/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { ConversationsService } from '../conversations/conversations.service';
 import { SlydeeService, SLYDEE_APP_ID } from './slydee.service';
 import {
@@ -15,7 +15,11 @@ import {
   getVertexAccessToken,
 } from '../../common/config/vertex-ai.config';
 import { v4 as uuidv4 } from 'uuid';
-import type { CompanionChatDto } from './dto/companion-chat.dto';
+import type {
+  CompanionChatDto,
+  RandomMatchDto,
+  SwipeDto,
+} from './dto/companion-chat.dto';
 
 const MODEL = 'gemini-2.5-flash-lite';
 
@@ -116,6 +120,228 @@ export class SlydeeChatService {
       userMessageId: userMsg.id,
       companionMessageId: companionMsg.id,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Swipe & Discover flow
+  // ---------------------------------------------------------------------------
+
+  async discover(userId: string, appId: string, safeOnly?: boolean) {
+    const { swipes } = await this.getSlydeeData(userId, appId);
+    const swipedIds = new Set(swipes.map((s: any) => s.companionId));
+
+    const all = this.slydeeService.getAllCompanions().data;
+    let cards = all.filter((c) => !swipedIds.has(c.id) && !c.isLocked);
+
+    if (safeOnly) {
+      cards = cards.filter((c) => c.isSafeCompatible);
+    }
+
+    return { success: true, data: cards, count: cards.length };
+  }
+
+  async handleSwipe(userId: string, appId: string, dto: SwipeDto) {
+    const companion = this.slydeeService.getCompanionById(dto.companionId);
+    if (!companion) {
+      throw new NotFoundException(
+        `Companion ${dto.companionId} not found`,
+      );
+    }
+
+    const slydeeData = await this.getSlydeeData(userId, appId);
+
+    // Record the swipe
+    slydeeData.swipes.push({
+      companionId: companion.id,
+      direction: dto.direction,
+      swipedAt: new Date().toISOString(),
+    });
+
+    // Left swipe → just save and return
+    if (dto.direction === 'left') {
+      await this.saveSlydeeData(userId, appId, slydeeData);
+      return { success: true, direction: 'left', matched: false };
+    }
+
+    // Right swipe → create match
+    const conversation =
+      await this.conversationsService.getOrCreateDirectConversation(
+        appId,
+        userId,
+        companion.id,
+      );
+
+    // Generate an AI greeting
+    const systemPrompt = this.buildSystemInstruction(
+      companion,
+      dto.language,
+      dto.tone,
+    );
+
+    const greeting = await this.callVertexAi(systemPrompt, [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: 'Send a short, charming first message to start the conversation. Introduce yourself briefly.',
+          },
+        ],
+      },
+    ]);
+
+    // Save the greeting as the companion's first message
+    const [greetingMsg] = await this.db
+      .insert(schema.messages)
+      .values({
+        id: uuidv4(),
+        conversationId: conversation.id,
+        appId,
+        senderId: companion.id,
+        content: greeting,
+        type: 'text',
+      })
+      .returning();
+
+    await this.conversationsService.updateLastMessage(
+      conversation.id,
+      greeting,
+    );
+
+    // Add to matches
+    slydeeData.matches.push({
+      companionId: companion.id,
+      companionName: companion.name,
+      companionImage: companion.imageUrls?.[0] ?? null,
+      conversationId: conversation.id,
+      matchedAt: new Date().toISOString(),
+    });
+
+    await this.saveSlydeeData(userId, appId, slydeeData);
+
+    return {
+      success: true,
+      direction: 'right',
+      matched: true,
+      companion,
+      conversationId: conversation.id,
+      greeting,
+      greetingMessageId: greetingMsg.id,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Random match (legacy / alternative flow)
+  // ---------------------------------------------------------------------------
+
+  async randomMatch(userId: string, appId: string, dto: RandomMatchDto) {
+    const { swipes } = await this.getSlydeeData(userId, appId);
+    const swipedIds = swipes.map((s: any) => s.companionId as string);
+
+    const companion = this.slydeeService.getRandomCompanion(swipedIds, {
+      safeOnly: dto.safeOnly,
+    });
+
+    if (!companion) {
+      return { success: false, message: 'No companions available' };
+    }
+
+    // Delegate to the swipe handler with a synthetic right swipe
+    return this.handleSwipe(userId, appId, {
+      companionId: companion.id,
+      direction: 'right',
+      language: dto.language,
+      tone: dto.tone,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Match list
+  // ---------------------------------------------------------------------------
+
+  async getMatches(userId: string, appId: string) {
+    const { matches } = await this.getSlydeeData(userId, appId);
+    return { success: true, matches, count: matches.length };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Metadata helpers
+  // ---------------------------------------------------------------------------
+
+  private async getSlydeeData(
+    userId: string,
+    appId: string,
+  ): Promise<{ swipes: any[]; matches: any[] }> {
+    const meta = await this.db
+      .select()
+      .from(schema.userMetadata)
+      .where(
+        and(
+          eq(schema.userMetadata.userId, userId),
+          eq(schema.userMetadata.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    const clientData =
+      meta.length > 0
+        ? (meta[0].clientData as Record<string, unknown>) || {}
+        : {};
+
+    return {
+      swipes: Array.isArray(clientData.slydeeSwipes)
+        ? clientData.slydeeSwipes
+        : [],
+      matches: Array.isArray(clientData.slydeeMatches)
+        ? clientData.slydeeMatches
+        : [],
+    };
+  }
+
+  private async saveSlydeeData(
+    userId: string,
+    appId: string,
+    data: { swipes: any[]; matches: any[] },
+  ) {
+    const existingMeta = await this.db
+      .select()
+      .from(schema.userMetadata)
+      .where(
+        and(
+          eq(schema.userMetadata.userId, userId),
+          eq(schema.userMetadata.appId, appId),
+        ),
+      )
+      .limit(1);
+
+    const patch = {
+      slydeeSwipes: data.swipes,
+      slydeeMatches: data.matches,
+    };
+
+    if (existingMeta.length > 0) {
+      const existing =
+        (existingMeta[0].clientData as Record<string, unknown>) || {};
+      await this.db
+        .update(schema.userMetadata)
+        .set({
+          clientData: { ...existing, ...patch },
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.userMetadata.userId, userId),
+            eq(schema.userMetadata.appId, appId),
+          ),
+        );
+    } else {
+      await this.db.insert(schema.userMetadata).values({
+        userId,
+        appId,
+        clientData: patch,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
   }
 
   private buildSystemInstruction(

@@ -6,6 +6,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderApiController } from '../order-api.controller';
 import { OrderManagerService } from '../../services/order-manager.service';
+import { EntitlementService } from '../../services/entitlement.service';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppIdGuard } from '../../../../common/guards/app-id.guard';
 import { JwtAuthGuard } from '../../../../common/guards/jwt-auth.guard';
@@ -55,6 +56,7 @@ describe('OrderApiController', () => {
       controllers: [OrderApiController],
       providers: [
         { provide: OrderManagerService, useValue: orderManager },
+        { provide: EntitlementService, useValue: { getActiveEntitlement: jest.fn().mockResolvedValue(null) } },
       ],
     })
       .overrideGuard(AppIdGuard).useValue({ canActivate: () => true })

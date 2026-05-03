@@ -117,6 +117,36 @@ export class SlydeeService implements OnModuleInit {
   }
 
   /**
+   * Get a random companion, excluding given IDs.
+   * Only returns unlocked companions by default.
+   */
+  getRandomCompanion(
+    excludeIds: string[] = [],
+    options?: { safeOnly?: boolean },
+  ): CompanionProfile | null {
+    let candidates = this.companionData.filter(
+      (c) => !c.isLocked && !excludeIds.includes(c.id),
+    );
+
+    if (options?.safeOnly) {
+      candidates = candidates.filter((c) => c.isSafeCompatible);
+    }
+
+    if (candidates.length === 0) {
+      // Fall back to all unlocked companions if every one is excluded
+      candidates = this.companionData.filter((c) => !c.isLocked);
+      if (options?.safeOnly) {
+        candidates = candidates.filter((c) => c.isSafeCompatible);
+      }
+    }
+
+    if (candidates.length === 0) return null;
+
+    const idx = Math.floor(Math.random() * candidates.length);
+    return candidates[idx];
+  }
+
+  /**
    * Reload companion data from file
    */
   reloadData(): CompanionResponse {
