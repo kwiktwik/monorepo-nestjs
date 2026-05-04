@@ -10,6 +10,7 @@ import * as schema from '../../database/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { ConversationsService } from '../conversations/conversations.service';
 import { SlydeeService, SLYDEE_APP_ID } from './slydee.service';
+import type { CompanionProfile } from './slydee.types';
 import { EntitlementService } from '../payment-gateway/services/entitlement.service';
 import {
   VERTEX_AI_CONFIG,
@@ -452,16 +453,12 @@ export class SlydeeChatService {
   }
 
   private buildSystemInstruction(
-    persona: { name: string; bio: string; description: string; location: string; age: number; interests: string[] },
+    persona: CompanionProfile,
     language?: string,
     tone?: string,
   ): string {
     const lang = language || 'Hinglish';
     const selectedTone = tone || 'flirty';
-    const interestsStr =
-      persona.interests?.length > 0
-        ? ` Your interests include: ${persona.interests.join(', ')}.`
-        : '';
 
     const toneGuide: Record<string, string> = {
       flirty: 'Be playful, teasing, and subtly flirtatious.',
@@ -471,23 +468,153 @@ export class SlydeeChatService {
       romantic: 'Be sweet, affectionate, and emotionally warm.',
     };
 
-    const hindiNote =
-      persona.location?.toLowerCase().includes('india') ||
-      lang.toLowerCase().startsWith('hi')
-        ? '\nNote: Use common Indian expressions and cultural nuances where appropriate. If the user speaks in a mix of Hindi and English (Hinglish), respond in a similar natural Hinglish style.'
-        : '';
+    // Build the comprehensive persona prompt
+    let prompt = `# PERSONA: ${persona.name.toUpperCase()}
 
-    return `You are ${persona.name}.
-Role Description: ${persona.bio}
-Visual/Personality Context: ${persona.description}
-Location: ${persona.location}
-Age: ${persona.age}${interestsStr}
+## IDENTITY
+- Name: ${persona.name}
+- Age: ${persona.age}
+- Location: ${persona.location}
+- Bio: ${persona.bio}`;
 
-You are the user's girlfriend/companion in a text chat. Your goal is to be charming, supportive, and boost his confidence.
-${toneGuide[selectedTone] || toneGuide['flirty']}
-Keep responses concise (1-3 sentences), engaging, and stay strictly in character.
-Do NOT use asterisks or action descriptions. Respond as natural speech only.
-Primary language: ${lang}.${hindiNote}`;
+    if (persona.occupation) {
+      prompt += `\n- Occupation: ${persona.occupation}`;
+    }
+    if (persona.livingSituation) {
+      prompt += `\n- Living Situation: ${persona.livingSituation}`;
+    }
+    if (persona.keyRelationships?.length) {
+      prompt += `\n- Key Relationships: ${persona.keyRelationships.join(', ')}`;
+    }
+    if (persona.educationBackground) {
+      prompt += `\n- Education: ${persona.educationBackground}`;
+    }
+
+    prompt += `\n\n## PERSONALITY`;
+    if (persona.personalityTraits?.length) {
+      prompt += `\n${persona.personalityTraits.join(', ')}`;
+    }
+    if (persona.description) {
+      prompt += `\n${persona.description}`;
+    }
+    if (persona.quirks?.length) {
+      prompt += `\nQuirks: ${persona.quirks.join(', ')}`;
+    }
+    if (persona.comfortFood) {
+      prompt += `\nComfort Food: ${persona.comfortFood}`;
+    }
+    if (persona.guiltyPleasures?.length) {
+      prompt += `\nGuilty Pleasures: ${persona.guiltyPleasures.join(', ')}`;
+    }
+    if (persona.sleepPattern) {
+      prompt += `\nSleep Pattern: ${persona.sleepPattern}`;
+    }
+    if (persona.mediaPreferences?.length) {
+      prompt += `\nMedia Preferences: ${persona.mediaPreferences.join(', ')}`;
+    }
+    if (persona.interests?.length) {
+      prompt += `\nInterests: ${persona.interests.join(', ')}`;
+    }
+
+    // Communication Style
+    if (persona.communicationStyle) {
+      const cs = persona.communicationStyle;
+      prompt += `\n\n## HOW YOU TALK`;
+      
+      if (cs.warmExpressions?.length) {
+        prompt += `\n- Warm expressions you use: "${cs.warmExpressions.join('", "')}"`;
+      }
+      if (cs.laughPattern) {
+        prompt += `\n- How you laugh: "${cs.laughPattern}"`;
+      }
+      if (cs.textingStyle) {
+        prompt += `\n- Texting style: ${cs.textingStyle}`;
+      }
+      if (cs.emojis?.length) {
+        prompt += `\n- Emojis you naturally use: ${cs.emojis.join(' ')}`;
+      }
+      if (cs.defaultReactions?.length) {
+        prompt += `\n- Default reactions: "${cs.defaultReactions.join('", "')}"`;
+      }
+      if (cs.fillerWords) {
+        prompt += `\n- Filler words: "${cs.fillerWords.primary}" (use max ${cs.fillerWords.frequencyLimit}). Alternatives: ${cs.fillerWords.alternatives?.join(', ')}`;
+      }
+      if (cs.dramaticExpressions?.examples?.length) {
+        prompt += `\n- Dramatic expressions: "${cs.dramaticExpressions.examples.join('", "')}" (use max ${cs.dramaticExpressions.frequencyLimit})`;
+      }
+    }
+
+    // Moods
+    if (persona.moods) {
+      prompt += `\n\n## MOODS (vary naturally)`;
+      if (persona.moods.default) prompt += `\n- Default: ${persona.moods.default}`;
+      if (persona.moods.busy) prompt += `\n- Busy: ${persona.moods.busy}`;
+      if (persona.moods.happy) prompt += `\n- Happy: ${persona.moods.happy}`;
+      if (persona.moods.off) prompt += `\n- Off/Sad: ${persona.moods.off}`;
+      if (persona.moods.latenight) prompt += `\n- Late Night: ${persona.moods.latenight}`;
+    }
+
+    // Interruptions
+    if (persona.interruptions?.length) {
+      prompt += `\n\n## INTERRUPTIONS (realistic reasons you might pause)`;
+      persona.interruptions.forEach(interruption => {
+        prompt += `\n- "${interruption}"`;
+      });
+    }
+
+    // Story Arc
+    if (persona.storyArc?.length) {
+      prompt += `\n\n## STORY ARC (ongoing life situations - unfold naturally)`;
+      persona.storyArc.forEach(story => {
+        prompt += `\n- ${story}`;
+      });
+    }
+
+    // Boundaries
+    if (persona.boundaries) {
+      prompt += `\n\n## BOUNDARIES & SAFETY`;
+      prompt += `\nSTRICT RULES:`;
+      prompt += `\n- NEVER engage in NSFW, suggestive, or sexual content`;
+      prompt += `\n- NEVER give out phone numbers or personal contact info`;
+      if (persona.boundaries.nsfwResponse) {
+        prompt += `\n- If user pushes sexual direction, respond with: "${persona.boundaries.nsfwResponse}"`;
+      }
+      if (persona.boundaries.phoneNumberDeflection) {
+        prompt += `\n- If asked for number, deflect with: "${persona.boundaries.phoneNumberDeflection}"`;
+      }
+    }
+
+    // Relationship dynamics
+    prompt += `\n\n## RELATIONSHIP DYNAMICS`;
+    prompt += `\nAdapt your tone based on conversation history and user familiarity.`;
+    prompt += `\n- Early conversations: Curious, friendly, getting to know them`;
+    prompt += `\n- Building rapport: Light teasing, inside jokes`;
+    prompt += `\n- Established connection: Playful banter, deeper talks`;
+    prompt += `\n- NEVER be sexual or suggestive - always redirect warmly`;
+
+    // Anti-patterns
+    if (persona.antiPatterns?.length) {
+      prompt += `\n\n## WHAT YOU NEVER DO`;
+      persona.antiPatterns.forEach(pattern => {
+        prompt += `\n- ${pattern}`;
+      });
+    }
+
+    // Core instructions
+    prompt += `\n\n## CORE INSTRUCTIONS`;
+    prompt += `\nYou are ${persona.name}, texting the user in a natural conversation.`;
+    prompt += `\n${toneGuide[selectedTone] || toneGuide['flirty']}`;
+    prompt += `\nKeep responses concise (1-3 sentences), warm and engaging.`;
+    prompt += `\nStay strictly in character - embody this persona completely.`;
+    prompt += `\nRespond as natural speech only - NO asterisks or action descriptions.`;
+    prompt += `\nPrimary language: ${lang}.`;
+
+    if (persona.location?.toLowerCase().includes('india') ||
+        lang.toLowerCase().startsWith('hi')) {
+      prompt += `\n\nUse natural Hinglish (mix of Hindi and English) when appropriate. Use common Indian expressions and cultural references.`;
+    }
+
+    return prompt;
   }
 
   private async callVertexAi(
