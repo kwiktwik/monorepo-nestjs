@@ -18,18 +18,7 @@ This document explains how cron jobs run in `kwiktwik-kirana-be`, how to verify 
 - **Schedule:** `CronExpression.EVERY_HOUR` (hourly)
 - **What it does:** Sends analytics events for eligible subscriptions not cancelled within 4 hours.
 
-### 2) Migration Maintenance
-
-- **File:** `src/modules/migration/migration-cron.service.ts`
-- **Method:** `handleStaleMigrationCleanup()`
-- **Schedule:** `CronExpression.EVERY_5_MINUTES`
-- **What it does:** Cleans stale/abandoned migration records.
-
-- **Method:** `logDailyMigrationStats()`
-- **Schedule:** `CronExpression.EVERY_DAY_AT_MIDNIGHT`
-- **What it does:** Logs daily migration statistics.
-
-### 3) PhonePe Redemptions
+### 2) PhonePe Redemptions
 
 - **File:** `src/modules/phonepe-v2/application/services/redemption-scheduler.service.ts`
 - **Method:** `processDueRedemptions()`
@@ -62,7 +51,7 @@ pnpm run start:dev
 3. Watch logs for cron execution:
 
 ```bash
-pnpm run start:dev | rg -i "cron|migration|redemption|4-hour|4h"
+pnpm run start:dev | rg -i "cron|redemption|4-hour|4h"
 ```
 
 ## Run Cron Jobs In Production
@@ -88,7 +77,7 @@ pm2 logs kwiktwik-kirana-be --lines 200
 4. Filter cron lines:
 
 ```bash
-pm2 logs kwiktwik-kirana-be --lines 500 | rg -i "cron|migration|redemption|4-hour|4h"
+pm2 logs kwiktwik-kirana-be --lines 500 | rg -i "cron|redemption|4-hour|4h"
 ```
 
 ## Manual Trigger (Supported Job)

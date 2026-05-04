@@ -30,7 +30,6 @@ import {
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AuthRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
-import { MigrationService } from '../migration/migration.service';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -77,7 +76,6 @@ export class AuthV1Controller {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly migrationService: MigrationService,
     private readonly metrics: HealthMetricsService,
     @Inject(DRIZZLE_TOKEN)
     private readonly db: NodePgDatabase<typeof schema>,
@@ -454,7 +452,7 @@ export class AuthV1Controller {
       return false;
     } catch (error) {
       this.logger.warn(
-        `[Login] Error checking migration status for ${phoneNumber}:`,
+        `[Login] Error checking user existence for ${phoneNumber}:`,
         error,
       );
       return false;

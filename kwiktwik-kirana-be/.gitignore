@@ -42,6 +42,9 @@ coverage/
 .settings/
 *.sublime-workspace
 
+# Local scripts (load testing, etc.)
+local-scripts/
+
 # Misc
 .cache
 .turbo

@@ -100,11 +100,6 @@ async function main() {
       console.log('\nStarting thorough deletion...');
 
       // 2. Delete from tables without cascading Foreign Keys
-      
-      // Migration logs (Linked by user_id string, not FK)
-      process.stdout.write('Checking migration_logs...');
-      const migRes = await client.query('DELETE FROM migration_logs WHERE user_id = $1', [userIdInput]);
-      console.log(`\rDeleted ${migRes.rowCount} record(s) from migration_logs.`);
 
       // OTP Codes (linked by phoneNumber - only if user record exists or we have another way to get it)
       if (userDetails?.phoneNumber) {

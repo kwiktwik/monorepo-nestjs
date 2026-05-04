@@ -10,7 +10,6 @@ import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { DrizzleModule } from './database/drizzle.module';
 import { DrizzleTestModule } from './database/drizzle-test.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { MigrationModule } from './modules/migration/migration.module';
 import { ConfigModule } from './modules/config/config.module';
 import { AppConfigModule } from './modules/app-config/app-config.module';
 import { UserModule } from './modules/user/user.module';
@@ -44,8 +43,6 @@ import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit
 const dbModule =
   process.env.USE_MOCK_DB === 'true' ? DrizzleTestModule : DrizzleModule;
 
-const migrationEnabled = process.env.MIGRATION_ENABLED !== 'false';
-
 @Module({
   imports: [
     SentryModule.forRoot(),
@@ -56,7 +53,6 @@ const migrationEnabled = process.env.MIGRATION_ENABLED !== 'false';
     dbModule,
     DbDebugModule,
     AuthModule,
-    ...(migrationEnabled ? [MigrationModule] : []),
     ConfigModule,
     AppConfigModule,
     UserModule,

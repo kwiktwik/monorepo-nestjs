@@ -300,61 +300,6 @@ export class UserController {
     }
   }
 
-  @Get('migration-status/v1')
-  @ApiOperation({
-    summary: 'Check if user is migrated from kirana-fe',
-    description:
-      'Returns migration status for the authenticated user. Checks migration_logs table to determine if user data was migrated from the legacy kirana-fe app.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Migration status retrieved successfully',
-    schema: {
-      example: {
-        success: true,
-        data: {
-          isMigrated: true,
-          migrationDetails: {
-            migrationId: '550e8400-e29b-41d4-a716-446655440000',
-            status: 'completed',
-            startedAt: '2024-01-15T10:30:00.000Z',
-            completedAt: '2024-01-15T10:35:00.000Z',
-            recordsMigrated: 150,
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User not migrated',
-    schema: {
-      example: {
-        success: true,
-        data: {
-          isMigrated: false,
-          migrationDetails: null,
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing JWT token',
-  })
-  async checkMigrationStatus(@CurrentUser() user: AuthUser) {
-    const endpoint = 'GET /v1/user/migration-status';
-    const startTime = this.logRequestStart(endpoint, user.userId);
-    try {
-      const data = await this.userService.checkMigrationStatus(user.userId);
-      this.logRequestSuccess(endpoint, user.userId, startTime);
-      return { success: true, data };
-    } catch (error) {
-      this.logRequestFailure(endpoint, user.userId, startTime, error);
-      throw error;
-    }
-  }
-
   @Post('playstore-rating/v1')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
