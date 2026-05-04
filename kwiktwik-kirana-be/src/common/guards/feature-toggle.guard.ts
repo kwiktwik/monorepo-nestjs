@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   BadRequestException,
 } from '@nestjs/common';
-import { isValidApp } from '../config/apps.config';
+import { AppsService } from '../../modules/apps/apps.service';
 import { AppIdRequest, AppIdHeaders } from '../types';
 import { DeviceIdHeaders } from '../decorators/device-id.decorator';
 
@@ -34,6 +34,8 @@ export interface FeatureToggleRequest extends AppIdRequest {
  */
 @Injectable()
 export class FeatureToggleGuard implements CanActivate {
+  constructor(private readonly appsService: AppsService) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<FeatureToggleRequest>();
 
@@ -57,7 +59,7 @@ export class FeatureToggleGuard implements CanActivate {
       });
     }
 
-    if (!isValidApp(appId)) {
+    if (!this.appsService.isValidApp(appId)) {
       throw new BadRequestException({
         success: false,
         error: `Invalid or disabled app identifier: ${appId}`,
