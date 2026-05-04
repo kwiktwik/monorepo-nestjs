@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FeatureToggleController } from './feature-toggle.controller';
 import { FeatureToggleService } from './feature-toggle.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
+import { FeatureToggleGuard } from '../../common/guards/feature-toggle.guard';
+import { AppsService } from '../apps/apps.service';
 
 describe('FeatureToggleController', () => {
   let controller: FeatureToggleController;
@@ -12,6 +14,10 @@ describe('FeatureToggleController', () => {
     evaluateFeature: jest.fn(),
   };
 
+  const mockAppsService = {
+    isValidApp: jest.fn().mockReturnValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FeatureToggleController],
@@ -20,9 +26,15 @@ describe('FeatureToggleController', () => {
           provide: FeatureToggleService,
           useValue: mockFeatureToggleService,
         },
+        {
+          provide: AppsService,
+          useValue: mockAppsService,
+        },
       ],
     })
       .overrideGuard(AppIdGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(FeatureToggleGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
