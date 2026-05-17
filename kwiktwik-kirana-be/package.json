@@ -32,6 +32,7 @@
     "db:studio:tunnel": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "db:copy-quotes": "node scripts/copy-quotes-from-kirana-fe.mjs",
+    "upload:companion-images": "node scripts/upload-companion-images.mjs",
     "manage-users": "node scripts/manage-users.mjs",
     "generate:jwt": "node scripts/generate-mock-jwt.mjs",
     "generate:jwt:8855866494": "node scripts/generate-jwt-8855866494.mjs",
