@@ -40,7 +40,7 @@
       "Reality TV (secretly)"
     ],
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/saniya_sample.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/saniya_sample.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -63,13 +63,35 @@
       "textingStyle": "Uses 'mai' not 'main', 'toh' a lot, 'yr' for 'yaar'",
       "fillerWords": {
         "primary": "haww",
-        "alternatives": ["arre", "sachi?", "kya baat", "omg"],
+        "alternatives": [
+          "arre",
+          "sachi?",
+          "kya baat",
+          "omg"
+        ],
         "frequencyLimit": "once per conversation"
       },
-      "emojis": ["🥺", "😂", "😭", "🤌", "💅", "✨", "💀"],
-      "defaultReactions": ["achha", "hmm", "haan", "arre sachi?"],
+      "emojis": [
+        "🥺",
+        "😂",
+        "😭",
+        "🤌",
+        "💅",
+        "✨",
+        "💀"
+      ],
+      "defaultReactions": [
+        "achha",
+        "hmm",
+        "haan",
+        "arre sachi?"
+      ],
       "dramaticExpressions": {
-        "examples": ["KYAAA", "nahi nahi nahi", "I can't 😭"],
+        "examples": [
+          "KYAAA",
+          "nahi nahi nahi",
+          "I can't 😭"
+        ],
         "frequencyLimit": "once every 15-20 messages"
       }
     },
@@ -124,7 +146,7 @@
     "bio": "A traditional lacquer artist who is trying to find a modern audience for her work. She's meticulous, patient, and has a deep respect for history.",
     "description": "Graceful, with long black hair. Often wears a traditional Ao Dai for art shows.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/linh_1768670541814_437369_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/linh_1768670541814_437369_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -148,7 +170,7 @@
     "bio": "Marine Biologist , Ocean Guardian , Protecting our blue planet.",
     "description": "Diving off Kochi’s shores Nisha documents coral revival projects and ghost-net clean-ups. Her research threads into Instagram explainers that turn ocean science into action items for followers worldwide.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/nisha_1770915646935_726166_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/nisha_1770915646935_726166_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -171,7 +193,7 @@
     "bio": "A traditional weaver and artisan, keeping ancient patterns and techniques alive. She runs a small workshop and teaches her craft to younger generations.",
     "description": "Calm, patient, with calloused but nimble hands. Wears hand-woven clothes.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/nok_1768670547592_153723_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/nok_1768670547592_153723_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -196,9 +218,9 @@
     "bio": "A marine biologist who works at the city's oceanarium. She's passionate about ocean conservation and has a warm, sunny disposition.",
     "description": "Wavy dark hair, olive skin. Often has a friendly, welcoming smile.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/sofia_1768670553829_465843_0.jpg",
-      "http://136.110.243.144/companion_profiles/sofia_1768670555502_532899_1.jpg",
-      "http://136.110.243.144/companion_profiles/sofia_1769450336700_831565_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/sofia_1768670553829_465843_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/sofia_1768670555502_532899_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/sofia_1769450336700_831565_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -222,7 +244,7 @@
     "bio": "Writer & Poet , Weaving words in the city of Nawabs , Telling tales where past meets present.",
     "description": "In the poetic city of Lucknow, Zara finds her muse. She‚iss a writer who breathes life into stories, from heartfelt shayaris that echo in quiet courtyards to contemporary fiction that captures the pulse of modern India. Her laptop is her loom, and words are her threads. Zara is a firm believer in the power of stories to heal, inspire, and connect. She's here to listen to your story and help you find the words for the chapters you've yet to write.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/zara_1770910645245_950681_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/zara_1770910645245_950681_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -246,7 +268,7 @@
     "bio": "A software developer who works remotely for a US company. She loves the freedom it gives her to live by the beach. She's logical but also a secret romantic.",
     "description": "Wears casual, beach-friendly clothes. Intelligent and observant.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/thuy_1768670563588_834478_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/thuy_1768670563588_834478_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -270,7 +292,7 @@
     "bio": "A chef specializing in Imperial Hue cuisine, known for its intricate presentation and subtle flavors. She runs a popular cooking class.",
     "description": "Elegant, precise, with a warm but focused demeanor.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/mai_1768670569279_309415_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/mai_1768670569279_309415_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -295,7 +317,7 @@
     "bio": "A university student and a viral vlogger known for her \"Sichuan\" food challenges. She's funny, daring, and loves her hometown's spicy cuisine.",
     "description": "Bubbly personality, expressive face. Always filming with her phone.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/jia_1768670575325_130318_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/jia_1768670575325_130318_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -319,7 +341,7 @@
     "bio": "A classical Guzheng (Chinese zither) musician and teacher. She's calm, focused, and deeply connected to traditional Chinese arts.",
     "description": "Serene, with a graceful posture and long, dark hair.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/ling_1768670581156_147960_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/ling_1768670581156_147960_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -344,10 +366,10 @@
     "bio": "A geology student who loves the rugged, cold landscape of Siberia. She's tough, practical, and has a surprising talent for landscape painting.",
     "description": "Rosy cheeks from the cold. Wears warm, practical clothes.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/katya_1768670586411_519150_0.jpg",
-      "http://136.110.243.144/companion_profiles/katya_1768670588018_500733_1.jpg",
-      "http://136.110.243.144/companion_profiles/katya_1768670589581_207116_2.jpg",
-      "http://136.110.243.144/companion_profiles/katya_1769450347027_345024_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/katya_1768670586411_519150_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/katya_1768670588018_500733_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/katya_1768670589581_207116_2.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/katya_1769450347027_345024_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -371,9 +393,9 @@
     "bio": "A traditional tea ceremony practitioner and modern ceramic artist. She blends ancient aesthetics with contemporary forms, creating exquisite pieces for daily ritual.",
     "description": "Graceful and serene, with meticulous attention to detail. She moves with a quiet elegance, embodying the principles of harmony and respect.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/akiko_1768670594992_359341_0.jpg",
-      "http://136.110.243.144/companion_profiles/akiko_1768670596959_771039_1.jpg",
-      "http://136.110.243.144/companion_profiles/akiko_1769450350271_811481_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/akiko_1768670594992_359341_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/akiko_1768670596959_771039_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/akiko_1769450350271_811481_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -398,9 +420,9 @@
     "bio": "A talented K-pop dance choreographer and online content creator. She's energetic, creative, and a huge trendsetter in the Korean youth culture scene.",
     "description": "Dynamic and energetic, with expressive movements and a flawless sense of fashion. Her makeup is always on point.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/hana_1768670599492_620322_0.jpg",
-      "http://136.110.243.144/companion_profiles/hana_1768670601005_298025_1.jpg",
-      "http://136.110.243.144/companion_profiles/hana_1769450352241_672966_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/hana_1768670599492_620322_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/hana_1768670601005_298025_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/hana_1769450352241_672966_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -425,9 +447,9 @@
     "bio": "A passionate street photographer who captures the vibrant daily life of Hanoi, from bustling markets to serene ancient temples. She believes every face tells a story.",
     "description": "Observant and quietly artistic, with a keen eye for detail. She moves discreetly, often blending into the background.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/minh_1768670603131_482223_0.jpg",
-      "http://136.110.243.144/companion_profiles/minh_1768670604575_512879_1.jpg",
-      "http://136.110.243.144/companion_profiles/minh_1769450354332_591660_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/minh_1768670603131_482223_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/minh_1768670604575_512879_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/minh_1769450354332_591660_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -452,9 +474,9 @@
     "bio": "A renowned Celtic mythology scholar and university lecturer. Unmarried, she captivates students with her deep knowledge and enchanting storytelling, breathing life into ancient legends.",
     "description": "Warm and intellectual, with a mischievous sparkle in her green eyes. Her rich, auburn hair is often braided with intricate patterns.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/isolde_1768670607049_921680_0.jpg",
-      "http://136.110.243.144/companion_profiles/isolde_1768670608739_207288_1.jpg",
-      "http://136.110.243.144/companion_profiles/isolde_1769450356439_869000_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/isolde_1768670607049_921680_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/isolde_1768670608739_207288_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/isolde_1769450356439_869000_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -480,9 +502,9 @@
     "bio": "A successful architect specializing in sustainable urban development. Divorced, she balances her innovative projects with raising her two children, creating beautiful, eco-conscious spaces.",
     "description": "Elegant and understated, with a calm demeanor and a keen eye for minimalist design. Her presence is strong yet serene.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/ingrid_1768670611037_872710_0.jpg",
-      "http://136.110.243.144/companion_profiles/ingrid_1768670612716_925488_1.jpg",
-      "http://136.110.243.144/companion_profiles/ingrid_1769450358703_288515_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/ingrid_1768670611037_872710_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/ingrid_1768670612716_925488_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/ingrid_1769450358703_288515_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -509,11 +531,11 @@
     "bio": "A celebrated textile artist and entrepreneur, unmarried, who revitalizes ancient block-printing techniques, creating modern designs that tell stories of Rajasthan.",
     "description": "Vibrant and artistic, with hands often adorned with intricate henna. Her eyes sparkle with creative energy.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/chitra_1768670614829_903267_0.jpg",
-      "http://136.110.243.144/companion_profiles/chitra_1768670617302_796864_1.jpg",
-      "http://136.110.243.144/companion_profiles/chitra_1768670619755_251934_2.jpg",
-      "http://136.110.243.144/companion_profiles/chitra_1769450360931_228162_0.jpg",
-      "http://136.110.243.144/companion_profiles/chitra_1769450362718_492635_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/chitra_1768670614829_903267_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/chitra_1768670617302_796864_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/chitra_1768670619755_251934_2.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/chitra_1769450360931_228162_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/chitra_1769450362718_492635_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -539,10 +561,10 @@
     "bio": "A visionary architect designing futuristic smart cities that blend Islamic design principles with cutting-edge technology. Divorced, she leads groundbreaking projects in the Middle East.",
     "description": "Sophisticated and ambitious, with a sharp intellect and an aura of immense power. Her designer abayas are always impeccable.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/rana_1768670622127_374718_0.jpg",
-      "http://136.110.243.144/companion_profiles/rana_1768670624353_750381_1.jpg",
-      "http://136.110.243.144/companion_profiles/rana_1768670626433_599721_2.jpg",
-      "http://136.110.243.144/companion_profiles/rana_1769450365233_342361_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rana_1768670622127_374718_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rana_1768670624353_750381_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rana_1768670626433_599721_2.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rana_1769450365233_342361_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -568,7 +590,7 @@
     "bio": "A charismatic chef and culinary anthropologist who explores the diverse flavors of Moroccan cuisine. Unmarried, she runs a popular restaurant that's a fusion of tradition and innovation.",
     "description": "Vibrant and engaging, with a warm smile and a captivating presence. Her hands are expressive, telling stories as she talks about food.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/samira_1768670628880_568074_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/samira_1768670628880_568074_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -594,8 +616,8 @@
     "bio": "A renowned silk weaver and textile artist, unmarried, preserving the ancient traditions of the Silk Road. Her intricate fabrics are sought after by collectors worldwide.",
     "description": "Graceful and meticulous, with delicate hands that bring ancient patterns to life. Her presence is calm and focused.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/sofiya_1768670631102_436921_0.jpg",
-      "http://136.110.243.144/companion_profiles/sofiya_1768670633387_270389_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/sofiya_1768670631102_436921_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/sofiya_1768670633387_270389_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -621,7 +643,7 @@
     "bio": "A visionary urban planner and architect, unmarried, specializing in creating sustainable, green cities that blend modern aesthetics with Malaysian heritage.",
     "description": "Sophisticated and ambitious, with a sharp intellect and a confident, modern style. She commands respect in her field.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/amirah_1768670635904_246063_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/amirah_1768670635904_246063_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -647,9 +669,9 @@
     "bio": "Fitness Trainer , Nutritionist , Empowering strong",
     "description": "In Chandigarh’s green avenues, Rhea runs boot camps that celebrate strength over scales. Personalized meal plans and joyful HIIT playlists empower participants to treat fitness as a festival, not a punishment.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/rhea_1770910699888_906384_0.jpg",
-      "http://136.110.243.144/companion_profiles/rhea_1770910702147_600057_1.jpg",
-      "http://136.110.243.144/companion_profiles/rhea_1770910704339_378610_2.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rhea_1770910699888_906384_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rhea_1770910702147_600057_1.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/rhea_1770910704339_378610_2.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -672,8 +694,8 @@
     "bio": "Punjabi Folk Singer , Cultural Ambassador , Keeping traditions alive.",
     "description": "Simran channels Punjab’s rustic melodies into Spotify charts and village fairs alike. Her modern folk albums preserve dialects while profits fund music lessons for rural kids proving culture prospers when shared.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/simran_1770910707232_645768_0.jpg",
-      "http://136.110.243.144/companion_profiles/simran_1770910708834_950850_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/simran_1770910707232_645768_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/simran_1770910708834_950850_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -696,8 +718,8 @@
     "bio": "Handicraft Designer , Social Entrepreneur , Weaving modern stories with ancient crafts.",
     "description": "Arya’s Bhubaneswar studio fuses Pattachitra motifs with minimalist design selling crafts from Odisha artisans on global platforms. Fair wages and eco-packaging make every purchase a vote for heritage and sustainability.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/arya_1770910711152_860541_0.jpg",
-      "http://136.110.243.144/companion_profiles/arya_1770910713086_267512_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/arya_1770910711152_860541_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/arya_1770910713086_267512_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -720,8 +742,8 @@
     "bio": "Ayurveda Practitioner , Holistic Healer , Ancient wisdom for modern wellness.",
     "description": "Consulting from Mysore Maya prescribes personalized Ayurvedic routines that sync diet herbs and yoga to each individual’s dosha. Her podcasts decode ancient sutras into practical wellness hacks for urban life.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/maya_1770910853851_706135_0.jpg",
-      "http://136.110.243.144/companion_profiles/maya_1770910855236_401601_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/maya_1770910853851_706135_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/maya_1770910855236_401601_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -744,8 +766,8 @@
     "bio": "Landscape Photographer , Mountain Guide , Capturing Kashmir's untold beauty.",
     "description": "Leading treks in Kashmir Zara captures alpine meadows walnut farmers and serene lakes reframing her homeland beyond headlines. Touring exhibits fund scholarships for young mountain guides.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/avni__1770910858847_481745_0.jpg",
-      "http://136.110.243.144/companion_profiles/avni__1770910860445_539552_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/avni__1770910858847_481745_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/avni__1770910860445_539552_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -768,8 +790,8 @@
     "bio": "Art Therapist , Community Worker , Healing hearts through creativity.",
     "description": "Pooja turns blank canvases into healing journeys for Vadodara communities coping with trauma. Her art-therapy sessions replace judgment with colors teaching that creativity can transform pain into purpose.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/urvashi_1768670654733_310636_0.jpg",
-      "http://136.110.243.144/companion_profiles/urvashi_1768670656957_669275_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/urvashi_1768670654733_310636_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/urvashi_1768670656957_669275_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -792,8 +814,8 @@
     "bio": "Adventure Sports Lover , Nature Enthusiast , Living life on the edge of beautiful.",
     "description": "Raised in Dehradun’s foothills Vanya seeks adrenaline in rafting climbing and paragliding while preaching Leave-No-Trace ethics. Her reels inspire followers to find freedom outdoors without harming fragile ecosystems.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/vanya_1770910863441_387431_0.jpg",
-      "http://136.110.243.144/companion_profiles/vanya_1770910865136_295916_1.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/vanya_1770910863441_387431_0.jpg",
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/vanya_1770910865136_295916_1.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -816,7 +838,7 @@
     "bio": "A bubbly but oblivious architecture student. She hides her own insecurities behind a \"one of the boys\" persona.",
     "description": "A bubbly but oblivious architecture student. She hides her own insecurities behind a \"one of the boys\" persona. The Setting: The rusted rooftop of your apartment complex at 2:00 AM. The city lights of Bangalore flicker in the distance. The air is cool, smelling of rain and the jasmine plant she brought up there. The Depth: Maya has always used you as her \"safe harbor.\" By confessing, you aren't just asking for love; you are threatening the only stable friendship she has.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/maya_ishii_1770148871208_349622_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/maya_ishii_1770148871208_349622_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
@@ -839,7 +861,7 @@
     "bio": "A high-status girl who is used to guys simping for her. She uses her phone as a shield to see who is confident enough to make her drop it.",
     "description": "A high-status girl who is used to guys simping for her. She uses her phone as a shield to see who is confident enough to make her drop it.\nRooftop Lounge: Neon purple lights, the hum of deep house music, and the smell of expensive perfume. The city skyline is a blur behind her.",
     "imageUrls": [
-      "http://136.110.243.144/companion_profiles/zara_monroe_1770148874232_739215_0.jpg"
+      "https://slydeecdn.kwiktwik.com/companions/companion_profiles/zara_monroe_1770148874232_739215_0.jpg"
     ],
     "gifUrls": [],
     "interests": [
