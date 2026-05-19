@@ -375,7 +375,6 @@ export class SubscriptionManagerService {
             if (providerDataRaw.customerId) {
               pgSdkData['customer_id'] = providerDataRaw.customerId;
             }
-            pgSdkData['razorpayKeyId'] = pgSdkData['key'];
             delete pgSdkData['key'];
             delete pgSdkData['prefill'];
           }
