@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import * as schema from '../../database/schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, asc, desc, eq, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, lt, lte, or, sql } from 'drizzle-orm';
 
 export interface HomeFeedItem {
   type: string;
@@ -64,9 +64,18 @@ export class FeedService {
       offsetDate = new Date();
     }
 
-    conditions.push(lte(schema.craftoQuotes.createdAt, offsetDate.toISOString()));
     if (lastId !== null) {
-      conditions.push(lte(schema.craftoQuotes.id, lastId));
+      conditions.push(
+        or(
+          lt(schema.craftoQuotes.createdAt, offsetDate.toISOString()),
+          and(
+            eq(schema.craftoQuotes.createdAt, offsetDate.toISOString()),
+            lt(schema.craftoQuotes.id, lastId),
+          ),
+        )!,
+      );
+    } else {
+      conditions.push(lte(schema.craftoQuotes.createdAt, offsetDate.toISOString()));
     }
     if (category) {
       conditions.push(eq(schema.craftoQuotes.categoryType, category));
