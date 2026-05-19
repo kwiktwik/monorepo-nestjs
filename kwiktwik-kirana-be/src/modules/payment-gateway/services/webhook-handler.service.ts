@@ -1221,6 +1221,84 @@ export class WebhookHandlerService {
   }
 
   /**
+   * Activate a USER_MANAGED subscription by its ID.
+   * Called from handlePaymentCaptured when a SUBSCRIPTION_SETUP order is captured.
+   */
+  private async activateUserManagedSubscription(
+    subscriptionId: string,
+    paymentId: string | null,
+  ): Promise<void> {
+    const subscription = await this.subscriptionRepository.findById(subscriptionId);
+    if (!subscription) {
+      this.logger.warn(`activateUserManagedSubscription: subscription not found | subscriptionId=${subscriptionId}`);
+      return;
+    }
+
+    if (subscription.subscriptionType !== SubscriptionType.USER_MANAGED) {
+      this.logger.log(`activateUserManagedSubscription: not USER_MANAGED, skipping | subscriptionId=${subscriptionId} | type=${subscription.subscriptionType}`);
+      return;
+    }
+
+    if (subscription.status === SubscriptionStatus.ACTIVE) {
+      this.logger.log(`activateUserManagedSubscription: already ACTIVE | subscriptionId=${subscriptionId}`);
+      return;
+    }
+
+    this.logger.log(`activateUserManagedSubscription: transitioning to ACTIVE | subscriptionId=${subscriptionId} | currentStatus=${subscription.status}`);
+    const result = transitionSubscriptionStatus(subscription, SubscriptionStatus.ACTIVE);
+    if (result.success) {
+      await this.subscriptionRepository.save(result.subscription);
+      this.logger.log(`activateUserManagedSubscription: activated | subscriptionId=${subscriptionId}`);
+
+      // Grant premium entitlement
+      await this.entitlementService.grantFromSubscription({
+        subscriptionId: subscription.id,
+        userId: subscription.userId,
+        appId: subscription.appId,
+        planId: subscription.planId,
+      });
+    } else {
+      this.logger.warn(`activateUserManagedSubscription: transition rejected | subscriptionId=${subscriptionId} | currentStatus=${subscription.status} | error=${result.transitionError}`);
+    }
+  }
+
+  /**
+   * Activate a USER_MANAGED subscription from a webhook event (e.g. token.confirmed).
+   * Resolves the subscription via merchantSubscriptionId or order notes.
+   */
+  private async activateUserManagedSubscriptionFromEvent(event: WebhookEvent): Promise<void> {
+    // Try merchantSubscriptionId first
+    let subscription = event.merchantSubscriptionId
+      ? await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId)
+      : null;
+
+    // Fallback: resolve via order notes
+    if (!subscription) {
+      const orderNotes = (event.rawPayload as any)?.payload?.order?.entity?.notes
+        ?? (event.rawPayload as any)?.payload?.payment?.entity?.notes;
+      const merchantSubId = orderNotes?.merchant_subscription_id;
+      if (merchantSubId) {
+        subscription = await this.subscriptionRepository.findByMerchantId(merchantSubId);
+      }
+    }
+
+    // Fallback: resolve via order's subscriptionId
+    if (!subscription && event.merchantOrderId) {
+      const order = await this.orderRepository.findByProviderOrderId(event.provider, event.merchantOrderId);
+      if (order?.subscriptionId) {
+        subscription = await this.subscriptionRepository.findById(order.subscriptionId);
+      }
+    }
+
+    if (!subscription) {
+      this.logger.warn(`activateUserManagedSubscriptionFromEvent: no subscription found for event | eventId=${event.eventId}`);
+      return;
+    }
+
+    await this.activateUserManagedSubscription(subscription.id, event.paymentId ?? null);
+  }
+
+  /**
    * Create error result
    */
   private createErrorResult(eventId: string, error: string): WebhookProcessResult {

@@ -926,7 +926,7 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
       provider: 'RAZORPAY',
       subscriptionType: 'USER_MANAGED',
       appId: null,
-      merchantSubscriptionId: order?.notes?.subscription_id ?? null,
+      merchantSubscriptionId: order?.notes?.merchant_subscription_id ?? null,
       providerSubscriptionId: null,
       merchantOrderId: order?.id ?? payment?.order_id ?? null,
       providerOrderId: order?.id ?? payment?.order_id ?? null,
