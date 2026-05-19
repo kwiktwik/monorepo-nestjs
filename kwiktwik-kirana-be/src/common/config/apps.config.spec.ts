@@ -24,7 +24,7 @@ describe('apps.config', () => {
     it('should generate correct webhook secret env var names from app IDs', () => {
       // Test the pattern: com.example.app -> RAZORPAY_WEBHOOK_SECRET_COM_EXAMPLE_APP
       expect(generateWebhookSecretEnvVar('com.jugnu.alertpe')).toBe(
-        'RAZORPAY_WEBHOOK_SECRET_COM_KIRANAAPPS_APP',
+        'RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE',
       );
       expect(generateWebhookSecretEnvVar('com.sharestatus.app')).toBe(
         'RAZORPAY_WEBHOOK_SECRET_COM_SHARESTATUS_APP',
