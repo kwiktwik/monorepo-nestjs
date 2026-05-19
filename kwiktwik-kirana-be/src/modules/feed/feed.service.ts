@@ -64,23 +64,23 @@ export class FeedService {
       offsetDate = new Date();
     }
 
-    conditions.push(lte(schema.quotes.createdAt, offsetDate.toISOString()));
+    conditions.push(lte(schema.craftoQuotes.createdAt, offsetDate.toISOString()));
     if (lastId !== null) {
-      conditions.push(lte(schema.quotes.id, lastId));
+      conditions.push(lte(schema.craftoQuotes.id, lastId));
     }
     if (category) {
-      conditions.push(eq(schema.quotes.categoryType, category));
+      conditions.push(eq(schema.craftoQuotes.categoryType, category));
     }
 
     const rows = await this.db
       .select({
-        id: schema.quotes.id,
-        rawJson: schema.quotes.rawJson,
-        createdAt: schema.quotes.createdAt,
+        id: schema.craftoQuotes.id,
+        rawJson: schema.craftoQuotes.rawJson,
+        createdAt: schema.craftoQuotes.createdAt,
       })
-      .from(schema.quotes)
+      .from(schema.craftoQuotes)
       .where(and(...conditions))
-      .orderBy(desc(schema.quotes.createdAt), desc(schema.quotes.id))
+      .orderBy(desc(schema.craftoQuotes.createdAt), desc(schema.craftoQuotes.id))
       .limit(cappedLimit + 1);
 
     const hasMore = rows.length > cappedLimit;
@@ -111,10 +111,10 @@ export class FeedService {
     _appId: string,
   ): Promise<{ categories: string[]; count: number }> {
     const rows = await this.db
-      .selectDistinct({ categoryType: schema.quotes.categoryType })
-      .from(schema.quotes)
-      .where(sql`${schema.quotes.categoryType} IS NOT NULL`)
-      .orderBy(asc(schema.quotes.categoryType));
+      .selectDistinct({ categoryType: schema.craftoQuotes.categoryType })
+      .from(schema.craftoQuotes)
+      .where(sql`${schema.craftoQuotes.categoryType} IS NOT NULL`)
+      .orderBy(asc(schema.craftoQuotes.categoryType));
 
     const categories = rows
       .map((r) => r.categoryType)
