@@ -342,14 +342,21 @@ export class SubscriptionManagerService {
           const publicConfig = provider.getPublicConfig();
           pgSdkData = {
             key: publicConfig.keyId || '',
-            order_id: setupResult.providerOrderId,
             amount: input.initialAmount || input.recurringAmount,
             currency: input.currency ?? 'INR',
+            email: input.customerEmail || 'info@kwiktwik.com',
+            contact: input.customerPhone || '9999999999',
             prefill: {
               email: input.customerEmail || 'info@kwiktwik.com',
               contact: input.customerPhone || '9999999999',
             },
           };
+
+          if (setupResult.providerSubscriptionId) {
+            pgSdkData['subscription_id'] = setupResult.providerSubscriptionId;
+          } else if (setupResult.providerOrderId) {
+            pgSdkData['order_id'] = setupResult.providerOrderId;
+          }
         } catch (configError) {
           this.logger.warn(`Failed to generate pgSdkData public config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
         }
