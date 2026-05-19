@@ -384,6 +384,11 @@ export class WebhookHandlerService {
       }
     }
 
+    // Activate USER_MANAGED subscription on payment capture
+    if (order.orderType === 'SUBSCRIPTION_SETUP' && order.subscriptionId) {
+      await this.activateUserManagedSubscription(order.subscriptionId, event.paymentId);
+    }
+
     return {
       success: true,
       eventId: event.eventId,
@@ -679,6 +684,10 @@ export class WebhookHandlerService {
       if (customerId) {
         await this.storeTokenOnSubscription(event, tokenId, customerId);
       }
+
+      // Activate USER_MANAGED subscription when token is confirmed
+      // (UPI mandates are officially registered at this point)
+      await this.activateUserManagedSubscriptionFromEvent(event);
     }
 
     return {
