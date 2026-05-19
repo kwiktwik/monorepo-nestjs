@@ -300,8 +300,15 @@ export class WebhookHandlerService {
     // Token rejected (Charge at Will — Razorpay)
     this.registerHandler('token.rejected', this.handleTokenRejected.bind(this));
     
+    // Token cancelled (Charge at Will — Razorpay)
+    this.registerHandler('token.cancelled', this.handleTokenCancelled.bind(this));
+    
     // Payment authorized — extract token_id for recurring setups
     this.registerHandler('payment.authorized', this.handlePaymentAuthorized.bind(this));
+
+    // Payment downtime resolved (Razorpay infrastructure event — informational only)
+    this.registerHandler('payment.downtime.resolved', this.handlePaymentDowntime.bind(this));
+    this.registerHandler('payment.downtime.started', this.handlePaymentDowntime.bind(this));
 
     // Redemption completed (PhonePe)
     this.registerHandler('subscription.redemption.completed', this.handleRedemptionCompleted.bind(this));
@@ -719,6 +726,75 @@ export class WebhookHandlerService {
       eventType: event.eventType,
       subscriptionId: event.merchantSubscriptionId,
       orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle token cancelled event (Charge at Will)
+   *
+   * Fired when a recurring token/mandate is cancelled (by customer or bank).
+   * Updates token status and cancels the associated subscription.
+   */
+  private async handleTokenCancelled(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const tokenEntity = (event.rawPayload as any)?.payload?.token?.entity;
+    const tokenId = tokenEntity?.id;
+
+    this.logger.warn(`Token cancelled | tokenId=${tokenId}`);
+
+    if (tokenId) {
+      await this.updateTokenStatus(tokenId, event.provider, 'CANCELLED');
+    }
+
+    // Cancel the associated USER_MANAGED subscription
+    let subscription = event.merchantSubscriptionId
+      ? await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId)
+      : null;
+
+    // Fallback: resolve via order notes
+    if (!subscription) {
+      const orderNotes = (event.rawPayload as any)?.payload?.order?.entity?.notes
+        ?? (event.rawPayload as any)?.payload?.payment?.entity?.notes;
+      const merchantSubId = orderNotes?.merchant_subscription_id;
+      if (merchantSubId) {
+        subscription = await this.subscriptionRepository.findByMerchantId(merchantSubId);
+      }
+    }
+
+    if (subscription && subscription.subscriptionType === SubscriptionType.USER_MANAGED) {
+      this.logger.log(`Cancelling USER_MANAGED subscription due to token cancellation | subscriptionId=${subscription.id}`);
+      const result = transitionSubscriptionStatus(subscription, SubscriptionStatus.CANCELLED);
+      if (result.success) {
+        await this.subscriptionRepository.save(result.subscription);
+        await this.entitlementService.revokeFromSubscription(subscription.id, 'token_cancelled');
+      }
+    }
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle payment downtime events (Razorpay infrastructure)
+   *
+   * Informational events about payment method availability.
+   * No business action required — just acknowledge.
+   */
+  private async handlePaymentDowntime(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Payment downtime event | eventType=${event.eventType} | mappedEventType=${event.mappedEventType}`);
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: null,
+      orderId: null,
       error: null,
     };
   }
