@@ -51,7 +51,7 @@ const BASE_CONFIG = {
   },
   features: {
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
     },
     gateway: Gateway.RAZORPAY,
     order: {
@@ -181,7 +181,7 @@ const sangamOverrides = {
 
 const PACKAGE_OVERRIDES: Record<string, Record<string, any>> = {
   "com.paymentalert.app": alertpayOverrides,
-  "com.kiranaapps.app": kiranaappsOverrides,
+  "com.jugnu.alertpe": kiranaappsOverrides,
   "com.sangam.wallpaperapp": sangamOverrides,
   "com.sharestatus.app": jamunOverrides,
   "com.sharekaro.kirana": jamunOverrides,

@@ -7,8 +7,8 @@ const SUPPORTED_LANGUAGES = [
 
 export class GetConfigDto {
   @ApiPropertyOptional({
-    description: 'Optional plan ID to override backend selection (e.g., plan_S3FaBrk7sjPQEU)',
-    example: 'plan_S3FaBrk7sjPQEU',
+    description: 'Optional plan ID to override backend selection (e.g., plan_SrGjQeBQe9JFcd)',
+    example: 'plan_SrGjQeBQe9JFcd',
   })
   @IsOptional()
   @IsString()

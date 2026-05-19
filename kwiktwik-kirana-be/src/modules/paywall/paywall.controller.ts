@@ -69,7 +69,7 @@ export class PaywallController {
   @ApiParam({
     name: 'planId',
     description: 'The plan ID',
-    example: 'plan_S3FaBrk7sjPQEU',
+    example: 'plan_SrGjQeBQe9JFcd',
   })
   @ApiResponse({ status: 200, description: 'Plan returned successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

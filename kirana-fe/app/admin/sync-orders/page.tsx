@@ -5,7 +5,7 @@ import { syncOrdersAction, SyncResult } from "./actions";
 import { Upload, AlertCircle, CheckCircle2, Loader2, RefreshCcw, Layout } from "lucide-react";
 
 const REGISTERED_APPS = [
-  { id: "com.kiranaapps.app", name: "Kirana Apps" },
+  { id: "com.jugnu.alertpe", name: "Kirana Apps" },
   { id: "com.paymentalert.app", name: "AlertPay (paymentalert)" },
   { id: "alertpay-android", name: "AlertPay Android" },
   { id: "alertpay-web", name: "AlertPay Web" },

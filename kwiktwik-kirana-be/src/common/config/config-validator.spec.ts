@@ -27,7 +27,7 @@ describe('ConfigValidator', () => {
       expect(result.registeredApps).toEqual(registeredAppIds);
       expect(result.registeredApps).toContain('com.paymentalert.app');
       expect(result.registeredApps).toContain('com.sharekaro.kirana');
-      expect(result.registeredApps).toContain('com.kiranaapps.app');
+      expect(result.registeredApps).toContain('com.jugnu.alertpe');
       expect(result.registeredApps).toContain('com.sharestatus.app');
     });
 

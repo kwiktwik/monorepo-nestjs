@@ -15,7 +15,7 @@ export function NotificationDashboard() {
         userId: "",
         token: "",
         phoneNumber: "",
-        appId: "com.kiranaapps.app", 
+        appId: "com.jugnu.alertpe", 
         title: "",
         body: "",
     });
@@ -194,7 +194,7 @@ export function NotificationDashboard() {
                                                     onChange={handleChange}
                                                     className="w-full appearance-none rounded-lg border border-zinc-200 bg-white px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
                                                 >
-                                                    <option value="com.kiranaapps.app">AlertPay (com.kiranaapps.app)</option>
+                                                    <option value="com.jugnu.alertpe">AlertPay (com.jugnu.alertpe)</option>
                                                     <option value="com.jamun.app">Jamun (com.jamun.app)</option>
                                                     <option value="com.sharestatus.app">ShareStatus (com.sharestatus.app)</option>
                                                     <option value="com.kwiktwik.kirana">Kirana Express (com.kwiktwik.kirana)</option>
@@ -239,7 +239,7 @@ export function NotificationDashboard() {
                                                     onChange={handleChange}
                                                     className="w-full appearance-none rounded-lg border border-zinc-200 bg-white px-4 py-2.5 pr-10 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
                                                 >
-                                                    <option value="com.kiranaapps.app">AlertPay (com.kiranaapps.app)</option>
+                                                    <option value="com.jugnu.alertpe">AlertPay (com.jugnu.alertpe)</option>
                                                     <option value="com.jamun.app">Jamun (com.jamun.app)</option>
                                                     <option value="com.sharestatus.app">ShareStatus (com.sharestatus.app)</option>
                                                     <option value="com.kwiktwik.kirana">Kirana Express (com.kwiktwik.kirana)</option>

@@ -182,7 +182,7 @@ export class AdminController {
 
   @Post('test-analytics')
   @ApiOperation({ summary: 'Test analytics event sending' })
-  async testAnalytics(@Query('appId') appId: string = 'com.kiranaapps.app') {
+  async testAnalytics(@Query('appId') appId: string = 'com.jugnu.alertpe') {
     const result = await this.analyticsService.sendEvent({
       eventName: 'test_event',
       userData: { email: 'test@example.com', userId: 'test-user-id' },

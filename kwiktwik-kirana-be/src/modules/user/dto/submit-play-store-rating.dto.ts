@@ -62,7 +62,7 @@ export class SubmitPlayStoreRatingDto {
   language?: string;
 
   @ApiPropertyOptional({
-    example: 'com.kiranaapps.app',
+    example: 'com.jugnu.alertpe',
     description: 'Package name',
   })
   @IsString()

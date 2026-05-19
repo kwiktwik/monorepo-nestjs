@@ -199,7 +199,7 @@ export class ConfigService {
         planSelectionSource = 'client_override';
       } else {
         // Backend defaults to Razorpay plan
-        selectedPlanId = 'plan_S3FaBrk7sjPQEU';
+        selectedPlanId = 'plan_SrGjQeBQe9JFcd';
         planSelectionSource = 'backend_default:razorpay';
       }
 

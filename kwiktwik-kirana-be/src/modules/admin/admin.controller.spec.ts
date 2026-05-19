@@ -275,7 +275,7 @@ describe('AdminController', () => {
 
       expect(mockAnalyticsService.sendEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          appId: 'com.kiranaapps.app',
+          appId: 'com.jugnu.alertpe',
         }),
       );
     });

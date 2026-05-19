@@ -12,7 +12,7 @@
  * 
  * Options:
  *   --input       Path to JSON file (array of { order_id, ... } or { razorpay_order_id, ... })
- *   --app         App ID to sync orders for (default: com.kiranaapps.app)
+ *   --app         App ID to sync orders for (default: com.jugnu.alertpe)
  *   --dry-run     Only show what would be synced, don't actually sync
  *   --batch-size  Number of orders per batch for Razorpay (default: 10)
  *   --db-batch    Number of IDs to check in DB at once (default: 500)
@@ -39,7 +39,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     input: path.resolve(__dirname, 'missing_orders.json'),
-    app: 'com.kiranaapps.app',
+    app: 'com.jugnu.alertpe',
     dryRun: false,
     batchSize: CONFIG.BATCH_SIZE,
     dbBatch: CONFIG.DB_BATCH_SIZE,
@@ -83,7 +83,7 @@ Usage:
 
 Options:
   --input       Path to JSON file [default: scripts/missing_orders.json]
-  --app         App ID to sync orders for (default: com.kiranaapps.app)
+  --app         App ID to sync orders for (default: com.jugnu.alertpe)
   --dry-run     Only show what would be synced, don't actually sync
   --batch-size  Number of orders per batch for Razorpay (default: 10)
   --db-batch    Number of IDs to check in DB at once (default: 500)

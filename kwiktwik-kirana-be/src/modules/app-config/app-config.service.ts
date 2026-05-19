@@ -34,7 +34,7 @@ export class AppConfigService {
     const settings = (app.settings || {}) as AppSettings;
 
     // 3. Determine which plan to use
-    const selectedPlanId = planId || settings.features?.subscription?.plan_id || 'plan_S3FaBrk7sjPQEU';
+    const selectedPlanId = planId || settings.features?.subscription?.plan_id || 'plan_SrGjQeBQe9JFcd';
     const planSelectionSource = planId ? 'client_override' : 'backend_default';
 
     // 4. Fetch plan from database

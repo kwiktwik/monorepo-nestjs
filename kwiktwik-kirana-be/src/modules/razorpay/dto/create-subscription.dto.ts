@@ -40,7 +40,7 @@ class NotesDto {
 }
 
 export class CreateSubscriptionV2Dto {
-  @ApiPropertyOptional({ example: 'plan_S3FaBrk7sjPQEU' })
+  @ApiPropertyOptional({ example: 'plan_SrGjQeBQe9JFcd' })
   @IsOptional()
   @IsString()
   plan_id?: string;

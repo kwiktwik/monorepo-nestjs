@@ -19,8 +19,8 @@ export interface AppConfig {
  * Only apps defined here can authenticate via the API
  */
 export const REGISTERED_APPS: Record<string, AppConfig> = {
-  'com.kiranaapps.app': {
-    id: 'com.kiranaapps.app',
+  'com.jugnu.alertpe': {
+    id: 'com.jugnu.alertpe',
     name: 'Kirana Apps (Legacy Flutter)',
     description:
       'Legacy Flutter app - users should be redirected to api.kiranaapps.com',
@@ -171,7 +171,7 @@ export function getRegisteredAppIdsWithWebhooks(): string[] {
 /**
  * Derive a temp-email domain from an app's package name.
  * e.g. "com.sharestatus.app" -> "sharestatus.local"
- *      "com.kiranaapps.app"  -> "kiranaapps.local"
+ *      "com.jugnu.alertpe"  -> "kiranaapps.local"
  */
 export function getTempEmailDomain(appId: string): string {
   const parts = appId.split('.');

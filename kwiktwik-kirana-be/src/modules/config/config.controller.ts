@@ -104,7 +104,7 @@ export class ConfigController {
     name: 'plan_id',
     required: false,
     description:
-      'Optional: Plan ID to override backend selection (e.g., plan_PHONEPE_AUTOPAY_001 or plan_S3FaBrk7sjPQEU). If not provided, backend will determine the plan.',
+      'Optional: Plan ID to override backend selection (e.g., plan_PHONEPE_AUTOPAY_001 or plan_SrGjQeBQe9JFcd). If not provided, backend will determine the plan.',
     example: 'plan_PHONEPE_AUTOPAY_001',
   })
   @ApiQuery({

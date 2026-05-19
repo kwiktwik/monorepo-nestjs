@@ -82,7 +82,7 @@ const alertpayConfig = {
   },
   features: {
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
@@ -134,7 +134,7 @@ const defaultConfig = {
   },
   features: {
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
@@ -184,7 +184,7 @@ const jamunConfig = {
   },
   features: {
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
@@ -231,7 +231,7 @@ const kwiktwikConfig = {
   },
   features: {
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
@@ -271,13 +271,13 @@ const kwiktwikConfig = {
   api: { timeout: 30000, retryAttempts: 3 },
 };
 
-/** com.paymentalert.app: same as alertpayConfig but with plan_S3FaBrk7sjPQEU */
+/** com.paymentalert.app: same as alertpayConfig but with plan_SrGjQeBQe9JFcd */
 const paymentalertAppConfig = {
   ...alertpayConfig,
   features: {
     ...alertpayConfig.features,
     subscription: {
-      plan_id: "plan_S3FaBrk7sjPQEU",
+      plan_id: "plan_SrGjQeBQe9JFcd",
       discount_plan_id: "plan_SL3uNUOHS4ouiR",
       discount_amount: DISCOUNT_AMOUNT_INR,
     },
@@ -294,7 +294,7 @@ const APP_CONFIG_MAP: Record<string, Record<string, unknown>> = {
   "com.sharekaro.kirana": jamunConfig,
   "kwiktwik-sanatan": kwiktwikConfig,
   "com.paymentalert.app": paymentalertAppConfig,
-  "com.kiranaapps.app": alertpayConfig,
+  "com.jugnu.alertpe": alertpayConfig,
   "alertpay-android": alertpayConfig,
 };
 

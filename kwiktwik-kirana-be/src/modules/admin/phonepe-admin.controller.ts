@@ -100,7 +100,7 @@ export class PhonePeAdminController {
   })
   async getRedemptionStatus(
     @Param('merchantOrderId') merchantOrderId: string,
-    @Query('appId') appId: string = 'com.kiranaapps.app',
+    @Query('appId') appId: string = 'com.jugnu.alertpe',
     @Query('checkPhonePe') checkPhonePe?: string,
   ) {
     const redemption =
@@ -210,11 +210,11 @@ export class PhonePeAdminController {
   @ApiQuery({
     name: 'appId',
     required: false,
-    description: 'App ID (defaults to com.kiranaapps.app)',
+    description: 'App ID (defaults to com.jugnu.alertpe)',
   })
   async getRedemptionStatusFromPhonePe(
     @Param('merchantOrderId') merchantOrderId: string,
-    @Query('appId') appId: string = 'com.kiranaapps.app',
+    @Query('appId') appId: string = 'com.jugnu.alertpe',
   ) {
     // First get local redemption details
     const redemption =

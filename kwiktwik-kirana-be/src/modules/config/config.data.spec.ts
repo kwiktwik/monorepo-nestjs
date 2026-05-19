@@ -4,7 +4,7 @@ describe('Config Data - APP_CONFIGS', () => {
   const supportedAppIds = [
     'com.paymentalert.app',
     'com.sharekaro.kirana',
-    'com.kiranaapps.app',
+    'com.jugnu.alertpe',
   ];
 
   const unsupportedAppIds = [
@@ -31,8 +31,8 @@ describe('Config Data - APP_CONFIGS', () => {
       });
     });
 
-    describe('com.kiranaapps.app configuration', () => {
-      const appId = 'com.kiranaapps.app';
+    describe('com.jugnu.alertpe configuration', () => {
+      const appId = 'com.jugnu.alertpe';
       let config: ReturnType<typeof getConfigForAppId>;
 
       beforeEach(() => {
@@ -50,7 +50,7 @@ describe('Config Data - APP_CONFIGS', () => {
         expect(config?.features?.subscription).toBeDefined();
         expect(config?.features?.subscription?.plan_id).toBeDefined();
         expect(config?.features?.subscription?.plan_id).toBe(
-          'plan_S3FaBrk7sjPQEU',
+          'plan_SrGjQeBQe9JFcd',
         );
       });
 
@@ -85,7 +85,7 @@ describe('Config Data - APP_CONFIGS', () => {
 
       it('should have app update configuration', () => {
         expect(config?.appUpdate).toBeDefined();
-        expect(config?.appUpdate?.updateUrl).toContain('com.kiranaapps.app');
+        expect(config?.appUpdate?.updateUrl).toContain('com.jugnu.alertpe');
       });
 
       it('should have UI configuration', () => {

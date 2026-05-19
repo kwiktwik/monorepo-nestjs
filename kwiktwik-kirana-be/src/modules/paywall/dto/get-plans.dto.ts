@@ -4,7 +4,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 export class GetPlansDto {
   @ApiPropertyOptional({
     description: 'Filter by plan ID',
-    example: 'plan_S3FaBrk7sjPQEU',
+    example: 'plan_SrGjQeBQe9JFcd',
   })
   @IsOptional()
   @IsString()

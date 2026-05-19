@@ -19,7 +19,7 @@
  * Options:
  *   --input       Path to JSON file with order/subscription IDs [required]
  *   --type        Type to sync: 'orders', 'subscriptions', or 'both' (default: both)
- *   --app         App ID to sync for (default: com.kiranaapps.app)
+ *   --app         App ID to sync for (default: com.jugnu.alertpe)
  *   --db          Target database: 'auto', 'primary', 'secondary', or 'both' (default: auto)
  *                 - auto: Check both DBs, sync to where user exists
  *                 - primary: Only sync to primary DB (DATABASE_URL)
@@ -71,7 +71,7 @@ function parseArgs() {
   const options = {
     input: null,
     type: 'both', // 'orders', 'subscriptions', or 'both'
-    app: 'com.kiranaapps.app',
+    app: 'com.jugnu.alertpe',
     db: 'auto', // 'auto', 'primary', 'secondary', or 'both'
     dryRun: false,
     batchSize: CONFIG.BATCH_SIZE,
@@ -153,7 +153,7 @@ Database Target Options (--db):
 Options:
   --input       Path to JSON file with order/subscription IDs [required]
   --type        Type to sync: orders, subscriptions, or both (default: both)
-  --app         App ID to sync for (default: com.kiranaapps.app)
+  --app         App ID to sync for (default: com.jugnu.alertpe)
   --db          Target database: auto, primary, secondary, or both (default: auto)
   --dry-run     Only show what would be synced, don't actually sync
   --batch-size  Number of items per batch (default: 10)

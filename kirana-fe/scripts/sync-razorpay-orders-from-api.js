@@ -454,7 +454,7 @@ async function syncOrderToDb(client, orderData, appId, usersByEmail, usersByPhon
     await client.query(
       `INSERT INTO orders (id, razorpay_order_id, user_id, app_id, customer_id, razorpay_customer_id, amount, currency, status, razorpay_payment_id, notes, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [orderId, rzpOrderId, dbUser.id, appId || 'com.kiranaapps.app', dbUser.id, customerId, amount, rzpOrder.currency || 'INR', finalStatus, firstPayment?.id || null, notes, createdAt, new Date()]
+      [orderId, rzpOrderId, dbUser.id, appId || 'com.jugnu.alertpe', dbUser.id, customerId, amount, rzpOrder.currency || 'INR', finalStatus, firstPayment?.id || null, notes, createdAt, new Date()]
     );
     
     return { id: rzpOrderId, status: 'success', message: `Synced to ${dbName}`, db: dbName };

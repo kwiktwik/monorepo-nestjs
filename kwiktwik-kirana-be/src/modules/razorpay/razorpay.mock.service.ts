@@ -33,7 +33,7 @@ const MOCK_PLANS = [
     created_at: 1772171732,
   },
   {
-    id: 'plan_S3FaBrk7sjPQEU',
+    id: 'plan_SrGjQeBQe9JFcd',
     entity: 'plan',
     interval: 1,
     period: 'monthly',

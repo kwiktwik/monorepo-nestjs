@@ -184,7 +184,7 @@ describe('RazorpayWebhookService', () => {
 
       // Should only include registered apps
       expect(appIds).toContain('com.paymentalert.app');
-      expect(appIds).toContain('com.kiranaapps.app');
+      expect(appIds).toContain('com.jugnu.alertpe');
       // Should NOT include unregistered apps
       expect(appIds).not.toContain('com.unknown.app');
 
@@ -221,7 +221,7 @@ describe('RazorpayWebhookService', () => {
         expect.stringContaining('com.paymentalert.app'),
       );
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('com.kiranaapps.app'),
+        expect.stringContaining('com.jugnu.alertpe'),
       );
 
       warnSpy.mockRestore();

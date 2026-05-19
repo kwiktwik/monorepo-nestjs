@@ -92,7 +92,7 @@ export default function Razorpay() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-white/60 mb-1.5 uppercase font-medium tracking-wide">App ID</label>
-              <input value={appId} onChange={e => setAppId(e.target.value)} placeholder="e.g., com.kiranaapps.app" className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-razorpay-accent/50 text-white placeholder:text-white/30 font-mono transition-all" />
+              <input value={appId} onChange={e => setAppId(e.target.value)} placeholder="e.g., com.jugnu.alertpe" className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-razorpay-accent/50 text-white placeholder:text-white/30 font-mono transition-all" />
             </div>
             <div>
               <label className="block text-xs text-white/60 mb-1.5 uppercase font-medium tracking-wide">User ID</label>

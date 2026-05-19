@@ -26,7 +26,7 @@ import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
 import * as admin from 'firebase-admin';
 
 /** Kirana-FE (legacy Flutter app) app IDs */
-const KIRANA_FE_APP_IDS = ['com.kiranaapps.app'];
+const KIRANA_FE_APP_IDS = ['com.jugnu.alertpe'];
 
 interface TruecallerTokenData {
   access_token?: string;

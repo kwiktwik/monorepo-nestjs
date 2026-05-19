@@ -11,7 +11,7 @@
  * Options:
  *   --from       Start date (YYYY-MM-DD)
  *   --to         End date (YYYY-MM-DD)
- *   --app        App ID to sync orders for (default: com.kiranaapps.app)
+ *   --app        App ID to sync orders for (default: com.jugnu.alertpe)
  *   --dry-run    Only show what would be synced, don't actually sync
  *   --batch-size Number of orders per batch (default: 20)
  *   --help       Show this help message
@@ -42,7 +42,7 @@ function parseArgs() {
   const options = {
     from: null,
     to: null,
-    app: 'com.kiranaapps.app',
+    app: 'com.jugnu.alertpe',
     dryRun: false,
     batchSize: CONFIG.BATCH_SIZE,
   };
@@ -115,7 +115,7 @@ Usage:
 Options:
   --from         Start date (YYYY-MM-DD) [required]
   --to           End date (YYYY-MM-DD) [required]
-  --app          App ID to sync orders for (default: com.kiranaapps.app)
+  --app          App ID to sync orders for (default: com.jugnu.alertpe)
   --dry-run      Only show what would be synced, don't actually sync
   --batch-size   Number of orders per batch (default: 20)
   --help         Show this help message

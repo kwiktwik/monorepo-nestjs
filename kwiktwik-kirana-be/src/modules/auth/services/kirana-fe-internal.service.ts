@@ -45,7 +45,7 @@ export class KiranaFeInternalService {
           headers: {
             'Content-Type': 'application/json',
             'X-Internal-Key': this.internalApiKey,
-            'X-App-ID': 'com.kiranaapps.app',
+            'X-App-ID': 'com.jugnu.alertpe',
           },
           body: JSON.stringify({ phoneNumber }),
         },

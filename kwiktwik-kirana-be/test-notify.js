@@ -6,7 +6,7 @@
 const crypto = require('crypto');
 
 async function testNotifyRedemption() {
-  const appId = 'com.kiranaapps.app'; // Or the app you want to test
+  const appId = 'com.jugnu.alertpe'; // Or the app you want to test
   const merchantSubscriptionId = 'GW4UAeM3ql';
   const merchantOrderId = 'test_not_' + Math.floor(Math.random() * 1000000);
   const amount = 19900; // 199 INR in paise

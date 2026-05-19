@@ -20,7 +20,7 @@ const BASE_CONFIG = {
     },
     features: {
         subscription: {
-            plan_id: "plan_S3FaBrk7sjPQEU",
+            plan_id: "plan_SrGjQeBQe9JFcd",
             discount_plan_id: "plan_SL3uNUOHS4ouiR",
             discount_amount: DISCOUNT_AMOUNT_INR,
         },
@@ -180,7 +180,7 @@ const kwiktwikOverrides = {
     },
 };
 
-/** com.kiranaapps.app: AlertPay base + soft app update (1.0.12 → 1.0.13) */
+/** com.jugnu.alertpe: AlertPay base + soft app update (1.0.12 → 1.0.13) */
 const kiranaappsOverrides = {
     ...alertpayOverrides,
     appUpdate: {
@@ -198,7 +198,7 @@ const kiranaappsOverrides = {
  */
 const PACKAGE_OVERRIDES: Record<string, Record<string, any>> = {
     "com.paymentalert.app": alertpayOverrides,
-    "com.kiranaapps.app": kiranaappsOverrides,
+    "com.jugnu.alertpe": kiranaappsOverrides,
     "com.sharestatus.app": jamunOverrides,
     "com.sharekaro.kirana": jamunOverrides
 };

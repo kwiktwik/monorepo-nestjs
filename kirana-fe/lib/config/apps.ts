@@ -149,8 +149,8 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
-  "com.kiranaapps.app": {
-    id: "com.kiranaapps.app",
+  "com.jugnu.alertpe": {
+    id: "com.jugnu.alertpe",
     name: "Kirana Apps",
     description: "Kirana Apps mobile application",
     enabled: true,

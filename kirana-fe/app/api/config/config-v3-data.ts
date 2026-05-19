@@ -12,7 +12,7 @@ const SUBSCRIPTION_AMOUNT_INR = 199;
 
 export const PAYWALL_PLANS = {
   STANDARD: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -25,7 +25,7 @@ export const PAYWALL_PLANS = {
     priority: 1,
   },
   NEW_USER_WELCOME: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -38,7 +38,7 @@ export const PAYWALL_PLANS = {
     priority: 2,
   },
   ABANDONED_CHECKOUT: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -51,7 +51,7 @@ export const PAYWALL_PLANS = {
     priority: 3,
   },
   MARKETING_CAMPAIGN: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -64,7 +64,7 @@ export const PAYWALL_PLANS = {
     priority: 4,
   },
   LOYAL_USER: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -77,7 +77,7 @@ export const PAYWALL_PLANS = {
     priority: 5,
   },
   TRIAL_EXPIRED: {
-    plan_id: "plan_S3FaBrk7sjPQEU",
+    plan_id: "plan_SrGjQeBQe9JFcd",
     pricing: {
       initialAmount: "₹5",
       recurringAmount: "₹199",
@@ -424,7 +424,7 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
     },
     features: {
       ...baseConfig.features,
-      subscription: { plan_id: "plan_S3FaBrk7sjPQEU" },
+      subscription: { plan_id: "plan_SrGjQeBQe9JFcd" },
     },
     videos: {
       en: {
@@ -509,7 +509,7 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
     },
     features: {
       ...baseConfig.features,
-      subscription: { plan_id: "plan_S3FaBrk7sjPQEU" },
+      subscription: { plan_id: "plan_SrGjQeBQe9JFcd" },
     },
     videos: {
       en: {
@@ -585,16 +585,16 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
         "https://play.google.com/store/apps/details?id=com.sharekaro.kirana",
     },
   },
-  "com.kiranaapps.app": {
+  "com.jugnu.alertpe": {
     ...baseConfig,
     app: {
       ...baseConfig.app,
       name: "Kirana Apps",
-      id: "com.kiranaapps.app",
+      id: "com.jugnu.alertpe",
     },
     features: {
       ...baseConfig.features,
-      subscription: { plan_id: "plan_S3FaBrk7sjPQEU" },
+      subscription: { plan_id: "plan_SrGjQeBQe9JFcd" },
     },
     videos: {
       en: {
@@ -667,7 +667,7 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
     appUpdate: {
       ...baseConfig.appUpdate,
       updateUrl:
-        "https://play.google.com/store/apps/details?id=com.kiranaapps.app",
+        "https://play.google.com/store/apps/details?id=com.jugnu.alertpe",
     },
   },
   "com.sharestatus.app": {
@@ -679,7 +679,7 @@ export const APP_CONFIGS: Record<string, Record<string, unknown>> = {
     },
     features: {
       ...baseConfig.features,
-      subscription: { plan_id: "plan_S3FaBrk7sjPQEU" },
+      subscription: { plan_id: "plan_SrGjQeBQe9JFcd" },
     },
     videos: {
       en: {

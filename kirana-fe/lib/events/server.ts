@@ -155,7 +155,7 @@ export async function sendFacebookConversionEvent(
         appId: ALERTSOUNDBOX_FACEBOOK_APP_ID,
         accessToken: ALERTSOUNDBOX_FACEBOOK_CONVERSION_AP_TOKEN,
       },
-      "com.kiranaapps.app": {
+      "com.jugnu.alertpe": {
         pixelId: FACEBOOK_PIXEL_ID,
         appId: ALERTSOUNDBOX_FACEBOOK_APP_ID,
         accessToken: FACEBOOK_ACCESS_TOKEN,
@@ -264,7 +264,7 @@ export async function sendFacebookConversionEvent(
         application_tracking_enabled: 1,
         extinfo: [
           "a2",                           // 0: version (a2=Android, i2=iOS)
-          appId || "com.kiranaapps.app",  // 1: package name
+          appId || "com.jugnu.alertpe",  // 1: package name
           deviceData?.appVersion || "1.0",  // 2: short version
           deviceData?.appVersion || "1.0.0", // 3: long version
           deviceData?.osVersion || "14.0",  // 4: OS version
