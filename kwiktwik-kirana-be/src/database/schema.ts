@@ -413,6 +413,39 @@ export const quotes = pgTable(
   (table) => [index('idx_quotes_created_at').on(table.createdAt)],
 ).enableRLS();
 
+// Crafto Quotes table (imported from crafto)
+export const craftoQuotes = pgTable(
+  'crafto_quotes',
+  {
+    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
+    text: text(),
+    contentType: text('content_type'),
+    categoryType: text('category_type'),
+    slot: text(),
+    url: text(),
+    videoUrl: text('video_url'),
+    previewImageUrl: text('preview_image_url'),
+    stickerUrl: text('sticker_url'),
+    nameColor: text('name_color'),
+    nameOutlineColor: text('name_outline_color'),
+    variantType: text('variant_type'),
+    frame: integer(),
+    slotRaw: text('slot_raw'),
+    sourceCategory: text('source_category'),
+    createdBy: text('created_by'),
+    quoteCreatorId: text('quote_creator_id'),
+    quoteCreatorType: text('quote_creator_type'),
+    rawJson: jsonb('raw_json'),
+    createdAt: timestamp('created_at', { mode: 'string' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index('idx_crafto_quotes_created_at').on(table.createdAt)],
+).enableRLS();
+
 // Play Store Ratings table
 export const playStoreRatings = pgTable(
   'play_store_ratings',
