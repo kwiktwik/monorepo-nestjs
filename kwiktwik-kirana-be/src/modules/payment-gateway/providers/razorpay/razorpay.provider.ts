@@ -39,7 +39,7 @@ import {
   mapRazorpayOrderStatus,
   mapRazorpayPaymentStatus,
 } from '../../types/razorpay.types';
-import { toRazorpayPeriod } from '../../types/frequency.enum';
+import { toRazorpayPeriod, BillingFrequency } from '../../types/frequency.enum';
 import {
   generateId,
   unixToDate,
@@ -47,7 +47,6 @@ import {
   verifyHmacSha256,
   createProviderError,
 } from '../base/provider-utils';
-import { BillingFrequency } from '../../types/frequency.enum';
 
 /**
  * Map BillingFrequency to the lowercase string Razorpay's
