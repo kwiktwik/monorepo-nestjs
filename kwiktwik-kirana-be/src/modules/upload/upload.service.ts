@@ -15,7 +15,7 @@ import type { PresignedUrlDto } from './dto/presigned-url.dto';
 @Injectable()
 export class UploadService {
   private s3Client: S3Client | null = null;
-  private bucket = 'uploads';
+  private bucket = 'monorepo';
   private publicDomain = '';
 
   constructor(

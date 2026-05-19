@@ -12,7 +12,7 @@ export const VIDEO_CONFIG = {
 } as const;
 
 export const R2_CONFIG = {
-  BUCKET_NAME: "uploads",
+  BUCKET_NAME: "monorepo",
   ENDPOINT: process.env.MONOREPO_S3_ENDPOINT || "",
   ACCESS_KEY_ID: process.env.MONOREPO_R2_ACCESS_KEY_ID || "",
   SECRET_ACCESS_KEY: process.env.MONOREPO_R2_ACCESS_KEY_SECRET || "",

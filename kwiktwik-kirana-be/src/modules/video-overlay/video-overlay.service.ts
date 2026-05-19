@@ -85,7 +85,7 @@ interface Position {
 @Injectable()
 export class VideoOverlayService {
   private s3Client: S3Client | null = null;
-  private bucket = 'uploads';
+  private bucket = 'monorepo';
   private publicDomain = '';
 
   private processedVideoCache = new Map<

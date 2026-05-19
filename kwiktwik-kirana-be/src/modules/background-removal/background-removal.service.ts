@@ -15,7 +15,7 @@ const INITIAL_DELAY_SEC = 5;
 export class BackgroundRemovalService {
   private readonly logger = new Logger(BackgroundRemovalService.name);
   private s3Client: S3Client | null = null;
-  private bucket = 'uploads';
+  private bucket = 'monorepo';
   private publicDomain = '';
 
   constructor(
