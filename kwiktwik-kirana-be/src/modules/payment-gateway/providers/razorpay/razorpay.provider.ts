@@ -48,6 +48,27 @@ import {
   verifyHmacSha256,
   createProviderError,
 } from '../base/provider-utils';
+import { BillingFrequency } from '../../types/frequency.enum';
+
+/**
+ * Map BillingFrequency to the lowercase string Razorpay's
+ * recurring-payment token.frequency expects.
+ */
+const RAZORPAY_RECURRING_FREQUENCY: Record<string, string> = {
+  [BillingFrequency.DAILY]: 'daily',
+  [BillingFrequency.WEEKLY]: 'weekly',
+  [BillingFrequency.FORTNIGHTLY]: 'fortnightly',
+  [BillingFrequency.BIMONTHLY]: 'bimonthly',
+  [BillingFrequency.MONTHLY]: 'monthly',
+  [BillingFrequency.QUARTERLY]: 'quarterly',
+  [BillingFrequency.HALF_YEARLY]: 'half_yearly',
+  [BillingFrequency.YEARLY]: 'yearly',
+  [BillingFrequency.ON_DEMAND]: 'as_presented',
+};
+
+function toRazorpayRecurringFrequency(frequency: string): string {
+  return RAZORPAY_RECURRING_FREQUENCY[frequency] ?? 'monthly';
+}
 
 // ============================================================================
 // Razorpay Client Wrapper
@@ -108,6 +129,16 @@ interface RazorpayOrderCreateParams {
   receipt?: string;
   notes?: Record<string, string>;
   payment_capture?: boolean | number;
+  /** Required for recurring (UPI autopay) authorization orders */
+  method?: string;
+  /** Required for recurring authorization orders */
+  customer_id?: string;
+  /** Token/mandate details — required for UPI recurring authorization */
+  token?: {
+    max_amount: number;
+    expire_at: number;
+    frequency: string;
+  };
 }
 
 /**
@@ -666,10 +697,23 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
         customerId = customer.id;
       }
 
-      // Step 2: Create order for the initial authorization payment
+      // Step 2: Create order for the initial authorization payment.
+      // For UPI recurring, the order must include method, customer_id and
+      // a token object with max_amount / expire_at / frequency so Razorpay
+      // treats this as a mandate-registration order.
+      const TEN_YEARS_IN_SECONDS = 10 * 365 * 24 * 60 * 60;
+      const expireAt = Math.floor(Date.now() / 1000) + TEN_YEARS_IN_SECONDS;
+
       const order = await this.client!.orders.create({
         amount: params.pricing.initialAmount || params.pricing.recurringAmount,
         currency: params.pricing.currency,
+        method: 'upi',
+        customer_id: customerId ?? undefined,
+        token: {
+          max_amount: params.pricing.recurringAmount,
+          expire_at: expireAt,
+          frequency: toRazorpayRecurringFrequency(params.pricing.frequency),
+        },
         receipt: params.merchantOrderId,
         notes: {
           ...params.metadata,
