@@ -16,7 +16,6 @@ export class BackgroundRemovalService {
   private readonly logger = new Logger(BackgroundRemovalService.name);
   private s3Client: S3Client | null = null;
   private bucket = 'uploads';
-  private projectFolder = '';
   private publicDomain = '';
 
   constructor(
@@ -27,20 +26,17 @@ export class BackgroundRemovalService {
   }
 
   private initR2() {
-    const accountId = this.config.get<string>('R2_ACCOUNT_ID');
-    const accessKeyId = this.config.get<string>('R2_ACCESS_KEY_ID');
-    const secretAccessKey = this.config.get<string>('R2_SECRET_ACCESS_KEY');
+    const endpoint = this.config.get<string>('MONOREPO_S3_ENDPOINT');
+    const accessKeyId = this.config.get<string>('MONOREPO_R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('MONOREPO_R2_ACCESS_KEY_SECRET');
 
-    if (accountId && accessKeyId && secretAccessKey) {
-      this.bucket = this.config.get<string>('R2_BUCKET_NAME') || 'uploads';
-      this.projectFolder = this.config.get<string>('R2_PROJECT_FOLDER') || '';
+    if (endpoint && accessKeyId && secretAccessKey) {
       this.publicDomain =
-        this.config.get<string>('R2_PUBLIC_DOMAIN') ??
-        'https://cnd.storyowl.app';
+        this.config.get<string>('MONOREPO_PUBLIC_DOMAIN') ?? '';
 
       this.s3Client = new S3Client({
         region: 'auto',
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        endpoint,
         credentials: {
           accessKeyId,
           secretAccessKey,
@@ -115,21 +111,18 @@ export class BackgroundRemovalService {
           ? key.replace(/\.[^.]+$/, '')
           : key;
         const bgRemovedKey = `${keyWithoutExt}_no_bg.png`;
-        const fullKey = this.projectFolder
-          ? `${this.projectFolder}/${bgRemovedKey}`
-          : bgRemovedKey;
 
-        this.logger.log(`[Background Removal] Uploading to R2: ${fullKey}`);
+        this.logger.log(`[Background Removal] Uploading to R2: ${bgRemovedKey}`);
         await this.s3Client.send(
           new PutObjectCommand({
             Bucket: this.bucket,
-            Key: fullKey,
+            Key: bgRemovedKey,
             Body: outputBuffer,
             ContentType: 'image/png',
           }),
         );
 
-        const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${fullKey}`;
+        const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${bgRemovedKey}`;
         this.logger.log(`[Background Removal] Public URL: ${publicUrl}`);
 
         // Update by imageUrl instead of imageId

@@ -40,12 +40,10 @@ describe('UploadService', () => {
     mockConfigService = {
       get: jest.fn((key: string) => {
         const config: Record<string, string> = {
-          R2_ACCOUNT_ID: 'test-account',
-          R2_ACCESS_KEY_ID: 'test-key',
-          R2_SECRET_ACCESS_KEY: 'test-secret',
-          R2_BUCKET_NAME: 'test-bucket',
-          R2_PROJECT_FOLDER: 'test-project',
-          R2_PUBLIC_DOMAIN: 'https://cdn.example.com',
+          MONOREPO_S3_ENDPOINT: 'https://test-account.r2.cloudflarestorage.com',
+          MONOREPO_R2_ACCESS_KEY_ID: 'test-key',
+          MONOREPO_R2_ACCESS_KEY_SECRET: 'test-secret',
+          MONOREPO_PUBLIC_DOMAIN: 'https://cdn.example.com',
         };
         return config[key];
       }),

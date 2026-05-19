@@ -5,10 +5,10 @@ export const IS_CI = process.env.CI === 'true';
  * module initialization logic during CI/CD build processes.
  */
 const FAKE_ENV_VARS: Record<string, string> = {
-  R2_ACCOUNT_ID: "placeholder-account-id",
-  R2_BUCKET_NAME: "placeholder-bucket",
-  R2_ACCESS_KEY_ID: "placeholder-key",
-  R2_SECRET_ACCESS_KEY: "placeholder-secret",
+  MONOREPO_S3_ENDPOINT: "https://placeholder.r2.cloudflarestorage.com",
+  MONOREPO_R2_ACCESS_KEY_ID: "placeholder-key",
+  MONOREPO_R2_ACCESS_KEY_SECRET: "placeholder-secret",
+  MONOREPO_PUBLIC_DOMAIN: "https://placeholder.example.com",
   PHONEPE_CLIENT_ID: "placeholder-phonepe-id",
   PHONEPE_CLIENT_SECRET: "placeholder-phonepe-secret",
   PHONEPE_CLIENT_ID_DEV: "placeholder-phonepe-dev-id",

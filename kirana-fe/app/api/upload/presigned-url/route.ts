@@ -103,17 +103,10 @@ export async function POST(request: NextRequest) {
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
     const key = `${appId}/${userId}/user-images/${timestamp}_${sanitizedFileName}`;
 
-    // Prepend project folder if configured
-    const fullKey = R2_CONFIG.PROJECT_FOLDER
-      ? `${R2_CONFIG.PROJECT_FOLDER}/${key}`
-      : key;
-
-
-
     // Create presigned URL for PUT operation
     const command = new PutObjectCommand({
       Bucket: R2_CONFIG.BUCKET_NAME,
-      Key: fullKey,
+      Key: key,
       ContentType: contentType,
     });
 
@@ -122,7 +115,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Construct the public URL that will be accessible after upload
-    const publicUrl = `https://cnd.storyowl.app/${key}`;
+    const publicUrl = R2_CONFIG.publicUrl(key);
 
 
 

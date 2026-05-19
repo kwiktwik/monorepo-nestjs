@@ -337,11 +337,6 @@ export async function uploadToR2(
   const fileStream = createReadStream(filePath);
   const stats = await fs.stat(filePath);
 
-  // Prepend project folder to key if configured
-  const fullKey = R2_CONFIG.PROJECT_FOLDER
-    ? `${R2_CONFIG.PROJECT_FOLDER}/${key}`
-    : key;
-
   // Determine Content-Type from file extension
   const contentType = getContentType(filePath);
 
@@ -349,16 +344,14 @@ export async function uploadToR2(
     client: r2Client,
     params: {
       Bucket: R2_CONFIG.BUCKET_NAME,
-      Key: fullKey,
+      Key: key,
       Body: fileStream,
       ContentType: contentType,
       ContentLength: stats.size,
       // Add cache control for better CDN performance
       // immutable = file will never change, safe to cache forever
       CacheControl: 'public, max-age=31536000, immutable',
-      // Store original key in metadata for debugging
       Metadata: {
-        'original-key': key,
         'upload-timestamp': Date.now().toString(),
       },
     },
@@ -366,8 +359,7 @@ export async function uploadToR2(
 
   await upload.done();
 
-  // Return CDN URL with the key
-  return `https://cnd.storyowl.app/${key}`;
+  return R2_CONFIG.publicUrl(key);
 }
 
 /**

@@ -16,7 +16,6 @@ import type { PresignedUrlDto } from './dto/presigned-url.dto';
 export class UploadService {
   private s3Client: S3Client | null = null;
   private bucket = 'uploads';
-  private projectFolder = '';
   private publicDomain = '';
 
   constructor(
@@ -27,20 +26,17 @@ export class UploadService {
   }
 
   private initIfConfigured() {
-    const accountId = this.config.get<string>('R2_ACCOUNT_ID');
-    const accessKeyId = this.config.get<string>('R2_ACCESS_KEY_ID');
-    const secretAccessKey = this.config.get<string>('R2_SECRET_ACCESS_KEY');
+    const endpoint = this.config.get<string>('MONOREPO_S3_ENDPOINT');
+    const accessKeyId = this.config.get<string>('MONOREPO_R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('MONOREPO_R2_ACCESS_KEY_SECRET');
 
-    if (accountId && accessKeyId && secretAccessKey) {
-      this.bucket = this.config.get<string>('R2_BUCKET_NAME') || 'uploads';
-      this.projectFolder = this.config.get<string>('R2_PROJECT_FOLDER') || '';
+    if (endpoint && accessKeyId && secretAccessKey) {
       this.publicDomain =
-        this.config.get<string>('R2_PUBLIC_DOMAIN') ||
-        `https://pub-${accountId}.r2.dev`;
+        this.config.get<string>('MONOREPO_PUBLIC_DOMAIN') || '';
 
       this.s3Client = new S3Client({
         region: 'auto',
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        endpoint,
         credentials: {
           accessKeyId,
           secretAccessKey,
@@ -64,7 +60,7 @@ export class UploadService {
   }> {
     if (!this.s3Client) {
       throw new InternalServerErrorException(
-        'R2 storage not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env',
+        'R2 storage not configured. Set MONOREPO_S3_ENDPOINT, MONOREPO_R2_ACCESS_KEY_ID, MONOREPO_R2_ACCESS_KEY_SECRET in .env',
       );
     }
     const { fileName, contentType = 'image/jpeg', expiresIn = 3600 } = dto;
@@ -85,11 +81,10 @@ export class UploadService {
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const key = `${appId}/${userId}/user-images/${timestamp}_${sanitizedFileName}`;
-    const fullKey = this.projectFolder ? `${this.projectFolder}/${key}` : key;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
-      Key: fullKey,
+      Key: key,
       ContentType: contentType,
     });
 
@@ -97,8 +92,7 @@ export class UploadService {
       expiresIn,
     });
 
-    // publicUrl path must match the object key (use fullKey, not key) so reads work
-    const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${fullKey}`;
+    const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${key}`;
 
     let imageId: number | undefined;
     try {
@@ -145,7 +139,7 @@ export class UploadService {
   }> {
     if (!this.s3Client) {
       throw new InternalServerErrorException(
-        'R2 storage not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env',
+        'R2 storage not configured. Set MONOREPO_S3_ENDPOINT, MONOREPO_R2_ACCESS_KEY_ID, MONOREPO_R2_ACCESS_KEY_SECRET in .env',
       );
     }
 
@@ -194,11 +188,10 @@ export class UploadService {
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const conversationFolder = conversationId ? `${conversationId}/` : '';
     const key = `${appId}/${userId}/chat/${fileType}/${conversationFolder}${timestamp}_${sanitizedFileName}`;
-    const fullKey = this.projectFolder ? `${this.projectFolder}/${key}` : key;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
-      Key: fullKey,
+      Key: key,
       ContentType: contentType,
     });
 
@@ -206,7 +199,7 @@ export class UploadService {
       expiresIn,
     });
 
-    const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${fullKey}`;
+    const publicUrl = `${this.publicDomain.replace(/\/$/, '')}/${key}`;
 
     return {
       success: true,
