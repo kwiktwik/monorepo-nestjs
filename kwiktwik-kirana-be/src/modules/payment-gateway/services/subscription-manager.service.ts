@@ -371,7 +371,7 @@ export class SubscriptionManagerService {
           // separately; remove 'prefill' since top-level email/contact suffice.
           if (input.subscriptionType === SubscriptionType.USER_MANAGED) {
             const providerDataRaw = setupResult.providerData as Record<string, any>;
-            pgSdkData['recurring'] = true;
+            pgSdkData['recurring'] = '1';
             if (providerDataRaw.customerId) {
               pgSdkData['customer_id'] = providerDataRaw.customerId;
             }
