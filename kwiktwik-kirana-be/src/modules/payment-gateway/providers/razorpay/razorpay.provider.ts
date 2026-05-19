@@ -10,7 +10,6 @@
 import type { PaymentProvider } from '../../types/provider.enum';
 import type { SubscriptionType } from '../../types/subscription-type.enum';
 import type { SubscriptionStatus } from '../../types/subscription-status.enum';
-import type { BillingFrequency } from '../../types/frequency.enum';
 import {
   type RazorpayProviderConfig,
   type SetupSubscriptionParams,
