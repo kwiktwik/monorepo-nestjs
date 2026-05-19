@@ -15,7 +15,7 @@
 ### Send OTP (v1 Compat)
 POST {{baseUrlProd}}/v1/auth/send-otp
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 {
   "phoneNumber": "+918855866494",
@@ -25,7 +25,7 @@ X-App-ID: com.kiranaapps.app
 ### OTP Login (v1 Compat)
 POST {{baseUrlProd}}/v1/auth/login/otp
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 {
   "phoneNumber": "+918855866494",
@@ -35,7 +35,7 @@ X-App-ID: com.kiranaapps.app
 ### Truecaller Login (v1 Compat)
 POST {{baseUrlProd}}/v1/auth/login/truecaller
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 {
   "phoneNumber": "+918855866494",
@@ -713,7 +713,7 @@ Authorization: Bearer {{authToken}}
 
 {
   "token": "enOXfQ8GSb2jm4dyIvRpbo:APA91bGHWP0f4M8u48BpRaDHypFDIDE1AxBumwiBM34HAky9Zci89YAjiDsWYvNU8Ngj4IHRxpBMbZ8rLR2-ryWnMONRdTVIzBSKl_ypwrAEComyoTBRq9k",
-  "appId": "com.kiranaapps.app",
+  "appId": "com.jugnu.alertpe",
   "deviceModel": "Pixel 7",
   "osVersion": "14"
 }
@@ -1084,7 +1084,7 @@ POST {{localUrl}}/razorpay/subscriptions/v1
 Content-Type: application/json
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "total_count": 12,
   "notes": {
@@ -1099,7 +1099,7 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "total_count": 12,
   "notes": {
@@ -1197,7 +1197,7 @@ Content-Type: application/json
 X-App-ID: alertpay-android
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "flow": "intent",
   "notes": {
@@ -1213,7 +1213,7 @@ Authorization: Bearer {{authToken}}
 X-App-ID: alertpay-android
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "flow": "intent",
   "notes": {
@@ -1230,7 +1230,7 @@ Content-Type: application/json
 X-App-ID: alertpay-android
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "flow": "collect",
   "vpa": "rajatdhoot@ybl",
@@ -1246,7 +1246,7 @@ Content-Type: application/json
 X-App-ID: alertpay-android
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "start_at": 1740384000,
   "flow": "intent",
@@ -1323,7 +1323,7 @@ Authorization: Bearer {{authToken}}
 # Uses sandbox environment by default for safety.
 POST {{localUrl}}/phonepe
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 Authorization: Bearer {{authToken}}
 
 {
@@ -1341,7 +1341,7 @@ Authorization: Bearer {{authToken}}
 # This will create REAL subscriptions that charge actual money
 POST {{baseUrl}}/phonepe
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 X-PhonePe-Env: PROD
 Authorization: Bearer {{authToken}}
 
@@ -1492,7 +1492,7 @@ Authorization: Bearer {{authToken}}
 # Returns an order token and generates a local subscription record.
 POST {{localUrl}}/phonepe
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 Authorization: Bearer {{authToken}}
 
 {
@@ -2039,7 +2039,7 @@ Content-Type: application/json
 Authorization: Bearer BsCGZnLSFwQXvWsmJRHhSIlflLoJEo4M
 
 {
-  "plan_id": "plan_S3FaBrk7sjPQEU",
+  "plan_id": "plan_SrGjQeBQe9JFcd",
   "quantity": 1,
   "notes": {
     "email": "test@example.com",
@@ -2282,7 +2282,7 @@ Authorization: Bearer zxOdW2HWH0te60vZ4r0hlgsCVgg6O3Hq
 
 ### Get User Profile V1 (AlertPay - Production)
 GET {{localUrl}}/user/v1
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 ### Get User Profile V1 (Sharekaro App)
 GET {{baseUrl}}/user/v1
@@ -3085,7 +3085,7 @@ Authorization: Bearer ExqtvyAgDLOHHGrwPn8AYE2t0msAGkiu
 # }
 GET {{baseUrl}}/config/v2
 Authorization: Bearer {{authToken}}
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 ### Get Application Configuration V2 - Local Development
 GET {{localUrl}}/config/v2
@@ -3095,7 +3095,7 @@ X-App-ID: alertpay-android
 ### Get Application Configuration V2 - Production
 GET {{baseUrlProd}}/config/v2
 Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 
 ### Get Application Configuration V2 - Sharekaro App
 GET {{baseUrl}}/config/v2
@@ -3331,7 +3331,7 @@ Authorization: Bearer {{authToken}}
 
 POST https://preprod.kiranaapps.com/api/phonepe
 Content-Type: application/json
-X-App-ID: com.kiranaapps.app
+X-App-ID: com.jugnu.alertpe
 X-PhonePe-Env: DEV
 Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
 

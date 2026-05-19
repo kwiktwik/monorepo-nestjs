@@ -76,7 +76,7 @@ const APP_FEATURES: Record<string, typeof JAMUN_FEATURES> = {
   "com.sharestatus.app": JAMUN_FEATURES,
   "com.sharekaro.kirana": JAMUN_FEATURES,
   // Kirana apps family
-  "com.kiranaapps.app": {
+  "com.jugnu.alertpe": {
     needsPremiumStatus: true,
     needsUpiVpa: true,
     needsAudioLanguage: true,

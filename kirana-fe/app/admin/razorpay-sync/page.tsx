@@ -165,7 +165,7 @@ function StreamingSyncProgress({
 }
 
 const REGISTERED_APPS = [
-  { id: "com.kiranaapps.app", name: "Kirana Apps", packageName: "com.kiranaapps.app" },
+  { id: "com.jugnu.alertpe", name: "Kirana Apps", packageName: "com.jugnu.alertpe" },
   { id: "com.paymentalert.app", name: "AlertPay", packageName: "com.paymentalert.app" },
   { id: "com.sharestatus.app", name: "ShareStatus", packageName: "com.sharestatus.app" },
 ];
@@ -194,7 +194,7 @@ export default function RazorpayBulkSyncPage() {
   // Date state (default: yesterday)
   const [fromDate, setFromDate] = useState<Date>(getYesterday());
   const [toDate, setToDate] = useState<Date>(getEndOfYesterday());
-  const [selectedAppId, setSelectedAppId] = useState("com.kiranaapps.app");
+  const [selectedAppId, setSelectedAppId] = useState("com.jugnu.alertpe");
 
   // Progress state
   const [isFetching, setIsFetching] = useState(false);

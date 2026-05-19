@@ -12,7 +12,7 @@
  * 
  * Options:
  *   --input       Path to JSON file with missing orders (from check-missing-order-ids.js)
- *   --app         App ID to sync orders for (default: com.kiranaapps.app)
+ *   --app         App ID to sync orders for (default: com.jugnu.alertpe)
  *   --dry-run     Only show what would be synced, don't actually sync
  *   --batch-size  Number of orders per batch (default: 10)
  *   --help        Show this help message
@@ -42,7 +42,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     input: path.resolve(__dirname, 'missing-order-ids.json'),
-    app: 'com.kiranaapps.app',
+    app: 'com.jugnu.alertpe',
     dryRun: false,
     batchSize: CONFIG.BATCH_SIZE,
   };
@@ -84,7 +84,7 @@ Usage:
 
 Options:
   --input       Path to JSON file (output from check-missing-order-ids.js) [default: scripts/missing-order-ids.json]
-  --app         App ID to sync orders for (default: com.kiranaapps.app)
+  --app         App ID to sync orders for (default: com.jugnu.alertpe)
   --dry-run     Only show what would be synced, don't actually sync
   --batch-size  Number of orders per batch (default: 10)
   --help        Show this help message
