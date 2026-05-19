@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, lt, inArray } from 'drizzle-orm';
+import { eq, and, lt, gte, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { RedemptionRepository } from '../../application/interfaces/repository.interface';
 import { Redemption } from '../../domain/entities/redemption.entity';
@@ -143,6 +143,7 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
 
   async findStuckRedemptions(hoursOld: number): Promise<Redemption[]> {
     const cutoff = new Date(Date.now() - hoursOld * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const results = await this.db
       .select()
@@ -155,6 +156,7 @@ export class RedemptionDrizzleRepository implements RedemptionRepository {
             'PENDING',
           ]),
           lt(schema.phonepeRedemptions.createdAt, cutoff),
+          gte(schema.phonepeRedemptions.createdAt, sevenDaysAgo),
         ),
       );
 

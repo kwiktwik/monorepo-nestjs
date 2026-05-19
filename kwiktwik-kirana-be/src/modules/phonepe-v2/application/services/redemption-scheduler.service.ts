@@ -35,8 +35,10 @@ export class RedemptionSchedulerService {
     try {
       const now = new Date();
 
-      const dueSubscriptions =
-        await this.subscriptionRepo.findDueForRedemptionWithLock(now, 100);
+      const dueSubscriptions = await this.withRetry(
+        () => this.subscriptionRepo.findDueForRedemptionWithLock(now, 100),
+        'findDueForRedemptionWithLock',
+      );
       this.logger.log(
         `Found ${dueSubscriptions.length} subscriptions due for redemption (locked for processing)`,
       );
@@ -45,11 +47,14 @@ export class RedemptionSchedulerService {
         await this.processRedemption(subscription);
       }
 
-      const failedRedemptions =
-        await this.subscriptionRepo.findFailedRedemptionsRetryable(
-          MAX_RETRY_COUNT,
-          RETRY_DAYS_OLD,
-        );
+      const failedRedemptions = await this.withRetry(
+        () =>
+          this.subscriptionRepo.findFailedRedemptionsRetryable(
+            MAX_RETRY_COUNT,
+            RETRY_DAYS_OLD,
+          ),
+        'findFailedRedemptionsRetryable',
+      );
       this.logger.log(
         `Found ${failedRedemptions.length} failed redemptions to retry`,
       );
@@ -68,8 +73,10 @@ export class RedemptionSchedulerService {
   async processStuckActivations() {
     this.logger.log('Starting stuck activations processing cron job');
     try {
-      const stuckSubscriptions =
-        await this.subscriptionRepo.findStuckActivations(30);
+      const stuckSubscriptions = await this.withRetry(
+        () => this.subscriptionRepo.findStuckActivations(30),
+        'findStuckActivations',
+      );
       this.logger.log(
         `Found ${stuckSubscriptions.length} subscriptions stuck in activation`,
       );
@@ -116,8 +123,10 @@ export class RedemptionSchedulerService {
   async processStuckRedemptions() {
     this.logger.log('Starting stuck redemptions processing cron job');
     try {
-      const stuckRedemptions =
-        await this.redemptionRepo.findStuckRedemptions(2);
+      const stuckRedemptions = await this.withRetry(
+        () => this.redemptionRepo.findStuckRedemptions(2),
+        'findStuckRedemptions',
+      );
       this.logger.log(
         `Found ${stuckRedemptions.length} stuck redemptions to verify`,
       );
@@ -333,6 +342,44 @@ export class RedemptionSchedulerService {
 
     const amountStr = pricing.recurringAmount.replace(/[^0-9]/g, '');
     return parseInt(amountStr, 10) || 199;
+  }
+
+  /**
+   * Retry a database operation up to `maxRetries` times with exponential backoff.
+   * Retries on transient PostgreSQL errors (connection failures, XX000, etc.)
+   */
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    label: string,
+    maxRetries = 3,
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const isTransient =
+          error?.severity === 'FATAL' ||
+          error?.code === 'XX000' ||
+          error?.code === '57P01' || // admin_shutdown
+          error?.code === '57P03' || // cannot_connect_now
+          error?.code === '08006' || // connection_failure
+          error?.code === '08003' || // connection_does_not_exist
+          error?.code === 'ECONNRESET' ||
+          error?.code === 'ECONNREFUSED' ||
+          error?.message?.includes('Connection terminated');
+
+        if (!isTransient || attempt === maxRetries) {
+          throw error;
+        }
+
+        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 5000);
+        this.logger.warn(
+          `[${label}] Transient DB error (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms: ${error.message}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw new Error(`${label}: unreachable`);
   }
 
   private calculateNextBillingDate(frequency: string): Date {

@@ -66,7 +66,10 @@ export class FourHourEventSchedulerService {
     this.logger.log(`[${requestId}] 🕐 Starting 4-hour event processing cron`);
 
     try {
-      const eligibleSubscriptions = await this.findEligibleSubscriptions();
+      const eligibleSubscriptions = await this.withRetry(
+        () => this.findEligibleSubscriptions(),
+        'findEligibleSubscriptions',
+      );
 
       this.logger.log(
         `[${requestId}] 📊 Found ${eligibleSubscriptions.length} eligible subscription(s) for 4-hour event`,
@@ -260,7 +263,10 @@ export class FourHourEventSchedulerService {
       this.logger.log(`[${requestId}] ✅ Event sent successfully for ${subId}`);
 
       // Mark as sent once per subscription (lifetime)
-      await this.markEventAsSent(subscription);
+      await this.withRetry(
+        () => this.markEventAsSent(subscription),
+        'markEventAsSent',
+      );
 
       this.logger.log(
         `[${requestId}] ✅ Database updated for subscription ${subId} - fourHourEventSent = true`,
@@ -302,6 +308,44 @@ export class FourHourEventSchedulerService {
           subscription.razorpaySubscriptionId,
         ),
       );
+  }
+
+  /**
+   * Retry a database operation up to `maxRetries` times with exponential backoff.
+   * Retries on transient PostgreSQL errors (connection failures, XX000, etc.)
+   */
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    label: string,
+    maxRetries = 3,
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const isTransient =
+          error?.severity === 'FATAL' ||
+          error?.code === 'XX000' ||
+          error?.code === '57P01' || // admin_shutdown
+          error?.code === '57P03' || // cannot_connect_now
+          error?.code === '08006' || // connection_failure
+          error?.code === '08003' || // connection_does_not_exist
+          error?.code === 'ECONNRESET' ||
+          error?.code === 'ECONNREFUSED' ||
+          error?.message?.includes('Connection terminated');
+
+        if (!isTransient || attempt === maxRetries) {
+          throw error;
+        }
+
+        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 5000);
+        this.logger.warn(
+          `[${label}] Transient DB error (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms: ${error.message}`,
+        );
+        await this.delay(delayMs);
+      }
+    }
+    throw new Error(`${label}: unreachable`);
   }
 
   /**

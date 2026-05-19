@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, lt, or, lte, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, lt, or, lte, gte, isNotNull, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { SubscriptionRepository } from '../../application/interfaces/repository.interface';
 import { Subscription } from '../../domain/entities/subscription.entity';
@@ -176,6 +176,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
   ): Promise<Subscription[]> {
     // Only ACTIVE subscriptions can be redeemed per PhonePe documentation
     // Uses FOR UPDATE SKIP LOCKED to allow multiple instances to process different rows safely
+    const sevenDaysAgo = new Date(beforeDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
     const results = await this.db
       .select()
       .from(schema.phonepeSubscriptions)
@@ -184,6 +186,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
           eq(schema.phonepeSubscriptions.state, 'ACTIVE'),
           isNotNull(schema.phonepeSubscriptions.nextBillingDate),
           lte(schema.phonepeSubscriptions.nextBillingDate, beforeDate),
+          gte(schema.phonepeSubscriptions.nextBillingDate, sevenDaysAgo),
         ),
       )
       .limit(limit)
@@ -218,6 +221,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
 
   async findStuckActivations(minutesOld: number): Promise<Subscription[]> {
     const cutoff = new Date(Date.now() - minutesOld * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const results = await this.db
       .select()
@@ -226,6 +230,7 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
         and(
           eq(schema.phonepeSubscriptions.state, 'ACTIVATION_IN_PROGRESS'),
           lt(schema.phonepeSubscriptions.createdAt, cutoff),
+          gte(schema.phonepeSubscriptions.createdAt, sevenDaysAgo),
         ),
       );
 

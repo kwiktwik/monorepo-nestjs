@@ -1,4 +1,9 @@
-import { Global, Module, InternalServerErrorException } from '@nestjs/common';
+import {
+  Global,
+  Module,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
@@ -11,7 +16,8 @@ export const PG_POOL_TOKEN = 'PG_POOL';
   providers: [
     {
       provide: PG_POOL_TOKEN,
-      useFactory: () => {
+      useFactory: (): Pool => {
+        const logger = new Logger('PgPool');
         let connectionString = process.env.DATABASE_URL;
 
         // Build connection string from components if DATABASE_URL is just a hostname
@@ -43,7 +49,7 @@ export const PG_POOL_TOKEN = 'PG_POOL';
           );
         }
 
-        return new Pool({
+        const pool = new Pool({
           connectionString,
           max: parseInt(process.env.DB_POOL_MAX || '20', 10),
           idleTimeoutMillis: parseInt(
@@ -56,7 +62,24 @@ export const PG_POOL_TOKEN = 'PG_POOL';
           ),
           keepAlive: true,
           ssl: { rejectUnauthorized: false },
+          statement_timeout: parseInt(
+            process.env.DB_STATEMENT_TIMEOUT || '30000',
+            10,
+          ),
+          application_name: 'kwiktwik-kirana-be',
         });
+
+        // Prevent unhandled pool errors from crashing the process.
+        // When a pooled connection drops (RDS failover, network blip),
+        // pg emits 'error' on the pool — without a listener Node crashes.
+        pool.on('error', (err) => {
+          logger.error(
+            `Unexpected idle client error: ${err.message}`,
+            err.stack,
+          );
+        });
+
+        return pool;
       },
     },
     {
