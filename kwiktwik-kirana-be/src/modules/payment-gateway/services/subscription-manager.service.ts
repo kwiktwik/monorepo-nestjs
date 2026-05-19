@@ -371,7 +371,6 @@ export class SubscriptionManagerService {
           if (input.subscriptionType === SubscriptionType.USER_MANAGED) {
             const providerDataRaw = setupResult.providerData as Record<string, any>;
             pgSdkData['recurring'] = '1';
-            pgSdkData['max_amount'] = input.recurringAmount;
             if (providerDataRaw.customerId) {
               pgSdkData['customer_id'] = providerDataRaw.customerId;
             }
