@@ -367,11 +367,11 @@ export class SubscriptionManagerService {
           // so the client-side Checkout generates a reusable token.
           // Razorpay SDK rejects 'key' and 'prefill' in checkout options for
           // recurring order-based payments (BAD_REQUEST_ERROR: extra_field_sent).
-          // Move 'key' to 'razorpayKeyId' so the client can call checkout.setKeyID()
-          // separately; remove 'prefill' since top-level email/contact suffice.
+          // 'recurring' must be string "1", not boolean true.
           if (input.subscriptionType === SubscriptionType.USER_MANAGED) {
             const providerDataRaw = setupResult.providerData as Record<string, any>;
             pgSdkData['recurring'] = '1';
+            pgSdkData['max_amount'] = input.recurringAmount;
             if (providerDataRaw.customerId) {
               pgSdkData['customer_id'] = providerDataRaw.customerId;
             }
