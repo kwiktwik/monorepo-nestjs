@@ -99,21 +99,16 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const originalFileName = imageUrl.split('/').pop()?.split('?')[0] || `image_${timestamp}`;
     const cleanFileName = originalFileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9.-]/g, "_");
-    const newKey = `bg-removed/${userId}/${timestamp}_${cleanFileName}.png`;
-
-    // Prepend project folder if configured (though R2_CONFIG.PROJECT_FOLDER might be for user uploads, let's allow it)
-    const fullKey = R2_CONFIG.PROJECT_FOLDER
-      ? `${R2_CONFIG.PROJECT_FOLDER}/${newKey}`
-      : newKey;
+    const newKey = `${appId}/bg-removed/${userId}/${timestamp}_${cleanFileName}.png`;
 
     await r2Client.send(new PutObjectCommand({
       Bucket: R2_CONFIG.BUCKET_NAME,
-      Key: fullKey,
+      Key: newKey,
       Body: imageBuffer,
       ContentType: "image/png",
     }));
 
-    const removedBgImageUrl = `https://cnd.storyowl.app/${newKey}`; // Using the same domain structure as presigned-url
+    const removedBgImageUrl = R2_CONFIG.publicUrl(newKey);
     console.log(`[POST /api/image-processing/remove-bg] Uploaded to R2: ${removedBgImageUrl}`);
 
     // 5. Update Database
