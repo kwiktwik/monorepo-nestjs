@@ -148,6 +148,17 @@ export interface ChargeSubscriptionParams {
   readonly currency: string;
   /** Custom metadata */
   readonly metadata: Record<string, string>;
+
+  // === Charge-at-Will (token-based recurring) fields ===
+
+  /** Provider token ID for recurring charge (charge-at-will) */
+  readonly tokenId?: string;
+  /** Provider customer ID for recurring charge */
+  readonly customerId?: string;
+  /** Customer email (required for Razorpay recurring payment API) */
+  readonly customerEmail?: string;
+  /** Customer phone (required for Razorpay recurring payment API) */
+  readonly customerContact?: string;
 }
 
 /**

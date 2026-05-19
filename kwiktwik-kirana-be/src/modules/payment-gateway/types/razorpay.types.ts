@@ -371,6 +371,26 @@ export interface RazorpayCreateCustomerRequest {
   readonly notes?: Record<string, string>;
 }
 
+/**
+ * Razorpay create recurring payment request (Charge at Will)
+ *
+ * Used to charge a saved token without customer interaction.
+ * Requires a prior authorization that generated a token_id.
+ * @see https://razorpay.com/docs/api/payments/recurring-payments/
+ */
+export interface RazorpayCreateRecurringPaymentRequest {
+  readonly email: string;
+  readonly contact: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly order_id: string;
+  readonly customer_id: string;
+  readonly token: string;
+  readonly recurring: true;
+  readonly description?: string;
+  readonly notes?: Record<string, string>;
+}
+
 // ============================================================================
 // Mapping Functions
 // ============================================================================

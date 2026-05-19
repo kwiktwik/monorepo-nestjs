@@ -146,6 +146,18 @@ export const entitlementSourceTypeEnum = pgEnum('entitlement_source_type', [
 ]);
 
 /**
+ * Token status enum (for Charge at Will / recurring tokens)
+ */
+export const tokenStatusEnum = pgEnum('token_status', [
+  'CREATED',
+  'CONFIRMED',
+  'REJECTED',
+  'PAUSED',
+  'CANCELLED',
+  'EXPIRED',
+]);
+
+/**
  * Webhook event status enum
  */
 export const webhookEventStatusEnum = pgEnum('webhook_event_status', [
@@ -540,6 +552,66 @@ export const ordersV2 = pgTable(
 ).enableRLS();
 
 // ============================================================================
+// Payment Tokens Table (Charge at Will)
+// ============================================================================
+
+/**
+ * Payment tokens table
+ *
+ * Stores recurring payment tokens obtained during initial authorization.
+ * A token represents a saved payment method that can be charged at will.
+ * One subscription can have at most one active token at a time.
+ */
+export const paymentTokens = pgTable(
+  'payment_tokens',
+  {
+    id: text('id').primaryKey(),
+
+    // === Ownership ===
+    userId: text('user_id').notNull(),
+    appId: text('app_id').notNull(),
+    subscriptionId: text('subscription_id'),
+
+    // === Provider ===
+    provider: paymentProviderV2Enum('provider').notNull(),
+    configId: text('config_id').notNull(),
+
+    // === Token Data ===
+    providerTokenId: varchar('provider_token_id', { length: 100 }).notNull(),
+    providerCustomerId: varchar('provider_customer_id', { length: 100 }).notNull(),
+    paymentMethod: paymentMethodTypeEnum('payment_method'),
+
+    // === Status ===
+    status: tokenStatusEnum('status').notNull().default('CREATED'),
+
+    // === Token Details ===
+    maxAmount: integer('max_amount'), // mandate limit in paise
+    authPaymentId: varchar('auth_payment_id', { length: 100 }), // initial auth payment
+
+    // === Customer Info (for recurring charge API) ===
+    customerEmail: varchar('customer_email', { length: 255 }),
+    customerContact: varchar('customer_contact', { length: 20 }),
+
+    // === Provider Data ===
+    providerData: jsonb('provider_data').$type<Record<string, unknown>>().default({}),
+
+    // === Timestamps ===
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => ({
+    userAppIdx: index('payment_tokens_user_app_idx').on(table.userId, table.appId),
+    subscriptionIdx: index('payment_tokens_subscription_idx').on(table.subscriptionId),
+    providerTokenIdx: index('payment_tokens_provider_token_idx').on(table.providerTokenId),
+    statusIdx: index('payment_tokens_status_idx').on(table.status),
+    providerCustomerIdx: index('payment_tokens_provider_customer_idx').on(table.providerCustomerId),
+  }),
+).enableRLS();
+
+// ============================================================================
 // Webhook Events Table
 // ============================================================================
 
@@ -863,3 +935,6 @@ export type NewPaymentEvent = typeof paymentEvents.$inferInsert;
 
 export type PremiumEntitlement = typeof premiumEntitlements.$inferSelect;
 export type NewPremiumEntitlement = typeof premiumEntitlements.$inferInsert;
+
+export type PaymentToken = typeof paymentTokens.$inferSelect;
+export type NewPaymentToken = typeof paymentTokens.$inferInsert;

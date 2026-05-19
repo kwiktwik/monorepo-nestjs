@@ -265,15 +265,20 @@ export class SubscriptionManagerService {
       }
 
       // Update subscription with provider data
+      const setupProviderData = setupResult.providerData as Record<string, any>;
       subscription = {
         ...subscription,
         providerData: {
           subscriptionId: setupResult.providerSubscriptionId ?? '',
           orderId: setupResult.providerOrderId,
-          customerId: null,
+          customerId: setupProviderData.customerId ?? null,
           planId: input.providerPlanId ?? '',
           mandateId: null,
-          raw: setupResult.providerData,
+          raw: {
+            ...setupResult.providerData,
+            customerEmail: input.customerEmail ?? null,
+            customerContact: input.customerPhone ?? null,
+          },
           lastSyncedAt: new Date(),
         },
       };
@@ -356,6 +361,16 @@ export class SubscriptionManagerService {
             pgSdkData['subscription_id'] = setupResult.providerSubscriptionId;
           } else if (setupResult.providerOrderId) {
             pgSdkData['order_id'] = setupResult.providerOrderId;
+          }
+
+          // For USER_MANAGED (Charge at Will), include recurring flag and customer_id
+          // so the client-side Checkout generates a reusable token
+          if (input.subscriptionType === SubscriptionType.USER_MANAGED) {
+            const providerDataRaw = setupResult.providerData as Record<string, any>;
+            pgSdkData['recurring'] = true;
+            if (providerDataRaw.customerId) {
+              pgSdkData['customer_id'] = providerDataRaw.customerId;
+            }
           }
         } catch (configError) {
           this.logger.warn(`Failed to generate pgSdkData public config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
@@ -457,7 +472,10 @@ export class SubscriptionManagerService {
         currency: subscription.pricing.currency,
       });
 
-      // Call provider to charge
+      // Call provider to charge.
+      // For USER_MANAGED (Charge at Will), pass the saved token and customer info
+      // so the provider can call Razorpay's recurring payment API server-side.
+      const providerData = subscription.providerData as Record<string, any>;
       const chargeResult = await provider.chargeSubscription({
         merchantSubscriptionId: subscription.merchantSubscriptionId,
         providerSubscriptionId: subscription.providerData.subscriptionId,
@@ -465,6 +483,11 @@ export class SubscriptionManagerService {
         amount,
         currency: subscription.pricing.currency,
         metadata: input.metadata ?? {},
+        // Charge-at-will fields (populated by token webhook handler)
+        tokenId: providerData.tokenId ?? undefined,
+        customerId: providerData.customerId ?? undefined,
+        customerEmail: providerData.raw?.customerEmail ?? undefined,
+        customerContact: providerData.raw?.customerContact ?? undefined,
       });
 
       // Update order with result

@@ -24,7 +24,8 @@ import { mapRazorpaySubscriptionStatus } from '../types/razorpay.types';
 import { mapPhonePeSubscriptionState } from '../types/phonepe.types';
 import { eq, and, sql } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
-import { paymentWebhookEvents } from '../database/schema';
+import { paymentWebhookEvents, paymentTokens } from '../database/schema';
+import { generateId } from '../providers/base/provider-utils';
 
 // ============================================================================
 // Types
@@ -293,6 +294,15 @@ export class WebhookHandlerService {
     // Subscription revoked
     this.registerHandler('subscription.revoked', this.handleSubscriptionRevoked.bind(this));
     
+    // Token confirmed (Charge at Will — Razorpay)
+    this.registerHandler('token.confirmed', this.handleTokenConfirmed.bind(this));
+    
+    // Token rejected (Charge at Will — Razorpay)
+    this.registerHandler('token.rejected', this.handleTokenRejected.bind(this));
+    
+    // Payment authorized — extract token_id for recurring setups
+    this.registerHandler('payment.authorized', this.handlePaymentAuthorized.bind(this));
+
     // Redemption completed (PhonePe)
     this.registerHandler('subscription.redemption.completed', this.handleRedemptionCompleted.bind(this));
     
@@ -595,6 +605,257 @@ export class WebhookHandlerService {
       orderId: event.merchantOrderId,
       error: null,
     };
+  }
+
+  /**
+   * Handle payment authorized event
+   *
+   * When a payment is authorized with recurring:true, the response contains
+   * a token_id. We extract it and persist it so future charges can use it.
+   */
+  private async handlePaymentAuthorized(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Payment authorized | paymentId=${event.paymentId} | merchantOrderId=${event.merchantOrderId}`);
+
+    // Extract token_id from the raw payment entity
+    const paymentEntity = (event.rawPayload as any)?.payload?.payment?.entity;
+    const tokenId = paymentEntity?.token_id;
+    const customerId = paymentEntity?.customer_id;
+
+    if (tokenId && customerId) {
+      this.logger.log(`Recurring token found in authorized payment | tokenId=${tokenId} | customerId=${customerId}`);
+      await this.persistToken({
+        event,
+        providerTokenId: tokenId,
+        providerCustomerId: customerId,
+        status: 'CREATED',
+        authPaymentId: event.paymentId ?? undefined,
+        customerEmail: paymentEntity?.email,
+        customerContact: paymentEntity?.contact,
+        paymentMethod: paymentEntity?.method,
+      });
+
+      // Store token on the subscription's providerData
+      await this.storeTokenOnSubscription(event, tokenId, customerId);
+    }
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle token confirmed event (Charge at Will)
+   *
+   * Fired by Razorpay when a recurring token is confirmed by the issuing bank.
+   * After this, the token can be used for charge-at-will payments.
+   */
+  private async handleTokenConfirmed(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const tokenEntity = (event.rawPayload as any)?.payload?.token?.entity;
+    const tokenId = tokenEntity?.id;
+    const customerId = tokenEntity?.customer_id ?? (event.rawPayload as any)?.payload?.payment?.entity?.customer_id;
+
+    this.logger.log(`Token confirmed | tokenId=${tokenId} | customerId=${customerId}`);
+
+    if (tokenId) {
+      await this.persistToken({
+        event,
+        providerTokenId: tokenId,
+        providerCustomerId: customerId ?? '',
+        status: 'CONFIRMED',
+        customerEmail: tokenEntity?.email ?? (event.rawPayload as any)?.payload?.payment?.entity?.email,
+        customerContact: tokenEntity?.contact ?? (event.rawPayload as any)?.payload?.payment?.entity?.contact,
+        paymentMethod: tokenEntity?.method,
+      });
+
+      // Update existing CREATED token to CONFIRMED
+      await this.updateTokenStatus(tokenId, event.provider, 'CONFIRMED');
+
+      // Store on subscription
+      if (customerId) {
+        await this.storeTokenOnSubscription(event, tokenId, customerId);
+      }
+    }
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle token rejected event (Charge at Will)
+   */
+  private async handleTokenRejected(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const tokenEntity = (event.rawPayload as any)?.payload?.token?.entity;
+    const tokenId = tokenEntity?.id;
+
+    this.logger.warn(`Token rejected | tokenId=${tokenId}`);
+
+    if (tokenId) {
+      await this.updateTokenStatus(tokenId, event.provider, 'REJECTED');
+    }
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Persist a token to the payment_tokens table
+   */
+  private async persistToken(params: {
+    event: WebhookEvent;
+    providerTokenId: string;
+    providerCustomerId: string;
+    status: 'CREATED' | 'CONFIRMED';
+    authPaymentId?: string;
+    customerEmail?: string;
+    customerContact?: string;
+    paymentMethod?: string;
+  }): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      // Resolve the subscription to get userId/appId
+      const subscription = params.event.merchantSubscriptionId
+        ? await this.subscriptionRepository.findByMerchantId(params.event.merchantSubscriptionId)
+        : null;
+
+      // Also try to find subscription via order notes
+      let userId = subscription?.userId;
+      let appId = subscription?.appId ?? params.event.appId;
+      let subscriptionId = subscription?.id;
+      let configId = subscription?.metadata?.configId ?? '';
+
+      if (!subscription) {
+        // Try to find via order
+        const order = params.event.merchantOrderId
+          ? await this.orderRepository.findByProviderOrderId(params.event.provider, params.event.merchantOrderId)
+          : null;
+        if (order) {
+          userId = order.userId;
+          appId = order.appId;
+          subscriptionId = order.subscriptionId ?? undefined;
+          configId = order.configId;
+        }
+      }
+
+      if (!userId || !appId) {
+        this.logger.warn(`Cannot persist token — no userId/appId found | tokenId=${params.providerTokenId}`);
+        return;
+      }
+
+      await this.db.insert(paymentTokens).values({
+        id: generateId('tok'),
+        userId,
+        appId: appId!,
+        subscriptionId: subscriptionId ?? null,
+        provider: params.event.provider,
+        configId,
+        providerTokenId: params.providerTokenId,
+        providerCustomerId: params.providerCustomerId,
+        status: params.status,
+        authPaymentId: params.authPaymentId ?? null,
+        customerEmail: params.customerEmail ?? null,
+        customerContact: params.customerContact ?? null,
+        providerData: params.event.rawPayload,
+        confirmedAt: params.status === 'CONFIRMED' ? new Date() : null,
+      }).onConflictDoNothing();
+
+      this.logger.log(`Token persisted | tokenId=${params.providerTokenId} | status=${params.status} | subscriptionId=${subscriptionId}`);
+    } catch (error) {
+      this.logger.error(`Failed to persist token ${params.providerTokenId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Update an existing token's status
+   */
+  private async updateTokenStatus(
+    providerTokenId: string,
+    provider: PaymentProvider,
+    status: 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED',
+  ): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      await this.db
+        .update(paymentTokens)
+        .set({
+          status,
+          updatedAt: new Date(),
+          ...(status === 'CONFIRMED' ? { confirmedAt: new Date() } : {}),
+          ...(status === 'CANCELLED' || status === 'REJECTED' ? { revokedAt: new Date() } : {}),
+        })
+        .where(
+          and(
+            eq(paymentTokens.providerTokenId, providerTokenId),
+            eq(paymentTokens.provider, provider),
+          ),
+        );
+    } catch (error) {
+      this.logger.error(`Failed to update token status ${providerTokenId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Store token and customer ID on the subscription's providerData
+   */
+  private async storeTokenOnSubscription(
+    event: WebhookEvent,
+    tokenId: string,
+    customerId: string,
+  ): Promise<void> {
+    if (!event.merchantSubscriptionId) {
+      // Try to find subscription from order notes
+      const orderNotes = (event.rawPayload as any)?.payload?.order?.entity?.notes
+        ?? (event.rawPayload as any)?.payload?.payment?.entity?.notes;
+      const merchantSubId = orderNotes?.merchant_subscription_id;
+      if (merchantSubId) {
+        const sub = await this.subscriptionRepository.findByMerchantId(merchantSubId);
+        if (sub) {
+          const updated = {
+            ...sub,
+            providerData: {
+              ...sub.providerData,
+              tokenId,
+              customerId,
+            },
+          };
+          await this.subscriptionRepository.save(updated);
+          this.logger.log(`Token stored on subscription via order notes | subscriptionId=${sub.id} | tokenId=${tokenId}`);
+        }
+      }
+      return;
+    }
+
+    const sub = await this.subscriptionRepository.findByMerchantId(event.merchantSubscriptionId);
+    if (sub) {
+      const updated = {
+        ...sub,
+        providerData: {
+          ...sub.providerData,
+          tokenId,
+          customerId,
+        },
+      };
+      await this.subscriptionRepository.save(updated);
+      this.logger.log(`Token stored on subscription | subscriptionId=${sub.id} | tokenId=${tokenId}`);
+    }
   }
 
   /**

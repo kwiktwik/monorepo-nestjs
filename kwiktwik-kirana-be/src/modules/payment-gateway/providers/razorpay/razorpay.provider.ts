@@ -75,9 +75,10 @@ interface RazorpayClient {
     fetch(paymentId: string): Promise<RazorpayPaymentEntity>;
     capture(paymentId: string, amount: number, currency: string): Promise<RazorpayPaymentEntity>;
     refund(paymentId: string, params?: { amount?: number; notes?: Record<string, string> }): Promise<{ id: string }>;
+    createRecurring(params: RazorpayRecurringPaymentParams): Promise<RazorpayPaymentEntity>;
   };
   customers: {
-    create(params: { name: string; email: string; contact: string }): Promise<{ id: string }>;
+    create(params: { name: string; email: string; contact: string; fail_existing?: string }): Promise<{ id: string }>;
   };
   plans: {
     create(params: RazorpayPlanCreateParams): Promise<{ id: string }>;
@@ -125,6 +126,22 @@ interface RazorpayPlanCreateParams {
 }
 
 /**
+ * Razorpay recurring payment parameters (Charge at Will)
+ */
+interface RazorpayRecurringPaymentParams {
+  email: string;
+  contact: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  customer_id: string;
+  token: string;
+  recurring: true;
+  description?: string;
+  notes?: Record<string, string>;
+}
+
+/**
  * Razorpay subscription update parameters
  */
 interface RazorpaySubscriptionUpdateParams {
@@ -163,6 +180,19 @@ function createRazorpayClient(config: RazorpayProviderConfig): RazorpayClient {
       fetch: (id) => client.payments.fetch(id),
       capture: (id, amount, currency) => client.payments.capture(id, amount, currency),
       refund: (id, params) => client.payments.refund(id, params),
+      createRecurring: (params) => {
+        // Razorpay SDK: POST /payments/create/recurring
+        // The official Node SDK exposes this at client.payments.createRecurringPayment
+        // but some SDK versions use a direct HTTP call.
+        if (typeof client.payments.createRecurringPayment === 'function') {
+          return client.payments.createRecurringPayment(params);
+        }
+        // Fallback: use the raw HTTP method from the SDK
+        return client.api.post({
+          url: '/payments/create/recurring',
+          data: params,
+        });
+      },
     },
     customers: {
       create: (params) => client.customers.create(params),
@@ -624,8 +654,19 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
     this.ensureInitialized();
 
     try {
-      // For user-managed, we create an order for the initial payment
-      // and set up a token for recurring payments
+      // Step 1: Create or find Razorpay customer (required for token-based recurring)
+      let customerId: string | null = null;
+      if (params.customerEmail || params.customerPhone) {
+        const customer = await this.client!.customers.create({
+          name: params.metadata.customerName ?? params.customerEmail ?? 'Customer',
+          email: params.customerEmail ?? '',
+          contact: params.customerPhone ?? '',
+          fail_existing: '0', // Return existing customer instead of erroring
+        });
+        customerId = customer.id;
+      }
+
+      // Step 2: Create order for the initial authorization payment
       const order = await this.client!.orders.create({
         amount: params.pricing.initialAmount || params.pricing.recurringAmount,
         currency: params.pricing.currency,
@@ -634,8 +675,10 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
           ...params.metadata,
           subscription_type: 'USER_MANAGED',
           plan_id: params.planId,
+          merchant_subscription_id: params.merchantSubscriptionId,
           frequency: params.pricing.frequency,
           recurring_amount: String(params.pricing.recurringAmount),
+          ...(customerId ? { customer_id: customerId } : {}),
         },
         payment_capture: true,
       });
@@ -650,7 +693,13 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
         redirectUrl: params.redirectUrl,
         state: order.status,
         expiresAt: null,
-        providerData: { order },
+        providerData: {
+          order,
+          // Pass customer_id and recurring flag so the client SDK
+          // opens Checkout with recurring:true for token generation
+          customerId,
+          recurring: true,
+        },
         error: null,
         errorCode: null,
       };
@@ -677,7 +726,7 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
     this.ensureInitialized();
 
     try {
-      // Create an order for this charge
+      // Step 1: Always create an order first
       const order = await this.client!.orders.create({
         amount: params.amount,
         currency: params.currency,
@@ -686,11 +735,43 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
         payment_capture: true,
       });
 
+      // Step 2: If we have a token, charge it server-side (Charge at Will).
+      // Otherwise, return the order for client-side Checkout payment.
+      if (params.tokenId && params.customerId) {
+        const payment = await this.client!.payments.createRecurring({
+          email: params.customerEmail ?? '',
+          contact: params.customerContact ?? '',
+          amount: params.amount,
+          currency: params.currency,
+          order_id: order.id,
+          customer_id: params.customerId,
+          token: params.tokenId,
+          recurring: true,
+          description: params.metadata.description ?? 'Recurring charge',
+          notes: params.metadata,
+        });
+
+        return {
+          success: true,
+          merchantOrderId: params.merchantOrderId,
+          providerOrderId: order.id,
+          transactionId: payment.id,
+          amount: params.amount,
+          currency: params.currency,
+          state: payment.status,
+          paidAt: payment.status === 'captured' ? new Date() : null,
+          providerData: { order, payment },
+          error: null,
+          errorCode: null,
+        };
+      }
+
+      // No token — return order for Checkout-based payment
       return {
         success: true,
         merchantOrderId: params.merchantOrderId,
         providerOrderId: order.id,
-        transactionId: null, // Will be available after payment
+        transactionId: null, // Will be available after client-side payment
         amount: params.amount,
         currency: params.currency,
         state: order.status,
@@ -826,6 +907,9 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
       [RazorpayWebhookEvent.PAYMENT_CAPTURED]: 'payment.captured',
       [RazorpayWebhookEvent.PAYMENT_FAILED]: 'payment.failed',
       [RazorpayWebhookEvent.TOKEN_CONFIRMED]: 'token.confirmed',
+      [RazorpayWebhookEvent.TOKEN_REJECTED]: 'token.rejected',
+      [RazorpayWebhookEvent.TOKEN_PAUSED]: 'token.paused',
+      [RazorpayWebhookEvent.TOKEN_CANCELLED]: 'token.cancelled',
     };
     return eventMap[razorpayEvent] ?? razorpayEvent;
   }
