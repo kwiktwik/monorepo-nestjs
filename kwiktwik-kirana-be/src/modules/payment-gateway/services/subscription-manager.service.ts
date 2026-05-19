@@ -346,8 +346,8 @@ export class SubscriptionManagerService {
             amount: input.initialAmount || input.recurringAmount,
             currency: input.currency ?? 'INR',
             prefill: {
-              email: input.customerEmail ?? '',
-              contact: input.customerPhone ?? '',
+              email: input.customerEmail || 'info@kwiktwik.com',
+              contact: input.customerPhone || '9999999999',
             },
           };
         } catch (configError) {
