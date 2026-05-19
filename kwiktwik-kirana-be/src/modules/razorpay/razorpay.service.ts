@@ -464,7 +464,7 @@ export class RazorpayService {
     }
 
     const keyId = this.getKeyId(appId);
-    const maxAmount = planDetails?.item?.amount ?? 19900;
+    const maxAmount = planDetails?.item?.amount ?? 24900;
 
     this.logger.log(
       `[createSubscriptionV2] ✅ DONE | internalId=${subscriptionId} razorpayId=${subscription.id} maxAmount=${maxAmount}`,

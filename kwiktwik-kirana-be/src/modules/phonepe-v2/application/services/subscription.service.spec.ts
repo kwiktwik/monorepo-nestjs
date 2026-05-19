@@ -114,7 +114,7 @@ describe('SubscriptionService', () => {
           paymentFlow: expect.objectContaining({
             type: SUBSCRIPTION_SETUP,
             merchantSubscriptionId: expect.any(String),
-            maxAmount: 19900, // ₹199 from plan
+            maxAmount: 24900, // ₹249 from plan
             frequency: 'MONTHLY',
             paymentMode: expect.objectContaining({
               type: 'UPI_INTENT',
@@ -219,7 +219,7 @@ describe('SubscriptionService', () => {
         userId: 'user123',
         appId: 'app123',
         state: 'ACTIVATION_IN_PROGRESS',
-        maxAmount: 19900,
+        maxAmount: 24900,
         frequency: 'MONTHLY',
         activate: jest.fn(),
         canRedeem: jest.fn().mockReturnValue(false),
@@ -256,7 +256,7 @@ describe('SubscriptionService', () => {
         authWorkflowType: 'TRANSACTION',
         amountType: 'FIXED',
         currency: 'INR',
-        maxAmount: 19900,
+        maxAmount: 24900,
         frequency: 'MONTHLY',
         expireAt: Date.now() + 86400000 * 30,
         pauseStartDate: null,
@@ -283,7 +283,7 @@ describe('SubscriptionService', () => {
         userId: 'user123',
         appId: 'app123',
         state: 'ACTIVATION_IN_PROGRESS',
-        maxAmount: 19900,
+        maxAmount: 24900,
         frequency: 'MONTHLY',
         activate: jest.fn(),
         canRedeem: jest.fn().mockReturnValue(false),
@@ -310,7 +310,7 @@ describe('SubscriptionService', () => {
         authWorkflowType: 'TRANSACTION',
         amountType: 'FIXED',
         currency: 'INR',
-        maxAmount: 19900,
+        maxAmount: 24900,
         frequency: 'MONTHLY',
         expireAt: Date.now() + 86400000 * 30,
         pauseStartDate: null,

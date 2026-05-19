@@ -328,20 +328,20 @@ export class RedemptionSchedulerService {
               PAYWALL_PLANS.PHONEPE_AUTOPAY as any
             ).pricing.recurringAmount.replace(/[^0-9]/g, ''),
             10,
-          ) || 199
-        : 199;
+          ) || 249
+        : 249;
     }
 
     const pricing = (planConfig as any).pricing;
     if (!pricing?.recurringAmount) {
       this.logger.warn(
-        `Plan "${planName}" has no recurringAmount, defaulting to 199`,
+        `Plan "${planName}" has no recurringAmount, defaulting to 249`,
       );
-      return 199;
+      return 249;
     }
 
     const amountStr = pricing.recurringAmount.replace(/[^0-9]/g, '');
-    return parseInt(amountStr, 10) || 199;
+    return parseInt(amountStr, 10) || 249;
   }
 
   /**

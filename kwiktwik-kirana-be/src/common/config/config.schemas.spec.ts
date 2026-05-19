@@ -35,7 +35,7 @@ describe('Config Schemas', () => {
         paywall: {
           pricing: {
             initialAmount: '₹5',
-            recurringAmount: '₹199',
+            recurringAmount: '₹249',
             period: 'month',
           },
           heading: 'Test Heading',

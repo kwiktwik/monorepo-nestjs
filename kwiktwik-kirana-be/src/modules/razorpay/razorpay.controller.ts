@@ -206,7 +206,7 @@ export class RazorpayController {
       example: {
         razorpayOrderId: 'order_ABC123',
         status: 'paid',
-        amount: 199,
+        amount: 249,
         currency: 'INR',
         attempts: 1,
         localStatus: 'captured',
