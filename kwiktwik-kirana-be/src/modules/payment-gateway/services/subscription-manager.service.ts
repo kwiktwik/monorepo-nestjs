@@ -156,28 +156,7 @@ export class SubscriptionManagerService {
    * Create a new subscription
    */
   async createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult> {
-    const idempotencyKey = this.idempotencyService.generateKey(
-      IdempotencyOperationType.SUBSCRIPTION_SETUP,
-      `${input.userId}:${input.planId}:${input.provider}`,
-    );
-    const requestHash = this.idempotencyService.generateRequestHash({
-      userId: input.userId,
-      planId: input.planId,
-      provider: input.provider,
-      appId: input.appId,
-      initialAmount: input.initialAmount,
-      recurringAmount: input.recurringAmount,
-    });
-
-    const idempotentResult = await this.idempotencyService.execute<CreateSubscriptionResult>(
-      idempotencyKey,
-      IdempotencyOperationType.SUBSCRIPTION_SETUP,
-      () => this.executeCreateSubscription(input),
-      requestHash,
-      { provider: input.provider, appId: input.appId },
-    );
-
-    return idempotentResult.result;
+    return this.executeCreateSubscription(input);
   }
 
   /**
@@ -375,25 +354,7 @@ export class SubscriptionManagerService {
    * Charge a subscription (for user-managed or manual charges)
    */
   async chargeSubscription(input: ChargeSubscriptionInput): Promise<ChargeSubscriptionResult> {
-    const today = new Date().toISOString().split('T')[0];
-    const idempotencyKey = this.idempotencyService.generateKey(
-      IdempotencyOperationType.SUBSCRIPTION_CHARGE,
-      `${input.subscriptionId}:${today}`,
-    );
-    const requestHash = this.idempotencyService.generateRequestHash({
-      subscriptionId: input.subscriptionId,
-      amount: input.amount,
-      date: today,
-    });
-
-    const idempotentResult = await this.idempotencyService.execute<ChargeSubscriptionResult>(
-      idempotencyKey,
-      IdempotencyOperationType.SUBSCRIPTION_CHARGE,
-      () => this.executeChargeSubscription(input),
-      requestHash,
-    );
-
-    return idempotentResult.result;
+    return this.executeChargeSubscription(input);
   }
 
   /**
