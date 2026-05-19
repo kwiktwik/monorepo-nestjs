@@ -128,11 +128,18 @@ export class PaymentGatewaySubscriptionResponseDto {
   readonly status?: SubscriptionStatus;
 
   @ApiPropertyOptional({
+    description: 'SDK data for client-side payment integration',
+    example: { key: 'rzp_test_xxxx', order_id: 'order_RAZORPAY456', amount: 10000 },
+  })
+  readonly pgSdkData?: Record<string, any> | null;
+
+  @ApiPropertyOptional({
     description: 'Error message if operation failed',
     example: 'Provider not available',
   })
   readonly error?: string;
 }
+
 
 /**
  * Subscription Status DTO

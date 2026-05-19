@@ -83,6 +83,7 @@ export interface CreateSubscriptionResult {
   readonly intentUrl: string | null;
   readonly redirectUrl: string | null;
   readonly error: string | null;
+  readonly pgSdkData?: Record<string, any> | null;
 }
 
 /**
@@ -334,6 +335,26 @@ export class SubscriptionManagerService {
         frequency: input.frequency,
       }, input.appId, input.userId, input.provider);
 
+      // Build pgSdkData for the client SDK if applicable (e.g. Razorpay)
+      let pgSdkData: Record<string, any> | null = null;
+      if (input.provider === PaymentProvider.RAZORPAY) {
+        try {
+          const publicConfig = provider.getPublicConfig();
+          pgSdkData = {
+            key: publicConfig.keyId || '',
+            order_id: setupResult.providerOrderId,
+            amount: input.initialAmount || input.recurringAmount,
+            currency: input.currency ?? 'INR',
+            prefill: {
+              email: input.customerEmail ?? '',
+              contact: input.customerPhone ?? '',
+            },
+          };
+        } catch (configError) {
+          this.logger.warn(`Failed to generate pgSdkData public config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+        }
+      }
+
       return {
         success: true,
         subscription,
@@ -342,6 +363,7 @@ export class SubscriptionManagerService {
         providerOrderId: setupResult.providerOrderId,
         intentUrl: setupResult.intentUrl,
         redirectUrl: setupResult.redirectUrl,
+        pgSdkData,
         error: null,
       };
     } catch (error) {

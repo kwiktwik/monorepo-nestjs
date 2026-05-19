@@ -136,6 +136,7 @@ export class SubscriptionApiController {
       providerOrderId: result.providerOrderId,
       intentUrl: result.intentUrl,
       status: result.subscription?.status,
+      pgSdkData: result.pgSdkData ?? undefined,
       error: result.error ?? undefined,
     };
   }
