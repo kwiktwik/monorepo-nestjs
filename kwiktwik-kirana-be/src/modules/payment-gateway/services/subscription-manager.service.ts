@@ -364,13 +364,20 @@ export class SubscriptionManagerService {
           }
 
           // For USER_MANAGED (Charge at Will), include recurring flag and customer_id
-          // so the client-side Checkout generates a reusable token
+          // so the client-side Checkout generates a reusable token.
+          // Razorpay SDK rejects 'key' and 'prefill' in checkout options for
+          // recurring order-based payments (BAD_REQUEST_ERROR: extra_field_sent).
+          // Move 'key' to 'razorpayKeyId' so the client can call checkout.setKeyID()
+          // separately; remove 'prefill' since top-level email/contact suffice.
           if (input.subscriptionType === SubscriptionType.USER_MANAGED) {
             const providerDataRaw = setupResult.providerData as Record<string, any>;
             pgSdkData['recurring'] = true;
             if (providerDataRaw.customerId) {
               pgSdkData['customer_id'] = providerDataRaw.customerId;
             }
+            pgSdkData['razorpayKeyId'] = pgSdkData['key'];
+            delete pgSdkData['key'];
+            delete pgSdkData['prefill'];
           }
         } catch (configError) {
           this.logger.warn(`Failed to generate pgSdkData public config: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
