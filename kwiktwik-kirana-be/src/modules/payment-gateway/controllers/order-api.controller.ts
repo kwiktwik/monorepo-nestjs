@@ -170,6 +170,7 @@ export class OrderApiController {
       providerOrderId: result.providerOrderId,
       redirectUrl: result.redirectUrl,
       checkoutConfig: result.checkoutConfig,
+      pgSdkData: result.pgSdkData,
       status: result.order!.status,
     };
   }

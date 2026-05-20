@@ -16,7 +16,7 @@ import { PaymentEventTypes, createPaymentEvent, generateCorrelationId } from '..
 import type { IOrderRepository } from '../infrastructure/repositories/order.repository.interface';
 import type { Order } from '../domain/entities/order.entity';
 import { createOrder, markOrderAsPaid, markOrderAsFailed, markOrderAsRefunded } from '../domain/entities/order.entity';
-import type { PaymentProvider } from '../types/provider.enum';
+import { PaymentProvider } from '../types/provider.enum';
 import { generateMerchantOrderId, generateId, generateMerchantRefundId } from '../providers/base/provider-utils';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
 import { paymentTransactions } from '../database/schema';
@@ -44,6 +44,7 @@ export interface CreateOneTimeOrderResult {
   readonly providerOrderId: string | null;
   readonly redirectUrl: string | null;
   readonly checkoutConfig: Record<string, unknown>;
+  readonly pgSdkData: Record<string, unknown> | null;
   readonly error: string | null;
 }
 
@@ -101,7 +102,7 @@ export class OrderManagerService {
       });
 
       if (!config) {
-        return { success: false, order: null, providerOrderId: null, redirectUrl: null, checkoutConfig: {}, error: 'Configuration not found' };
+        return { success: false, order: null, providerOrderId: null, redirectUrl: null, checkoutConfig: {}, pgSdkData: null, error: 'Configuration not found' };
       }
 
       const provider = this.providerFactory.getOneTimeOrderProvider(input.provider, config);
@@ -147,6 +148,7 @@ export class OrderManagerService {
           providerOrderId: null,
           redirectUrl: null,
           checkoutConfig: {},
+          pgSdkData: null,
           error: providerResult.error,
         };
       }
@@ -163,17 +165,37 @@ export class OrderManagerService {
         currency: input.currency ?? 'INR',
       }, input.appId, input.userId, input.provider);
 
+      // Build pgSdkData for the client SDK (ready-to-submit Razorpay payload)
+      let pgSdkData: Record<string, unknown> | null = null;
+      if (input.provider === PaymentProvider.RAZORPAY && providerResult.providerOrderId) {
+        try {
+          const publicConfig = provider.getPublicConfig();
+          pgSdkData = {
+            key: (publicConfig as Record<string, unknown>).keyId || '',
+            order_id: providerResult.providerOrderId,
+            amount: input.amount,
+            currency: input.currency ?? 'INR',
+            prefill: {
+              contact: input.contact || '9999999999',
+            },
+          };
+        } catch (configError) {
+          this.logger.warn(`Failed to build pgSdkData: ${configError instanceof Error ? configError.message : 'Unknown error'}`);
+        }
+      }
+
       return {
         success: true,
         order,
         providerOrderId: providerResult.providerOrderId,
         redirectUrl: providerResult.redirectUrl,
         checkoutConfig: providerResult.checkoutConfig,
+        pgSdkData,
         error: null,
       };
     } catch (error) {
       this.logger.error(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return { success: false, order: null, providerOrderId: null, redirectUrl: null, checkoutConfig: {}, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { success: false, order: null, providerOrderId: null, redirectUrl: null, checkoutConfig: {}, pgSdkData: null, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

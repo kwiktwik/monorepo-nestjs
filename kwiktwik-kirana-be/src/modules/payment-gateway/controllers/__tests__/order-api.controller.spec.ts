@@ -86,6 +86,7 @@ describe('OrderApiController', () => {
         providerOrderId: 'order_rzp_001',
         redirectUrl: null,
         checkoutConfig: { keyId: 'rzp_key', orderId: 'order_rzp_001', amount: 10000, currency: 'INR' },
+        pgSdkData: { key: 'rzp_key', order_id: 'order_rzp_001', amount: 10000, currency: 'INR', prefill: { contact: '9999999999' } },
         error: null,
       });
 
@@ -96,6 +97,13 @@ describe('OrderApiController', () => {
       expect(result.merchantOrderId).toBe('MORD_001');
       expect(result.providerOrderId).toBe('order_rzp_001');
       expect(result.checkoutConfig).toHaveProperty('keyId', 'rzp_key');
+      expect(result.pgSdkData).toEqual({
+        key: 'rzp_key',
+        order_id: 'order_rzp_001',
+        amount: 10000,
+        currency: 'INR',
+        prefill: { contact: '9999999999' },
+      });
       expect(orderManager.createOrder).toHaveBeenCalledWith({
         userId: 'user_1',
         appId: 'app_test',
@@ -115,6 +123,7 @@ describe('OrderApiController', () => {
         providerOrderId: null,
         redirectUrl: null,
         checkoutConfig: {},
+        pgSdkData: null,
         error: 'Amount too low',
       });
 
@@ -131,6 +140,7 @@ describe('OrderApiController', () => {
         providerOrderId: 'PPO_123',
         redirectUrl: 'https://phonepe.com/pay/session',
         checkoutConfig: { merchantId: 'pp_mid', orderId: 'PPO_123' },
+        pgSdkData: null,
         error: null,
       });
 

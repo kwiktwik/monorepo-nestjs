@@ -143,6 +143,13 @@ describe('OrderManagerService', () => {
       expect(result.order!.orderType).toBe('ONE_TIME');
       expect(result.providerOrderId).toBe('order_rzp_123');
       expect(result.checkoutConfig).toHaveProperty('keyId', 'rzp_key');
+      expect(result.pgSdkData).toEqual({
+        key: 'rzp_key',
+        order_id: 'order_rzp_123',
+        amount: 10000,
+        currency: 'INR',
+        prefill: { contact: '9999999999' },
+      });
 
       const saved = await orderRepo.findById(result.order!.id);
       expect(saved).not.toBeNull();
