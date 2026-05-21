@@ -50,21 +50,6 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
-  'com.sharekaro.kirana': {
-    id: 'com.sharekaro.kirana',
-    name: 'ShareStatus Kirana',
-    description: 'ShareStatus Kirana mobile application',
-    enabled: true,
-    rateLimit: {
-      maxRequests: 100,
-      windowMs: 15 * 60 * 1000,
-    },
-    features: {
-      otpLogin: true,
-      truecallerLogin: true,
-      googleLogin: true,
-    },
-  },
   'com.paymentalert.app': {
     id: 'com.paymentalert.app',
     name: 'Payment Alert',

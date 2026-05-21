@@ -98,8 +98,8 @@ curl -X DELETE http://localhost:3002/api/user/v1 \
 ## Supported App IDs
 
 - `com.sharestatus.app`
-- `com.sharekaro.kirana`
-- `sharekaro-andriod`
+- `com.paymentalert.app`
+- `com.jugnu.alertpe`
 
 ## Database Schema
 

@@ -41,7 +41,7 @@ pnpm run start:prod
 node scripts/seed-notification-users.mjs
 ```
 
-This seeds 10 users and sessions for the app ID (default: `com.sharekaro.kirana`). It prints JWTs to the console for quick testing.
+This seeds 10 users and sessions for the app ID (default: `com.paymentalert.app`). It prints JWTs to the console for quick testing.
 
 Environment overrides:
 - `SEED_APP_ID` - override app id used for user metadata and JWT tokens.
@@ -95,8 +95,8 @@ Environment overrides:
 
 All routes require `X-App-ID` header with one of:
 - `com.sharestatus.app`
-- `com.sharekaro.kirana`
-- `sharekaro-andriod`
+- `com.paymentalert.app`
+- `com.jugnu.alertpe`
 
 Authenticated routes also require:
 ```

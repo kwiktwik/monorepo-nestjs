@@ -3,7 +3,7 @@
  *
  * Usage:
  *   node scripts/seed-plans.mjs                          # seed default app
- *   APP_ID=com.sharekaro.kirana node scripts/seed-plans.mjs  # seed specific app
+ *   APP_ID=com.paymentalert.app node scripts/seed-plans.mjs   # seed specific app
  *   DRY_RUN=true node scripts/seed-plans.mjs              # preview without writing
  *
  * Reads DATABASE_URL from .env.local or environment.

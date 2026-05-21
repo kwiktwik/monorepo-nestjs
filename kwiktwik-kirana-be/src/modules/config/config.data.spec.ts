@@ -3,7 +3,6 @@ import { getConfigForAppId, APP_CONFIGS } from './config.data';
 describe('Config Data - APP_CONFIGS', () => {
   const supportedAppIds = [
     'com.paymentalert.app',
-    'com.sharekaro.kirana',
     'com.jugnu.alertpe',
   ];
 
@@ -118,16 +117,6 @@ describe('Config Data - APP_CONFIGS', () => {
       });
     });
 
-    describe('com.sharekaro.kirana configuration', () => {
-      const appId = 'com.sharekaro.kirana';
-
-      it('should return valid configuration', () => {
-        const config = getConfigForAppId(appId);
-        expect(config).toBeDefined();
-        expect(config?.app?.id).toBe(appId);
-        expect(config?.app?.name).toBe('ShareKaro Kirana');
-      });
-    });
   });
 
   describe('APP_CONFIGS structure validation', () => {
