@@ -19,8 +19,8 @@ import { SubscriptionType } from '../types/subscription-type.enum';
 import { SubscriptionStatus, StateMachineEvent } from '../types/subscription-status.enum';
 import { transitionSubscriptionStatus, recordSuccessfulPayment, recordPaymentFailure } from '../domain/entities/subscription.entity';
 import { createPaymentFailure } from '../domain/entities/subscription.entity';
-import { markOrderAsPaid } from '../domain/entities/order.entity';
-import { mapRazorpaySubscriptionStatus } from '../types/razorpay.types';
+import { markOrderAsPaid, markOrderAsRefunded } from '../domain/entities/order.entity';
+import { mapRazorpaySubscriptionStatus, RazorpayWebhookEvent } from '../types/razorpay.types';
 import { mapPhonePeSubscriptionState } from '../types/phonepe.types';
 import { eq, and, sql } from 'drizzle-orm';
 import { DRIZZLE_TOKEN } from '../../../database/drizzle.module';
@@ -309,6 +309,14 @@ export class WebhookHandlerService {
     // Payment downtime resolved (Razorpay infrastructure event — informational only)
     this.registerHandler('payment.downtime.resolved', this.handlePaymentDowntime.bind(this));
     this.registerHandler('payment.downtime.started', this.handlePaymentDowntime.bind(this));
+
+    // Order paid (Razorpay one-time / user-managed)
+    this.registerHandler(RazorpayWebhookEvent.ORDER_PAID, this.handleOrderPaid.bind(this));
+
+    // Refund events
+    this.registerHandler(RazorpayWebhookEvent.REFUND_CREATED, this.handleRefundCreated.bind(this));
+    this.registerHandler(RazorpayWebhookEvent.REFUND_PROCESSED, this.handleRefundProcessed.bind(this));
+    this.registerHandler(RazorpayWebhookEvent.REFUND_FAILED, this.handleRefundFailed.bind(this));
 
     // Redemption completed (PhonePe)
     this.registerHandler('subscription.redemption.completed', this.handleRedemptionCompleted.bind(this));
@@ -795,6 +803,154 @@ export class WebhookHandlerService {
       eventType: event.eventType,
       subscriptionId: null,
       orderId: null,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle order.paid event (Razorpay one-time / user-managed orders)
+   *
+   * Delegates to handlePaymentCaptured — both events indicate the order
+   * has been successfully paid.
+   */
+  private async handleOrderPaid(event: WebhookEvent): Promise<WebhookProcessResult> {
+    this.logger.log(`Order paid | providerOrderId=${event.providerOrderId} | paymentId=${event.paymentId}`);
+    return this.handlePaymentCaptured(event);
+  }
+
+  /**
+   * Handle refund.created event
+   *
+   * A refund has been initiated. Log and acknowledge — the order status
+   * update happens when the refund is processed.
+   */
+  private async handleRefundCreated(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const refundEntity = (event.rawPayload as any)?.payload?.refund?.entity;
+    const refundId = refundEntity?.id ?? null;
+    const paymentId = refundEntity?.payment_id ?? event.paymentId;
+    const refundAmount = refundEntity?.amount ?? null;
+
+    this.logger.log(`Refund created | refundId=${refundId} | paymentId=${paymentId} | amount=${refundAmount}`);
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle refund.processed event
+   *
+   * The refund has been completed. Find the order by provider order ID
+   * (from the refund or payment entity) and mark it as REFUNDED.
+   */
+  private async handleRefundProcessed(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const refundEntity = (event.rawPayload as any)?.payload?.refund?.entity;
+    const paymentEntity = (event.rawPayload as any)?.payload?.payment?.entity;
+    const refundId = refundEntity?.id ?? '';
+    const providerOrderId = refundEntity?.order_id ?? paymentEntity?.order_id ?? event.merchantOrderId ?? event.providerOrderId;
+    const refundAmount = refundEntity?.amount ?? null;
+    const paymentAmount = paymentEntity?.amount ?? null;
+
+    this.logger.log(
+      `Refund processed | refundId=${refundId} | providerOrderId=${providerOrderId} | refundAmount=${refundAmount} | paymentAmount=${paymentAmount}`,
+    );
+
+    if (!providerOrderId) {
+      this.logger.warn('Refund processed event has no order ID, skipping order update');
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: null,
+        error: null,
+      };
+    }
+
+    const order = await this.orderRepository.findByProviderOrderId(
+      event.provider,
+      providerOrderId,
+    );
+
+    if (!order) {
+      this.logger.warn(`Order not found for refund processed | providerOrderId=${providerOrderId}`);
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: null,
+        error: null,
+      };
+    }
+
+    if (order.status === 'REFUNDED') {
+      this.logger.log(`Order already refunded, skipping | orderId=${order.id}`);
+      return {
+        success: true,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        subscriptionId: event.merchantSubscriptionId,
+        orderId: order.id,
+        error: null,
+      };
+    }
+
+    const updated = markOrderAsRefunded(order, refundId);
+    await this.orderRepository.save(updated);
+    this.logger.log(`Order marked as REFUNDED via webhook | orderId=${order.id} | refundId=${refundId}`);
+
+    // Revoke entitlement for refunded ONE_TIME orders
+    if (order.orderType === 'ONE_TIME' && order.planId) {
+      await this.entitlementService.revokeFromOrder(order.id, 'refund_processed');
+    }
+
+    // Cancel USER_MANAGED subscription if the setup order is refunded
+    if (order.orderType === 'SUBSCRIPTION_SETUP' && order.subscriptionId) {
+      const sub = await this.subscriptionRepository.findById(order.subscriptionId);
+      if (sub && sub.subscriptionType === SubscriptionType.USER_MANAGED) {
+        this.logger.log(`Cancelling USER_MANAGED subscription due to refund | subscriptionId=${sub.id}`);
+        const result = transitionSubscriptionStatus(sub, SubscriptionStatus.CANCELLED);
+        if (result.success) {
+          await this.subscriptionRepository.save(result.subscription);
+          await this.entitlementService.revokeFromSubscription(sub.id, 'order_refunded');
+        }
+      }
+    }
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: order.id,
+      error: null,
+    };
+  }
+
+  /**
+   * Handle refund.failed event
+   *
+   * Log the failure. The order remains in its current state.
+   */
+  private async handleRefundFailed(event: WebhookEvent): Promise<WebhookProcessResult> {
+    const refundEntity = (event.rawPayload as any)?.payload?.refund?.entity;
+    const refundId = refundEntity?.id ?? null;
+    const paymentId = refundEntity?.payment_id ?? event.paymentId;
+
+    this.logger.warn(`Refund failed | refundId=${refundId} | paymentId=${paymentId}`);
+
+    return {
+      success: true,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      subscriptionId: event.merchantSubscriptionId,
+      orderId: event.merchantOrderId,
       error: null,
     };
   }

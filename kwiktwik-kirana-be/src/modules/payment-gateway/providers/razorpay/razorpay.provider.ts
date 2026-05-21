@@ -655,6 +655,9 @@ export class RazorpayProviderManagedProvider extends BaseRazorpayProvider {
       [RazorpayWebhookEvent.PAYMENT_AUTHORIZED]: 'payment.authorized',
       [RazorpayWebhookEvent.PAYMENT_CAPTURED]: 'payment.captured',
       [RazorpayWebhookEvent.PAYMENT_FAILED]: 'payment.failed',
+      [RazorpayWebhookEvent.REFUND_CREATED]: RazorpayWebhookEvent.REFUND_CREATED,
+      [RazorpayWebhookEvent.REFUND_PROCESSED]: RazorpayWebhookEvent.REFUND_PROCESSED,
+      [RazorpayWebhookEvent.REFUND_FAILED]: RazorpayWebhookEvent.REFUND_FAILED,
     };
     return eventMap[razorpayEvent] ?? razorpayEvent;
   }
@@ -952,6 +955,9 @@ export class RazorpayUserManagedProvider extends BaseRazorpayProvider {
       [RazorpayWebhookEvent.TOKEN_REJECTED]: 'token.rejected',
       [RazorpayWebhookEvent.TOKEN_PAUSED]: 'token.paused',
       [RazorpayWebhookEvent.TOKEN_CANCELLED]: 'token.cancelled',
+      [RazorpayWebhookEvent.REFUND_CREATED]: RazorpayWebhookEvent.REFUND_CREATED,
+      [RazorpayWebhookEvent.REFUND_PROCESSED]: RazorpayWebhookEvent.REFUND_PROCESSED,
+      [RazorpayWebhookEvent.REFUND_FAILED]: RazorpayWebhookEvent.REFUND_FAILED,
     };
     return eventMap[razorpayEvent] ?? razorpayEvent;
   }
