@@ -26,9 +26,6 @@ describe('apps.config', () => {
       expect(generateWebhookSecretEnvVar('com.jugnu.alertpe')).toBe(
         'RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE',
       );
-      expect(generateWebhookSecretEnvVar('com.sharestatus.app')).toBe(
-        'RAZORPAY_WEBHOOK_SECRET_COM_SHARESTATUS_APP',
-      );
       expect(generateWebhookSecretEnvVar('com.paymentalert.app')).toBe(
         'RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP',
       );

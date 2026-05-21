@@ -35,21 +35,6 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
-  'com.sharestatus.app': {
-    id: 'com.sharestatus.app',
-    name: 'ShareStatus',
-    description: 'ShareStatus mobile application',
-    enabled: true,
-    rateLimit: {
-      maxRequests: 100,
-      windowMs: 15 * 60 * 1000, // 15 minutes
-    },
-    features: {
-      otpLogin: true,
-      truecallerLogin: true,
-      googleLogin: true,
-    },
-  },
   'com.paymentalert.app': {
     id: 'com.paymentalert.app',
     name: 'Payment Alert',
@@ -155,7 +140,7 @@ export function getRegisteredAppIdsWithWebhooks(): string[] {
 
 /**
  * Derive a temp-email domain from an app's package name.
- * e.g. "com.sharestatus.app" -> "sharestatus.local"
+ * e.g. "com.paymentalert.app" -> "paymentalert.local"
  *      "com.jugnu.alertpe"  -> "kiranaapps.local"
  */
 export function getTempEmailDomain(appId: string): string {

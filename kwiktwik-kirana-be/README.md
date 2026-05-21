@@ -94,7 +94,6 @@ Environment overrides:
 ## Headers Required
 
 All routes require `X-App-ID` header with one of:
-- `com.sharestatus.app`
 - `com.paymentalert.app`
 - `com.jugnu.alertpe`
 
