@@ -282,7 +282,7 @@ export class AuthService {
       expiresAt,
     });
 
-    // Send SMS via Equence API (skip in mock mode)
+    // Send SMS via CBIS API (skip in mock mode)
     if (isMockMode()) {
       this.logger.log(`[MOCK SMS] OTP for ${normalized} is: ${code}`);
       return { message: 'OTP sent successfully (mock mode)', mockCode: code };
@@ -365,7 +365,7 @@ export class AuthService {
       expiresAt,
     });
 
-    // Send SMS via Equence API (skip in mock mode)
+    // Send SMS via CBIS API (skip in mock mode)
     if (isMockMode()) {
       this.logger.log(`[MOCK SMS] OTP for ${normalized} is: ${code}`);
       return { message: 'OTP sent successfully (mock mode)', mockCode: code };
@@ -377,45 +377,54 @@ export class AuthService {
   }
 
   /**
-   * Send SMS via Equence API
+   * Send SMS via CBIS API
    */
   private async sendSms(
     phoneNumber: string,
     code: string,
     appHash?: string,
   ): Promise<void> {
-    const username = process.env.EQUENCE_USERNAME;
-    const password = process.env.EQUENCE_PASSWORD;
-    const from = process.env.EQUENCE_SENDER_ID || 'ALRTSN';
-    const tmplId = process.env.EQUENCE_TMPL_ID || '1707176553065211775';
+    const userid = process.env.CBIS_USER_ID;
+    const password = process.env.CBIS_PASSWORD;
+    const senderid = process.env.CBIS_SENDER_ID || 'ALTPBX';
+    const dltEntityId =
+      process.env.CBIS_DLT_ENTITY_ID || '1201177748105410520';
+    const dltTemplateId =
+      process.env.CBIS_DLT_TEMPLATE_ID || '1207177938512047040';
 
-    if (!username || !password) {
+    if (!userid || !password) {
       throw new InternalServerErrorException(
-        'Equence SMS credentials not configured',
+        'CBIS SMS credentials not configured',
       );
     }
 
-    // Format phone number (remove + and ensure proper format)
-    let formattedPhone = phoneNumber.replace(/\D/g, '');
-    if (formattedPhone.length === 10) {
-      formattedPhone = `91${formattedPhone}`;
-    }
+    // Extract 10-digit mobile number
+    const digits = phoneNumber.replace(/\D/g, '');
+    const mobile = digits.length > 10 ? digits.slice(-10) : digits;
 
-    const text = appHash
-      ? `${code} is your Alert Soundbox OTP for login. Do not share it with anyone.\n ${appHash}`
-      : `${code} is your Alert Soundbox OTP for login. Do not share it with anyone.`;
+    const msg = appHash
+      ? `${code} is your AlertPe OTP for login from Jugnu Business. Do not share it with anyone. ${appHash}`
+      : `${code} is your AlertPe OTP for login from Jugnu Business. Do not share it with anyone. OTP`;
 
     const payload = {
-      username,
+      userid,
       password,
-      to: formattedPhone,
-      from,
-      tmplId,
-      text,
+      senderid,
+      msgType: 'text',
+      dltEntityId,
+      dltTemplateId,
+      duplicatecheck: 'true',
+      sendMethod: 'quick',
+      sms: [
+        {
+          mobile: [mobile],
+          msg,
+        },
+      ],
     };
 
     try {
-      const response = await fetch('https://api.equence.in/pushsms', {
+      const response = await fetch('https://alerts.cbis.in/SMSApi/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -424,30 +433,12 @@ export class AuthService {
       if (!response.ok) {
         const errorText = await response.text();
         throw new InternalServerErrorException(
-          `Equence API error (${response.status}): ${errorText}`,
+          `CBIS API error (${response.status}): ${errorText}`,
         );
       }
 
-      type EquenceResponse = {
-        errorCode?: string;
-        message?: string;
-        response?: Array<{ status?: string }>;
-      };
-
-      const result = (await response.json()) as EquenceResponse;
-      if (result.errorCode) {
-        throw new InternalServerErrorException(
-          `Equence API error: ${result.message || 'Unknown error'} (Code: ${result.errorCode})`,
-        );
-      }
-
-      if (
-        result.response &&
-        Array.isArray(result.response) &&
-        result.response[0]?.status === 'failed'
-      ) {
-        throw new InternalServerErrorException('Failed to send SMS');
-      }
+      const result = (await response.json()) as Record<string, unknown>;
+      this.logger.log(`[SMS] CBIS response: ${JSON.stringify(result)}`);
     } catch (error) {
       this.logger.error('[SMS] Error sending OTP:', error);
       throw new InternalServerErrorException(
