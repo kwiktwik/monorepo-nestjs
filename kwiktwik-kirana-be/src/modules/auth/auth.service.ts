@@ -294,8 +294,7 @@ export class AuthService {
   }
 
   /**
-   * Send OTP v2 - with kirana-fe (legacy Flutter app) user detection
-   * Returns error if user already exists in kirana-fe system
+   * Send OTP v2
    */
   async sendOtpV2(
     phoneNumber: string,
@@ -305,31 +304,9 @@ export class AuthService {
     message: string;
     retryAfter?: number;
     mockCode?: string;
-    error?: string;
-    alternateBackend?: string;
-    alternateEndpoints?: {
-      sendOtp: string;
-      verifyOtp: string;
-    };
   }> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
-    // Check if user exists in kirana-fe (legacy Flutter app)
-    const isKiranaFeUser = await this.checkKiranaFeUser(normalized);
-
-    if (isKiranaFeUser) {
-      return {
-        message: 'User already registered on legacy system',
-        error: 'USE_ALTERNATE_BACKEND',
-        alternateBackend: 'https://api.kiranaapps.com',
-        alternateEndpoints: {
-          sendOtp: '/api/phone-number/send-otp',
-          verifyOtp: '/api/phone-number/verify',
-        },
-      };
-    }
-
-    // For new users, proceed with normal OTP flow
     // TEST MODE: Skip SMS for test number
     if (normalized === AuthService.TEST_PHONE) {
       return {
@@ -910,40 +887,25 @@ export class AuthService {
     clientId: string,
     appId: string,
     authProvider?: string,
-    inputPhoneNumber?: string,
-    skipLegacyCheck: boolean = false,
-  ): Promise<
-    | {
-        token: string;
-        user: AuthUserResponse;
-        userProfile: {
-          sub?: string;
-          given_name?: string;
-          family_name?: string;
-          phone_number?: string;
-          email?: string;
-          picture?: string;
-          gender?: string;
-          phone_number_country_code?: string;
-          phone_number_verified?: boolean;
-          address?: Record<string, unknown>;
-        };
-      }
-    | {
-        error: 'USE_ALTERNATE_BACKEND';
-        message: string;
-        alternateBackend: string;
-        alternateEndpoints: {
-          sendOtp: string;
-          verifyOtp: string;
-          truecaller: string;
-          google: string;
-        };
-      }
-  > {
+  ): Promise<{
+    token: string;
+    user: AuthUserResponse;
+    userProfile: {
+      sub?: string;
+      given_name?: string;
+      family_name?: string;
+      phone_number?: string;
+      email?: string;
+      picture?: string;
+      gender?: string;
+      phone_number_country_code?: string;
+      phone_number_verified?: boolean;
+      address?: Record<string, unknown>;
+    };
+  }> {
     // Log incoming parameters
     this.logger.log(
-      `[Truecaller Signin] Called with params - code length: ${code?.length}, codeVerifier length: ${codeVerifier?.length}, clientId: ${clientId}, appId: ${appId}, authProvider: ${authProvider}, inputPhoneNumber: ${inputPhoneNumber}`,
+      `[Truecaller Signin] Called with params - code length: ${code?.length}, codeVerifier length: ${codeVerifier?.length}, clientId: ${clientId}, appId: ${appId}, authProvider: ${authProvider}`,
     );
 
     // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
@@ -1121,60 +1083,6 @@ export class AuthService {
     }
 
     const normalized = normalizePhoneNumber(phoneNumber);
-
-    // Check for kirana-fe user detection using the phone from Truecaller or input phone
-    const phoneToCheck = inputPhoneNumber
-      ? normalizePhoneNumber(inputPhoneNumber)
-      : normalized;
-
-    if (!skipLegacyCheck) {
-      // Check if user already migrated to new system
-      const migratedUser = await this.db
-        .select()
-        .from(schema.user)
-        .where(
-          and(
-            eq(schema.user.phoneNumber, phoneToCheck),
-            eq(schema.user.isDeleted, false),
-          ),
-        )
-        .limit(1);
-
-      if (migratedUser.length > 0) {
-        this.logger.log(
-          `[Truecaller Signin] User ${phoneToCheck} already migrated, skipping kirana-fe check`,
-        );
-      } else {
-        this.logger.log(
-          `[Truecaller Signin] Checking kirana-fe for phone: ${phoneToCheck} (from Truecaller: ${normalized}, input: ${inputPhoneNumber})`,
-        );
-        const isKiranaFeUser = await this.checkKiranaFeUser(phoneToCheck);
-        this.logger.log(
-          `[Truecaller Signin] Kirana-fe check result: ${isKiranaFeUser}`,
-        );
-
-        if (isKiranaFeUser) {
-          this.logger.log(
-            `[Truecaller Signin] Kirana-FE user detected: ${phoneToCheck}`,
-          );
-          return {
-            error: 'USE_ALTERNATE_BACKEND',
-            message: 'User already registered on legacy system',
-            alternateBackend: 'https://api.kiranaapps.com',
-            alternateEndpoints: {
-              sendOtp: '/api/phone-number/send-otp',
-              verifyOtp: '/api/phone-number/verify',
-              truecaller: '/api/auth/truecaller/token',
-              google: '/api/auth/google-signin',
-            },
-          };
-        }
-      }
-    } else {
-      this.logger.log(
-        `[Truecaller Signin] Skipping kirana-fe check for phone: ${phoneToCheck} as user is already migrated`,
-      );
-    }
 
     // Build userProfile object similar to Next.js implementation
     const userProfile = {
@@ -1366,34 +1274,22 @@ export class AuthService {
     clientId: string,
     appId: string,
     authProvider?: string,
-  ): Promise<
-    | {
-        token: string;
-        user: AuthUserResponse;
-        userProfile: {
-          sub?: string;
-          given_name?: string;
-          family_name?: string;
-          phone_number?: string;
-          email?: string;
-          picture?: string;
-          gender?: string;
-          phone_number_country_code?: string;
-          phone_number_verified?: boolean;
-          address?: Record<string, unknown>;
-        };
-      }
-    | {
-        error: 'USE_ALTERNATE_BACKEND';
-        message: string;
-        alternateBackend: string;
-        alternateEndpoints: {
-          sendOtp: string;
-          verifyOtp: string;
-          truecaller: string;
-        };
-      }
-  > {
+  ): Promise<{
+    token: string;
+    user: AuthUserResponse;
+    userProfile: {
+      sub?: string;
+      given_name?: string;
+      family_name?: string;
+      phone_number?: string;
+      email?: string;
+      picture?: string;
+      gender?: string;
+      phone_number_country_code?: string;
+      phone_number_verified?: boolean;
+      address?: Record<string, unknown>;
+    };
+  }> {
     // First, do the normal Truecaller signin to get the phone number
     // We need to intercept before user creation to check for kirana-fe
 
@@ -1532,23 +1428,7 @@ export class AuthService {
 
     const normalized = normalizePhoneNumber(phoneNumber);
 
-    // Step 4: Check if user exists in kirana-fe (legacy Flutter app)
-    const isKiranaFeUser = await this.checkKiranaFeUser(normalized);
-
-    if (isKiranaFeUser) {
-      return {
-        error: 'USE_ALTERNATE_BACKEND',
-        message: 'User already registered on legacy system',
-        alternateBackend: 'https://api.kiranaapps.com',
-        alternateEndpoints: {
-          sendOtp: '/api/phone-number/send-otp',
-          verifyOtp: '/api/phone-number/verify',
-          truecaller: '/api/auth/truecaller/token',
-        },
-      };
-    }
-
-    // Step 5: For new users, proceed with normal user creation/signin
+    // Step 4: Proceed with user creation/signin
     // Build userProfile object
     const userProfile = {
       sub: userInfoData.sub,
@@ -1745,7 +1625,6 @@ export class AuthService {
     idToken: string,
     appId: string,
     authProvider?: string,
-    skipLegacyCheck: boolean = false,
   ): Promise<{ token: string; user: AuthUserResponse }> {
     if (!this.googleClient) {
       throw new BadRequestException('Google OAuth is not configured');

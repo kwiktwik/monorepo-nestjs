@@ -51,7 +51,7 @@ export const PG_POOL_TOKEN = 'PG_POOL';
 
         const pool = new Pool({
           connectionString,
-          max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+          max: parseInt(process.env.DB_POOL_MAX || '10', 10),
           idleTimeoutMillis: parseInt(
             process.env.DB_IDLE_TIMEOUT || '30000',
             10,

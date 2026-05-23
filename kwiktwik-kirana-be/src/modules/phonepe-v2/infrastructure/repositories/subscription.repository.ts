@@ -214,7 +214,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
           sql`(${schema.phonepeSubscriptions.metadata}->>'retryCount')::int < ${maxRetries}`,
           sql`(${schema.phonepeSubscriptions.metadata}->>'lastRedemptionDate')::timestamp >= ${cutoffDate}`,
         ),
-      );
+      )
+      .limit(50);
 
     return results.map((r) => this.toDomain(r));
   }
@@ -232,7 +233,8 @@ export class SubscriptionDrizzleRepository implements SubscriptionRepository {
           lt(schema.phonepeSubscriptions.createdAt, cutoff),
           gte(schema.phonepeSubscriptions.createdAt, sevenDaysAgo),
         ),
-      );
+      )
+      .limit(50);
 
     return results.map((r) => this.toDomain(r));
   }

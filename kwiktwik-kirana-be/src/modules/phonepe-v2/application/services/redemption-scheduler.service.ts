@@ -18,6 +18,7 @@ const RETRY_DAYS_OLD = 3;
 @Injectable()
 export class RedemptionSchedulerService {
   private readonly logger = new Logger(RedemptionSchedulerService.name);
+  private readonly runningJobs = new Set<string>();
 
   constructor(
     @Inject(SUBSCRIPTION_REPOSITORY)
@@ -30,6 +31,11 @@ export class RedemptionSchedulerService {
 
   @Cron('0 1 * * *')
   async processDueRedemptions() {
+    if (this.runningJobs.has('processDueRedemptions')) {
+      this.logger.warn('processDueRedemptions already running, skipping');
+      return;
+    }
+    this.runningJobs.add('processDueRedemptions');
     this.logger.log('Starting redemption processing cron job');
 
     try {
@@ -66,11 +72,18 @@ export class RedemptionSchedulerService {
       this.logger.log('Redemption processing cron job completed');
     } catch (error) {
       this.logger.error('Error in redemption processing cron job', error);
+    } finally {
+      this.runningJobs.delete('processDueRedemptions');
     }
   }
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async processStuckActivations() {
+    if (this.runningJobs.has('processStuckActivations')) {
+      this.logger.warn('processStuckActivations already running, skipping');
+      return;
+    }
+    this.runningJobs.add('processStuckActivations');
     this.logger.log('Starting stuck activations processing cron job');
     try {
       const stuckSubscriptions = await this.withRetry(
@@ -116,11 +129,18 @@ export class RedemptionSchedulerService {
       }
     } catch (error) {
       this.logger.error('Error in stuck activations cron job', error);
+    } finally {
+      this.runningJobs.delete('processStuckActivations');
     }
   }
 
   @Cron(CronExpression.EVERY_HOUR)
   async processStuckRedemptions() {
+    if (this.runningJobs.has('processStuckRedemptions')) {
+      this.logger.warn('processStuckRedemptions already running, skipping');
+      return;
+    }
+    this.runningJobs.add('processStuckRedemptions');
     this.logger.log('Starting stuck redemptions processing cron job');
     try {
       const stuckRedemptions = await this.withRetry(
@@ -168,6 +188,8 @@ export class RedemptionSchedulerService {
       }
     } catch (error) {
       this.logger.error('Error in stuck redemptions cron job', error);
+    } finally {
+      this.runningJobs.delete('processStuckRedemptions');
     }
   }
 
@@ -357,22 +379,25 @@ export class RedemptionSchedulerService {
       try {
         return await fn();
       } catch (error) {
+        // Drizzle wraps PG errors — the real PG error is in error.cause
+        const pgError = error?.cause || error;
         const isTransient =
-          error?.severity === 'FATAL' ||
-          error?.code === 'XX000' ||
-          error?.code === '57P01' || // admin_shutdown
-          error?.code === '57P03' || // cannot_connect_now
-          error?.code === '08006' || // connection_failure
-          error?.code === '08003' || // connection_does_not_exist
-          error?.code === 'ECONNRESET' ||
-          error?.code === 'ECONNREFUSED' ||
-          error?.message?.includes('Connection terminated');
+          pgError?.severity === 'FATAL' ||
+          pgError?.code === 'XX000' ||
+          pgError?.code === '57P01' || // admin_shutdown
+          pgError?.code === '57P03' || // cannot_connect_now
+          pgError?.code === '08006' || // connection_failure
+          pgError?.code === '08003' || // connection_does_not_exist
+          pgError?.code === 'ECONNRESET' ||
+          pgError?.code === 'ECONNREFUSED' ||
+          pgError?.message?.includes('Connection terminated') ||
+          pgError?.message?.includes('EMAXCONNSESSION');
 
         if (!isTransient || attempt === maxRetries) {
           throw error;
         }
 
-        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 5000);
+        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 10000);
         this.logger.warn(
           `[${label}] Transient DB error (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms: ${error.message}`,
         );

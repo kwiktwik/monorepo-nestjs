@@ -9,7 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AuthService, AuthUserResponse } from './auth.service';
+import { AuthService } from './auth.service';
 import { AppIdGuard } from '../../common/guards/app-id.guard';
 import { AuthRateLimitGuard, RateLimit, DEFAULT_RATE_LIMITS } from '../../common/guards/rate-limit.guard';
 import { AppId } from '../../common/decorators/app-id.decorator';
@@ -73,27 +73,10 @@ export class AuthController {
   @Post('v2/phone-number/send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Send OTP v2 (with legacy app detection)',
-    description:
-      'Send OTP with kirana-fe (legacy Flutter app) user detection. Returns error if user already exists in legacy system.',
+    summary: 'Send OTP v2',
+    description: 'Send OTP to phone number (v2).',
   })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
-  @ApiResponse({
-    status: 200,
-    description: 'User exists in legacy system - use alternate backend',
-    schema: {
-      example: {
-        success: true,
-        message: 'User already registered on legacy system',
-        error: 'USE_ALTERNATE_BACKEND',
-        alternateBackend: 'https://api.kiranaapps.com',
-        alternateEndpoints: {
-          sendOtp: '/api/phone-number/send-otp',
-          verifyOtp: '/api/phone-number/verify',
-        },
-      },
-    },
-  })
   @ApiResponse({
     status: 429,
     description: 'Rate limit exceeded (20 OTPs/hour per phone number)',
@@ -178,32 +161,13 @@ export class AuthController {
       appId,
     );
 
-    // Check if user exists in legacy system
-    if ('error' in result && result.error === 'USE_ALTERNATE_BACKEND') {
-      return {
-        success: true,
-        message: result.message,
-        error: result.error,
-        alternateBackend: result.alternateBackend,
-        alternateEndpoints: result.alternateEndpoints,
-        appId,
-      };
-    }
-
-    // TypeScript now knows this is the success case
-    const successResult = result as {
-      token: string;
-      user: AuthUserResponse;
-      userProfile: any;
-    };
-
     // Match the Next.js Truecaller endpoint response shape
     return {
       success: true,
-      token: successResult.token,
+      token: result.token,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      user: successResult?.user ?? 'User not found',
-      user_profile: successResult.userProfile,
+      user: result?.user ?? 'User not found',
+      user_profile: result.userProfile,
       appId,
     };
   }
@@ -211,30 +175,13 @@ export class AuthController {
   @Post('v2/truecaller/token')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Truecaller Sign-in v2 (with legacy app detection)',
+    summary: 'Truecaller Sign-in v2',
     description:
-      'Exchange Truecaller authorization code with kirana-fe (legacy Flutter app) user detection. Returns error if user already exists in legacy system.',
+      'Exchange Truecaller authorization code for JWT token (v2).',
   })
   @ApiResponse({
     status: 200,
     description: 'Sign-in successful, returns JWT token',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User exists in legacy system - use alternate backend',
-    schema: {
-      example: {
-        success: true,
-        message: 'User already registered on legacy system',
-        error: 'USE_ALTERNATE_BACKEND',
-        alternateBackend: 'https://api.kiranaapps.com',
-        alternateEndpoints: {
-          sendOtp: '/api/phone-number/send-otp',
-          verifyOtp: '/api/phone-number/verify',
-          truecaller: '/api/auth/truecaller/token',
-        },
-      },
-    },
   })
   @ApiResponse({ status: 401, description: 'Invalid Truecaller authorization' })
   async truecallerSigninV2(
@@ -248,32 +195,13 @@ export class AuthController {
       appId,
     );
 
-    // Check if user exists in legacy system
-    if ('error' in result && result.error === 'USE_ALTERNATE_BACKEND') {
-      return {
-        success: true,
-        message: result.message,
-        error: result.error,
-        alternateBackend: result.alternateBackend,
-        alternateEndpoints: result.alternateEndpoints,
-        appId,
-      };
-    }
-
-    // TypeScript now knows this is the success case
-    const successResult = result as {
-      token: string;
-      user: AuthUserResponse;
-      userProfile: any;
-    };
-
     // Match the Next.js Truecaller endpoint response shape
     return {
       success: true,
-      token: successResult.token,
+      token: result.token,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      user: successResult?.user ?? 'User not found',
-      user_profile: successResult.userProfile,
+      user: result?.user ?? 'User not found',
+      user_profile: result.userProfile,
       appId,
     };
   }
