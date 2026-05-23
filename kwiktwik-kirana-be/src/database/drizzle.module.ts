@@ -66,7 +66,7 @@ export const PG_POOL_TOKEN = 'PG_POOL';
             process.env.DB_STATEMENT_TIMEOUT || '30000',
             10,
           ),
-          application_name: 'kwiktwik-kirana-be',
+          application_name: 'kwiktwik-be',
         });
 
         // Prevent unhandled pool errors from crashing the process.

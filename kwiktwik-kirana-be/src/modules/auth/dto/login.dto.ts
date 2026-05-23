@@ -11,7 +11,7 @@ export class LoginBaseDto {
   @ApiProperty({
     example: '+919876543210',
     description:
-      'Phone number in E.164 format (required for kirana-fe detection)',
+      'Phone number in E.164 format (required for legacy user detection)',
   })
   @IsString()
   @IsNotEmpty()
@@ -77,7 +77,7 @@ export class LoginGoogleDto {
   @ApiProperty({
     example: '+919876543210',
     description:
-      'Phone number in E.164 format (optional for Google login, used for kirana-fe detection)',
+      'Phone number in E.164 format (optional for Google login, used for legacy user detection)',
     required: false,
   })
   @IsString()

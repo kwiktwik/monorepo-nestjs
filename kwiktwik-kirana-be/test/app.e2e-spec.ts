@@ -40,7 +40,7 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect((res: { body: { status: string; service: string } }) => {
         expect(res.body.status).toBe('ok');
-        expect(res.body.service).toBe('kwiktwik-kirana-be');
+        expect(res.body.service).toBe('kwiktwik-be');
       });
   });
 });

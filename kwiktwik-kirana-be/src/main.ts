@@ -45,9 +45,9 @@ async function bootstrap() {
   const port = process.env.PORT || 3002;
 
   const config = new DocumentBuilder()
-    .setTitle('KwikTwik Kirana API')
+    .setTitle('KwikTwik API')
     .setDescription(
-      'API documentation for ShareStatus/Kirana backend - Authentication, Config, User management',
+      'API documentation for KwikTwik backend - Authentication, Config, User management',
     )
     .setVersion('1.0')
     .addServer('/', 'Current server')
@@ -107,7 +107,7 @@ async function bootstrap() {
     process.env.NODE_ENV !== 'production'
   ) {
     const mockConfig = new DocumentBuilder()
-      .setTitle('KwikTwik Kirana Mock API')
+      .setTitle('KwikTwik Mock API')
       .setDescription(
         'API documentation for testing with mock data and rules engine',
       )

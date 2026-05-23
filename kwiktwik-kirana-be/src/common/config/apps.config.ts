@@ -21,9 +21,9 @@ export interface AppConfig {
 export const REGISTERED_APPS: Record<string, AppConfig> = {
   'com.jugnu.alertpe': {
     id: 'com.jugnu.alertpe',
-    name: 'Kirana Apps (Legacy Flutter)',
+    name: 'AlertPe (Legacy Flutter)',
     description:
-      'Legacy Flutter app - users should be redirected to api.kiranaapps.com',
+      'Legacy Flutter app (com.jugnu.alertpe) - users should be redirected to api.kiranaapps.com',
     enabled: true,
     rateLimit: {
       maxRequests: 100,

@@ -145,7 +145,7 @@ export class RazorpayService {
     const razorpay = this.getRazorpayInstance(appId);
     const keyId = this.getKeyId(appId);
     const orderId = nanoid(8);
-    const notes: Record<string, string> = { ...rawNotes, db: 'kirana-kwiktwik-be' };
+    const notes: Record<string, string> = { ...rawNotes, db: 'kwiktwik-be' };
     const receiptId = receipt || `rcpt_${orderId}`;
 
     this.logger.log(
@@ -258,7 +258,7 @@ export class RazorpayService {
     },
   ) {
     const { quantity = 1, flow = 'intent', vpa, notes: rawNotes } = dto;
-    const notes = { ...rawNotes, db: 'kirana-kwiktwik-be' };
+    const notes = { ...rawNotes, db: 'kwiktwik-be' };
     const email = notes.email;
     const contact = notes.contact || '9999999999';
 

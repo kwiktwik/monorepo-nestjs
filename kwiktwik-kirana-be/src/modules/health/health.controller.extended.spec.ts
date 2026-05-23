@@ -61,7 +61,7 @@ describe('HealthController - Extended', () => {
         .get('/health')
         .expect(200);
 
-      expect(response.body.service).toBe('kwiktwik-kirana-be');
+      expect(response.body.service).toBe('kwiktwik-be');
     });
 
     it('should return consistent version', async () => {

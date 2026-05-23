@@ -1,6 +1,6 @@
 # Cron Job Running Guide
 
-This document explains how cron jobs run in `kwiktwik-kirana-be`, how to verify they are active, and how to trigger supported jobs manually.
+This document explains how cron jobs run in `kwiktwik-be`, how to verify they are active, and how to trigger supported jobs manually.
 
 ## How Cron Works Here
 
@@ -65,19 +65,19 @@ pnpm run build
 2. Start backend process (example):
 
 ```bash
-pm2 start ecosystem.config.cjs --only kwiktwik-kirana-be
+pm2 start ecosystem.config.cjs --only kwiktwik-be
 ```
 
 3. Inspect logs:
 
 ```bash
-pm2 logs kwiktwik-kirana-be --lines 200
+pm2 logs kwiktwik-be --lines 200
 ```
 
 4. Filter cron lines:
 
 ```bash
-pm2 logs kwiktwik-kirana-be --lines 500 | rg -i "cron|redemption|4-hour|4h"
+pm2 logs kwiktwik-be --lines 500 | rg -i "cron|redemption|4-hour|4h"
 ```
 
 ## Manual Trigger (Supported Job)

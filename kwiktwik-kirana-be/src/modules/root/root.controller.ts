@@ -23,7 +23,7 @@ export class RootController {
     }) + ' IST';
 
     return {
-      message: 'KwikTwik Kirana API',
+      message: 'KwikTwik API',
       status: 'running',
       deployed: now.toISOString(),
       deployedIndianTime: indianTimeReadable,

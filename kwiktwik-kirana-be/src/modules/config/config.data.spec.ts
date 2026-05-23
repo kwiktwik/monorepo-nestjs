@@ -39,7 +39,7 @@ describe('Config Data - APP_CONFIGS', () => {
 
       it('should have correct app metadata', () => {
         expect(config?.app?.id).toBe(appId);
-        expect(config?.app?.name).toBe('Kirana Apps');
+        expect(config?.app?.name).toBe('AlertPe');
         expect(config?.app?.version).toBeDefined();
         expect(config?.app?.environment).toBeDefined();
       });
@@ -112,7 +112,7 @@ describe('Config Data - APP_CONFIGS', () => {
         const config = getConfigForAppId(appId);
         expect(config).toBeDefined();
         expect(config?.app?.id).toBe(appId);
-        expect(config?.app?.name).toBe('Kirana Apps');
+        expect(config?.app?.name).toBe('AlertPe');
       });
     });
 

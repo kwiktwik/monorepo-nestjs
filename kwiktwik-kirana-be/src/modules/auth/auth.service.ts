@@ -22,11 +22,11 @@ import { AuthUserResponse } from './types';
 export type { AuthUserResponse } from './types';
 import { isMockMode } from '../../common/utils/is-mock-mode';
 import { getTempEmailDomain } from '../../common/config/apps.config';
-import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
+import { LegacyFeInternalService } from './services/legacy-fe-internal.service';
 import * as admin from 'firebase-admin';
 
-/** Kirana-FE (legacy Flutter app) app IDs */
-const KIRANA_FE_APP_IDS = ['com.jugnu.alertpe'];
+/** Legacy Flutter app IDs (com.jugnu.alertpe) */
+const LEGACY_FE_APP_IDS = ['com.jugnu.alertpe'];
 
 interface TruecallerTokenData {
   access_token?: string;
@@ -75,7 +75,7 @@ export class AuthService {
    * Format: appId -> clientId or comma-separated client IDs
    * Example:
    *   GOOGLE_CLIENT_ID_com.kwiktwik.datingai=1056042648374-droqkniegfkl1sg6h8ftr2mnqa8gje4v.apps.googleusercontent.com
-   *   GOOGLE_CLIENT_ID_com.kwiktwik.kirana=1056042648374-xxx.apps.googleusercontent.com
+   *   GOOGLE_CLIENT_ID_com.kwiktwik.app=1056042648374-xxx.apps.googleusercontent.com
    */
   private getGoogleClientIdsForApp(appId: string): string[] {
     // Check for app-specific client ID
@@ -104,7 +104,7 @@ export class AuthService {
     @Inject(DRIZZLE_TOKEN)
     private db: NodePgDatabase<typeof schema>,
     private jwtService: JwtService,
-    private kiranaFeService: KiranaFeInternalService,
+    private legacyFeService: LegacyFeInternalService,
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (clientId) {
@@ -114,44 +114,44 @@ export class AuthService {
   }
 
   /**
-   * Check if a user exists in kirana-fe (legacy Flutter app)
-   * First tries HTTP API call to kirana-fe, falls back to local DB check
-   * Returns true if the phone number exists in kirana-fe
+   * Check if a user exists in the legacy Flutter app
+   * First tries HTTP API call to legacy FE, falls back to local DB check
+   * Returns true if the phone number exists in legacy FE
    */
-  async checkKiranaFeUser(phoneNumber: string): Promise<boolean> {
+  async checkLegacyFeUser(phoneNumber: string): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
-    // Also get digits-only format for kirana-fe (old DB stores without +)
+    // Also get digits-only format for legacy FE (old DB stores without +)
     const digitsOnly = phoneNumber.replace(/\D/g, '');
 
-    // Try HTTP API call to kirana-fe first (most accurate)
+    // Try HTTP API call to legacy FE first (most accurate)
     try {
       this.logger.log(
-        `[checkKiranaFeUser] Checking via HTTP API: ${normalized} and ${digitsOnly}`,
+        `[checkLegacyFeUser] Checking via HTTP API: ${normalized} and ${digitsOnly}`,
       );
 
       // Try with normalized format first (+918496866494)
-      let exists = await this.kiranaFeService.checkUserExists(normalized);
+      let exists = await this.legacyFeService.checkUserExists(normalized);
 
       // If not found, try with digits-only format (918496866494)
       if (!exists) {
         this.logger.log(
-          `[checkKiranaFeUser] Trying digits-only format: ${digitsOnly}`,
+          `[checkLegacyFeUser] Trying digits-only format: ${digitsOnly}`,
         );
-        exists = await this.kiranaFeService.checkUserExists(digitsOnly);
+        exists = await this.legacyFeService.checkUserExists(digitsOnly);
       }
 
-      this.logger.log(`[checkKiranaFeUser] HTTP API result: ${exists}`);
+      this.logger.log(`[checkLegacyFeUser] HTTP API result: ${exists}`);
       return exists;
     } catch (error) {
       this.logger.warn(
-        `[checkKiranaFeUser] HTTP API failed, falling back to DB check:`,
+        `[checkLegacyFeUser] HTTP API failed, falling back to DB check:`,
         error instanceof Error ? error.message : 'Unknown error',
       );
       // Continue to fallback
     }
 
-    // Fallback: Check local database (shared with kirana-fe)
-    this.logger.log(`[checkKiranaFeUser] Checking via local DB: ${normalized}`);
+    // Fallback: Check local database (shared with legacy FE)
+    this.logger.log(`[checkLegacyFeUser] Checking via local DB: ${normalized}`);
 
     // Find user by phone number (excluding deleted users)
     const userRecord = await this.db
@@ -171,19 +171,19 @@ export class AuthService {
 
     const userId = userRecord[0].id;
 
-    // Check if user has metadata for any kirana-fe app
-    const kiranaMetadata = await this.db
+    // Check if user has metadata for any legacy FE app
+    const legacyMetadata = await this.db
       .select()
       .from(schema.userMetadata)
       .where(
         and(
           eq(schema.userMetadata.userId, userId),
-          sql`${schema.userMetadata.appId} IN (${KIRANA_FE_APP_IDS.map((id) => `'${id}'`).join(',')})`,
+          sql`${schema.userMetadata.appId} IN (${LEGACY_FE_APP_IDS.map((id) => `'${id}'`).join(',')})`,
         ),
       )
       .limit(1);
 
-    return kiranaMetadata.length > 0;
+    return legacyMetadata.length > 0;
   }
 
   /** Test phone for local dev - use OTP 123456 without sending SMS */
@@ -1265,8 +1265,8 @@ export class AuthService {
   }
 
   /**
-   * Truecaller Sign-In v2 - with kirana-fe (legacy Flutter app) user detection
-   * Returns error if user already exists in kirana-fe system
+   * Truecaller Sign-In v2 - with legacy Flutter app user detection
+   * Returns error if user already exists in legacy system
    */
   async truecallerSigninV2(
     code: string,
@@ -1291,7 +1291,7 @@ export class AuthService {
     };
   }> {
     // First, do the normal Truecaller signin to get the phone number
-    // We need to intercept before user creation to check for kirana-fe
+    // We need to intercept before user creation to check for legacy FE
 
     // MOCK MODE: Skip real Truecaller OAuth, return hardcoded test user
     if (isMockMode()) {

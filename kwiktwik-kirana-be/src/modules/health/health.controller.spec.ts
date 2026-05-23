@@ -37,7 +37,7 @@ describe('HealthController', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body.status).toBe('ok');
-          expect(res.body.service).toBe('kwiktwik-kirana-be');
+          expect(res.body.service).toBe('kwiktwik-be');
           expect(res.body.version).toBe('1.0.0');
           expect(res.body.timestamp).toBeDefined();
         });

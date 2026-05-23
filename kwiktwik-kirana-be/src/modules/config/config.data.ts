@@ -702,7 +702,7 @@ export const APP_CONFIGS = {
     ...baseConfig,
     app: {
       ...baseConfig.app,
-      name: 'Kirana Apps',
+      name: 'AlertPe',
       id: 'com.jugnu.alertpe',
     },
     features: {

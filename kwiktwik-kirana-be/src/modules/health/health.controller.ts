@@ -87,7 +87,7 @@ export class HealthController implements OnModuleInit {
     const healthStatus: HealthStatus = {
       status: memoryStatus === 'critical' ? 'critical' : 'ok',
       timestamp: new Date().toISOString(),
-      service: 'kwiktwik-kirana-be',
+      service: 'kwiktwik-be',
       version: '1.0.0',
       uptime: Math.round((Date.now() - this.startTime) / 1000),
       memory: {

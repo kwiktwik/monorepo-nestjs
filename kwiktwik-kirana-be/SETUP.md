@@ -13,7 +13,7 @@ cp .env.example .env
 ```
 
 Edit `.env` with your actual values:
-- `DATABASE_URL` - PostgreSQL connection string (same as kirana-fe)
+- `DATABASE_URL` - PostgreSQL connection string
 - `JWT_SECRET` - Secret key for JWT tokens
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `EQUENCE_USERNAME` - Equence SMS username
@@ -36,7 +36,7 @@ pnpm run build
 ### 5. Production Deployment
 ```bash
 # Using PM2
-pm2 start ecosystem.config.cjs --only kwiktwik-kirana-be
+pm2 start ecosystem.config.cjs --only kwiktwik-be
 
 # Or directly
 pnpm run start:prod
@@ -102,7 +102,7 @@ curl -X DELETE http://localhost:3002/api/user/v1 \
 
 ## Database Schema
 
-The server uses Drizzle ORM and connects to the same PostgreSQL database as `kirana-fe`. It reads/writes to existing tables:
+The server uses Drizzle ORM and connects to a PostgreSQL database. It reads/writes to existing tables:
 
 - `user` - User accounts
 - `account` - OAuth accounts
@@ -153,7 +153,7 @@ Request Flow:
 - [ ] Set `NODE_ENV=production`
 - [ ] Run `pnpm run build` before deployment
 - [ ] Start with PM2 for process management
-- [ ] Monitor logs: `pm2 logs kwiktwik-kirana-be`
+- [ ] Monitor logs: `pm2 logs kwiktwik-be`
 
 ## Troubleshooting
 
@@ -185,7 +185,7 @@ pnpm run build
 For issues or questions, check the logs:
 ```bash
 # PM2 logs
-pm2 logs kwiktwik-kirana-be
+pm2 logs kwiktwik-be
 
 # Development logs
 pnpm run start:dev

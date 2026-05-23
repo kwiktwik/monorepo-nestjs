@@ -1,21 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-interface KiranaFeCheckResponse {
+interface LegacyFeCheckResponse {
   exists: boolean;
   userId?: string;
   phoneNumber?: string;
 }
 
 @Injectable()
-export class KiranaFeInternalService {
-  private readonly logger = new Logger(KiranaFeInternalService.name);
-  private readonly kiranaFeBaseUrl: string;
+export class LegacyFeInternalService {
+  private readonly logger = new Logger(LegacyFeInternalService.name);
+  private readonly legacyFeBaseUrl: string;
   private readonly internalApiKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.kiranaFeBaseUrl = this.configService.get<string>(
-      'KIRANA_FE_BASE_URL',
+    this.legacyFeBaseUrl = this.configService.get<string>(
+      'LEGACY_FE_BASE_URL',
       'http://localhost:3000',
     );
     this.internalApiKey = this.configService.get<string>(
@@ -25,21 +25,21 @@ export class KiranaFeInternalService {
   }
 
   /**
-   * Check if user exists in kirana-fe (Flutter app backend)
+   * Check if user exists in the legacy Flutter app backend
    * Uses internal API endpoint that requires API key authentication
    */
   async checkUserExists(phoneNumber: string): Promise<boolean> {
     try {
-      this.logger.log(`[KiranaFe Check] Checking user: ${phoneNumber}`);
+      this.logger.log(`[LegacyFe Check] Checking user: ${phoneNumber}`);
       this.logger.log(
-        `[KiranaFe Check] API URL: ${this.kiranaFeBaseUrl}/api/internal/user/check`,
+        `[LegacyFe Check] API URL: ${this.legacyFeBaseUrl}/api/internal/user/check`,
       );
       this.logger.log(
-        `[KiranaFe Check] API Key configured: ${this.internalApiKey ? 'Yes' : 'No'}`,
+        `[LegacyFe Check] API Key configured: ${this.internalApiKey ? 'Yes' : 'No'}`,
       );
 
       const response = await fetch(
-        `${this.kiranaFeBaseUrl}/api/internal/user/check`,
+        `${this.legacyFeBaseUrl}/api/internal/user/check`,
         {
           method: 'POST',
           headers: {
@@ -51,38 +51,38 @@ export class KiranaFeInternalService {
         },
       );
 
-      this.logger.log(`[KiranaFe Check] Response status: ${response.status}`);
+      this.logger.log(`[LegacyFe Check] Response status: ${response.status}`);
 
       if (!response.ok) {
         if (response.status === 404) {
           // User not found
           this.logger.log(
-            `[KiranaFe Check] User ${phoneNumber} not found (404)`,
+            `[LegacyFe Check] User ${phoneNumber} not found (404)`,
           );
           return false;
         }
         if (response.status === 401) {
           this.logger.error(
-            '[KiranaFe Check] Unauthorized - invalid internal API key',
+            '[LegacyFe Check] Unauthorized - invalid internal API key',
           );
-          throw new Error('Kirana-fe internal API authentication failed');
+          throw new Error('Legacy FE internal API authentication failed');
         }
-        throw new Error(`Kirana-fe API error: ${response.status}`);
+        throw new Error(`Legacy FE API error: ${response.status}`);
       }
 
-      const data = (await response.json()) as KiranaFeCheckResponse;
+      const data = (await response.json()) as LegacyFeCheckResponse;
       this.logger.log(
-        `[KiranaFe Check] User ${phoneNumber} exists: ${data.exists}`,
+        `[LegacyFe Check] User ${phoneNumber} exists: ${data.exists}`,
       );
 
       return data.exists;
     } catch (error) {
       this.logger.error(
-        `[KiranaFe Check] Error checking user ${phoneNumber}:`,
+        `[LegacyFe Check] Error checking user ${phoneNumber}:`,
         error instanceof Error ? error.message : 'Unknown error',
       );
       // Fail-safe: assume user doesn't exist if API call fails
-      // This allows new users to sign up even if kirana-fe is down
+      // This allows new users to sign up even if the legacy FE is down
       return false;
     }
   }

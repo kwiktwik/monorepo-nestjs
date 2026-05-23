@@ -6,7 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthV1Controller } from './auth-v1.controller';
 import { InternalAuthController } from './internal-auth.controller';
 import { AuthService } from './auth.service';
-import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
+import { LegacyFeInternalService } from './services/legacy-fe-internal.service';
 import { JwtStrategy } from './jwt.strategy';
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController, AuthV1Controller, InternalAuthController],
-  providers: [AuthService, KiranaFeInternalService, JwtStrategy],
-  exports: [AuthService, KiranaFeInternalService],
+  providers: [AuthService, LegacyFeInternalService, JwtStrategy],
+  exports: [AuthService, LegacyFeInternalService],
 })
 export class AuthModule {}

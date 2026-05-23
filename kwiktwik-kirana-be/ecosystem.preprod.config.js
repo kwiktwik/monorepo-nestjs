@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'kirana-be-preprod',
+      name: 'kwiktwik-be-preprod',
       script: './dist/main.js',
       instances: 1,
       exec_mode: 'cluster',

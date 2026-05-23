@@ -3,7 +3,7 @@
 exports[`HealthController - Extended GET /health should return health status matching snapshot 1`] = `
 Object {
   "memory": Any<Object>,
-  "service": "kwiktwik-kirana-be",
+  "service": "kwiktwik-be",
   "status": "ok",
   "timestamp": Any<String>,
   "uptime": Any<Number>,

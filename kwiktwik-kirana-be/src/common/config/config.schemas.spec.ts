@@ -144,7 +144,7 @@ describe('Config Schemas', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.app.name).toBe('Kirana Apps');
+        expect(result.data.app.name).toBe('AlertPe');
       }
     });
 

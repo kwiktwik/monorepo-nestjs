@@ -13,7 +13,7 @@
  * Options:
  *   --phone <phone>     Phone number (default: 8855866494)
  *   --app-id <appId>    App ID (default: com.jugnu.alertpe)
- *   --api-url <url>     API base URL (default: https://services.kiranaapps.com)
+ *   --api-url <url>     API base URL (default: https://services.kiranaapps.com - production URL)
  *   --json              Output as JSON
  */
 

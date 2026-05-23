@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
+import { LegacyFeInternalService } from './services/legacy-fe-internal.service';
 import { AuthService, normalizePhoneNumber } from './auth.service';
 
-class CheckKiranaUserDto {
+class CheckLegacyUserDto {
   phoneNumber: string;
 }
 
@@ -26,7 +26,7 @@ export class InternalAuthController {
   private readonly internalApiKey: string;
 
   constructor(
-    private readonly kiranaFeService: KiranaFeInternalService,
+    private readonly legacyFeService: LegacyFeInternalService,
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {
@@ -37,23 +37,23 @@ export class InternalAuthController {
   }
 
   /**
-   * Internal endpoint to check if user exists in kirana-fe (Flutter app)
+   * Internal endpoint to check if user exists in legacy Flutter app
    * This endpoint should only be called by internal services, not exposed to internet
    *
-   * POST /internal/auth/check-kirana-user
+   * POST /internal/auth/check-legacy-user
    * Headers:
    *   X-Internal-Key: <internal_api_key>
    * Body:
    *   { phoneNumber: "+919876543210" }
    *
    * Response:
-   *   { exists: true, message: "User exists in kirana-fe" }
+   *   { exists: true, message: "User exists in legacy system" }
    *   or
    *   { exists: false, message: "User not found" }
    */
-  @Post('check-kirana-user')
-  async checkKiranaUser(
-    @Body() dto: CheckKiranaUserDto,
+  @Post('check-legacy-user')
+  async checkLegacyUser(
+    @Body() dto: CheckLegacyUserDto,
     @Headers('x-internal-key') internalKey: string,
   ) {
     // Validate internal API key - this ensures endpoint is not publicly accessible
@@ -67,29 +67,29 @@ export class InternalAuthController {
 
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
 
-    // Call kirana-fe internal service to check user
-    const exists = await this.kiranaFeService.checkUserExists(normalizedPhone);
+    // Call legacy FE internal service to check user
+    const exists = await this.legacyFeService.checkUserExists(normalizedPhone);
 
     return {
       exists,
       phoneNumber: normalizedPhone,
       message: exists
-        ? 'User exists in kirana-fe legacy system'
-        : 'User not found in kirana-fe',
+        ? 'User exists in legacy system'
+        : 'User not found in legacy system',
     };
   }
 
   /**
-   * Alternative: Direct database check (fallback if kirana-fe API is down)
+   * Alternative: Direct database check (fallback if legacy FE API is down)
    * This checks the shared database directly
    *
-   * POST /internal/auth/check-kirana-user-local
+   * POST /internal/auth/check-legacy-user-local
    * Headers:
    *   X-Internal-Key: <internal_api_key>
    */
-  @Post('check-kirana-user-local')
-  async checkKiranaUserLocal(
-    @Body() dto: CheckKiranaUserDto,
+  @Post('check-legacy-user-local')
+  async checkLegacyUserLocal(
+    @Body() dto: CheckLegacyUserDto,
     @Headers('x-internal-key') internalKey: string,
   ) {
     // Validate internal API key
@@ -104,14 +104,14 @@ export class InternalAuthController {
     const normalizedPhone = normalizePhoneNumber(dto.phoneNumber);
 
     // Use the existing auth service method (checks local DB)
-    const exists = await this.authService.checkKiranaFeUser(normalizedPhone);
+    const exists = await this.authService.checkLegacyFeUser(normalizedPhone);
 
     return {
       exists,
       phoneNumber: normalizedPhone,
       message: exists
-        ? 'User exists in kirana-fe (checked via local DB)'
-        : 'User not found in kirana-fe (checked via local DB)',
+        ? 'User exists in legacy system (checked via local DB)'
+        : 'User not found in legacy system (checked via local DB)',
     };
   }
 }

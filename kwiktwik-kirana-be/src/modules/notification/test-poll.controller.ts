@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 /**
- * Mirrors kirana-fe GET/POST /api/test/poll so the Flutter app works
+ * Mirrors legacy FE GET/POST /api/test/poll so the Flutter app works
  * without changing paths when pointed at this NestJS backend.
  */
 @ApiTags('test-poll')
@@ -35,7 +35,7 @@ export class TestPollController {
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({
-    summary: 'Poll for test notification (kirana-fe compatible)',
+    summary: 'Poll for test notification (legacy FE compatible)',
   })
   async getPoll(@CurrentUser() user: { userId: string }) {
     return this.notificationService.pollTestNotification(user.userId);
@@ -50,7 +50,7 @@ export class TestPollController {
   })
   @UseGuards(AppIdGuard, JwtAuthGuard)
   @ApiOperation({
-    summary: 'Create or ack test notification (kirana-fe compatible)',
+    summary: 'Create or ack test notification (legacy FE compatible)',
   })
   async postPoll(
     @CurrentUser() user: { userId: string },

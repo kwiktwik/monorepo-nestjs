@@ -1,5 +1,5 @@
 /**
- * UPI Notification Parser (mirrors kirana-fe lib/utils/upi-parser.ts)
+ * UPI Notification Parser (mirrors legacy FE lib/utils/upi-parser.ts)
  * Parses payment notifications from UPI apps and extracts amount and sender.
  */
 
@@ -42,7 +42,7 @@ export interface UPIParserResult {
 }
 
 /**
- * UPI App Package Names (mirrors kirana-fe lib/utils/notification-utils.ts)
+ * UPI App Package Names (mirrors legacy FE lib/utils/notification-utils.ts)
  */
 export const UPI_APP_PACKAGES = [
   'com.phonepe.app',
@@ -356,7 +356,7 @@ function parseGeneric(title: string, content: string): UPIParserResult {
 }
 
 /**
- * Parse UPI notification and extract amount + sender (kirana-fe compatible).
+ * Parse UPI notification and extract amount + sender (legacy FE compatible).
  */
 export function parseUPINotification(
   packageName: string,

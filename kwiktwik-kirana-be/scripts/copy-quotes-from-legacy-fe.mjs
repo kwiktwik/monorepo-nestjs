@@ -1,15 +1,15 @@
 /**
- * Copy quotes data from source DB (KWIKTWIK_DATABASE_URL) to kwiktwik-kirana-be (DATABASE_URL / quotes).
+ * Copy quotes data from source DB (KWIKTWIK_DATABASE_URL) to kwiktwik-be (DATABASE_URL / quotes).
  *
  * Usage:
  *   npm run db:copy-quotes
  *   # Or with RDS/self-signed cert:
- *   NODE_TLS_REJECT_UNAUTHORIZED=0 DOTENV_CONFIG_PATH=.env.local node scripts/copy-quotes-from-kirana-fe.mjs
+ *   NODE_TLS_REJECT_UNAUTHORIZED=0 DOTENV_CONFIG_PATH=.env.local node scripts/copy-quotes-from-legacy-fe.mjs
  *
  * Requires in .env.local (or env):
  *   - KWIKTWIK_DATABASE_URL: source DB connection string
- *   - SOURCE_QUOTES_TABLE: source table name (e.g. quotes table in kirana-fe)
- *   - DATABASE_URL: destination DB (kwiktwik-kirana-be quotes)
+ *   - SOURCE_QUOTES_TABLE: source table name (e.g. quotes table in legacy FE)
+ *   - DATABASE_URL: destination DB (kwiktwik-be quotes)
  *
  * Prerequisite: quotes table must exist in destination. Run: npm run db:push
  */
@@ -37,9 +37,9 @@ function loadEnv(path) {
 
 loadEnv(envPath);
 
-// If KWIKTWIK_DATABASE_URL not set, try kirana-fe .env
+// If KWIKTWIK_DATABASE_URL not set, try legacy FE .env
 if (!process.env.KWIKTWIK_DATABASE_URL) {
-  const fePath = resolve(process.cwd(), '../kirana-fe/.env');
+  const fePath = resolve(process.cwd(), '../legacy-fe/.env');
   loadEnv(fePath);
 }
 
@@ -90,7 +90,7 @@ async function main() {
     process.exit(1);
   }
   if (!destUrl) {
-    console.error('DATABASE_URL (or AWS_RDS_*) is required (destination: kwiktwik-kirana-be quotes)');
+    console.error('DATABASE_URL (or AWS_RDS_*) is required (destination: kwiktwik-be quotes)');
     process.exit(1);
   }
 

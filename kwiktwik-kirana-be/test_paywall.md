@@ -6,7 +6,7 @@ Use these JWT tokens in Swagger UI to test different paywall configurations.
 
 1. Start the mock server:
    ```bash
-   cd kwiktwik-kirana-be
+   cd kwiktwik-be
    pnpm start:dev:mock
    ```
 

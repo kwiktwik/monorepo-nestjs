@@ -2,14 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService, normalizePhoneNumber } from './auth.service';
 import { DRIZZLE_TOKEN } from '../../database/drizzle.module';
 import { JwtService } from '@nestjs/jwt';
-import { KiranaFeInternalService } from './services/kirana-fe-internal.service';
+import { LegacyFeInternalService } from './services/legacy-fe-internal.service';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
   let mockDb: any;
   let mockJwtService: any;
-  let mockKiranaFeService: any;
+  let mockLegacyFeService: any;
 
   beforeEach(async () => {
     mockDb = {
@@ -39,7 +39,7 @@ describe('AuthService', () => {
       verify: jest.fn(),
     };
 
-    mockKiranaFeService = {
+    mockLegacyFeService = {
       checkUserExists: jest.fn().mockResolvedValue(false),
       sendOtp: jest.fn(),
       verifyOtp: jest.fn(),
@@ -50,7 +50,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: DRIZZLE_TOKEN, useValue: mockDb },
         { provide: JwtService, useValue: mockJwtService },
-        { provide: KiranaFeInternalService, useValue: mockKiranaFeService },
+        { provide: LegacyFeInternalService, useValue: mockLegacyFeService },
       ],
     }).compile();
 
@@ -83,35 +83,35 @@ describe('AuthService', () => {
     });
   });
 
-  describe('checkKiranaFeUser', () => {
-    it('should return true if user exists in kirana-fe', async () => {
-      mockKiranaFeService.checkUserExists.mockResolvedValue(true);
+  describe('checkLegacyFeUser', () => {
+    it('should return true if user exists in legacy FE', async () => {
+      mockLegacyFeService.checkUserExists.mockResolvedValue(true);
 
-      const result = await service.checkKiranaFeUser('+919876543210');
+      const result = await service.checkLegacyFeUser('+919876543210');
 
       expect(result).toBe(true);
-      expect(mockKiranaFeService.checkUserExists).toHaveBeenCalledWith(
+      expect(mockLegacyFeService.checkUserExists).toHaveBeenCalledWith(
         '+919876543210',
       );
     });
 
     it('should return false if user does not exist', async () => {
-      mockKiranaFeService.checkUserExists.mockResolvedValue(false);
+      mockLegacyFeService.checkUserExists.mockResolvedValue(false);
 
-      const result = await service.checkKiranaFeUser('+919876543210');
+      const result = await service.checkLegacyFeUser('+919876543210');
 
       expect(result).toBe(false);
     });
 
     it('should fallback to digits-only format if normalized fails', async () => {
-      mockKiranaFeService.checkUserExists
+      mockLegacyFeService.checkUserExists
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true);
 
-      const result = await service.checkKiranaFeUser('9876543210');
+      const result = await service.checkLegacyFeUser('9876543210');
 
       expect(result).toBe(true);
-      expect(mockKiranaFeService.checkUserExists).toHaveBeenCalledTimes(2);
+      expect(mockLegacyFeService.checkUserExists).toHaveBeenCalledTimes(2);
     });
   });
 });

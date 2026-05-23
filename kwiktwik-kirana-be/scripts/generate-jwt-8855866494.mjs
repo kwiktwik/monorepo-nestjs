@@ -127,7 +127,7 @@ async function main() {
     } else if (shouldCreateUser) {
       // Create new user
       userId = nanoid();
-      userEmail = `${cleanPhone}@kiranaapps.local`;
+      userEmail = `${cleanPhone}@kwiktwik.local`;
       isNewUser = true;
 
       await client.query(
@@ -157,7 +157,7 @@ async function main() {
         JSON.stringify({
           userId,
           name: userNameFromDb || userName,
-          email: userEmail || `${cleanPhone}@kiranaapps.local`,
+          email: userEmail || `${cleanPhone}@kwiktwik.local`,
           phoneNumber,
           appId,
           token,
@@ -173,7 +173,7 @@ async function main() {
       console.log(`   User ID:    ${userId}`);
       console.log(`   Name:       ${userNameFromDb || userName}`);
       console.log(
-        `   Email:      ${userEmail || `${cleanPhone}@kiranaapps.local`}`,
+        `   Email:      ${userEmail || `${cleanPhone}@kwiktwik.local`}`,
       );
       console.log(`   Phone:      ${phoneNumber}`);
       console.log(`   App ID:     ${appId}`);

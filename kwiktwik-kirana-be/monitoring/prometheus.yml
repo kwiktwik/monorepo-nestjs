@@ -1,13 +1,13 @@
 # Prometheus Configuration
 # 
-# This is a sample Prometheus configuration for monitoring the KwikTwik Kirana backend
+# This is a sample Prometheus configuration for monitoring the KwikTwik backend
 # Includes both blackbox exporter probes and direct scraping of the /metrics endpoint
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'kwiktwik-kirana-monitor'
+    monitor: 'kwiktwik-monitor'
 
 # Alertmanager configuration (optional - configure if you have Alertmanager)
 alerting:
@@ -68,7 +68,7 @@ scrape_configs:
   # Direct Prometheus Metrics Scraping (NEW)
   # ============================================
   # This scrapes the native /metrics endpoint exposed by your NestJS app
-  - job_name: 'kirana-backend-metrics'
+  - job_name: 'kwiktwik-backend-metrics'
     scheme: https
     static_configs:
       - targets:

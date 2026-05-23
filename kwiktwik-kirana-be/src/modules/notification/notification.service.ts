@@ -186,7 +186,7 @@ export class NotificationService {
     const providedPayerName = sanitizeString(dto.payer_name || dto.payerName);
     const providedTransactionType = dto.transaction_type || dto.transactionType;
 
-    // kirana-fe v1: use client-provided details, or server-side UPI parsing (enhanced notification)
+    // legacy FE v1: use client-provided details, or server-side UPI parsing (enhanced notification)
     let paymentAmount: string | null = providedAmount;
     let paymentPayerName: string | null = providedPayerName ?? null;
     let paymentTransactionType: 'RECEIVED' | 'SENT' | 'UNKNOWN' =
@@ -688,7 +688,7 @@ export class NotificationService {
   }
 
   /**
-   * Generate TTS message for notification (matches kirana-fe generateTTSMessage).
+   * Generate TTS message for notification (matches legacy FE generateTTSMessage).
    */
   private generateTTSMessage(
     amount: string | null,

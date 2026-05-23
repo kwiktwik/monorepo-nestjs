@@ -1,6 +1,6 @@
 # API Crawler Module
 
-A flexible, scalable API crawler built for the KwikTwik Kirana BE system. Designed for easy extraction into a standalone microservice.
+A flexible, scalable API crawler built for the KwikTwik BE system. Designed for easy extraction into a standalone microservice.
 
 ## Features
 
@@ -35,7 +35,7 @@ api-crawler/
 ### 1. Run Database Migration
 
 ```bash
-cd kwiktwik-kirana-be
+cd kwiktwik-be
 npx drizzle-kit migrate
 ```
 

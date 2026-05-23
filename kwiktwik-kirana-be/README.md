@@ -1,4 +1,4 @@
-# KwikTwik Kirana Backend
+# KwikTwik Backend
 
 Multi-tenant NestJS backend powering multiple Android apps (ShareStatus, Payment Alert, StaffBook, etc.) with shared authentication, payments, notifications, and user management services.
 
@@ -138,20 +138,20 @@ pm2 start ecosystem.preprod.config.js
 pm2 status
 
 # View logs
-pm2 logs kirana-be-prod
-pm2 logs kirana-be-preprod
+pm2 logs kwiktwik-be-prod
+pm2 logs kwiktwik-be-preprod
 
 # Restart
-pm2 restart kirana-be-prod
-pm2 restart kirana-be-preprod
+pm2 restart kwiktwik-be-prod
+pm2 restart kwiktwik-be-preprod
 
 # Stop
-pm2 stop kirana-be-prod
-pm2 stop kirana-be-preprod
+pm2 stop kwiktwik-be-prod
+pm2 stop kwiktwik-be-preprod
 
 # Delete
-pm2 delete kirana-be-prod
-pm2 delete kirana-be-preprod
+pm2 delete kwiktwik-be-prod
+pm2 delete kwiktwik-be-preprod
 ```
 
 ### Environment Configuration
