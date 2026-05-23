@@ -74,21 +74,6 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
-  "com.paymentalert.app": {
-    id: "com.paymentalert.app",
-    name: "AlertPay (com.paymentalert.app)",
-    description: "AlertPay Android mobile application (New Package Name)",
-    enabled: true,
-    rateLimit: {
-      maxRequests: 99999,
-      windowMs: 15 * 60 * 1000, // 15 minutes
-    },
-    features: {
-      otpLogin: true,
-      truecallerLogin: true,
-      googleLogin: true,
-    },
-  },
   "alertpay-ios": {
     id: "alertpay-ios",
     name: "AlertPay iOS",

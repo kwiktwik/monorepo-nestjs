@@ -197,7 +197,6 @@ const kiranaappsOverrides = {
  * Package Mapping to Overrides
  */
 const PACKAGE_OVERRIDES: Record<string, Record<string, any>> = {
-    "com.paymentalert.app": alertpayOverrides,
     "com.jugnu.alertpe": kiranaappsOverrides,
     "com.sharestatus.app": jamunOverrides,
     "com.sharekaro.kirana": jamunOverrides

@@ -180,7 +180,6 @@ const sangamOverrides = {
 };
 
 const PACKAGE_OVERRIDES: Record<string, Record<string, any>> = {
-  "com.paymentalert.app": alertpayOverrides,
   "com.jugnu.alertpe": kiranaappsOverrides,
   "com.sangam.wallpaperapp": sangamOverrides,
   "com.sharestatus.app": jamunOverrides,
