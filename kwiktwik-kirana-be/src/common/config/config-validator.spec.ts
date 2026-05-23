@@ -25,7 +25,6 @@ describe('ConfigValidator', () => {
       const registeredAppIds = Object.keys(REGISTERED_APPS);
 
       expect(result.registeredApps).toEqual(registeredAppIds);
-      expect(result.registeredApps).toContain('com.paymentalert.app');
       expect(result.registeredApps).toContain('com.jugnu.alertpe');
     });
 
@@ -55,10 +54,10 @@ describe('ConfigValidator', () => {
 
   describe('getSafeConfigForAppId', () => {
     it('should return config for registered app with config', () => {
-      const config = getSafeConfigForAppId('com.paymentalert.app');
+      const config = getSafeConfigForAppId('com.jugnu.alertpe');
 
       expect(config).toBeDefined();
-      expect(config?.app?.id).toBe('com.paymentalert.app');
+      expect(config?.app?.id).toBe('com.jugnu.alertpe');
     });
 
     it('should return null for unregistered app', () => {

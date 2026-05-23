@@ -30,7 +30,7 @@ export default function Login() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-ID': 'com.paymentalert.app',
+          'X-App-ID': 'com.jugnu.alertpe',
         },
         body: JSON.stringify({ phoneNumber: mobileNumber, appHash }),
       });
@@ -62,7 +62,7 @@ export default function Login() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-ID': 'com.paymentalert.app',
+          'X-App-ID': 'com.jugnu.alertpe',
         },
         body: JSON.stringify({ phoneNumber: mobileNumber, code: otpCode }),
       });

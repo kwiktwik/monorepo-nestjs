@@ -26,7 +26,7 @@ try {
 
 const { Pool } = pg;
 const BASE_URL = process.env.SEED_BASE_URL || 'http://localhost:3002';
-const APP_ID = 'com.paymentalert.app';
+const APP_ID = 'com.jugnu.alertpe';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-this-in-production';
 
 function getConnectionString() {

@@ -14,11 +14,11 @@ describe('AnalyticsService', () => {
   let service: AnalyticsService;
 
   const mockConfig: Record<string, string | undefined> = {
-    FACEBOOK_PIXEL_ID_COM_PAYMENTALERT_APP: 'fb-pixel-1',
-    FACEBOOK_ACCESS_TOKEN_COM_PAYMENTALERT_APP: 'fb-token-1',
-    MIXPANEL_TOKEN_COM_PAYMENTALERT_APP: 'mp-token',
-    FIREBASE_MEASUREMENT_ID_COM_PAYMENTALERT_APP: 'G-TEST1',
-    FIREBASE_API_SECRET_COM_PAYMENTALERT_APP: 'fb-secret-1',
+    FACEBOOK_PIXEL_ID_COM_JUGNU_ALERTPE: 'fb-pixel-1',
+    FACEBOOK_ACCESS_TOKEN_COM_JUGNU_ALERTPE: 'fb-token-1',
+    MIXPANEL_TOKEN_COM_JUGNU_ALERTPE: 'mp-token',
+    FIREBASE_MEASUREMENT_ID_COM_JUGNU_ALERTPE: 'G-TEST1',
+    FIREBASE_API_SECRET_COM_JUGNU_ALERTPE: 'fb-secret-1',
     FACEBOOK_PIXEL_ID_COM_SHAREKARO_KIRANA: 'fb-pixel-2',
     FACEBOOK_ACCESS_TOKEN_COM_SHAREKARO_KIRANA: 'fb-token-2',
     MIXPANEL_TOKEN_COM_SHAREKARO_KIRANA: 'mp-token-2',
@@ -74,7 +74,7 @@ describe('AnalyticsService', () => {
         eventName: 'test_event',
         userData,
         eventProperties: { prop: 'val' },
-        appId: 'com.paymentalert.app',
+        appId: 'com.jugnu.alertpe',
       });
 
       expect(result.overallSuccess).toBe(true);

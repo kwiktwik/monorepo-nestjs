@@ -335,7 +335,7 @@ describe('PaymentConfigService', () => {
       const service = new PaymentConfigService(null);
       await service.initialize();
 
-      const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
+      const plan = await service.getPlanConfig('com.jugnu.alertpe', 'premium_monthly');
 
       expect(plan).toBeNull();
     });
@@ -343,7 +343,7 @@ describe('PaymentConfigService', () => {
     it('should return plan from database when available', async () => {
       const planResult = [{
         id: 'premium_monthly',
-        appId: 'com.paymentalert.app',
+        appId: 'com.jugnu.alertpe',
         name: 'Premium Monthly',
         initialAmount: 4900,
         recurringAmount: 4900,
@@ -366,7 +366,7 @@ describe('PaymentConfigService', () => {
       const service = new PaymentConfigService(mockDb);
       await service.initialize();
 
-      const plan = await service.getPlanConfig('com.paymentalert.app', 'premium_monthly');
+      const plan = await service.getPlanConfig('com.jugnu.alertpe', 'premium_monthly');
 
       expect(plan).not.toBeNull();
       expect(plan?.initialAmount).toBe(4900);
@@ -389,7 +389,7 @@ describe('PaymentConfigService', () => {
       const service = new PaymentConfigService(mockDb);
       await service.initialize();
 
-      const plan = await service.getPlanConfig('com.paymentalert.app', 'unknown_plan');
+      const plan = await service.getPlanConfig('com.jugnu.alertpe', 'unknown_plan');
 
       expect(plan).toBeNull();
     });

@@ -166,7 +166,6 @@ function StreamingSyncProgress({
 
 const REGISTERED_APPS = [
   { id: "com.jugnu.alertpe", name: "Kirana Apps", packageName: "com.jugnu.alertpe" },
-  { id: "com.paymentalert.app", name: "AlertPay", packageName: "com.paymentalert.app" },
   { id: "com.sharestatus.app", name: "ShareStatus", packageName: "com.sharestatus.app" },
 ];
 

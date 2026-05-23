@@ -3,7 +3,7 @@
  *
  * Usage:
  *   node scripts/seed-plans.mjs                          # seed default app
- *   APP_ID=com.paymentalert.app node scripts/seed-plans.mjs   # seed specific app
+ *   APP_ID=com.jugnu.alertpe node scripts/seed-plans.mjs   # seed specific app
  *   DRY_RUN=true node scripts/seed-plans.mjs              # preview without writing
  *
  * Reads DATABASE_URL from .env.local or environment.
@@ -49,7 +49,7 @@ function getConnectionString() {
   return url;
 }
 
-const APP_ID = process.env.APP_ID || 'com.paymentalert.app';
+const APP_ID = process.env.APP_ID || 'com.jugnu.alertpe';
 const DRY_RUN = process.env.DRY_RUN === 'true';
 
 // ── Plans ───────────────────────────────────────────────────────

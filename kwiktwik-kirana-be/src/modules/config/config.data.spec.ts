@@ -2,7 +2,6 @@ import { getConfigForAppId, APP_CONFIGS } from './config.data';
 
 describe('Config Data - APP_CONFIGS', () => {
   const supportedAppIds = [
-    'com.paymentalert.app',
     'com.jugnu.alertpe',
   ];
 
@@ -106,14 +105,14 @@ describe('Config Data - APP_CONFIGS', () => {
       });
     });
 
-    describe('com.paymentalert.app configuration', () => {
-      const appId = 'com.paymentalert.app';
+    describe('com.jugnu.alertpe configuration', () => {
+      const appId = 'com.jugnu.alertpe';
 
       it('should return valid configuration', () => {
         const config = getConfigForAppId(appId);
         expect(config).toBeDefined();
         expect(config?.app?.id).toBe(appId);
-        expect(config?.app?.name).toBe('Payment Alert');
+        expect(config?.app?.name).toBe('Kirana Apps');
       });
     });
 

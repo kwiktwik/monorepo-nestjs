@@ -100,7 +100,7 @@ export const experimentEventTypeEnum = pgEnum('experiment_event_type', [
 export const apps = pgTable(
   'apps',
   {
-    id: text('id').primaryKey(), // e.g., 'com.paymentalert.app'
+    id: text('id').primaryKey(), // e.g., 'com.jugnu.alertpe'
     name: varchar('name', { length: 255 }).notNull(),
     slug: varchar('slug', { length: 100 }).notNull().unique(),
     description: text('description'),

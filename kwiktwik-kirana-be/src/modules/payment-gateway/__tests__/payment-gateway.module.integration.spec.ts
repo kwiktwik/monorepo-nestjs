@@ -42,14 +42,14 @@ describe('PaymentGatewayModule (Integration)', () => {
     // Set required environment variables for testing
     process.env.PAYMENT_USE_DB_REPOS = 'false'; // Use in-memory repos for tests
     process.env.PAYMENT_BILLING_SCHEDULER_ENABLED = 'true';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_KEY_ID = 'test_key_id';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_KEY_SECRET = 'test_key_secret';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_WEBHOOK_SECRET = 'test_webhook_secret';
-    process.env.PHONEPE_COM_PAYMENTALERT_APP_CLIENT_ID = 'test_client_id';
-    process.env.PHONEPE_COM_PAYMENTALERT_APP_CLIENT_SECRET = 'test_client_secret';
-    process.env.PHONEPE_COM_PAYMENTALERT_APP_MERCHANT_ID = 'test_merchant_id';
-    process.env.PHONEPE_COM_PAYMENTALERT_APP_SALT_KEY = 'test_salt_key';
-    process.env.PHONEPE_COM_PAYMENTALERT_APP_SALT_INDEX = '1';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_KEY_ID = 'test_key_id';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_KEY_SECRET = 'test_key_secret';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_WEBHOOK_SECRET = 'test_webhook_secret';
+    process.env.PHONEPE_COM_JUGNU_ALERTPE_CLIENT_ID = 'test_client_id';
+    process.env.PHONEPE_COM_JUGNU_ALERTPE_CLIENT_SECRET = 'test_client_secret';
+    process.env.PHONEPE_COM_JUGNU_ALERTPE_MERCHANT_ID = 'test_merchant_id';
+    process.env.PHONEPE_COM_JUGNU_ALERTPE_SALT_KEY = 'test_salt_key';
+    process.env.PHONEPE_COM_JUGNU_ALERTPE_SALT_INDEX = '1';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [PaymentGatewayModule],
@@ -123,7 +123,7 @@ describe('PaymentGatewayModule (Integration)', () => {
     });
 
     it('should get plan configuration', () => {
-      const plan = configService.getPlanConfig('com.paymentalert.app', 'premium_monthly');
+      const plan = configService.getPlanConfig('com.jugnu.alertpe', 'premium_monthly');
       expect(plan).toBeDefined();
       expect(plan?.initialAmount).toBeDefined();
       expect(plan?.recurringAmount).toBeDefined();
@@ -139,7 +139,7 @@ describe('PaymentGatewayModule (Integration)', () => {
       id: 'test_sub_123',
       merchantSubscriptionId: 'merchant_test_sub_123',
       userId: 'user_123',
-      appId: 'com.paymentalert.app',
+      appId: 'com.jugnu.alertpe',
       subscriptionType: SubscriptionType.USER_MANAGED,
       provider: PaymentProvider.RAZORPAY,
       planId: 'premium_monthly',
@@ -314,9 +314,9 @@ describe('Subscription API Controller (Integration)', () => {
 
   beforeAll(async () => {
     process.env.PAYMENT_USE_DB_REPOS = 'false';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_KEY_ID = 'test_key_id';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_KEY_SECRET = 'test_key_secret';
-    process.env.RAZORPAY_COM_PAYMENTALERT_APP_WEBHOOK_SECRET = 'test_webhook_secret';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_KEY_ID = 'test_key_id';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_KEY_SECRET = 'test_key_secret';
+    process.env.RAZORPAY_COM_JUGNU_ALERTPE_WEBHOOK_SECRET = 'test_webhook_secret';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [PaymentGatewayModule],

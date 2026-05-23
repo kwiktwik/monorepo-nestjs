@@ -71,7 +71,7 @@ If any required field is missing, the request fails with 400 Bad Request.
   @ApiHeader({
     name: 'X-App-ID',
     required: true,
-    description: 'App package identifier (e.g., com.paymentalert.app)',
+    description: 'App package identifier (e.g., com.jugnu.alertpe)',
   })
   @ApiHeader({
     name: 'X-Firebase-Installation-ID',
@@ -90,7 +90,7 @@ If any required field is missing, the request fails with 400 Bad Request.
     schema: {
       example: {
         success: true,
-        appId: 'com.paymentalert.app',
+        appId: 'com.jugnu.alertpe',
         featureKey: 'new_checkout_flow',
         identity: {
           value: 'firebase_inst_abc123',
@@ -201,7 +201,7 @@ Each flag includes its key, description, enabled status, and default value.
   @ApiHeader({
     name: 'X-App-ID',
     required: true,
-    description: 'App package identifier (e.g., com.paymentalert.app)',
+    description: 'App package identifier (e.g., com.jugnu.alertpe)',
   })
   @ApiResponse({
     status: 200,
@@ -209,7 +209,7 @@ Each flag includes its key, description, enabled status, and default value.
     schema: {
       example: {
         success: true,
-        appId: 'com.paymentalert.app',
+        appId: 'com.jugnu.alertpe',
         flags: [
           {
             key: 'new_checkout_flow',

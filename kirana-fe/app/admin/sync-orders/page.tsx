@@ -6,7 +6,6 @@ import { Upload, AlertCircle, CheckCircle2, Loader2, RefreshCcw, Layout } from "
 
 const REGISTERED_APPS = [
   { id: "com.jugnu.alertpe", name: "Kirana Apps" },
-  { id: "com.paymentalert.app", name: "AlertPay (paymentalert)" },
   { id: "alertpay-android", name: "AlertPay Android" },
   { id: "alertpay-web", name: "AlertPay Web" },
   { id: "com.sharestatus.app", name: "ShareStatus" },

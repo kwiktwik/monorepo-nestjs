@@ -74,7 +74,7 @@ async function bootstrap() {
         type: 'apiKey',
         name: 'X-App-ID',
         in: 'header',
-        description: 'App identifier (default: com.paymentalert.app)',
+        description: 'App identifier (default: com.jugnu.alertpe)',
       },
       'X-App-ID',
     )
@@ -94,7 +94,7 @@ async function bootstrap() {
       // Set default X-App-ID header value
       requestInterceptor: (request) => {
         if (!request.headers['X-App-ID']) {
-          request.headers['X-App-ID'] = 'com.paymentalert.app';
+          request.headers['X-App-ID'] = 'com.jugnu.alertpe';
         }
         return request;
       },
@@ -179,7 +179,7 @@ async function bootstrap() {
   logger.log(
     `📖 Swagger docs (admin protected): http://localhost:${port}/api/admin/docs`,
   );
-  logger.log(`📱 Default X-App-ID: com.paymentalert.app`);
+  logger.log(`📱 Default X-App-ID: com.jugnu.alertpe`);
 
   if (
     process.env.ENABLE_DB_DEBUG === 'true' ||

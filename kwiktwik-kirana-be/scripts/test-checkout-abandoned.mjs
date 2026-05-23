@@ -45,7 +45,7 @@ try {
 
 // Configuration
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-const APP_ID = 'com.paymentalert.app';
+const APP_ID = 'com.jugnu.alertpe';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const TEST_DELAY_SECONDS = 5; // Use short delay for testing
 

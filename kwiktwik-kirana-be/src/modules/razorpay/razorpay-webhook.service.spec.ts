@@ -173,7 +173,7 @@ describe('RazorpayWebhookService', () => {
       const originalEnv = { ...process.env };
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'secret1',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'secret1',
         RAZORPAY_WEBHOOK_SECRET_COM_KIRANAAPPS_APP: 'secret2',
         // Unregistered app - should be ignored
         RAZORPAY_WEBHOOK_SECRET_COM_UNKNOWN_APP: 'unknown-secret',
@@ -183,7 +183,6 @@ describe('RazorpayWebhookService', () => {
       const appIds = secrets.map((s: any) => s.appId);
 
       // Should only include registered apps
-      expect(appIds).toContain('com.paymentalert.app');
       expect(appIds).toContain('com.jugnu.alertpe');
       // Should NOT include unregistered apps
       expect(appIds).not.toContain('com.unknown.app');
@@ -197,8 +196,8 @@ describe('RazorpayWebhookService', () => {
       // Set up webhook secrets
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'correct-secret',
-        RAZORPAY_WEBHOOK_SECRET_COM_KIRANAAPPS_APP: 'another-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'correct-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_DAILYATTENDANCE_STAFFBOOK: 'another-secret',
       };
 
       // Mock logger to capture warn calls
@@ -218,7 +217,7 @@ describe('RazorpayWebhookService', () => {
         expect.stringContaining('Signature verification failed'),
       );
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('com.paymentalert.app'),
+        expect.stringContaining('com.jugnu.alertpe'),
       );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('com.jugnu.alertpe'),
@@ -294,13 +293,13 @@ describe('RazorpayWebhookService', () => {
     it('should find correct app when multiple secrets are configured', () => {
       const originalEnv = { ...process.env };
       const body = '{"event":"payment.captured"}';
-      const targetApp = 'com.paymentalert.app';
+      const targetApp = 'com.jugnu.alertpe';
       const targetSecret = 'target-app-secret';
 
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: targetSecret,
-        RAZORPAY_WEBHOOK_SECRET_COM_KIRANAAPPS_APP: 'other-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: targetSecret,
+        RAZORPAY_WEBHOOK_SECRET_COM_DAILYATTENDANCE_STAFFBOOK: 'other-secret',
       };
 
       const { createHmac } = require('crypto');
@@ -346,7 +345,7 @@ describe('RazorpayWebhookService', () => {
 
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'test-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'test-secret',
       };
 
       const { createHmac } = require('crypto');
@@ -391,7 +390,7 @@ describe('RazorpayWebhookService', () => {
 
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'test-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'test-secret',
       };
 
       const { createHmac } = require('crypto');
@@ -421,7 +420,7 @@ describe('RazorpayWebhookService', () => {
 
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'test-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'test-secret',
       };
 
       // Mock DB for duplicate check
@@ -511,7 +510,7 @@ describe('RazorpayWebhookService', () => {
 
       process.env = {
         ...process.env,
-        RAZORPAY_WEBHOOK_SECRET_COM_PAYMENTALERT_APP: 'test-secret',
+        RAZORPAY_WEBHOOK_SECRET_COM_JUGNU_ALERTPE: 'test-secret',
       };
 
       // Ensure analytics is disabled

@@ -42,7 +42,7 @@ Use these JWT tokens in Swagger UI to test different paywall configurations.
 
 ---
 
-## App: com.paymentalert.app
+## App: com.jugnu.alertpe
 
 ### Quick Reference Tokens
 
@@ -117,12 +117,12 @@ Use these JWT tokens in Swagger UI to test different paywall configurations.
 # Test new user with no deeplink
 curl -X GET "http://localhost:4010/api/config/v2" \
   -H "Authorization: Bearer <TOKEN>" \
-  -H "X-App-ID: com.paymentalert.app"
+  -H "X-App-ID: com.jugnu.alertpe"
 
 # Test with query parameter override
 curl -X GET "http://localhost:4010/api/config/v2?userType=abandoned&deeplink=none" \
   -H "Authorization: Bearer <TOKEN>" \
-  -H "X-App-ID: com.paymentalert.app"
+  -H "X-App-ID: com.jugnu.alertpe"
 ```
 
 ## Token Payload Structure

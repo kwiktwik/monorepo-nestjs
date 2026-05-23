@@ -11,7 +11,7 @@
  *
  * Options:
  *   --name <name>       User name (default: Test User)
- *   --app-id <appId>    App ID (default: com.paymentalert.app)
+ *   --app-id <appId>    App ID (default: com.jugnu.alertpe)
  *   --json              Output as JSON for programmatic use
  *   --no-create         Don't create user if not exists
  *   --jwt-secret <s>    JWT secret for signing (defaults to JWT_SECRET env var)
@@ -74,7 +74,7 @@ const getArg = (name, defaultValue) => {
 
 const phoneNumber = getArg('--phone', '8855866494');
 const userName = getArg('--name', 'Test User');
-const appId = getArg('--app-id', 'com.paymentalert.app');
+const appId = getArg('--app-id', 'com.jugnu.alertpe');
 const jwtSecret = getArg(
   '--jwt-secret',
   process.env.JWT_SECRET || 'your-secret-key-change-this',
@@ -190,7 +190,7 @@ async function main() {
       console.log('   2. Open http://localhost:3002/docs');
       console.log('   3. Click "Authorize" button');
       console.log('   4. Paste the token in the JWT field');
-      console.log('   5. X-App-ID is pre-set to: com.paymentalert.app');
+      console.log('   5. X-App-ID is pre-set to: com.jugnu.alertpe');
       console.log('='.repeat(60) + '\n');
     }
   } catch (err) {

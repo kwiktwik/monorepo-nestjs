@@ -54,19 +54,19 @@ curl http://localhost:3002/health
 # Send OTP
 curl -X POST http://localhost:3002/api/phone-number/send-otp \
   -H "Content-Type: application/json" \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -d '{"phoneNumber": "+919876543210"}'
 
 # Verify OTP
 curl -X POST http://localhost:3002/api/phone-number/verify \
   -H "Content-Type: application/json" \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -d '{"phoneNumber": "+919876543210", "code": "123456"}'
 
 # Google Sign-In
 curl -X POST http://localhost:3002/api/auth/google-signin \
   -H "Content-Type: application/json" \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -d '{"idToken": "google-id-token-here"}'
 ```
 
@@ -74,30 +74,30 @@ curl -X POST http://localhost:3002/api/auth/google-signin \
 ```bash
 # Get Config
 curl http://localhost:3002/api/config/v2 \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -H "Authorization: Bearer <jwt-token>"
 
 # Get User Profile
 curl http://localhost:3002/api/user/v1 \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -H "Authorization: Bearer <jwt-token>"
 
 # Update User Profile
 curl -X POST http://localhost:3002/api/user/v1 \
   -H "Content-Type: application/json" \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -H "Authorization: Bearer <jwt-token>" \
   -d '{"name": "John Doe", "phoneNumber": "+919876543210"}'
 
 # Delete User Account
 curl -X DELETE http://localhost:3002/api/user/v1 \
-  -H "X-App-ID: com.paymentalert.app" \
+  -H "X-App-ID: com.jugnu.alertpe" \
   -H "Authorization: Bearer <jwt-token>"
 ```
 
 ## Supported App IDs
 
-- `com.paymentalert.app`
+- `com.jugnu.alertpe`
 - `com.jugnu.alertpe`
 
 ## Database Schema

@@ -35,21 +35,6 @@ export const REGISTERED_APPS: Record<string, AppConfig> = {
       googleLogin: true,
     },
   },
-  'com.paymentalert.app': {
-    id: 'com.paymentalert.app',
-    name: 'Payment Alert',
-    description: 'Payment Alert mobile application',
-    enabled: true,
-    rateLimit: {
-      maxRequests: 100,
-      windowMs: 15 * 60 * 1000,
-    },
-    features: {
-      otpLogin: true,
-      truecallerLogin: true,
-      googleLogin: true,
-    },
-  },
   'com.dailyattendance.staffbook': {
     id: 'com.dailyattendance.staffbook',
     name: 'StaffBook',
@@ -140,8 +125,8 @@ export function getRegisteredAppIdsWithWebhooks(): string[] {
 
 /**
  * Derive a temp-email domain from an app's package name.
- * e.g. "com.paymentalert.app" -> "paymentalert.local"
- *      "com.jugnu.alertpe"  -> "kiranaapps.local"
+ * e.g. "com.jugnu.alertpe"  -> "jugnu.local"
+ *      "com.dailyattendance.staffbook" -> "dailyattendance.local"
  */
 export function getTempEmailDomain(appId: string): string {
   const parts = appId.split('.');

@@ -33,7 +33,7 @@ describe('ConfigService', () => {
     paywallEngine = module.get<PaywallEngineService>(PaywallEngineService);
   });
 
-  const appId = 'com.paymentalert.app';
+  const appId = 'com.jugnu.alertpe';
 
   describe('v2 Restoration (getConfigSimple)', () => {
     it('should return static configuration for a valid app', () => {

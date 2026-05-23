@@ -46,7 +46,7 @@
       <label>Project ID</label>
       <input type="text" id="fbProjectId" placeholder="your-project-id">
       <label>X-App-ID</label>
-      <input type="text" id="appId" placeholder="com.paymentalert.app" value="com.paymentalert.app">
+      <input type="text" id="appId" placeholder="com.jugnu.alertpe" value="com.jugnu.alertpe">
       <label>Backend URL</label>
       <input type="text" id="backendUrl" placeholder="http://localhost:3000" value="">
       <button onclick="initFirebase()">Initialize Firebase</button>
@@ -115,7 +115,7 @@
     }
 
     function getAppId() {
-      return document.getElementById('appId').value.trim() || 'com.paymentalert.app';
+      return document.getElementById('appId').value.trim() || 'com.jugnu.alertpe';
     }
 
     function updateStatus() {

@@ -757,7 +757,7 @@ Content-Type: application/json
 # { "success": true, "method": "token" } or { "success": true, "method": "user", "userId": "...", "appId": "..." }
 POST {{localUrl}}/notifications/send
 Content-Type: application/json
-X-App-ID: com.paymentalert.app
+X-App-ID: com.jugnu.alertpe
 Authorization: Bearer 53opXcAOOByV1Kjkt3iZ7gOSnF1beacC
 
 {
@@ -770,7 +770,7 @@ Authorization: Bearer 53opXcAOOByV1Kjkt3iZ7gOSnF1beacC
 ### Test Send Push Notification (User Token)
 POST {{baseUrlProd}}/notifications/send
 Content-Type: application/json
-X-App-ID: com.paymentalert.app
+X-App-ID: com.jugnu.alertpe
 Authorization: Bearer 53opXcAOOByV1Kjkt3iZ7gOSnF1beacC
 
 {
@@ -2277,7 +2277,7 @@ Content-Type: application/json
 #   "error": "User not found"
 # }
 GET {{baseUrlProd}}/user/v1
-X-App-ID: com.paymentalert.app
+X-App-ID: com.jugnu.alertpe
 Authorization: Bearer zxOdW2HWH0te60vZ4r0hlgsCVgg6O3Hq
 
 ### Get User Profile V1 (AlertPay - Production)
@@ -3344,7 +3344,7 @@ Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
 
 POST https://preprod.kiranaapps.com/api/phonepe
 Content-Type: application/json
-X-App-ID: com.paymentalert.app
+X-App-ID: com.jugnu.alertpe
 X-PhonePe-Env: DEV
 Authorization: Bearer J2pkBto2dMNgEWTe7eO8D2I28MMReWih
 

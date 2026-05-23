@@ -49,7 +49,7 @@ import { PrometheusMetricsInterceptor } from '../../../common/interceptors/prome
 @ApiHeader({
   name: 'X-App-ID',
   required: true,
-  description: 'App identifier (e.g., com.paymentalert.app)',
+  description: 'App identifier (e.g., com.jugnu.alertpe)',
 })
 @Controller('v1/subscriptions')
 @UseGuards(AppIdGuard, JwtAuthGuard)

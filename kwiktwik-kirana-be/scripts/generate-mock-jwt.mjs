@@ -11,7 +11,7 @@
  * Options:
  *   --phone <phone>     Phone number (default: +919999999999)
  *   --name <name>       User name (default: Test User)
- *   --app-id <appId>    App ID (default: com.paymentalert.app)
+ *   --app-id <appId>    App ID (default: com.jugnu.alertpe)
  *   --json              Output as JSON for programmatic use
  * 
  * Note: For mock mode testing, use phone +919999999999 with OTP 123456
@@ -51,7 +51,7 @@ const getArg = (name, defaultValue) => {
 
 const phoneNumber = getArg('--phone', '+919999999999');
 const userName = getArg('--name', 'Test User');
-const appId = getArg('--app-id', 'com.paymentalert.app');
+const appId = getArg('--app-id', 'com.jugnu.alertpe');
 const outputJson = args.includes('--json');
 
 // Generate user ID
@@ -95,7 +95,7 @@ if (outputJson) {
   console.log('   2. Open http://localhost:3002/docs');
   console.log('   3. Click "Authorize" button');
   console.log('   4. Paste the token in the JWT field');
-  console.log('   5. X-App-ID is pre-set to: com.paymentalert.app');
+  console.log('   5. X-App-ID is pre-set to: com.jugnu.alertpe');
   console.log('\n💡 Note: For mock mode, use test phone +919999999999 with OTP 123456');
   console.log('='.repeat(60) + '\n');
 }

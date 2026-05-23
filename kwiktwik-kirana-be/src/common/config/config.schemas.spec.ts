@@ -139,12 +139,12 @@ describe('Config Schemas', () => {
 
   describe('validateAppConfig', () => {
     it('should return success for valid config', () => {
-      const validConfig = APP_CONFIGS['com.paymentalert.app'];
-      const result = validateAppConfig(validConfig, 'com.paymentalert.app');
+      const validConfig = APP_CONFIGS['com.jugnu.alertpe'];
+      const result = validateAppConfig(validConfig, 'com.jugnu.alertpe');
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.app.name).toBe('Payment Alert');
+        expect(result.data.app.name).toBe('Kirana Apps');
       }
     });
 
@@ -172,7 +172,7 @@ describe('Config Schemas', () => {
 
     it('should detect invalid configs', () => {
       const configsWithInvalid = {
-        valid: APP_CONFIGS['com.paymentalert.app'],
+        valid: APP_CONFIGS['com.jugnu.alertpe'],
         invalid: { notAConfig: true },
       };
 

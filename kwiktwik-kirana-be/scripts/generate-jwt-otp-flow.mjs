@@ -12,7 +12,7 @@
  *
  * Options:
  *   --phone <phone>     Phone number (default: 8855866494)
- *   --app-id <appId>    App ID (default: com.paymentalert.app)
+ *   --app-id <appId>    App ID (default: com.jugnu.alertpe)
  *   --api-url <url>     API base URL (default: https://services.kiranaapps.com)
  *   --json              Output as JSON
  */
@@ -35,7 +35,7 @@ const getArg = (name, defaultValue) => {
 };
 
 const phoneNumber = getArg('--phone', '8855866494');
-const appId = getArg('--app-id', 'com.paymentalert.app');
+const appId = getArg('--app-id', 'com.jugnu.alertpe');
 const apiUrl = getArg('--api-url', 'https://services.kiranaapps.com');
 const outputJson = args.includes('--json');
 

@@ -52,7 +52,7 @@ export class FeatureToggleAdminController {
     name: 'appId',
     required: false,
     description: 'Filter by app ID',
-    example: 'com.paymentalert.app',
+    example: 'com.jugnu.alertpe',
   })
   @ApiResponse({
     status: 200,
@@ -139,7 +139,7 @@ export class FeatureToggleAdminController {
     name: 'appId',
     required: false,
     description: 'Filter by app ID',
-    example: 'com.paymentalert.app',
+    example: 'com.jugnu.alertpe',
   })
   @ApiQuery({
     name: 'status',
