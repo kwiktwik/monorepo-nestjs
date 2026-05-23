@@ -1,1 +1,0 @@
-ALTER TABLE "device_sessions" ADD COLUMN "build_number" text;

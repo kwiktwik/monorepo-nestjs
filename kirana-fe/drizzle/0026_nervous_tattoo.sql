@@ -1,1 +1,0 @@
-ALTER TABLE "phonepe_subscriptions" ALTER COLUMN "app_id" DROP DEFAULT;
