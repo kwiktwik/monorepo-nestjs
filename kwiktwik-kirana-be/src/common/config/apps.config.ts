@@ -131,7 +131,7 @@ export function getRegisteredAppIdsWithWebhooks(): string[] {
 export function getTempEmailDomain(appId: string): string {
   const parts = appId.split('.');
   const brand = parts.length >= 2 ? parts[1] : appId;
-  return `${brand}.local`;
+  return `${brand}.com`;
 }
 
 /**
