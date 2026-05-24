@@ -26,6 +26,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "admin-ui"
+    "admin-ui",
+    "workers"
   ]
 }

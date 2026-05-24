@@ -38,6 +38,7 @@ import { SlydeeModule } from './modules/slydee/slydee.module';
 import { AiModule } from './modules/ai/ai.module';
 import { PaywallModule } from './modules/paywall/paywall.module';
 import { UserV3Module } from './modules/user-v3/user-v3.module';
+import { ClientEventsModule } from './modules/client-events/client-events.module';
 import { GlobalRateLimitMiddleware } from './common/middleware/global-rate-limit.middleware';
 
 const dbModule =
@@ -87,6 +88,7 @@ const dbModule =
     AiModule,
     PaywallModule,
     UserV3Module,
+    ClientEventsModule,
     PrometheusModule,
   ],
   controllers: [RootController, HealthController],

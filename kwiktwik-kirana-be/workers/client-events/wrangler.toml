@@ -1,0 +1,24 @@
+name = "client-events-worker"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+workers_dev = false
+
+[[routes]]
+pattern = "events.kwiktwik.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "client-events"
+database_id = "29898f91-8400-4e3d-8283-148cb4117dc6"
+
+[triggers]
+crons = ["0 3 * * *"] # Daily cleanup at 3 AM UTC
+
+[vars]
+MAX_BATCH_SIZE = "100"
+RETENTION_DAYS = "30"
+
+# Secrets (set via `wrangler secret put <KEY>`):
+# CLIENT_API_KEY  — shared secret the Android app sends in X-API-Key header
+# ADMIN_API_KEY   — separate key for query/stats endpoints
