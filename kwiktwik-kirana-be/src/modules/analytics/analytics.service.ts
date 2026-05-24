@@ -58,6 +58,10 @@ const CONFIG = {
   firebase: {
     baseUrl: 'https://www.google-analytics.com/mp/collect',
   },
+  /** Events that should NOT be sent to Facebook Conversions API */
+  facebookExcludedEvents: new Set([
+    'notification_event_delivered',
+  ]),
   blockedFacebookKeys: [
     'status',
     'event',
@@ -210,6 +214,12 @@ export class AnalyticsService implements OnModuleInit {
     appId: string,
     eventId?: string,
   ): Promise<boolean> {
+    if (CONFIG.facebookExcludedEvents.has(eventName)) {
+      this.logger.debug(
+        `Skipping Facebook for excluded event: ${eventName}`,
+      );
+      return true;
+    }
     try {
       const credentials = this.getCredentials(appId, [
         'FACEBOOK_PIXEL_ID',
