@@ -756,6 +756,15 @@ export class RazorpayWebhookService {
       return true;
     }
 
+    // If this order was created by the payment-gateway module, skip legacy creation
+    const paymentNotes = payment.notes as Record<string, string> | undefined;
+    if (paymentNotes?.merchant_order_id || paymentNotes?.merchant_subscription_id) {
+      this.logger.log(
+        `[WEBHOOK ${requestId}] ℹ️ Order ${payment.order_id} belongs to payment-gateway module — skipping legacy creation`,
+      );
+      return false;
+    }
+
     // Order not in DB — try to create it
     this.logger.log(
       `[WEBHOOK ${requestId}] ℹ️ Order ${payment.order_id} not found — attempting to create from payment data`,
@@ -925,25 +934,16 @@ export class RazorpayWebhookService {
       return;
     }
 
-    try {
-      // Update order if order_id exists
-      if (payment.order_id) {
-        const result = await this.db
-          .update(schema.orders)
-          .set({
-            status: 'failed',
-            razorpayPaymentId: payment.id,
-            paymentMetadata: payment as unknown as Record<string, unknown>,
-            updatedAt: eventTime,
-          })
-          .where(eq(schema.orders.razorpayOrderId, payment.order_id))
-          .returning({ id: schema.orders.id });
+    if (payment.order_id && payment.id) {
+      try {
+        const created = await this.getOrCreateOrderFromPayment(
+          payment,
+          requestId,
+          'failed',
+          eventTime,
+        );
 
-        if (result.length > 0) {
-          this.logger.log(
-            `[WEBHOOK ${requestId}] ✅ Order ${payment.order_id} updated to FAILED`,
-          );
-
+        if (created) {
           await this.trackOrderAnalytics(
             requestId,
             payment.order_id,
@@ -957,25 +957,21 @@ export class RazorpayWebhookService {
               error_description: payment.error_description ?? undefined,
             },
           );
-        } else {
-          this.logger.error(
-            `[WEBHOOK ${requestId}] ❌ Order ${payment.order_id} not found for payment failed`,
-          );
         }
-      }
-
-      // Update subscription metadata if invoice_id exists (recurring payment)
-      if (payment.invoice_id) {
-        // Note: We'd need to fetch the invoice to get the subscription_id
-        // For now, skip this part as it requires additional API call
-        this.logger.log(
-          `[WEBHOOK ${requestId}] ℹ️ Invoice ${payment.invoice_id} - subscription metadata update skipped`,
+      } catch (error) {
+        this.logger.error(
+          `[WEBHOOK ${requestId}] ❌ Failed to process payment failure:`,
+          error,
         );
       }
-    } catch (error) {
-      this.logger.error(
-        `[WEBHOOK ${requestId}] ❌ Failed to process payment failure:`,
-        error,
+    }
+
+    // Update subscription metadata if invoice_id exists (recurring payment)
+    if (payment.invoice_id) {
+      // Note: We'd need to fetch the invoice to get the subscription_id
+      // For now, skip this part as it requires additional API call
+      this.logger.log(
+        `[WEBHOOK ${requestId}] ℹ️ Invoice ${payment.invoice_id} - subscription metadata update skipped`,
       );
     }
   }
