@@ -204,15 +204,16 @@ export class ConfigService {
       }
 
       // Get the unified plan
-      const unifiedPlan = getUnifiedPlan(selectedPlanId);
+      let unifiedPlan = getUnifiedPlan(selectedPlanId);
 
       if (!unifiedPlan) {
+        const fallbackPlanId = 'plan_SrGjQeBQe9JFcd';
         this.logger.warn(
-          `Config v4: Invalid plan_id="${selectedPlanId}" requested for app="${appId}". Source=${planSelectionSource}. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
+          `Config v4: Invalid plan_id="${selectedPlanId}" requested for app="${appId}". Source=${planSelectionSource}. Falling back to ${fallbackPlanId}. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
         );
-        throw new NotFoundException(
-          `Plan "${selectedPlanId}" not found. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
-        );
+        selectedPlanId = fallbackPlanId;
+        planSelectionSource = `fallback:${planSelectionSource}`;
+        unifiedPlan = getUnifiedPlan(fallbackPlanId);
       }
 
       this.logger.log(

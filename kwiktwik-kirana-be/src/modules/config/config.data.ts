@@ -298,6 +298,28 @@ export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
       period: 'monthly',
     },
   },
+  // Razorpay ₹199/month plan
+  plan_StA9WBDWBGlYpy: {
+    plan_id: 'plan_StA9WBDWBGlYpy',
+    provider: 'RAZORPAY',
+    localConfig: {
+      pricing: {
+        initialAmount: '₹5',
+        recurringAmount: '₹199',
+        period: 'month',
+      },
+      heading: 'Never miss a payment',
+      description: 'Start your free trial for <s>₹199</s>',
+      buttonText: 'Start 1 day free trial',
+      refundText: 'REFUNDED INSTANTLY',
+      videoDescription: 'Autopay ₹199 every month, cancel anytime',
+    },
+    providerConfig: {
+      razorpayPlanId: 'plan_StA9WBDWBGlYpy',
+      interval: 1,
+      period: 'monthly',
+    },
+  },
 };
 
 // Helper to get plan by ID
