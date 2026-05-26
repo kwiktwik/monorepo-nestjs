@@ -296,57 +296,72 @@ export class NotificationService {
     }
 
     let notificationLogId: number | null = null;
-
-    const logEntry = await this.db
-      .insert(schema.notificationLogs)
-      .values({
-        userId,
-        notificationId,
-        packageName,
-        appName,
-        timestamp,
-        title,
-        text: content,
-        bigText,
-        hasTransaction,
-        amount: paymentAmount,
-        payerName: paymentPayerName,
-        transactionType,
-        processingTimeMs,
-        ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
-      })
-      .returning();
-
-    notificationLogId = logEntry[0]?.id ?? null;
-
     let enhancedNotificationId: number | null = null;
 
-    if (hasTransaction && notificationLogId !== null && paymentAmount) {
-      const enhancedRows = await this.db
-        .insert(schema.enhancedNotifications)
+    try {
+      const logEntry = await this.db
+        .insert(schema.notificationLogs)
         .values({
           userId,
           notificationId,
-          originalNotificationId: null,
           packageName,
           appName,
-          title,
-          content,
-          bigText,
           timestamp,
-          hasTransaction: true,
+          title,
+          text: content,
+          bigText,
+          hasTransaction,
           amount: paymentAmount,
           payerName: paymentPayerName,
           transactionType,
           processingTimeMs,
-          processingMetadata: dto.processing_metadata ?? {},
-          notificationLogId,
           ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
-          teamNotificationSent:
-            dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
         })
         .returning();
-      enhancedNotificationId = enhancedRows[0]?.id ?? null;
+
+      notificationLogId = logEntry[0]?.id ?? null;
+
+      if (hasTransaction && notificationLogId !== null && paymentAmount) {
+        const enhancedRows = await this.db
+          .insert(schema.enhancedNotifications)
+          .values({
+            userId,
+            notificationId,
+            originalNotificationId: null,
+            packageName,
+            appName,
+            title,
+            content,
+            bigText,
+            timestamp,
+            hasTransaction: true,
+            amount: paymentAmount,
+            payerName: paymentPayerName,
+            transactionType,
+            processingTimeMs,
+            processingMetadata: dto.processing_metadata ?? {},
+            notificationLogId,
+            ttsAnnounced: dto.tts_announced ?? dto.ttsAnnounced ?? false,
+            teamNotificationSent:
+              dto.team_notification_sent ?? dto.teamNotificationSent ?? false,
+          })
+          .returning();
+        enhancedNotificationId = enhancedRows[0]?.id ?? null;
+      }
+    } catch (error) {
+      // FK violation (23503) = user was deleted; return gracefully
+      if ((error as any)?.code === '23503') {
+        logger.warn(`Skipping notification for deleted user ${userId}`);
+        return {
+          data: [{
+            status: 'skipped',
+            notificationId,
+            message: 'User no longer exists',
+          }],
+          processed: 0,
+        };
+      }
+      throw error;
     }
 
     const resultItem = {
@@ -478,56 +493,74 @@ export class NotificationService {
       };
     }
 
-    // Insert into notificationLogs (all notifications)
-    const logEntry = await this.db
-      .insert(schema.notificationLogs)
-      .values({
-        userId,
-        notificationId: dto.notificationId,
-        packageName: dto.packageName,
-        appName,
-        timestamp,
-        title: sanitizeString(dto.title),
-        text: sanitizeString(dto.content),
-        bigText: sanitizeString(dto.bigText),
-        hasTransaction,
-        amount: dto.amount || null,
-        payerName: sanitizeString(dto.payerName),
-        transactionType,
-        processingTimeMs,
-        ttsAnnounced: dto.ttsAnnounced ?? false,
-      })
-      .returning();
-
-    const notificationLogId = logEntry[0]?.id ?? null;
+    let notificationLogId: number | null = null;
     let enhancedNotificationId: number | null = null;
 
-    // Insert into enhancedNotifications only if it has a transaction
-    if (hasTransaction && notificationLogId !== null) {
-      const enhancedRows = await this.db
-        .insert(schema.enhancedNotifications)
+    try {
+      // Insert into notificationLogs (all notifications)
+      const logEntry = await this.db
+        .insert(schema.notificationLogs)
         .values({
           userId,
           notificationId: dto.notificationId,
-          originalNotificationId: null,
           packageName: dto.packageName,
           appName,
-          title: sanitizeString(dto.title),
-          content: sanitizeString(dto.content),
-          bigText: sanitizeString(dto.bigText),
           timestamp,
-          hasTransaction: true,
+          title: sanitizeString(dto.title),
+          text: sanitizeString(dto.content),
+          bigText: sanitizeString(dto.bigText),
+          hasTransaction,
           amount: dto.amount || null,
           payerName: sanitizeString(dto.payerName),
           transactionType,
           processingTimeMs,
-          processingMetadata: dto.processingMetadata ?? {},
-          notificationLogId,
           ttsAnnounced: dto.ttsAnnounced ?? false,
-          teamNotificationSent: dto.teamNotificationSent ?? false,
         })
         .returning();
-      enhancedNotificationId = enhancedRows[0]?.id ?? null;
+
+      notificationLogId = logEntry[0]?.id ?? null;
+
+      // Insert into enhancedNotifications only if it has a transaction
+      if (hasTransaction && notificationLogId !== null) {
+        const enhancedRows = await this.db
+          .insert(schema.enhancedNotifications)
+          .values({
+            userId,
+            notificationId: dto.notificationId,
+            originalNotificationId: null,
+            packageName: dto.packageName,
+            appName,
+            title: sanitizeString(dto.title),
+            content: sanitizeString(dto.content),
+            bigText: sanitizeString(dto.bigText),
+            timestamp,
+            hasTransaction: true,
+            amount: dto.amount || null,
+            payerName: sanitizeString(dto.payerName),
+            transactionType,
+            processingTimeMs,
+            processingMetadata: dto.processingMetadata ?? {},
+            notificationLogId,
+            ttsAnnounced: dto.ttsAnnounced ?? false,
+            teamNotificationSent: dto.teamNotificationSent ?? false,
+          })
+          .returning();
+        enhancedNotificationId = enhancedRows[0]?.id ?? null;
+      }
+    } catch (error) {
+      // FK violation (23503) = user was deleted; return gracefully
+      if ((error as any)?.code === '23503') {
+        logger.warn(`Skipping notification for deleted user ${userId}`);
+        return {
+          data: [{
+            status: 'skipped',
+            notificationId: dto.notificationId,
+            message: 'User no longer exists',
+          }],
+          processed: 0,
+        };
+      }
+      throw error;
     }
 
     const resultItem = {

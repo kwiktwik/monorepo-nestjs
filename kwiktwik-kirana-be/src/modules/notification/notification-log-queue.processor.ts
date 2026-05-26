@@ -40,7 +40,7 @@ export interface NotificationLogJobData {
 export interface NotificationLogJobResult {
   notificationLogId: number | null;
   enhancedNotificationId: number | null;
-  status: 'success' | 'duplicate' | 'queued';
+  status: 'success' | 'duplicate' | 'queued' | 'skipped';
 }
 
 /**
@@ -194,6 +194,17 @@ export class NotificationLogProcessor
         };
       });
     } catch (error) {
+      // FK violation (23503) = user was deleted; skip without retry
+      if ((error as any)?.code === '23503') {
+        this.logger.warn(
+          `Skipping notification log for deleted user ${data.userId}: ${data.notificationId}`,
+        );
+        return {
+          notificationLogId: null,
+          enhancedNotificationId: null,
+          status: 'skipped',
+        };
+      }
       this.metrics.failed++;
       this.logger.error(
         `Failed to process notification log: ${(error as Error).message}`,

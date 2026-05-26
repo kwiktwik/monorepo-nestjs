@@ -298,7 +298,7 @@ export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
       period: 'monthly',
     },
   },
-  // Razorpay ₹149/month plan (default v4)
+  // Razorpay ₹149/month plan
   plan_Steqt8PYT6xkPR: {
     plan_id: 'plan_Steqt8PYT6xkPR',
     provider: 'RAZORPAY',
@@ -320,7 +320,7 @@ export const UNIFIED_PLANS: Record<string, UnifiedPlan> = {
       period: 'monthly',
     },
   },
-  // Razorpay ₹199/month plan
+  // Razorpay ₹199/month plan (default v4)
   plan_StA9WBDWBGlYpy: {
     plan_id: 'plan_StA9WBDWBGlYpy',
     provider: 'RAZORPAY',

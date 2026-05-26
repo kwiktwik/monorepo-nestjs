@@ -199,7 +199,7 @@ export class ConfigService {
         planSelectionSource = 'client_override';
       } else {
         // Backend defaults to Razorpay plan
-        selectedPlanId = 'plan_Steqt8PYT6xkPR';
+        selectedPlanId = 'plan_StA9WBDWBGlYpy';
         planSelectionSource = 'backend_default:razorpay';
       }
 
@@ -207,7 +207,7 @@ export class ConfigService {
       let unifiedPlan = getUnifiedPlan(selectedPlanId);
 
       if (!unifiedPlan) {
-        const fallbackPlanId = 'plan_Steqt8PYT6xkPR';
+        const fallbackPlanId = 'plan_StA9WBDWBGlYpy';
         this.logger.warn(
           `Config v4: Invalid plan_id="${selectedPlanId}" requested for app="${appId}". Source=${planSelectionSource}. Falling back to ${fallbackPlanId}. Available plans: ${Object.keys(UNIFIED_PLANS).join(', ')}`,
         );
