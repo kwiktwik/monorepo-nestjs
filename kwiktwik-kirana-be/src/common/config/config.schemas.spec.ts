@@ -3,6 +3,9 @@ import {
   validateAppConfig,
   validateAllAppConfigs,
   AppConfigDataInput,
+  AppSettingsSchema,
+  validateAppSettings,
+  AppSettingsInput,
 } from './config.schemas';
 import { APP_CONFIGS } from '../../modules/config/config.data';
 
@@ -185,6 +188,204 @@ describe('Config Schemas', () => {
       expect(result.invalidApps.some((inv) => inv.appId === 'invalid')).toBe(
         true,
       );
+    });
+  });
+
+  describe('AppSettingsSchema', () => {
+    const validSettings: AppSettingsInput = {
+      ui: {
+        theme: 'light',
+        paywall: {
+          steps: [
+            { title: 'Start for ₹5', subtitle: '₹5 needed to verify' },
+            { title: '1-Day FREE', subtitle: 'Instant UPI alerts' },
+            { title: 'Tomorrow - Member', subtitle: 'Autopay ₹199/month' },
+          ],
+          heading: 'Never miss a payment',
+          pricing: {
+            period: 'month',
+            initialAmount: '₹5',
+            recurringAmount: '₹199',
+          },
+          trialText: 'Start FREE trial ₹5 <s>₹199</s>',
+          buttonText: 'START 1-DAY FREE TRIAL',
+          ratingText: '4.5 (10 lakh+ install)',
+          refundedText: 'REFUNDED INSTANTLY',
+          supportsText: 'Supports all UPI apps',
+          socialProofText: '{name} from {city} just activated alerts',
+          videoDescription: 'Get instant payment alerts',
+        },
+        defaultLanguage: 'en',
+        supportedLanguages: ['en', 'hi'],
+      },
+      api: { timeout: 30000, retryAttempts: 3 },
+      limits: {
+        maxOrdersPerDay: null,
+        maxOrdersPerMonth: null,
+        maxRecurringOrders: null,
+      },
+      videos: {
+        en: {
+          paywall_video: 'https://cdn.example.com/en.mp4',
+          fallback_video: 'https://cdn.example.com/en_fallback.mp4',
+        },
+      },
+      features: {
+        otpLogin: true,
+        googleLogin: true,
+        subscription: { plan_id: 'alert_soundbox_standard_199' },
+        truecallerLogin: true,
+      },
+      appUpdate: {
+        enabled: false,
+        updateUrl: 'https://play.google.com/store/apps/details?id=com.app',
+        minVersion: '1.0.0',
+        forceUpdate: false,
+        updateTitle: 'Update Available',
+        latestVersion: '1.0.0',
+        updateMessage: 'Please update to continue.',
+      },
+      translations: {
+        en: {
+          steps: [
+            { title: 'Start for ₹5', subtitle: '₹5 needed to verify' },
+            { title: '1-Day FREE', subtitle: 'Instant UPI alerts' },
+            { title: 'Tomorrow - Member', subtitle: 'Autopay ₹199/month' },
+          ],
+          heading: 'Never miss a payment',
+          trialText: 'Start FREE trial ₹5 <s>₹199</s>',
+          buttonText: 'Subscribe Now',
+          ratingText: '4.5 (10 lakh+ install)',
+          description: 'Instant voice alerts for every UPI payment.',
+          refundedText: 'REFUNDED INSTANTLY',
+          supportsText: 'Supports all UPI apps',
+          socialProofText: '{name} from {city} just activated alerts',
+          videoDescription: 'Get instant payment alerts',
+        },
+      },
+    };
+
+    it('should validate a correct settings object', () => {
+      const result = AppSettingsSchema.safeParse(validSettings);
+      expect(result.success).toBe(true);
+    });
+
+    it('should fail when paywall steps are missing', () => {
+      const bad = {
+        ...validSettings,
+        ui: {
+          ...validSettings.ui,
+          paywall: { ...validSettings.ui.paywall, steps: [] },
+        },
+      };
+      const result = AppSettingsSchema.safeParse(bad);
+      expect(result.success).toBe(false);
+    });
+
+    it('should fail when a translation is missing required keys', () => {
+      const bad = {
+        ...validSettings,
+        translations: {
+          en: { heading: 'test' }, // missing most keys
+        },
+      };
+      const result = AppSettingsSchema.safeParse(bad);
+      expect(result.success).toBe(false);
+    });
+
+    it('should fail when subscription plan_id is empty', () => {
+      const bad = {
+        ...validSettings,
+        features: {
+          ...validSettings.features,
+          subscription: { plan_id: '' },
+        },
+      };
+      const result = AppSettingsSchema.safeParse(bad);
+      expect(result.success).toBe(false);
+    });
+
+    it('should apply defaults for optional fields', () => {
+      const result = AppSettingsSchema.safeParse(validSettings);
+      if (result.success) {
+        expect(result.data.ui.theme).toBe('light');
+        expect(result.data.api.timeout).toBe(30000);
+        expect(result.data.features.otpLogin).toBe(true);
+      }
+    });
+
+    it('should allow optional description in paywall', () => {
+      const withDesc = {
+        ...validSettings,
+        ui: {
+          ...validSettings.ui,
+          paywall: {
+            ...validSettings.ui.paywall,
+            description: 'Optional paywall description',
+          },
+        },
+      };
+      const result = AppSettingsSchema.safeParse(withDesc);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.ui.paywall.description).toBe(
+          'Optional paywall description',
+        );
+      }
+    });
+  });
+
+  describe('validateAppSettings', () => {
+    it('should return success for valid settings', () => {
+      const result = validateAppSettings({
+        ui: {
+          paywall: {
+            steps: [{ title: 'T', subtitle: 'S' }],
+            heading: 'H',
+            pricing: {
+              period: 'month',
+              initialAmount: '₹5',
+              recurringAmount: '₹199',
+            },
+            trialText: 'T',
+            buttonText: 'B',
+            ratingText: 'R',
+            refundedText: 'RF',
+            supportsText: 'S',
+            socialProofText: 'SP',
+            videoDescription: 'V',
+          },
+          supportedLanguages: ['en'],
+        },
+        api: {},
+        limits: {},
+        videos: {},
+        features: { subscription: { plan_id: 'plan_1' } },
+        appUpdate: { updateMessage: 'Update' },
+        translations: {
+          en: {
+            steps: [{ title: 'T', subtitle: 'S' }],
+            heading: 'H',
+            trialText: 'T',
+            buttonText: 'B',
+            ratingText: 'R',
+            description: 'D',
+            refundedText: 'RF',
+            supportsText: 'S',
+            socialProofText: 'SP',
+            videoDescription: 'V',
+          },
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should return errors for invalid settings', () => {
+      const result = validateAppSettings({ invalid: true });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.errors.length).toBeGreaterThan(0);
+      }
     });
   });
 

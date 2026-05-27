@@ -98,6 +98,111 @@ export const AppConfigDataSchema = z.object({
 export type AppConfigDataInput = z.input<typeof AppConfigDataSchema>;
 export type AppConfigDataOutput = z.output<typeof AppConfigDataSchema>;
 
+// ============================================================================
+// App Settings Schema (DB-driven config validation)
+// Validates the apps.settings JSONB column structure
+// ============================================================================
+
+const PaywallStepSchema = z.object({
+  title: z.string(),
+  subtitle: z.string(),
+});
+
+const PaywallSettingsSchema = z.object({
+  steps: z.array(PaywallStepSchema).min(1),
+  heading: z.string(),
+  pricing: z.object({
+    period: z.string(),
+    initialAmount: z.string(),
+    recurringAmount: z.string(),
+  }),
+  trialText: z.string(),
+  buttonText: z.string(),
+  ratingText: z.string(),
+  refundedText: z.string(),
+  supportsText: z.string(),
+  socialProofText: z.string(),
+  videoDescription: z.string(),
+  description: z.string().optional(),
+});
+
+const TranslationEntrySchema = z.object({
+  steps: z.array(PaywallStepSchema).min(1),
+  heading: z.string(),
+  trialText: z.string(),
+  buttonText: z.string(),
+  ratingText: z.string(),
+  description: z.string(),
+  refundedText: z.string(),
+  supportsText: z.string(),
+  socialProofText: z.string(),
+  videoDescription: z.string(),
+});
+
+const VideoEntrySchema = z.object({
+  paywall_video: z.string(),
+  fallback_video: z.string(),
+});
+
+export const AppSettingsSchema = z.object({
+  ui: z.object({
+    theme: z.string().default('light'),
+    paywall: PaywallSettingsSchema,
+    defaultLanguage: z.string().default('en'),
+    supportedLanguages: z.array(z.string()).min(1),
+  }),
+  api: z.object({
+    timeout: z.number().positive().default(30000),
+    retryAttempts: z.number().nonnegative().default(3),
+  }),
+  limits: z.object({
+    maxOrdersPerDay: z.number().nullable().default(null),
+    maxOrdersPerMonth: z.number().nullable().default(null),
+    maxRecurringOrders: z.number().nullable().default(null),
+  }),
+  videos: z.record(z.string(), VideoEntrySchema),
+  features: z.object({
+    otpLogin: z.boolean().default(true),
+    googleLogin: z.boolean().default(true),
+    subscription: z.object({
+      plan_id: z.string().min(1),
+    }),
+    truecallerLogin: z.boolean().default(true),
+  }),
+  appUpdate: z.object({
+    enabled: z.boolean().default(false),
+    updateUrl: z.string().default(''),
+    minVersion: z.string().default('1.0.0'),
+    forceUpdate: z.boolean().default(false),
+    updateTitle: z.string().default('Update Available'),
+    latestVersion: z.string().default('1.0.0'),
+    updateMessage: z.string(),
+  }),
+  translations: z.record(z.string(), TranslationEntrySchema),
+});
+
+export type AppSettingsInput = z.input<typeof AppSettingsSchema>;
+export type AppSettingsOutput = z.output<typeof AppSettingsSchema>;
+
+export function validateAppSettings(
+  settings: unknown,
+):
+  | { success: true; data: AppSettingsOutput }
+  | { success: false; errors: string[] } {
+  const result = AppSettingsSchema.safeParse(settings);
+
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+
+  const issues = (result.error as any).issues || [];
+  const errors = issues.map(
+    (err: any) => `${err.path.join('.')}: ${err.message}`,
+  );
+
+  return { success: false, errors };
+}
+
 // Validation function
 export function validateAppConfig(
   config: unknown,
