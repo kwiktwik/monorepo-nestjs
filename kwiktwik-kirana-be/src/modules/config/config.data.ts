@@ -756,69 +756,69 @@ export const APP_CONFIGS = {
     videos: {
       en: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       hi: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       bn: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       mr: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       te: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       ta: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       gu: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       ur: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       kn: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       or: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
       ml: {
         fallback_video:
-          'https://cdn.thecurio.app/alertpe/videos/fallback_paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/alert_pay_fallback_1.mp4',
         paywall_video:
-          'https://cdn.thecurio.app/alertpe/videos/paywall_alertpe.mp4',
+          'https://cdn.thecurio.app/alertpe/videos/paywall_v1.mp4',
       },
     },
     appUpdate: {
