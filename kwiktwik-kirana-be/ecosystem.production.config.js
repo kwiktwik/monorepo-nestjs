@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'kwiktwik-be-prod',
-      script: './dist/main.js',
+      script: './dist/src/main.js',
       instances: 2,
       exec_mode: 'cluster',
       wait_ready: true,
